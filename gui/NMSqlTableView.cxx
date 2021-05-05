@@ -111,8 +111,8 @@ const std::string NMSqlTableView::ctx = "NMSqlTableView";
 double NMSqlTableView::angle = 0;
 
 NMSqlTableView::NMSqlTableView(QSqlTableModel* model, QWidget* parent)
-	: QWidget(parent), mViewMode(NMTABVIEW_ATTRTABLE),
-	  mModel(model), mbSwitchSelection(false), mbClearSelection(false),
+    : QWidget(parent), mViewMode(NMTABVIEW_ATTRTABLE),
+      mModel(model), mbSwitchSelection(false), mbClearSelection(false),
       mSelectionModel(0), mbIsSelectable(true), mSortFilter(0), mQueryCounter(0), mbHaveCoords(false)
 {
     this->mTableView = new QTableView(this);
@@ -135,8 +135,8 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel* model, QWidget* parent)
 }
 
 NMSqlTableView::NMSqlTableView(QSqlTableModel *model, ViewMode mode, QWidget* parent)
-	: QWidget(parent), mViewMode(mode),
-	  mModel(model), mbSwitchSelection(false), mbClearSelection(false),
+    : QWidget(parent), mViewMode(mode),
+      mModel(model), mbSwitchSelection(false), mbClearSelection(false),
       mSelectionModel(0), mbIsSelectable(true), mSortFilter(0), mQueryCounter(0), mbHaveCoords(false)
 {
     this->mTableView = new QTableView(this);
@@ -200,7 +200,7 @@ NMSqlTableView::zoomToCoords()
     {
         NMLogError(<< ctx << ": " << corQuery.lastError().text().toStdString());
         corQuery.finish();
-        db.commit();
+        db.rollback();
         return;
     }
 
@@ -282,9 +282,9 @@ void NMSqlTableView::initView()
     mbSelectionInProgress = false;
     mLayerName.clear();
 
-	this->mTableView->setCornerButtonEnabled(false);
-	this->mTableView->setAlternatingRowColors(true);
-	this->mTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    this->mTableView->setCornerButtonEnabled(false);
+    this->mTableView->setAlternatingRowColors(true);
+    this->mTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
 
     // get notified if a cell editor is closed
 //    connect(this->mTableView->itemDelegate(),
@@ -292,12 +292,12 @@ void NMSqlTableView::initView()
 //            this, SLOT(cellEditorClosed(QWidget*,QAbstractItemDelegate::EndEditHint)));
 
     this->setWindowFlags(Qt::Window);
-	this->mHiddenColumns.clear();
+    this->mHiddenColumns.clear();
 
     mPrimaryKey = mSortFilter->getSourcePK();
 
-	// ---------------------------- THE PROGRESS DIALOG -------------------
-	//mProgressDialog = new QProgressDialog(this);
+    // ---------------------------- THE PROGRESS DIALOG -------------------
+    //mProgressDialog = new QProgressDialog(this);
 
     // ------------------ check for coords zoom support--------------------
     checkCoords();
@@ -316,24 +316,24 @@ void NMSqlTableView::initView()
     }
 
 
-	// ------------------ SET UP STATUS BAR ------------------------------
-	this->mStatusBar = new QStatusBar(this);
+    // ------------------ SET UP STATUS BAR ------------------------------
+    this->mStatusBar = new QStatusBar(this);
 
-	this->mRecStatusLabel = new QLabel(tr(""), this->mStatusBar);
+    this->mRecStatusLabel = new QLabel(tr(""), this->mStatusBar);
 
 
-	this->mBtnClearSelection = new QPushButton(this->mStatusBar);
-	this->mBtnClearSelection->setText(tr("Clear Selection"));
+    this->mBtnClearSelection = new QPushButton(this->mStatusBar);
+    this->mBtnClearSelection->setText(tr("Clear Selection"));
     mBtnClearSelection->setVisible(false);
 
 
-	this->mBtnSwitchSelection = new QPushButton(this->mStatusBar);
-	this->mBtnSwitchSelection->setText(tr("Swap Selection"));
+    this->mBtnSwitchSelection = new QPushButton(this->mStatusBar);
+    this->mBtnSwitchSelection->setText(tr("Swap Selection"));
     mBtnSwitchSelection->setVisible(false);
 
-	this->mChkSelectedRecsOnly = new QCheckBox(this->mStatusBar);
-	this->mChkSelectedRecsOnly->setText(tr("Selected Records Only"));
-	this->mChkSelectedRecsOnly->setCheckState(Qt::Unchecked);
+    this->mChkSelectedRecsOnly = new QCheckBox(this->mStatusBar);
+    this->mChkSelectedRecsOnly->setText(tr("Selected Records Only"));
+    this->mChkSelectedRecsOnly->setCheckState(Qt::Unchecked);
     mChkSelectedRecsOnly->setVisible(false);
 
     this->mBtnEditCells = new QPushButton(this->mStatusBar);
@@ -364,20 +364,20 @@ void NMSqlTableView::initView()
 
 
     // ---------------- NMSqlTableView - Layout ------------------------------
-	this->mLayout = new QVBoxLayout(this);
-	this->mLayout->addWidget(this->mTableView);
-	this->mLayout->addWidget(this->mStatusBar);
+    this->mLayout = new QVBoxLayout(this);
+    this->mLayout->addWidget(this->mTableView);
+    this->mLayout->addWidget(this->mStatusBar);
 
 
-	// install an event filter on the widget underlying the
-	// horizontal header area
+    // install an event filter on the widget underlying the
+    // horizontal header area
     this->mTableView->horizontalHeader()->viewport()->installEventFilter(this);
 
-	// install an event filter on the widget underlying the
-	// vertical header area
+    // install an event filter on the widget underlying the
+    // vertical header area
     this->mTableView->verticalHeader()->viewport()->installEventFilter(this);
 
-	// install an event filter on the itemWidget
+    // install an event filter on the itemWidget
     this->mTableView->viewport()->installEventFilter(this);
 
     //    if (this->mViewMode == NMTABVIEW_PARATABLE)
@@ -396,24 +396,24 @@ void NMSqlTableView::initView()
     graphMenu->addAction(actScatter);
 
     // other actions
-	QAction* actStat = new QAction(this->mColHeadMenu);
-	actStat->setText(tr("Statistics ..."));
+    QAction* actStat = new QAction(this->mColHeadMenu);
+    actStat->setText(tr("Statistics ..."));
 
-	QAction* actExp = new QAction(this->mColHeadMenu);
-	actExp->setText(tr("Export Table ..."));
+    QAction* actExp = new QAction(this->mColHeadMenu);
+    actExp->setText(tr("Export Table ..."));
 
     QAction* actFilter = new QAction(this->mColHeadMenu);
     actFilter->setText(tr("Arbitrary SQL Query ..."));
 
-	QAction* actSel = new QAction(this->mColHeadMenu);
-	this->mActSel = actSel;
-	actSel->setText(tr("Select Attributes ..."));
+    QAction* actSel = new QAction(this->mColHeadMenu);
+    this->mActSel = actSel;
+    actSel->setText(tr("Select Attributes ..."));
 
-	QAction* actHide = new QAction(this->mColHeadMenu);
-	actHide->setText(tr("Hide Column"));
+    QAction* actHide = new QAction(this->mColHeadMenu);
+    actHide->setText(tr("Hide Column"));
 
-	QAction* actUnHide = new QAction(this->mColHeadMenu);
-	actUnHide->setText(tr("Unhide Column ..."));
+    QAction* actUnHide = new QAction(this->mColHeadMenu);
+    actUnHide->setText(tr("Unhide Column ..."));
 
     QAction* actAddRow = 0;
     QAction* actAddRows = 0;
@@ -426,48 +426,48 @@ void NMSqlTableView::initView()
         actAddRows->setText(tr("Add Rows ..."));
     }
 
-	QAction* actDelete;
+    QAction* actDelete;
     QAction* actIndex;
-	QAction* actAdd;
-	QAction* actCalc;
-	QAction* actNorm;
-	QAction* actJoin;
+    QAction* actAdd;
+    QAction* actCalc;
+    QAction* actNorm;
+    QAction* actJoin;
 
     if (mViewMode != NMTABVIEW_RASMETADATA)
-	{
-		actDelete = new QAction(this->mColHeadMenu);
-		actDelete->setText(tr("Delete Column"));
+    {
+        actDelete = new QAction(this->mColHeadMenu);
+        actDelete->setText(tr("Delete Column"));
 
         actIndex = new QAction(this->mColHeadMenu);
         actIndex->setText(tr("Create Column Index"));
 
-		actAdd = new QAction(this->mColHeadMenu);
-		actAdd->setText(tr("Add Column ..."));
+        actAdd = new QAction(this->mColHeadMenu);
+        actAdd->setText(tr("Add Column ..."));
 
-		actCalc = new QAction(this->mColHeadMenu);
-		actCalc->setText(tr("Calculate Column ..."));
+        actCalc = new QAction(this->mColHeadMenu);
+        actCalc->setText(tr("Calculate Column ..."));
 
         actNorm = new QAction(this->mColHeadMenu);
         //actNorm->setText(tr("Normalise Attributes ..."));
 
         actJoin = new QAction(this->mColHeadMenu);
         actJoin->setText(tr("Join Attributes ..."));
-	}
+    }
 
     QAction* actRefresh = new QAction(this->mColHeadMenu);
     actRefresh->setText(tr("Refresh Table View"));
 
 
-	this->mColHeadMenu->addAction(actSel);
+    this->mColHeadMenu->addAction(actSel);
     this->mColHeadMenu->addAction(actFilter);
-	this->mColHeadMenu->addSeparator();
-	this->mColHeadMenu->addAction(actStat);
+    this->mColHeadMenu->addSeparator();
+    this->mColHeadMenu->addAction(actStat);
 
     if (mViewMode != NMTABVIEW_RASMETADATA)
-	{
+    {
         this->mColHeadMenu->addAction(actCalc);
         //this->mColHeadMenu->addAction(actNorm);
-		this->mColHeadMenu->addSeparator();
+        this->mColHeadMenu->addSeparator();
         if (mViewMode != NMTABVIEW_PARATABLE)
         {
             this->mColHeadMenu->addMenu(graphMenu);
@@ -475,7 +475,7 @@ void NMSqlTableView::initView()
         }
 
         this->mColHeadMenu->addAction(actIndex);
-		this->mColHeadMenu->addAction(actAdd);
+        this->mColHeadMenu->addAction(actAdd);
 
         if (    mViewMode == NMTABVIEW_PARATABLE
             ||  mViewMode == NMTABVIEW_STANDALONE
@@ -484,24 +484,24 @@ void NMSqlTableView::initView()
             this->mColHeadMenu->addAction(actAddRow);
             this->mColHeadMenu->addAction(actAddRows);
         }
-		this->mColHeadMenu->addAction(actDelete);
-	}
-	this->mColHeadMenu->addSeparator();
+        this->mColHeadMenu->addAction(actDelete);
+    }
+    this->mColHeadMenu->addSeparator();
 
     this->mColHeadMenu->addAction(mActZoom);
 
     this->mColHeadMenu->addSeparator();
-	this->mColHeadMenu->addAction(actHide);
-	this->mColHeadMenu->addAction(actUnHide);
+    this->mColHeadMenu->addAction(actHide);
+    this->mColHeadMenu->addAction(actUnHide);
 
-	this->mColHeadMenu->addSeparator();
+    this->mColHeadMenu->addSeparator();
     if (    mViewMode == NMTABVIEW_ATTRTABLE
         ||  mViewMode == NMTABVIEW_STANDALONE
        )
-	{
-		this->mColHeadMenu->addAction(actJoin);
-	}
-	this->mColHeadMenu->addAction(actExp);
+    {
+        this->mColHeadMenu->addAction(actJoin);
+    }
+    this->mColHeadMenu->addAction(actExp);
 
     this->mColHeadMenu->addSeparator();
     this->mColHeadMenu->addAction(actRefresh);
@@ -521,26 +521,26 @@ void NMSqlTableView::initView()
 
 
     // CONNECT MENU ACTIONS WITH SLOTS
-	this->connect(this->mBtnClearSelection, SIGNAL(pressed()), this, SLOT(clearSelection()));
-	this->connect(this->mBtnSwitchSelection, SIGNAL(pressed()), this, SLOT(switchSelection()));
-	this->connect(this->mChkSelectedRecsOnly, SIGNAL(stateChanged(int)), this,
-			SLOT(updateSelRecsOnly(int)));
+    this->connect(this->mBtnClearSelection, SIGNAL(pressed()), this, SLOT(clearSelection()));
+    this->connect(this->mBtnSwitchSelection, SIGNAL(pressed()), this, SLOT(switchSelection()));
+    this->connect(this->mChkSelectedRecsOnly, SIGNAL(stateChanged(int)), this,
+            SLOT(updateSelRecsOnly(int)));
 
-	this->connect(actSel, SIGNAL(triggered()), this, SLOT(selectionQuery()));
-	this->connect(actStat, SIGNAL(triggered()), this, SLOT(colStats()));
-	this->connect(actExp, SIGNAL(triggered()), this, SLOT(exportTable()));
+    this->connect(actSel, SIGNAL(triggered()), this, SLOT(selectionQuery()));
+    this->connect(actStat, SIGNAL(triggered()), this, SLOT(colStats()));
+    this->connect(actExp, SIGNAL(triggered()), this, SLOT(exportTable()));
     this->connect(actFilter, SIGNAL(triggered()), this, SLOT(userQuery()));
-	this->connect(actHide, SIGNAL(triggered()), this, SLOT(callHideColumn()));
-	this->connect(actUnHide, SIGNAL(triggered()), this, SLOT(callUnHideColumn()));
+    this->connect(actHide, SIGNAL(triggered()), this, SLOT(callHideColumn()));
+    this->connect(actUnHide, SIGNAL(triggered()), this, SLOT(callUnHideColumn()));
     this->connect(mActZoom, SIGNAL(triggered()), this, SLOT(zoomToCoords()));
 
     if (mViewMode != NMTABVIEW_RASMETADATA)
-	{
+    {
         this->connect(actIndex, SIGNAL(triggered()), this, SLOT(indexColumn()));
         this->connect(actAdd, SIGNAL(triggered()), this, SLOT(addColumn()));
-		this->connect(actDelete, SIGNAL(triggered()), this, SLOT(deleteColumn()));
-		this->connect(actCalc, SIGNAL(triggered()), this, SLOT(calcColumn()));
-		this->connect(actNorm, SIGNAL(triggered()), this, SLOT(normalise()));
+        this->connect(actDelete, SIGNAL(triggered()), this, SLOT(deleteColumn()));
+        this->connect(actCalc, SIGNAL(triggered()), this, SLOT(calcColumn()));
+        this->connect(actNorm, SIGNAL(triggered()), this, SLOT(normalise()));
         if (    mViewMode == NMTABVIEW_ATTRTABLE
             ||  mViewMode == NMTABVIEW_STANDALONE
            )
@@ -556,25 +556,25 @@ void NMSqlTableView::initView()
             this->connect(actAddRow, SIGNAL(triggered()), this, SLOT(addRow()));
             this->connect(actAddRows, SIGNAL(triggered()), this, SLOT(addRows()));
         }
-	}
+    }
 
     this->connect(actRefresh, SIGNAL(triggered()), this, SLOT(refreshTableView()));
 
-	///////////////////////////////////////////
-	// init the context menu for managing rasdaman layers
-	this->mManageLayerMenu = new QMenu(this);
+    ///////////////////////////////////////////
+    // init the context menu for managing rasdaman layers
+    this->mManageLayerMenu = new QMenu(this);
 
-	QAction* loadLayer = new QAction(this->mManageLayerMenu);
-	loadLayer->setText(tr("Load Layer"));
+    QAction* loadLayer = new QAction(this->mManageLayerMenu);
+    loadLayer->setText(tr("Load Layer"));
 
-	QAction* delLayer = new QAction(this->mManageLayerMenu);
-	delLayer->setText(tr("Delete Selected Layer(s)"));
+    QAction* delLayer = new QAction(this->mManageLayerMenu);
+    delLayer->setText(tr("Delete Selected Layer(s)"));
 
-	this->mManageLayerMenu->addAction(loadLayer);
-	this->mManageLayerMenu->addAction(delLayer);
+    this->mManageLayerMenu->addAction(loadLayer);
+    this->mManageLayerMenu->addAction(delLayer);
 
-	this->connect(loadLayer, SIGNAL(triggered()), this, SLOT(loadRasLayer()));
-	this->connect(delLayer, SIGNAL(triggered()), this, SLOT(deleteRasLayer()));
+    this->connect(loadLayer, SIGNAL(triggered()), this, SLOT(loadRasLayer()));
+    this->connect(delLayer, SIGNAL(triggered()), this, SLOT(deleteRasLayer()));
 }
 
 void
@@ -692,6 +692,7 @@ NMSqlTableView::plotScatter()
         NMLogError(<< maxQ.lastError().text().toStdString());
         return;
     }
+    maxQ.finish();
 
     // now query the actual y values for the plot
     QString queryStr = QString("select %1, %2 from %3")
@@ -713,7 +714,7 @@ NMSqlTableView::plotScatter()
             ++id;
         }
     }
-
+    q.finish();
 
     // Add the three dimensions we are interested in visualizing.
     vtkNew<vtkPlotPoints> plot;
@@ -736,6 +737,20 @@ NMSqlTableView::plotScatter()
 
     vtkTextProperty* yprop = chart->GetAxis(1)->GetLabelProperties();
     yprop->SetFontSize(16);
+
+    // TESTING INTERACTION ===============
+    view->GetInteractor()->Initialize();
+
+    vtkNew<vtkCallbackCommand> callback;
+    callback->SetClientData(chart);
+    callback->SetCallback(NMSqlTableView::ProcessEvents);
+
+    view->GetInteractor()->AddObserver(vtkCommand::TimerEvent,
+                                       callback, 0);
+    view->GetInteractor()->CreateRepeatingTimer(1000/25);
+    view->GetInteractor()->Start();
+
+    // ==========================
 
     chartView->show();
     chartView->getRenderWindow()->Render();
@@ -762,40 +777,40 @@ NMSqlTableView::closeEvent(QCloseEvent *event)
 void
 NMSqlTableView::setSelectable(bool bselectable)
 {
-	if (mbIsSelectable == bselectable)
-		return;
+    if (mbIsSelectable == bselectable)
+        return;
 
-	this->mbIsSelectable = bselectable;
-	if (bselectable)
-	{
-		mActSel->setEnabled(true);
-		mBtnSwitchSelection->setEnabled(true);
-	}
-	else
-	{
-		mActSel->setEnabled(false);
-		mBtnSwitchSelection->setEnabled(false);
-		this->mSelectionModel->clearSelection();
-	}
+    this->mbIsSelectable = bselectable;
+    if (bselectable)
+    {
+        mActSel->setEnabled(true);
+        mBtnSwitchSelection->setEnabled(true);
+    }
+    else
+    {
+        mActSel->setEnabled(false);
+        mBtnSwitchSelection->setEnabled(false);
+        this->mSelectionModel->clearSelection();
+    }
 }
 
 void
 NMSqlTableView::connectSelModels(bool bconnect)
 {
-	if (bconnect)
-	{
+    if (bconnect)
+    {
         connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
                                                          const QItemSelection &)),
                 this, SLOT(updateProxySelection(const QItemSelection &,
                                                 const QItemSelection &)));
-	}
-	else
-	{
+    }
+    else
+    {
         disconnect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
                                                          const QItemSelection &)),
                 this, SLOT(updateProxySelection(const QItemSelection &,
                                                 const QItemSelection &)));
-	}
+    }
 }
 
 void
@@ -809,36 +824,36 @@ NMSqlTableView::setSelectionModel(NMFastTrackSelectionModel* selectionModel)
 {
     if (selectionModel && mSelectionModel != 0)
     {
-		this->connectSelModels(false);
+        this->connectSelModels(false);
         delete mSelectionModel;
     }
 
-	this->mSelectionModel = selectionModel;
+    this->mSelectionModel = selectionModel;
     this->connectSelModels(true);
-	if (this->mSelectionModel)
-	{
+    if (this->mSelectionModel)
+    {
         this->updateProxySelection(mSelectionModel->getSelection(), QItemSelection());
-	}
+    }
 }
 
 void
 NMSqlTableView::setViewMode(ViewMode mode)
 {
-	switch(mode)
-	{
-	case NMTABVIEW_ATTRTABLE:
+    switch(mode)
+    {
+    case NMTABVIEW_ATTRTABLE:
     case NMTABVIEW_STANDALONE:
     case NMTABVIEW_PARATABLE:
-		this->mViewMode = mode;
-		this->mTableView->verticalHeader()->show();
-		break;
-	case NMTABVIEW_RASMETADATA:
-		this->mViewMode = mode;
-		this->mTableView->verticalHeader()->hide();
-		break;
-	default:
-		break;
-	}
+        this->mViewMode = mode;
+        this->mTableView->verticalHeader()->show();
+        break;
+    case NMTABVIEW_RASMETADATA:
+        this->mViewMode = mode;
+        this->mTableView->verticalHeader()->hide();
+        break;
+    default:
+        break;
+    }
 }
 
 void NMSqlTableView::updateSelRecsOnly(int state)
@@ -868,68 +883,68 @@ void NMSqlTableView::switchSelection()
 
 void NMSqlTableView::normalise()
 {
-	// NOTE: for progress maxrange needs to be ncols * rows!
+    // NOTE: for progress maxrange needs to be ncols * rows!
 
     NMDebugCtx(ctx, << "...");
 
-	// -----------------------------------------------------------------------
-	// get user input
+    // -----------------------------------------------------------------------
+    // get user input
 
-	// get the names of the fields to normalise
-	bool bOk = false;
+    // get the names of the fields to normalise
+    bool bOk = false;
     QString fieldNames = QInputDialog::getText(NMGlobalHelper::getMainWindow(),
                                               tr("Normalise Fields"),
-	                                          tr("List of Field Names (separated by whitespace):"), QLineEdit::Normal,
-	                                          tr(""), &bOk);
-	if (!bOk || fieldNames.isEmpty())
-	{
-		NMDebugAI(<< "No input fields for normalisation specified!" << endl);
+                                              tr("List of Field Names (separated by whitespace):"), QLineEdit::Normal,
+                                              tr(""), &bOk);
+    if (!bOk || fieldNames.isEmpty())
+    {
+        NMDebugAI(<< "No input fields for normalisation specified!" << endl);
         NMDebugCtx(ctx, << "done!");
-		return;
-	}
+        return;
+    }
 
-	// ask for the criterion type
-	QStringList slModes;
-	slModes.append(tr("Cost Criterion"));
-	slModes.append(tr("Benefit Criterion"));
+    // ask for the criterion type
+    QStringList slModes;
+    slModes.append(tr("Cost Criterion"));
+    slModes.append(tr("Benefit Criterion"));
 
     QString sMode = QInputDialog::getItem(NMGlobalHelper::getMainWindow(),
                                           tr("Normalisation Mode"),
                                           tr("Select mode"),
                                           slModes, 0, false, &bOk, 0);
-	if (!bOk)
-	{
-		NMDebugAI(<< "No normalisation mode specified!" << endl);
+    if (!bOk)
+    {
+        NMDebugAI(<< "No normalisation mode specified!" << endl);
         NMDebugCtx(ctx, << "done!");
-		return;
-	}
-	bool bCostCriterion = sMode == "Cost Criterion" ? true : false;
+        return;
+    }
+    bool bCostCriterion = sMode == "Cost Criterion" ? true : false;
 
-	// -----------------------------------------------------------------------
+    // -----------------------------------------------------------------------
 
-	// split the strings into a stringlist
-	QStringList columnNames = fieldNames.split(tr(" "),
-			QString::SkipEmptyParts, Qt::CaseInsensitive);
+    // split the strings into a stringlist
+    QStringList columnNames = fieldNames.split(tr(" "),
+            QString::SkipEmptyParts, Qt::CaseInsensitive);
 
-	const int ncols = columnNames.size();
+    const int ncols = columnNames.size();
     //const int maxrange = mlNumSelRecs ? mlNumSelRecs * ncols : mSortFilter->sourceRowCount() * ncols;
     //const int maxrange = mlNumSelRecs ? mlNumSelRecs * ncols : mSortFilter->rowCount() * ncols;
     const int maxrange = mlNumSelRecs ? mlNumSelRecs * ncols : mlNumRecs * ncols;
 
-	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(mModel));
-	calc->setRowFilter(mSelectionModel->selection());
+    QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(mModel));
+    calc->setRowFilter(mSelectionModel->selection());
     //calc->setRaw2Source(const_cast<QList<int>* >(mSortFilter->getRaw2Source()));
 
-	//prepareProgressDlg(calc.data(), "Normalise Columns ...", maxrange);
-	QStringList normCols = calc->normaliseColumns(columnNames, bCostCriterion);
-	//cleanupProgressDlg(calc.data(), maxrange);
+    //prepareProgressDlg(calc.data(), "Normalise Columns ...", maxrange);
+    QStringList normCols = calc->normaliseColumns(columnNames, bCostCriterion);
+    //cleanupProgressDlg(calc.data(), maxrange);
 
-	// since we've added columns, we want to make sure, that any selection is expanded to
-	// those columns as well
-	this->updateProxySelection(QItemSelection(), QItemSelection());
+    // since we've added columns, we want to make sure, that any selection is expanded to
+    // those columns as well
+    this->updateProxySelection(QItemSelection(), QItemSelection());
 
-	// inform listeners
-	//emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
+    // inform listeners
+    //emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
 
     NMDebugCtx(ctx, << "done!");
 }
@@ -953,7 +968,7 @@ void NMSqlTableView::userQuery()
     NMGlobalHelper helper;
     QString sqlStmt = helper.getMultiLineInput("Arbitrary SQL-SELECT Query",
                                                queryTemplate, this);
-    //if (sqlStmt.compare("0") == 0 || sqlStmt.isEmpty())
+
     if (sqlStmt.isEmpty())
     {
         NMDebugCtx(ctx, << "done!");
@@ -970,12 +985,23 @@ NMSqlTableView::processUserQuery(const QString &queryName, const QString &sql)
     // database connection
     QString tableName = QString("%1").arg(queryName);
 
+    const QString connname = NMGlobalHelper::getMainWindow()->getDbConnection(
+                NMGlobalHelper::getMainWindow()->getSessionDbFileName());
+    QSqlDatabase dbTarget = QSqlDatabase::database(connname);
+    if (!dbTarget.isOpen())
+    {
+        NMBoxErr("User Query", "The session database is not open!");
+        return;
+    }
+
+
+    QStringList sessionTables = dbTarget.tables();
 
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >& tableList =
             NMGlobalHelper::getMainWindow()->getTableList();
     QStringList allTables = tableList.keys();
 
-    while (allTables.contains(tableName))
+    while (allTables.contains(tableName) || sessionTables.contains(tableName))
     {
         tableName = QString("%1_%2").arg(queryName).arg(++mQueryCounter);
     }
@@ -985,22 +1011,24 @@ NMSqlTableView::processUserQuery(const QString &queryName, const QString &sql)
             .arg(drv->escapeIdentifier(tableName, QSqlDriver::TableName))
             .arg(sql);
 
-    const QString connname = NMGlobalHelper::getMainWindow()->getDbConnection(
-                NMGlobalHelper::getMainWindow()->getSessionDbFileName());
-    QSqlDatabase dbTarget = QSqlDatabase::database(connname);
-
     QStringList externalDbs = NMGlobalHelper::identifyExternalDbs(dbTarget, sql);
     NMGlobalHelper::attachMultipleDbs(dbTarget, externalDbs);
 
+    dbTarget.transaction();
     QSqlQuery userQuery(dbTarget);
     if (!userQuery.exec(queryStr))
     {
-        NMGlobalHelper::detachDatabase(dbTarget, tableName);
+        userQuery.finish();
+        dbTarget.rollback();
+        NMGlobalHelper::detachMultipleDbs(dbTarget, externalDbs);
         NMBoxErr("User Query", userQuery.lastError().text().toStdString() << std::endl);
         NMDebugCtx(ctx, << "done!");
         return;
     }
-    NMGlobalHelper::detachDatabase(dbTarget, tableName);
+    userQuery.finish();
+    userQuery.clear();
+    dbTarget.commit();
+    NMGlobalHelper::detachMultipleDbs(dbTarget, externalDbs);
     NMGlobalHelper::getMainWindow()->createTableView(
                 NMGlobalHelper::getMainWindow()->getSessionDbFileName(), tableName, tableName);
 
@@ -1010,32 +1038,32 @@ NMSqlTableView::processUserQuery(const QString &queryName, const QString &sql)
 void
 NMSqlTableView::prepareProgressDlg(NMTableCalculator* obj, const QString& msg, int maxrange)
 {
-	if (maxrange == 0)
+    if (maxrange == 0)
     {
         //maxrange = mlNumSelRecs == 0 ? this->mSortFilter->sourceRowCount() : mlNumSelRecs;
         //maxrange = mlNumSelRecs == 0 ? this->mSortFilter->rowCount() : mlNumSelRecs;
         maxrange = mlNumSelRecs == 0 ? mlNumRecs : mlNumSelRecs;
     }
 
-	mProgressDialog->setWindowModality(Qt::WindowModal);
-	mProgressDialog->setLabelText(msg);
-	mProgressDialog->setRange(0, maxrange);
-	connect(obj, SIGNAL(signalProgress(int)), mProgressDialog, SLOT(setValue(int)));
-	connect(mProgressDialog, SIGNAL(canceled()), obj, SLOT(cancelRequested()));
+    mProgressDialog->setWindowModality(Qt::WindowModal);
+    mProgressDialog->setLabelText(msg);
+    mProgressDialog->setRange(0, maxrange);
+    connect(obj, SIGNAL(signalProgress(int)), mProgressDialog, SLOT(setValue(int)));
+    connect(mProgressDialog, SIGNAL(canceled()), obj, SLOT(cancelRequested()));
 }
 
 void NMSqlTableView::cleanupProgressDlg(NMTableCalculator* obj, int maxrange)
 {
-	if (maxrange == 0)
+    if (maxrange == 0)
     {
         //maxrange = mlNumSelRecs == 0 ? this->mSortFilter->sourceRowCount() : mlNumSelRecs;
         //maxrange = mlNumSelRecs == 0 ? this->mSortFilter->rowCount() : mlNumSelRecs;
         maxrange = mlNumSelRecs == 0 ? mlNumRecs : mlNumSelRecs;
     }
 
-	mProgressDialog->setValue(maxrange);
-	disconnect(obj, SIGNAL(signalProgress(int)), mProgressDialog, SLOT(setValue(int)));
-	disconnect(mProgressDialog, SIGNAL(canceled()), obj, SLOT(cancelRequested()));
+    mProgressDialog->setValue(maxrange);
+    disconnect(obj, SIGNAL(signalProgress(int)), mProgressDialog, SLOT(setValue(int)));
+    disconnect(mProgressDialog, SIGNAL(canceled()), obj, SLOT(cancelRequested()));
 }
 
 void
@@ -1044,10 +1072,10 @@ NMSqlTableView::addRow()
     if (mSortFilter)
     {
         if (mSortFilter->addRow())
-		{
+        {
             mlNumRecs = mSortFilter->getNumTableRecords();
-			this->updateSelectionAdmin(mlNumRecs);
-		}
+            this->updateSelectionAdmin(mlNumRecs);
+        }
     }
 }
 
@@ -1096,7 +1124,7 @@ void NMSqlTableView::calcColumn()
 {
     NMDebugCtx(ctx, << "...");
 
-	// get user input
+    // get user input
 
     QSqlDriver* drv = mModel->database().driver();
     QString label = QString(tr("UPDATE %1 SET %2 = ")
@@ -1104,10 +1132,10 @@ void NMSqlTableView::calcColumn()
                             .arg(drv->escapeIdentifier(this->mLastClickedColumn, QSqlDriver::FieldName)));
     QString func = NMGlobalHelper::getMultiLineInput(label, "", this);
     if (func.isEmpty())
-	{
+    {
         NMDebugCtx(ctx, << "done!");
-		return;
-	}
+        return;
+    }
 
     QString error;
     int colidx = this->getColumnIndex(mLastClickedColumn);
@@ -1129,11 +1157,11 @@ void NMSqlTableView::calcColumn()
 void
 NMSqlTableView::updateSelectionAdmin(long numSel)
 {
-	this->mBtnClearSelection->setEnabled(numSel);
+    this->mBtnClearSelection->setEnabled(numSel);
     this->mRecStatusLabel->setText(
             QString(tr("%1 of %2 records selected")).arg(numSel).arg(
                     mlNumRecs));
-	mlNumSelRecs = numSel;
+    mlNumSelRecs = numSel;
 
     if (mlNumSelRecs)
     {
@@ -1157,7 +1185,7 @@ NMSqlTableView::updateSelectionAdmin(long numSel)
 
 void
 NMSqlTableView::updateSelectionAdmin(const QItemSelection& sel,
-		const QItemSelection& desel)
+        const QItemSelection& desel)
 {
     NMDebugCtx(ctx, << "...");
     if (this->mProxySelModel == 0)
@@ -1176,8 +1204,8 @@ NMSqlTableView::updateSelectionAdmin(const QItemSelection& sel,
         selcnt += range.bottom() - range.top() + 1;
     }
     mlNumSelRecs = selcnt;
-	NMDebugAI(<< "report " << selcnt << " selected records" << std::endl);
-	this->updateSelectionAdmin(selcnt);
+    NMDebugAI(<< "report " << selcnt << " selected records" << std::endl);
+    this->updateSelectionAdmin(selcnt);
     NMDebugCtx(ctx, << "done!");
 }
 
@@ -1186,77 +1214,77 @@ void NMSqlTableView::addColumn()
     NMDebugCtx(ctx, << "...");
 
     NMAddColumnDialog* dlg = new NMAddColumnDialog(this);
-	int ret = 0;
-	bool bok = true;
-	QString name;
-	QVariant::Type type = QVariant::Invalid;
+    int ret = 0;
+    bool bok = true;
+    QString name;
+    QVariant::Type type = QVariant::Invalid;
 
-	// regular expression which defines possible names for columns
-	QRegExp nameRegExp("^[A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
-	int pos = -1;
-	do {
-		ret = dlg->exec();
-		if (!ret)
-			break;
+    // regular expression which defines possible names for columns
+    QRegExp nameRegExp("^[A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
+    int pos = -1;
+    do {
+        ret = dlg->exec();
+        if (!ret)
+            break;
 
-		name = dlg->getColumnName();
-		type = (QVariant::Type)dlg->getDataType();
+        name = dlg->getColumnName();
+        type = (QVariant::Type)dlg->getDataType();
 
-		// check, whether name matches the regular expression
-		// (i.e. is valid)
-		pos = nameRegExp.indexIn(name);
-		bok = pos >= 0 ? true : false;
+        // check, whether name matches the regular expression
+        // (i.e. is valid)
+        pos = nameRegExp.indexIn(name);
+        bok = pos >= 0 ? true : false;
 
-		//		NMDebugAI(<< "pos: " << pos << endl);
-		//		if (pos != -1)
-		//		{
-		//			NMDebugAI(<< "that's what I've got ..." << endl);
-		//			foreach(const QString& s, nameRegExp.capturedTexts())
-		//					NMDebugAI(<< s.toStdString() << endl);
-		//		}
+        //		NMDebugAI(<< "pos: " << pos << endl);
+        //		if (pos != -1)
+        //		{
+        //			NMDebugAI(<< "that's what I've got ..." << endl);
+        //			foreach(const QString& s, nameRegExp.capturedTexts())
+        //					NMDebugAI(<< s.toStdString() << endl);
+        //		}
 
-		if (	type == QVariant::Invalid
-			||  name.isEmpty()
-			|| !bok
-		   )
-		{
-			QMessageBox msgBox;
-			msgBox.setText(tr("Name invalid!"));
-			msgBox.setIcon(QMessageBox::Critical);
-			msgBox.exec();
-			NMDebugAI(<< "type '" << type << "' or name '" << name.toStdString() << "' is invalid!" << endl);
-		}
+        if (	type == QVariant::Invalid
+            ||  name.isEmpty()
+            || !bok
+           )
+        {
+            QMessageBox msgBox;
+            msgBox.setText(tr("Name invalid!"));
+            msgBox.setIcon(QMessageBox::Critical);
+            msgBox.exec();
+            NMDebugAI(<< "type '" << type << "' or name '" << name.toStdString() << "' is invalid!" << endl);
+        }
 
-		if (this->getColumnIndex(name) >= 0)
-		{
-			bok = false;
-			QMessageBox msgBox;
-			msgBox.setText(tr("Column already exists!"));
-			msgBox.setIcon(QMessageBox::Critical);
-			msgBox.exec();
-		}
-	} while (!bok || name.isEmpty() || type < 0);
+        if (this->getColumnIndex(name) >= 0)
+        {
+            bok = false;
+            QMessageBox msgBox;
+            msgBox.setText(tr("Column already exists!"));
+            msgBox.setIcon(QMessageBox::Critical);
+            msgBox.exec();
+        }
+    } while (!bok || name.isEmpty() || type < 0);
 
-	if (!ret)
-	{
+    if (!ret)
+    {
         NMDebugCtx(ctx, << "done!");
-		return;
-	}
+        return;
+    }
 
-	delete dlg;
+    delete dlg;
 
     //int ncols = this->mSortFilter->columnCount();
     int ncols = this->mModel->columnCount();
 
-	NMDebugAI(<< "add column ? " << ret << endl);
-	NMDebugAI(<< "name: " << name.toStdString() << endl);
-	NMDebugAI(<< "type: " << type << endl);
-	NMDebugAI(<< "ncols in tab: " << ncols << endl);
+    NMDebugAI(<< "add column ? " << ret << endl);
+    NMDebugAI(<< "name: " << name.toStdString() << endl);
+    NMDebugAI(<< "type: " << type << endl);
+    NMDebugAI(<< "ncols in tab: " << ncols << endl);
 
     if (mSortFilter->insertColumn(name, type))
-	{
+    {
         updateSelection(mbSwitchSelection);
-	}
+    }
 
     NMDebugCtx(ctx, << "done!");
 }
@@ -1271,22 +1299,22 @@ void NMSqlTableView::deleteColumn()
     }
 
     // ask the user whether he really wants to delete the current field
-	QMessageBox msgBox;
-	QString text = QString(tr("Delete Field '%1'?")).arg(this->mLastClickedColumn);
-	msgBox.setText(text);
-	//msgBox.setInformativeText("Do you want to save your changes?");
-	msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
-	msgBox.setDefaultButton(QMessageBox::Cancel);
-	int ret = msgBox.exec();
+    QMessageBox msgBox;
+    QString text = QString(tr("Delete Field '%1'?")).arg(this->mLastClickedColumn);
+    msgBox.setText(text);
+    //msgBox.setInformativeText("Do you want to save your changes?");
+    msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+    msgBox.setDefaultButton(QMessageBox::Cancel);
+    int ret = msgBox.exec();
 
-	if (ret == QMessageBox::Cancel)
-		return;
+    if (ret == QMessageBox::Cancel)
+        return;
 
     int col = this->getColumnIndex(this->mLastClickedColumn);
     if (col < 0)
-	{
+    {
         return;
-	}
+    }
 
     if (!mSortFilter->removeColumn(mLastClickedColumn))
     {
@@ -1557,13 +1585,14 @@ NMSqlTableView::joinFields(const QString &targetField,
         NMLogError(<< ctx << "::" << __FUNCTION__
                    << "() - attaching source database failed : "
                    << qAttach.lastError().text().toStdString());
+        qAttach.finish();
         mSortFilter->openReadModel();
         return ret;
     }
+    qAttach.finish();
 
     // create a detach query
-    const QString detachStr = QString("DETACH DATABASE '%'1;")
-            .arg(srcDb.databaseName());
+    const QString detachStr = QString("DETACH DATABASE srcdb");
     QSqlQuery qDetach(tarDb);
 
     // ---------------- list of source and final join fields --------------------------------------------
@@ -1618,10 +1647,13 @@ NMSqlTableView::joinFields(const QString &targetField,
                    << "() - failed creating temporary join table\nQUERY: "
                    << tmpJoinStr.toStdString() << "\n"
                    << qTmpJoin.lastError().text().toStdString());
+        qTmpJoin.finish();
         qDetach.exec(detachStr);
+        qDetach.finish();
         mSortFilter->openReadModel();
         return ret;
     }
+    qTmpJoin.finish();
 
     // ---------------- create 'proper' join table and clear up  -----------------------------------
 
@@ -1634,11 +1666,13 @@ NMSqlTableView::joinFields(const QString &targetField,
         NMLogError(<< ctx << "::" << __FUNCTION__
                    << "() - failed droping original target table! : "
                    << qDropOrig.lastError().text().toStdString());
+        qDropOrig.finish();
         qDetach.exec(detachStr);
+        qDetach.finish();
         mSortFilter->openReadModel();
         return ret;
     }
-
+    qDropOrig.finish();
 
     // re-create target table from temp-joined table
     const QString finalTabStr = QString(
@@ -1653,11 +1687,13 @@ NMSqlTableView::joinFields(const QString &targetField,
         NMLogError(<< ctx << "::" << __FUNCTION__
                    << "() - failed re-creating original target table! : "
                    << qFinalTab.lastError().text().toStdString());
+        qFinalTab.finish();
         qDetach.exec(detachStr);
+        qDetach.finish();
         mSortFilter->openReadModel();
         return ret;
     }
-
+    qFinalTab.finish();
 
     // ---------------- re-open target DB read-only  -----------------------------------
 
@@ -1675,53 +1711,53 @@ void NMSqlTableView::exportTable()
 {
     NMDebugCtx(ctx, << "...");
 
-	QString tabName = this->windowTitle().split(" ", QString::SkipEmptyParts).last();
-	QString proposedName = QString(tr("%1/%2.csv")).arg(getenv("HOME")).arg(tabName);
+    QString tabName = this->windowTitle().split(" ", QString::SkipEmptyParts).last();
+    QString proposedName = QString(tr("%1/%2.csv")).arg(getenv("HOME")).arg(tabName);
 
-	// take the first layer and save as vtkpolydata
-	QString selectedFilter = tr("Delimited Text (*.csv)");
+    // take the first layer and save as vtkpolydata
+    QString selectedFilter = tr("Delimited Text (*.csv)");
     NMGlobalHelper h;
     QString fileName = QFileDialog::getSaveFileName(h.getMainWindow(),
-			tr("Export Table"), proposedName,
-			tr("Delimited Text (*.csv)"), //;;SQLite Database (*.sqlite *.sdb *.db)"),
-			&selectedFilter);
-	if (fileName.isNull())
-	{
-		NMDebugAI( << "got an empty filename from the user!" << endl);
+            tr("Export Table"), proposedName,
+            tr("Delimited Text (*.csv)"), //;;SQLite Database (*.sqlite *.sdb *.db)"),
+            &selectedFilter);
+    if (fileName.isNull())
+    {
+        NMDebugAI( << "got an empty filename from the user!" << endl);
         NMDebugCtx(ctx, << "done!");
-		return;
-	}
+        return;
+    }
 
-	QStringList fnList = fileName.split(tr("."), QString::SkipEmptyParts);
+    QStringList fnList = fileName.split(tr("."), QString::SkipEmptyParts);
 
-	QString suffix = fnList.last();
-	if (suffix.compare(tr("txt"), Qt::CaseInsensitive) == 0 ||
-		suffix.compare(tr("csv"), Qt::CaseInsensitive) == 0)
-	{
-		NMDebugAI(<< "write delimited text to " << fileName.toStdString() << endl);
-		this->writeDelimTxt(fileName, false);
-	}
-	//else if (suffix.compare(tr("sqlite"), Qt::CaseInsensitive) == 0 ||
-	//		 suffix.compare(tr("sdb"), Qt::CaseInsensitive) == 0 ||
-	//		 suffix.compare(tr("db"), Qt::CaseInsensitive) == 0)
-	//{
-	//	QString dbName;
-	//	QString tableName;
-	//	if (fnList.size() == 3)
-	//	{
-	//		dbName = QString(tr("%1.%2")).arg(fnList.first()).arg(fnList.last());
-	//		tableName = fnList.at(1);
-	//		NMDebugAI(<< "insert table '" << tableName.toStdString() << "' "
-	//				  << "into database '" << dbName.toStdString() << "'" << endl);
-	//	}
-	//	else
-	//	{
+    QString suffix = fnList.last();
+    if (suffix.compare(tr("txt"), Qt::CaseInsensitive) == 0 ||
+        suffix.compare(tr("csv"), Qt::CaseInsensitive) == 0)
+    {
+        NMDebugAI(<< "write delimited text to " << fileName.toStdString() << endl);
+        this->writeDelimTxt(fileName, false);
+    }
+    //else if (suffix.compare(tr("sqlite"), Qt::CaseInsensitive) == 0 ||
+    //		 suffix.compare(tr("sdb"), Qt::CaseInsensitive) == 0 ||
+    //		 suffix.compare(tr("db"), Qt::CaseInsensitive) == 0)
+    //{
+    //	QString dbName;
+    //	QString tableName;
+    //	if (fnList.size() == 3)
+    //	{
+    //		dbName = QString(tr("%1.%2")).arg(fnList.first()).arg(fnList.last());
+    //		tableName = fnList.at(1);
+    //		NMDebugAI(<< "insert table '" << tableName.toStdString() << "' "
+    //				  << "into database '" << dbName.toStdString() << "'" << endl);
+    //	}
+    //	else
+    //	{
     //		NMErr(ctx, << "invalid database and table name!");
-	//		return;
-	//	}
+    //		return;
+    //	}
     //
-	//	this->writeSqliteDb(dbName, tableName, false);
-	//}
+    //	this->writeSqliteDb(dbName, tableName, false);
+    //}
 
     NMDebugCtx(ctx, << "done!");
 }
@@ -1792,10 +1828,12 @@ void NMSqlTableView::colStats()
     if (!userQuery.exec(queryStr))
     {
         NMBoxErr("User Query", userQuery.lastError().text().toStdString() << std::endl);
+        userQuery.finish();
         NMGlobalHelper::detachDatabase(dbTarget, name);
         NMDebugCtx(ctx, << "done!");
         return;
     }
+    userQuery.finish();
 
 
     queryStr = QString("Select stddev from %1")
@@ -1806,17 +1844,22 @@ void NMSqlTableView::colStats()
     if (!qRes.exec(queryStr))
     {
          NMDebugCtx(ctx, << "done!");
+         qRes.finish();
+         dbTarget.rollback();
          NMGlobalHelper::detachDatabase(dbTarget, name);
          return;
     }
     if (!qRes.next())
     {
         NMDebugCtx(ctx, << "done!");
+        qRes.finish();
+        dbTarget.rollback();
         NMGlobalHelper::detachDatabase(dbTarget, name);
         return;
     }
     double var = qRes.value(0).toDouble();
     double sdev = std::sqrt(var);
+    qRes.finish();
     dbTarget.commit();
 
     queryStr = QString("Update %1 set stddev = %2")
@@ -1829,11 +1872,12 @@ void NMSqlTableView::colStats()
     {
         NMBoxErr("User Query", qUpd.lastError().text().toStdString() << std::endl);
         NMDebugCtx(ctx, << "done!");
-        NMGlobalHelper::detachDatabase(dbTarget, name);
+        qUpd.finish();
         dbTarget.rollback();
-        dbTarget.commit();
+        NMGlobalHelper::detachDatabase(dbTarget, name);
         return;
     }
+    qUpd.finish();
     dbTarget.commit();
     ++mQueryCounter;
 
@@ -1847,70 +1891,70 @@ void NMSqlTableView::colStats()
 void
 NMSqlTableView::loadRasLayer(void)
 {
-	int srcRow = this->mlLastClickedRow;
+    int srcRow = this->mlLastClickedRow;
 //	QModelIndex sortIdx = this->mSortFilter->index(this->mlLastClickedRow, 0, QModelIndex());
 //	QModelIndex srcIdx = this->mSortFilter->mapToSource(sortIdx);
     QModelIndex sortIdx = this->mModel->index(this->mlLastClickedRow, 0, QModelIndex());
     QModelIndex srcIdx = sortIdx;
-	srcRow = srcIdx.row();
+    srcRow = srcIdx.row();
 
-	int oid_coll = this->getColumnIndex("oid");
-	int coll_id = this->getColumnIndex("coll_name");
-	int cov_id = this->getColumnIndex("covername");
+    int oid_coll = this->getColumnIndex("oid");
+    int coll_id = this->getColumnIndex("coll_name");
+    int cov_id = this->getColumnIndex("covername");
 
-	QModelIndex oididx = this->mModel->index(srcRow, oid_coll, QModelIndex());
-	QModelIndex collidx = this->mModel->index(srcRow, coll_id, QModelIndex());
-	QModelIndex covidx = this->mModel->index(srcRow, cov_id, QModelIndex());
+    QModelIndex oididx = this->mModel->index(srcRow, oid_coll, QModelIndex());
+    QModelIndex collidx = this->mModel->index(srcRow, coll_id, QModelIndex());
+    QModelIndex covidx = this->mModel->index(srcRow, cov_id, QModelIndex());
 
-	bool bok;
-	long oid = (long)this->mModel->data(oididx, Qt::DisplayRole).toInt(&bok);
-	QString coll = this->mModel->data(collidx, Qt::DisplayRole).toString();
-	QString covname = this->mModel->data(covidx, Qt::DisplayRole).toString();
+    bool bok;
+    long oid = (long)this->mModel->data(oididx, Qt::DisplayRole).toInt(&bok);
+    QString coll = this->mModel->data(collidx, Qt::DisplayRole).toString();
+    QString covname = this->mModel->data(covidx, Qt::DisplayRole).toString();
 
-	QString imagespec = QString("%1:%2").arg(coll).arg(oid);
+    QString imagespec = QString("%1:%2").arg(coll).arg(oid);
 
-	emit notifyLoadRasLayer(imagespec, covname);
+    emit notifyLoadRasLayer(imagespec, covname);
 }
 
 void
 NMSqlTableView::deleteRasLayer(void)
 {
-	int srcRow = this->mlLastClickedRow;
+    int srcRow = this->mlLastClickedRow;
 //	QModelIndex sortIdx = this->mSortFilter->index(this->mlLastClickedRow, 0, QModelIndex());
 //	QModelIndex srcIdx = this->mSortFilter->mapToSource(sortIdx);
     QModelIndex sortIdx = this->mModel->index(this->mlLastClickedRow, 0, QModelIndex());
     QModelIndex srcIdx = sortIdx;
-	srcRow = srcIdx.row();
+    srcRow = srcIdx.row();
 
-	int oid_coll = this->getColumnIndex("oid");
-	int coll_id = this->getColumnIndex("coll_name");
+    int oid_coll = this->getColumnIndex("oid");
+    int coll_id = this->getColumnIndex("coll_name");
 
-	QModelIndex oididx = this->mModel->index(srcRow, oid_coll, QModelIndex());
-	QModelIndex collidx = this->mModel->index(srcRow, coll_id, QModelIndex());
+    QModelIndex oididx = this->mModel->index(srcRow, oid_coll, QModelIndex());
+    QModelIndex collidx = this->mModel->index(srcRow, coll_id, QModelIndex());
 
-	bool bok;
-	long oid = (long)this->mModel->data(oididx, Qt::DisplayRole).toInt(&bok);
-	QString coll = this->mModel->data(collidx, Qt::DisplayRole).toString();
-	QString imagespec = QString("%1:%2").arg(coll).arg(oid);
+    bool bok;
+    long oid = (long)this->mModel->data(oididx, Qt::DisplayRole).toInt(&bok);
+    QString coll = this->mModel->data(collidx, Qt::DisplayRole).toString();
+    QString imagespec = QString("%1:%2").arg(coll).arg(oid);
 
-	emit notifyDeleteRasLayer(imagespec);
+    emit notifyDeleteRasLayer(imagespec);
 }
 
 
 bool
 NMSqlTableView::writeDelimTxt(const QString& fileName,
-		bool bselectedRecs)
+        bool bselectedRecs)
 {
     NMDebugCtx(ctx, << "...");
 
-	QFile file(fileName);
-	if (!file.open(QIODevice::WriteOnly))
-	{
-		NMBoxErr("Export Table", "Couldn't create file '" << fileName.toStdString() << "'!");
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly))
+    {
+        NMBoxErr("Export Table", "Couldn't create file '" << fileName.toStdString() << "'!");
         NMDebugCtx(ctx, << "done!");
-		return false;
-	}
-	QTextStream out(&file);
+        return false;
+    }
+    QTextStream out(&file);
 
     QString whereClause = "";
     // get either the selected or all records
@@ -1940,23 +1984,23 @@ NMSqlTableView::writeDelimTxt(const QString& fileName,
         return false;
     }
 
-	const int ncols = mModel->columnCount(QModelIndex());
+    const int ncols = mModel->columnCount(QModelIndex());
 
     //mProgressDialog->setWindowModality(Qt::WindowModal);
     //mProgressDialog->setLabelText("Export Table ...");
     //mProgressDialog->setRange(0, maxrange);
 
-	// write header first
+    // write header first
     int pkIdx = -1;
     long progress = 0;
-	for (int col=0; col < ncols; ++col)
-	{
-		QString cN = mModel->headerData(col, Qt::Horizontal, Qt::DisplayRole).toString();
-		out << "\"" << cN << "\"";
-		if (col < ncols-1)
-			out << ",";
-	}
-	out << endl;
+    for (int col=0; col < ncols; ++col)
+    {
+        QString cN = mModel->headerData(col, Qt::Horizontal, Qt::DisplayRole).toString();
+        out << "\"" << cN << "\"";
+        if (col < ncols-1)
+            out << ",";
+    }
+    out << endl;
     out.setRealNumberNotation(QTextStream::SmartNotation);
 
     //int progInterval = maxrange / 50;
@@ -1988,103 +2032,103 @@ NMSqlTableView::writeDelimTxt(const QString& fileName,
 
     //mProgressDialog->setValue(maxrange);
     out.flush();
-	file.close();
+    file.close();
 
     qTable.finish();
     qTable.clear();
     db.commit();
 
     NMDebugCtx(ctx, << "done!");
-	return true;
+    return true;
 }
 
 
 
 int NMSqlTableView::getColumnIndex(const QString& attr)
 {
-	int attrCol = -1;
+    int attrCol = -1;
 
-	int ncols = this->mModel->columnCount(QModelIndex());
+    int ncols = this->mModel->columnCount(QModelIndex());
 
-	QString colname;
-	for (int c=0; c < ncols; ++c)
-	{
-		colname = this->mModel->headerData(c, Qt::Horizontal).toString();
-		if (colname.compare(attr, Qt::CaseInsensitive) == 0)
-			return c;
-	}
+    QString colname;
+    for (int c=0; c < ncols; ++c)
+    {
+        colname = this->mModel->headerData(c, Qt::Horizontal).toString();
+        if (colname.compare(attr, Qt::CaseInsensitive) == 0)
+            return c;
+    }
 
-	return attrCol;
+    return attrCol;
 }
 
 void
 NMSqlTableView::callHideColumn(void)
 {
-	this->hideAttribute(this->mLastClickedColumn);
+    this->hideAttribute(this->mLastClickedColumn);
 }
 
 void
 NMSqlTableView::callUnHideColumn(void)
 {
-	if (this->mHiddenColumns.size() == 0)
-		return;
+    if (this->mHiddenColumns.size() == 0)
+        return;
 
-	// show list of columns which can be unhidden
+    // show list of columns which can be unhidden
     QInputDialog dlg(this);
-	dlg.setWindowTitle("Unhide Table Column");
-	dlg.setLabelText(QString(tr("Pick the column to unhide")));
-	dlg.setOptions(QInputDialog::UseListViewForComboBoxItems);
-	dlg.setComboBoxItems(this->mHiddenColumns);
+    dlg.setWindowTitle("Unhide Table Column");
+    dlg.setLabelText(QString(tr("Pick the column to unhide")));
+    dlg.setOptions(QInputDialog::UseListViewForComboBoxItems);
+    dlg.setComboBoxItems(this->mHiddenColumns);
 
-	int ret = dlg.exec();
-	if (!ret)
-		return;
+    int ret = dlg.exec();
+    if (!ret)
+        return;
 
-	QString colname = dlg.textValue();
-	this->unhideAttribute(colname);
+    QString colname = dlg.textValue();
+    this->unhideAttribute(colname);
 
 }
 
 void NMSqlTableView::hideAttribute(const QString& attr)
 {
-	int colidx = this->getColumnIndex(attr);
-	if (colidx == -1)
-	{
-		NMDebugAI(<< "Cannot hide '"
-				<< attr.toStdString() << "'! "
-				<< "It doesn't seem to be part of the table!"
-				<< std::endl);
-		return;
-	}
+    int colidx = this->getColumnIndex(attr);
+    if (colidx == -1)
+    {
+        NMDebugAI(<< "Cannot hide '"
+                << attr.toStdString() << "'! "
+                << "It doesn't seem to be part of the table!"
+                << std::endl);
+        return;
+    }
 
-	if (   attr.compare("nm_id")   != 0
-		&& attr.compare("nm_hole") != 0
-		&& attr.compare("nm_sel")  != 0
-		&& !this->mHiddenColumns.contains(attr, Qt::CaseInsensitive))
-	{
-		this->mHiddenColumns.append(attr);
-	}
+    if (   attr.compare("nm_id")   != 0
+        && attr.compare("nm_hole") != 0
+        && attr.compare("nm_sel")  != 0
+        && !this->mHiddenColumns.contains(attr, Qt::CaseInsensitive))
+    {
+        this->mHiddenColumns.append(attr);
+    }
 
-	if (colidx >= 0)
-		this->mTableView->hideColumn(colidx);
+    if (colidx >= 0)
+        this->mTableView->hideColumn(colidx);
 }
 
 void
 NMSqlTableView::unhideAttribute(const QString& attr)
 {
-	int colidx = this->getColumnIndex(attr);
-	if (colidx == -1)
-	{
-		NMDebugAI(<< "Cannot unhide '"
-				<< attr.toStdString() << "'! "
-				<< "It doesn't seem to be part of the table!"
-				<< std::endl);
-		return;
-	}
+    int colidx = this->getColumnIndex(attr);
+    if (colidx == -1)
+    {
+        NMDebugAI(<< "Cannot unhide '"
+                << attr.toStdString() << "'! "
+                << "It doesn't seem to be part of the table!"
+                << std::endl);
+        return;
+    }
 
-	if (this->mHiddenColumns.contains(attr, Qt::CaseInsensitive))
-		this->mHiddenColumns.removeOne(attr);
-	this->mTableView->showColumn(colidx);
+    if (this->mHiddenColumns.contains(attr, Qt::CaseInsensitive))
+        this->mHiddenColumns.removeOne(attr);
+    this->mTableView->showColumn(colidx);
 }
 
 void
@@ -2134,106 +2178,106 @@ NMSqlTableView::processParaTableRightClick(QGraphicsSceneMouseEvent* gsme, QGrap
 bool
 NMSqlTableView::eventFilter(QObject* object, QEvent* event)
 {
-	// ======================== COLUMN HEADER + MOUSE BUTTON ==================================================
-	if (	object == this->mTableView->horizontalHeader()->viewport()
-		&&	event->type() == QEvent::MouseButtonPress
-		&&  event->type() != QEvent::MouseMove)
-	{
+    // ======================== COLUMN HEADER + MOUSE BUTTON ==================================================
+    if (	object == this->mTableView->horizontalHeader()->viewport()
+        &&	event->type() == QEvent::MouseButtonPress
+        &&  event->type() != QEvent::MouseMove)
+    {
         QMouseEvent* me = static_cast<QMouseEvent*>(event);
-		int xpos = me->pos().x();
-		// --------------------- CHECK FOR VALID COLUMN CLICKED --------------------------------------
-		// if we haven't got a proper column on the hook, we bail out
-		int col = this->mTableView->columnAt(xpos);
-		if (col < 0)
-		{
-			this->mLastClickedColumn.clear();
-			return false;
-		}
+        int xpos = me->pos().x();
+        // --------------------- CHECK FOR VALID COLUMN CLICKED --------------------------------------
+        // if we haven't got a proper column on the hook, we bail out
+        int col = this->mTableView->columnAt(xpos);
+        if (col < 0)
+        {
+            this->mLastClickedColumn.clear();
+            return false;
+        }
 
-		// -------------------- BAIL OUT IF WE're HOVERING ABOVE A COLUMN SEPARATOR ---------------------
-		if (	(col != mTableView->columnAt(xpos -5))
-			||  (col != mTableView->columnAt(xpos +5))
-		   )
-		{
-			return false;
-		}
+        // -------------------- BAIL OUT IF WE're HOVERING ABOVE A COLUMN SEPARATOR ---------------------
+        if (	(col != mTableView->columnAt(xpos -5))
+            ||  (col != mTableView->columnAt(xpos +5))
+           )
+        {
+            return false;
+        }
 
-		// ---------------------- MEMORISE CURRENTLY CLICKED COLUMN -------------------------------------
+        // ---------------------- MEMORISE CURRENTLY CLICKED COLUMN -------------------------------------
 //		this->mLastClickedColumn = this->mSortFilter->
 //				headerData(col, Qt::Horizontal, Qt::DisplayRole).toString();
         this->mLastClickedColumn = this->mModel->
                 headerData(col, Qt::Horizontal, Qt::DisplayRole).toString();
 
-		// let's see what kind of mouse button we've got
-		// --------------------- RIGHT BUTTON calls CONTEXT MENU ----------------------------------------
-		if (me->button() == Qt::RightButton)
-		{
-			this->mColHeadMenu->move(me->globalPos());
-			this->mColHeadMenu->exec();
-		}
-		// --------------------- LEFT BUTTON SORTS THE COLUMN ---------------------------------------------
-		else if (me->button() == Qt::LeftButton)
-		{
+        // let's see what kind of mouse button we've got
+        // --------------------- RIGHT BUTTON calls CONTEXT MENU ----------------------------------------
+        if (me->button() == Qt::RightButton)
+        {
+            this->mColHeadMenu->move(me->globalPos());
+            this->mColHeadMenu->exec();
+        }
+        // --------------------- LEFT BUTTON SORTS THE COLUMN ---------------------------------------------
+        else if (me->button() == Qt::LeftButton)
+        {
             NMDebugAI(<< "SORTING COLUMN #" << col << "..." << std::endl);
-			this->sortColumn(col);
-		}
-		return false;
-	}
-	// ============================== ROW HEADER AND MOUSE BUTTON ================================================
-	else if (	object == this->mTableView->verticalHeader()->viewport()
-			 && event->type() == QEvent::MouseButtonPress
-			 && event->type() != QEvent::MouseMove
-			 )
-	{
-		QMouseEvent* me = static_cast<QMouseEvent*>(event);
-		if (me->button() == Qt::LeftButton)
-		{
-			int row = this->mTableView->rowAt(me->pos().y());
-			this->mlLastClickedRow = row;
+            this->sortColumn(col);
+        }
+        return false;
+    }
+    // ============================== ROW HEADER AND MOUSE BUTTON ================================================
+    else if (	object == this->mTableView->verticalHeader()->viewport()
+             && event->type() == QEvent::MouseButtonPress
+             && event->type() != QEvent::MouseMove
+             )
+    {
+        QMouseEvent* me = static_cast<QMouseEvent*>(event);
+        if (me->button() == Qt::LeftButton)
+        {
+            int row = this->mTableView->rowAt(me->pos().y());
+            this->mlLastClickedRow = row;
             if (row != -1 && mbIsSelectable)
-			{
+            {
                 this->toggleRow(row);
-			}
-		}
-		return true;
-	}
-	// ================================ VIEWPORT  ==============================================
-	else if (   (   object == this->mTableView->viewport()
-			     && event->type() == QEvent::MouseButtonPress)
-			 || (   object == this->mTableView->viewport()
-				 && event->type() == QEvent::MouseButtonDblClick)
-			 )
-	{
-		QMouseEvent* me = static_cast<QMouseEvent*>(event);
+            }
+        }
+        return true;
+    }
+    // ================================ VIEWPORT  ==============================================
+    else if (   (   object == this->mTableView->viewport()
+                 && event->type() == QEvent::MouseButtonPress)
+             || (   object == this->mTableView->viewport()
+                 && event->type() == QEvent::MouseButtonDblClick)
+             )
+    {
+        QMouseEvent* me = static_cast<QMouseEvent*>(event);
 
-		// ----------------------- RIGHT BUTTON CALLS META MENU ------------------------------------------------
-		if (me->button() == Qt::RightButton)
-		{
+        // ----------------------- RIGHT BUTTON CALLS META MENU ------------------------------------------------
+        if (me->button() == Qt::RightButton)
+        {
             if (this->mViewMode == NMSqlTableView::NMTABVIEW_RASMETADATA)
-			{
-				int row = this->mTableView->rowAt(me->pos().y());
-				if (!row)
-					return true;
+            {
+                int row = this->mTableView->rowAt(me->pos().y());
+                if (!row)
+                    return true;
 
-				this->mlLastClickedRow = row;
+                this->mlLastClickedRow = row;
                 const QModelIndex ridx = mModel->index(row, 0, QModelIndex());
                 const int srcRow = ridx.row();
                 emit notifyLastClickedRow(static_cast<long long>(srcRow));
-				this->mManageLayerMenu->move(me->globalPos());
-				this->mManageLayerMenu->exec();
-			}
-			return true;
-		}
-		// ------------------------LEFT BUTTON DBL CLICK EDITS THE CELL ----------------------------------------
-		else if (	me->button() == Qt::LeftButton
-				 && event->type() == QEvent::MouseButtonDblClick)
-		{
+                this->mManageLayerMenu->move(me->globalPos());
+                this->mManageLayerMenu->exec();
+            }
+            return true;
+        }
+        // ------------------------LEFT BUTTON DBL CLICK EDITS THE CELL ----------------------------------------
+        else if (	me->button() == Qt::LeftButton
+                 && event->type() == QEvent::MouseButtonDblClick)
+        {
             if (this->mViewMode != NMSqlTableView::NMTABVIEW_RASMETADATA)
-			{
-				int row = this->mTableView->rowAt(me->pos().y());
-				int col = this->mTableView->columnAt(me->pos().x());
+            {
+                int row = this->mTableView->rowAt(me->pos().y());
+                int col = this->mTableView->columnAt(me->pos().x());
                 if (row >= 0 && col >= 0)
-				{
+                {
                     QModelIndex idx = this->mModel->index(row, col, QModelIndex());
                     //mSortFilter->openWriteModel();
                     //mModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
@@ -2246,18 +2290,18 @@ NMSqlTableView::eventFilter(QObject* object, QEvent* event)
                         NMLogInfo(<< this->getTitle().toStdString()
                                   << ": Click the 'Edit Cells' button to enable cell editing!");
                     }
-				}
-			}
-			return true;
-		}
-		else
-		{
-			// we filter anything else out
-			return true;
-		}
-	}
+                }
+            }
+            return true;
+        }
+        else
+        {
+            // we filter anything else out
+            return true;
+        }
+    }
 
-	return false;
+    return false;
 }
 
 void
@@ -2267,30 +2311,30 @@ NMSqlTableView::sortColumn(int col)
 
     Qt::SortOrder order;
     QString orderStr;
-	QMap<int, bool>::iterator it = mMapColSortAsc.find(col);
-	if (it != mMapColSortAsc.end())
-	{
-		if (it.value())
-		{
-			order = Qt::DescendingOrder;
+    QMap<int, bool>::iterator it = mMapColSortAsc.find(col);
+    if (it != mMapColSortAsc.end())
+    {
+        if (it.value())
+        {
+            order = Qt::DescendingOrder;
             orderStr = "Descending";
-			mMapColSortAsc.insert(col, false);
-		}
-		else
-		{
-			order = Qt::AscendingOrder;
+            mMapColSortAsc.insert(col, false);
+        }
+        else
+        {
+            order = Qt::AscendingOrder;
             orderStr = "Ascending";
-			mMapColSortAsc.insert(col, true);
-		}
-	}
-	else
-	{
-		order = Qt::AscendingOrder;
+            mMapColSortAsc.insert(col, true);
+        }
+    }
+    else
+    {
+        order = Qt::AscendingOrder;
         orderStr = "Ascending";
-		mMapColSortAsc.insert(col, true);
-	}
-	this->mTableView->horizontalHeader()->setSortIndicator(col, order);
-	this->mTableView->horizontalHeader()->setSortIndicatorShown(true);
+        mMapColSortAsc.insert(col, true);
+    }
+    this->mTableView->horizontalHeader()->setSortIndicator(col, order);
+    this->mTableView->horizontalHeader()->setSortIndicatorShown(true);
 
     //NMDebugAI(<< "... actually sorting the column" << std::endl);
     mSortFilter->sort(col, order);
@@ -2306,17 +2350,17 @@ NMSqlTableView::selectionQuery(void)
 {
     NMDebugCtx(ctx, << "...");
 
-	bool bOk = false;
+    bool bOk = false;
     QSqlDriver* drv = mModel->database().driver();
     QString queryStr = QInputDialog::getText(this, tr("Selection Query"),
                          tr("Where Clause"), QLineEdit::Normal,
                          QString("%1 = ").arg(drv->escapeIdentifier(this->mLastClickedColumn, QSqlDriver::FieldName)),
                          &bOk);
     if (!bOk || queryStr.isEmpty())
-	{
+    {
         NMDebugCtx(ctx, << "done!");
-		return;
-	}
+        return;
+    }
 
     //    if (!mCurrentQuery.isEmpty())
     //    {
@@ -2524,27 +2568,27 @@ NMSqlTableView::procRowsInserted(QModelIndex parent, int first, int last)
 void
 NMSqlTableView::printSelRanges(const QItemSelection& selection, const QString& msg)
 {
-	int total = selection.count();
-	NMDebugAI(<< msg.toStdString() << std::endl);
-	int rcnt = 1;
-	int numidx = 0;
-	foreach(const QItemSelectionRange& range, selection)
-	{
-		NMDebugAI(<< "   range #" << rcnt << ":  " << range.width()
-				                          << " x " << range.height() << std::endl);
-		NMDebugAI(<< "     rows: " << range.top() << " - " << range.bottom() << std::endl);
-		++rcnt;
-		numidx += range.bottom() - range.top() + 1;
-	}
-	NMDebugAI(<< numidx << " selected rows in total" << std::endl);
+    int total = selection.count();
+    NMDebugAI(<< msg.toStdString() << std::endl);
+    int rcnt = 1;
+    int numidx = 0;
+    foreach(const QItemSelectionRange& range, selection)
+    {
+        NMDebugAI(<< "   range #" << rcnt << ":  " << range.width()
+                                          << " x " << range.height() << std::endl);
+        NMDebugAI(<< "     rows: " << range.top() << " - " << range.bottom() << std::endl);
+        ++rcnt;
+        numidx += range.bottom() - range.top() + 1;
+    }
+    NMDebugAI(<< numidx << " selected rows in total" << std::endl);
 }
 
 
 void
 NMSqlTableView::showEvent(QShowEvent* event)
 {
-	NMDebugAI(<< __FUNCTION__ << ": updating selection? ..." << std::endl);
-	this->updateSelectionAdmin(QItemSelection(), QItemSelection());
+    NMDebugAI(<< __FUNCTION__ << ": updating selection? ..." << std::endl);
+    this->updateSelectionAdmin(QItemSelection(), QItemSelection());
 }
 
 void
@@ -2589,6 +2633,7 @@ NMSqlTableView::toggleRow(int row)
     {
         NMLogError(<< "NMSqlTableView::toggleRow(): "
                    << rowQuery.lastError().text().toStdString() << std::endl);
+        rowQuery.finish();
         return;
     }
 
@@ -2596,6 +2641,7 @@ NMSqlTableView::toggleRow(int row)
     {
         NMLogError(<< "NMSqlTableView::toggleRow(): "
                    << rowQuery.lastError().text().toStdString() << std::endl);
+        rowQuery.finish();
         return;
     }
 
@@ -2637,6 +2683,7 @@ NMSqlTableView::toggleRow(int row)
 
         ++colcounter;
     }
+    rowQuery.finish();
 
 
     // =======================================================================

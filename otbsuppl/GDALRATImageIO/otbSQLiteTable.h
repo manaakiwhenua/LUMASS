@@ -159,6 +159,13 @@ public:
     bool PrepareBulkSet(const std::vector<std::string>& colNames,
                         const bool& bInsert=true);
 
+    /** \brief Update multiple columns at once using a multi-column
+     *         'and' concatenated where clause.
+     */
+    bool PrepareBulkSet(const std::vector<std::string>& colNames,
+                        const std::vector<std::string>& whereColNames);
+
+
     bool DoPtrBulkSet(std::vector< int* >& intVals,
                       std::vector< double* >& dblVals,
                       std::vector< char** >& chrVals,
@@ -168,6 +175,11 @@ public:
 
     bool DoBulkSet(std::vector< ColumnValue >& values, const long long int& row=-1);
 
+    /** \brief Update multiple columns at once using a multi-column 'and'
+     *         concatenated where clause
+     */
+    bool DoBulkSet(std::vector< ColumnValue >& values, std::vector< ColumnValue>& keyValues);
+
     bool DoBulkGet(std::vector< ColumnValue >& values);
     bool BeginTransaction();
     bool EndTransaction();
@@ -175,7 +187,12 @@ public:
                      const std::string& table="", const std::string& db = "main");
 
     bool GreedyNumericFetch(const std::vector<std::string>& columns,
-                            std::map<int, std::map<long, double> >& valstore);
+                            std::map<int, std::map<long long, double> >& valstore);
+    bool GreedyNumericFetch(const std::vector<std::string>& columns,
+                            std::map<int, std::map<long long, long long> >& valstore);
+    bool GreedyStringFetch(const std::vector<std::string>& columns,
+                            std::map<int, std::map<long long, std::string> >& valstore);
+
 
     /// more 'free-style' sql support
     std::vector<std::string> GetTableList(void);
@@ -325,6 +342,7 @@ protected:
 
     bool m_bUseSharedCache;
     bool m_bOpenReadOnly;
+    bool m_bLoadSpatialite;
 
     bool m_bPersistentRowIdColName;
 

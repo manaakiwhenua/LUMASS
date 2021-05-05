@@ -86,8 +86,6 @@ public:
 
   typedef typename itk::ImageBase< ImageType::ImageDimension > ImageBaseType;
 
-  typedef MultiParser                             ParserType;
-
   typedef typename AttributeTable::Pointer		   TablePointer;
   typedef typename AttributeTable::TableColumnType ColumnType;
 

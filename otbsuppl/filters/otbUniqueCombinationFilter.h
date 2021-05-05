@@ -92,9 +92,6 @@ public:
 
     typedef long long IndexType;
 
-    //typedef typename std::map< UniqueValueType, std::vector<long long> >  CombinationPedigreeMap;
-    //typedef typename CombinationPedigreeMap::iterator 		          CombinationPedigreeIterator;
-
     itkGetMacro(Workspace, std::string);
     itkSetMacro(Workspace, std::string);
 
@@ -120,26 +117,18 @@ public:
 protected:
     UniqueCombinationFilter();
     virtual ~UniqueCombinationFilter();
-    //virtual void PrintSelf(std::ostream &os, itk::Indent indent) const;
 
-    //void BeforeThreadedGenerateData();
-    //void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId );
-    //void AfterThreadedGenerateData();
     void GenerateData();
     void AllocateOutputs(){this->InternalAllocateOutput();}
 
-    void InternalAllocateOutput();
     std::string getRandomString(int length=15);
-    unsigned int nextUpperIterationIdx(unsigned int idx, OutputPixelType& accIdx);
+    unsigned int nextUpperIterationIdx(unsigned int idx, unsigned long long& accIdx);
     void determineProcOrder(void);
 
     std::string m_Workspace;
     std::string m_OutputImageFileName;
     std::vector<AttributeTable::Pointer> m_vInRAT;
     std::vector<AttributeTable::Pointer> m_vOutRAT;
-
-//    std::vector<TCHDB*> m_threadHDB;
-//    TCHDB* m_tcHDB;
 
     std::string m_UVTableName;
     std::string m_WorkingDirectory;

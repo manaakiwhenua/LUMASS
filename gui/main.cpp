@@ -18,9 +18,10 @@
 #include <QApplication>
 #include <QSurfaceFormat>
 #include <QResource>
+#include <QMessageBox>
 #include "lumassmainwin.h"
 
-#include "QVTKOpenGLWidget.h"
+#include "QVTKOpenGLNativeWidget.h"
 
 #ifdef BUILD_RASSUPPORT
 /// RASDAMAN includes
@@ -68,10 +69,54 @@
         bool debugOutput;
     #endif
 #endif
+#include <csignal>
+#include "Python_wrapper.h"
+
+namespace
+{
+  volatile std::sig_atomic_t gSignalStatus;
+}
+
+void signal_handler(int signal)
+{
+  gSignalStatus = signal;
+  std::cout << "LUMASS received SIGNAL=" << gSignalStatus
+            << " and gracefully bows out ... good bye!" << std::endl;
+  abort();
+}
+
+//class LumassApp : public QApplication
+//{
+//   public:
+//    LumassApp(int argc, char* argv[])
+//        : QApplication(argc, argv) {}
+
+//    virtual ~LumassApp(){}
+
+//    bool notify(QObject *receiver, QEvent *event)
+//    {
+//        try
+//        {
+//            return QApplication::notify(receiver, event);
+//        }
+//        catch(std::exception& e)
+//        {
+//            QString msg = QString("Ooopsie - something went wrong ...\n%1").arg(e.what());
+//            QMessageBox::critical(nullptr, "LUMASS caught an excpetion!", msg);
+//        }
+//        return false;
+//    }
+//};
 
 int main(int argc, char *argv[])
 {
-    auto format = QVTKOpenGLWidget::defaultFormat();
+    std::signal(SIGINT, signal_handler);
+    std::signal(SIGSEGV, signal_handler);
+    std::signal(SIGABRT, signal_handler);
+    std::signal(SIGTERM, signal_handler);
+    std::signal(SIGFPE, signal_handler);
+
+    auto format = QVTKOpenGLNativeWidget::defaultFormat();
 #ifdef _WIN32
     // with VTK 8.2 on Windows, use compatibility profile;
     // adopted from https://discourse.vtk.org/t/problem-in-vtk-8-2-with-defaultformat-and-qvtkopenglwidget-on-windows-10-intel/998/10
@@ -83,7 +128,22 @@ int main(int argc, char *argv[])
     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif
     QApplication lumass(argc, argv);
+    //LumassApp lumass(argc, argv);
     LUMASSMainWin w;
     w.show();
-    return lumass.exec();
+
+    int ret;
+//    try
+//    {
+        ret = lumass.exec();
+//    }
+//    catch(...)
+//    {
+//        ret = EXIT_FAILURE;
+//        std::cout << "LUMASS received SIGNAL=" << gSignalStatus
+//                  << " and gracefully bows out ... good bye!" << std::endl;
+//        abort();
+//    }
+
+    return ret;
 }

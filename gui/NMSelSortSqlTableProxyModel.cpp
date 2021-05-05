@@ -85,9 +85,18 @@ NMSelSortSqlTableProxyModel::removeTempTables(void)
         // assume we're done!
         return;
     }
-    QString delQuery = QString("Drop table if exists %1").arg(mTempTableName);
+    QSqlDriver* drv = mSourceModel->database().driver();
+    QString delQuery = QString("drop table if exists %1")
+            .arg(drv->escapeIdentifier(mTempTableName, QSqlDriver::TableName));
     QSqlQuery dq(mSourceModel->database());
-    dq.exec(delQuery);
+    if (!dq.exec(delQuery))
+    {
+        NMLogError(<< "Failed removing temp tables from '"
+                   << mSourceModel->getDatabaseName().toStdString()
+                   << "': "
+                   << dq.lastError().text().toStdString());
+    }
+    dq.finish();
     openReadModel();
 }
 
@@ -209,7 +218,6 @@ NMSelSortSqlTableProxyModel::createColumnIndex(int colidx)
         qobj.finish();
         qobj.clear();
         db.rollback();
-        db.commit();
         openReadModel();
         return false;
     }
@@ -472,30 +480,13 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
     QSqlDatabase srcDb = mSourceModel->database();
     srcDb.transaction();
     QSqlQuery queryObj(srcDb);
-    // do query
-//    if (tmpTable)
-//    {
-//        mTempDb.transaction();
-//    }
-    //QSqlQuery queryObj(mTempDb);
-
-//    if (!tmpTable)
-//    {
-//        srcDb.transaction();
-//        queryObj = QSqlQuery(mSourceModel->database());
-//    }
     queryObj.setForwardOnly(true);
     if (!queryObj.exec(queryStr))
     {
+        queryObj.finish();
+        queryObj.clear();
+        srcDb.rollback();
         NMLogError(<< ctx << "::" << __FUNCTION__ << "() : " << queryObj.lastError().text().toStdString() << std::endl);
-//        if (tmpTable)
-//        {
-//            mTempDb.commit();
-//        }
-//        else
-        {
-            srcDb.commit();
-        }
         return false;
     }
 
@@ -540,17 +531,9 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
             bottom = v;
         }
     }
-
     queryObj.finish();
     queryObj.clear();
-//    if (tmpTable)
-//    {
-//        mTempDb.commit();
-//    }
-//    else
-    {
-        srcDb.commit();
-    }
+    srcDb.commit();
 
     // close the last open selection, if any ...
     if (top != -1 && bottom != -1)
@@ -641,7 +624,7 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
 
     if (!this->openWriteModel())
     {
-        endInsertColumns();
+        //endInsertColumns();
         return false;
     }
 
@@ -669,7 +652,7 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
     beginInsertColumns(QModelIndex(), colidx, colidx);
 
     QSqlDriver* drv = mSourceModel->database().driver();
-    mSourceModel->clear();
+    //mSourceModel->clear();
     QString qStr = QString("Alter table %1 add column %2 %3")
                         .arg(drv->escapeIdentifier(table, QSqlDriver::TableName))
                         .arg(drv->escapeIdentifier(name, QSqlDriver::FieldName))
@@ -683,7 +666,6 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
     {
         NMLogError(<< ctx << "::" << __FUNCTION__ << "() : " << q.lastError().text().toStdString());
         db.rollback();
-        db.commit();
         ret = false;
     }
     q.finish();
@@ -737,7 +719,6 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
         query.finish();
         query.clear();
         db.rollback();
-        db.commit();
         return false;
     }
     query.finish();
@@ -759,7 +740,6 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
         idxQuery.finish();
         idxQuery.clear();
         db.rollback();
-        db.commit();
         return false;
     }
     idxQuery.finish();
@@ -791,7 +771,6 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
         joinTable.finish();
         joinTable.clear();
         db.rollback();
-        db.commit();
         return false;
     }
     joinTable.finish();
@@ -808,7 +787,6 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
         dropTable.finish();
         dropTable.clear();
         db.rollback();
-        db.commit();
         return false;
     }
     dropTable.finish();
@@ -827,7 +805,6 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
         tarTable.finish();
         tarTable.clear();
         db.rollback();
-        db.commit();
         return false;
     }
     tarTable.finish();
@@ -871,16 +848,16 @@ NMSelSortSqlTableProxyModel::openWriteModel(void)
         return false;
     }
 
-    QSqlDatabase db = mSourceModel->database();
-    //if (db.databaseName().compare(QStringLiteral(":memory:")) == 0)
-    if (db.databaseName().compare(NMGlobalHelper::getMainWindow()->getSessionDbFileName()) == 0)
-    {
-        return true;
-    }
+//    QString dbname = mSourceModel->database().databaseName();
+//    if (dbname.compare(NMGlobalHelper::getMainWindow()->getSessionDbFileName()) == 0)
+//    {
+//        return true;
+//    }
 
     const QString connectOptions = QStringLiteral("QSQLITE_ENABLE_SHARED_CACHE;"
                                                   "QSQLITE_INIT_SPATIALITE;"
                                                   "QSQLITE_OPEN_URI");
+    QSqlDatabase db = mSourceModel->database();
     if (db.isValid() && db.isOpen())
     {
         if (!db.connectOptions().contains(QStringLiteral("READONLY")))
@@ -889,14 +866,20 @@ NMSelSortSqlTableProxyModel::openWriteModel(void)
         }
     }
 
+//    QString cname = NMGlobalHelper::getMainWindow()->getDbConnection(dbname);
+//    QSqlDatabase db = QSqlDatabase::database(cname);
+
+
     db.close();
     db.setConnectOptions(connectOptions);
     if (!db.open())
     {
         NMLogError(<< this->ctx
-            << ": Failed opening write connection to the table!");
+            << ": Failed opening write connection to the table: "
+            << db.lastError().text().toStdString());
         return false;
     }
+
     return true;
 }
 
@@ -908,17 +891,17 @@ NMSelSortSqlTableProxyModel::openReadModel(void)
         return;
     }
 
-    QSqlDatabase db = mSourceModel->database();
-    //if (db.databaseName().compare(QStringLiteral(":memory:")) == 0)
-    if (db.databaseName().compare(NMGlobalHelper::getMainWindow()->getSessionDbFileName()) == 0)
-    {
-        return;
-    }
+//    QString dbname = mSourceModel->database().databaseName();
+//    if (dbname.compare(NMGlobalHelper::getMainWindow()->getSessionDbFileName()) == 0)
+//    {
+//        return;
+//    }
 
     const QString connectOptions = QStringLiteral("QSQLITE_OPEN_READONLY;"
                                                   "QSQLITE_ENABLE_SHARED_CACHE;"
                                                   "QSQLITE_INIT_SPATIALITE;"
                                                   "QSQLITE_OPEN_URI");
+    QSqlDatabase db = mSourceModel->database();
     if (db.isValid() && db.isOpen())
     {
         if (db.connectOptions().contains(QStringLiteral("READONLY")))
@@ -929,10 +912,15 @@ NMSelSortSqlTableProxyModel::openReadModel(void)
 
     db.close();
     db.setConnectOptions(connectOptions);
+
+//    QString cname = NMGlobalHelper::getMainWindow()->getDbConnection(dbname, false);
+//    QSqlDatabase db = QSqlDatabase::database(cname);
+
     if (!db.open())
     {
         NMLogError(<< this->ctx
-            << ": Failed opening read connection to the table!");
+            << ": Failed opening a read-only connection to the table: "
+            << db.lastError().text().toStdString());
         return;
     }
     mSourceModel->select();
@@ -1039,7 +1027,6 @@ NMSelSortSqlTableProxyModel::addRows(unsigned int nrows)
         qInsert.finish();
         qInsert.clear();
         db.rollback();
-        db.commit();
         this->openReadModel();
         return false;
     }
@@ -1147,7 +1134,6 @@ NMSelSortSqlTableProxyModel::updateData(int colidx, const QString &column,
         qUpdate.finish();
         qUpdate.clear();
         db.rollback();
-        db.commit();
         this->openReadModel();
         return ret;
     }
@@ -1242,7 +1228,6 @@ NMSelSortSqlTableProxyModel::removeColumn(const QString& name)
             dml.finish();
             dml.clear();
             db.rollback();
-            db.commit();
             break;
         }
         else
@@ -1307,54 +1292,43 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
         return false;
     }
 
-
-//    if (mTempDb.isOpen())
     QSqlDatabase db = mSourceModel->database();
     {
         QStringList tables = db.tables();
         if (tables.contains(mTempTableName, Qt::CaseInsensitive))
         {
-            QString qstr = QString("Drop table if exists %1").arg(mTempTableName);
+            QString qstr = QString("drop table if exists %1")
+                    .arg(db.driver()->escapeIdentifier(mTempTableName, QSqlDriver::TableName));
             db.transaction();
             QSqlQuery qobj(db);
             if (!qobj.exec(qstr))
             {
                 NMLogError(<< ctx << "::" << __FUNCTION__ << "() - drop mapping table: " << qobj.lastError().text().toStdString() << std::endl);
-                db.rollback();
-                db.commit();
                 qobj.finish();
                 qobj.clear();
+                db.rollback();
                 return false;
             }
-            db.commit();
             qobj.finish();
             qobj.clear();
+            db.commit();
         }
     }
-//    else
-//    {
-//        mTempDb = QSqlDatabase::addDatabase("QSQLITE", this->getRandomString());
-//        mTempDb.setDatabaseName(mSourceModel->getDatabaseName());
-//        if (!mTempDb.open())
-//        {
-//            NMLogError(<< ctx << ": " << mTempDb.lastError().text().toStdString() << std::endl);
-//            return false;
-//        }
-//    }
 
     // ==================================================================
     // query the table creating SQL and use for creating temp table
     // ==================================================================
+    QString tabName = mSourceModel->tableName().replace("\"", "");
     QString tmpStruct = QString("Select sql from sqlite_master where type='table' and name='%1'")
-                            .arg(mSourceModel->tableName());
+                            .arg(tabName);
     db.transaction();
     QSqlQuery queryStruct(db);
     if (!queryStruct.exec(tmpStruct))
     {
         NMLogError(<< ctx << "::" << __FUNCTION__ << "() - fetching source table SQL: " << queryStruct.lastError().text().toStdString() << std::endl);
-        db.commit();
         queryStruct.finish();
         queryStruct.clear();
+        db.rollback();
         return false;
     }
     queryStruct.next();
@@ -1385,7 +1359,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
 
     //QString tmpCreate = QString("Create temp table if not exists %1 ")
     QString tmpCreate = QString("Create table if not exists %1 ")
-                        .arg(mTempTableName);
+                        .arg(db.driver()->escapeIdentifier(mTempTableName, QSqlDriver::TableName));
     tmpCreate += QString("(%1 integer primary key, %2 integer").arg(mProxyPK)
                                                        .arg(mSourcePK);
     tmpCreate += orgTableSql;
@@ -1415,15 +1389,14 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     if (!queryTmpCreate.exec(tmpCreate))
     {
         NMLogError(<< ctx << "::" << __FUNCTION__ << "() - create new empty mapping table: " << queryTmpCreate.lastError().text().toStdString());
-        //queryTmpCreate.finish();
-        //queryTmpCreate.clear();
+        queryTmpCreate.finish();
+        queryTmpCreate.clear();
         db.rollback();
-        db.commit();
         return false;
     }
+    queryTmpCreate.finish();
+    queryTmpCreate.clear();
     db.commit();
-    //queryTmpCreate.finish();
-    //queryTmpCreate.clear();
 
     QStringList tmptables = db.tables();
 
@@ -1465,7 +1438,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     if (mPKIsFstCol)
     {
         tmpInsert = QString("Insert into %1 %2 select * from %3 %4")
-                            .arg(mTempTableName)
+                            .arg(drv->escapeIdentifier(mTempTableName, QSqlDriver::TableName))
                             .arg(columns)
                             .arg(drv->escapeIdentifier(mSourceModel->tableName(), QSqlDriver::TableName))
                             .arg(orderByClause);
@@ -1473,26 +1446,25 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     else
     {
         tmpInsert = QString("Insert into %1 %2 select rowid, * from %3 %4")
-                            .arg(mTempTableName)
+                            .arg(drv->escapeIdentifier(mTempTableName, QSqlDriver::TableName))
                             .arg(columns)
                             .arg(drv->escapeIdentifier(mSourceModel->tableName(), QSqlDriver::TableName))
                             .arg(orderByClause);
     }
 
-    //mTempDb.transaction();
+    db.transaction();
     QSqlQuery queryInsert(db);
     if (!queryInsert.exec(tmpInsert))
     {
         NMLogError(<< ctx << "::" << __FUNCTION__ << "() - populate mapping table: " << queryInsert.lastError().text().toStdString());
-        //queryInsert.finish();
-        //queryInsert.clear();
+        queryInsert.finish();
+        queryInsert.clear();
         db.rollback();
-        db.commit();
         return false;
     }
-    //queryInsert.finish();
-    //queryInsert.clear();
-    //mTempDb.commit();
+    queryInsert.finish();
+    queryInsert.clear();
+    db.commit();
 
     openReadModel();
 
@@ -1517,7 +1489,7 @@ NMSelSortSqlTableProxyModel::mapFromSource(const QModelIndex& srcIdx) const
     QSqlDriver* drv = mSourceModel->database().driver();
     QString qstr = QString("Select %1 from %2 where %3 = %4;")
                    .arg(drv->escapeIdentifier(mProxyPK, QSqlDriver::FieldName))
-                   .arg(mTempTableName)
+                   .arg(drv->escapeIdentifier(mTempTableName, QSqlDriver::TableName))
                    .arg(drv->escapeIdentifier(mSourcePK, QSqlDriver::FieldName))
                    .arg(srcIdx.row());
 
@@ -1539,7 +1511,7 @@ NMSelSortSqlTableProxyModel::mapFromSource(const QModelIndex& srcIdx) const
         NMLogError(<< ctx << "::" << __FUNCTION__ << "() : " << qProxy.lastError().text().toStdString());
         qProxy.finish();
         qProxy.clear();
-        db.commit();
+        db.rollback();
         return retIdx;
     }
 
@@ -1579,7 +1551,7 @@ NMSelSortSqlTableProxyModel::mapToSource(const QModelIndex& proxyIdx) const
     QSqlDriver* drv = mSourceModel->database().driver();
     QString qstr = QString("Select %1 from %2 where %3 = %4;")
                    .arg(drv->escapeIdentifier(mSourcePK, QSqlDriver::FieldName))
-                   .arg(mTempTableName)
+                   .arg(drv->escapeIdentifier(mTempTableName, QSqlDriver::TableName))
                    .arg(drv->escapeIdentifier(mProxyPK, QSqlDriver::FieldName))
                    .arg(proxyIdx.row());//+1);
 
@@ -1593,7 +1565,7 @@ NMSelSortSqlTableProxyModel::mapToSource(const QModelIndex& proxyIdx) const
         NMLogError(<< ctx << "::" << __FUNCTION__ << "() : " << qProxy.lastError().text().toStdString());
         qProxy.finish();
         qProxy.clear();
-        db.commit();
+        db.rollback();
         return retIdx;
     }
 

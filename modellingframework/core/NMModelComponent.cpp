@@ -33,6 +33,7 @@
 
 #include "NMModelComponent.h"
 #include "NMIterableComponent.h"
+#include "NMSequentialIterComponent.h"
 #include "NMDataComponent.h"
 #include "NMModelController.h"
 #include "NMMfwException.h"
@@ -238,7 +239,7 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 
     // what if we are an NMProcess? and have an index policy set?
     NMIterableComponent* weIc = qobject_cast<NMIterableComponent*>(this);
-    if (weIc && weIc->getProcess() != 0)
+    if (weIc != nullptr && weIc->getProcess() != nullptr)
     {
         compstep = weIc->getProcess()->mapHostIndexToPolicyIndex(
                     compstep, this->mInputs.size());
@@ -303,7 +304,7 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
         bool bShareHost = false;
         NMModelComponent* comp = this->getModelController()->getComponent(inName);
         NMDataComponent* dataComp = qobject_cast<NMDataComponent*>(comp);
-        if (comp != 0 && dataComp == 0)
+        if (comp != nullptr && dataComp == nullptr)
         {
             if (this->getHostComponent()->objectName().compare(comp->getHostComponent()->objectName()) == 0)
             {
@@ -339,13 +340,6 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 			// process components, or components of any other kind, such as group
 			// components or data components; thus we're looking for an itk::Process object
 			NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
-            if (ic != 0 && ic->getProcess() != 0)// && ic->getProcess()->getInternalProc() != 0)
-			{
-                if (ic->getProcess()->getInternalProc() == 0)
-                {
-                    ic->getProcess()->instantiateObject();
-                }
-            }
 
             // determine the relevant step parameter for the input component:
             // - if input and this component share the host, we use the stepping
@@ -355,58 +349,85 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
             //   NOTE: if the input component is not a direct subcomponent of this
             //   component's host, the input's stepping parameter being used will
             //   most likely be 0
-            int instep = bShareHost ? step : ic != 0 ? ic->getIterationStep()-1 : step;
-            if (ic != 0 && ic->getProcess() != 0 && ic->getProcess()->getInternalProc() != 0)
+            int instep = bShareHost ? step : ic != nullptr ? ic->getIterationStep()-1 : step;
+
+            // 'partaking' of an input process in a pipeline
+            //  can be conditioned with the NumIterationsExpression
+            NMSequentialIterComponent* sic = ic != nullptr ? qobject_cast<NMSequentialIterComponent*>(ic) : nullptr;
+            if (    sic != nullptr
+                 && sic->evalNumIterationsExpression(instep+1) == 0
+               )
             {
-                // add the process component to the pipeline, and
-                // investigate its inputs using the passed step parameter
-                // of the calling component
-				upstreamPipe.push_front(ic->objectName());
-                ic->getUpstreamPipe(hydra, upstreamPipe, instep);
-			}
-			else
-			{
-				//NMDebugAI(<< "... stop" << std::endl);
-				upstreamPipe.push_front(comp->objectName());
+                bGoUp = false;
+            }
 
-				// if this component hasn't been explored yet, we explore it ...
-				// alternatively, in NMIterableComponent::createExecSequence()
-				// doubly included sub-pipes could be eliminated rather than
-				// preventing double accounting here; however, which way
-				// performs better depends ultimately on the structure and
-				// complexity of the graph to be parsed (which we don't know
-				// in advance); furthermore, doing it here prevents also
-				// endless loops in case a 'cyclic' execution graph has been
-				// constructed
-				bool bnotexplored = true;
-				foreach(const QStringList& pipe, hydra)
-				{
-					if (pipe.last().compare(comp->objectName()) == 0)
-					{
-						bnotexplored = false;
-						break;
-					}
-				}
-
-                // just have a look, whether this component has no inputs,
-                // as for example a non itk::Process-based Process component,
-                // such as TableReader, which
-                // still provides an itk::DataObject as input to a 'normal'
-                // process component
-                if (comp->getInputs().size() == 0)
+            if (bGoUp)
+            {
+                if (ic != nullptr && ic->getProcess() != nullptr)           // && ic->getProcess()->getInternalProc() != 0)
                 {
-                    bnotexplored = false;
+                    if (ic->getProcess()->getInternalProc() == nullptr)
+                    {
+                        ic->getProcess()->instantiateObject();
+                    }
+
+                        //}
+
+
+                    //if (    ic != nullptr
+                    //     && ic->getProcess() != nullptr
+                    //     && ic->getProcess()->getInternalProc() != nullptr
+                    //   )
+                    //{
+                    // add the process component to the pipeline, and
+                    // investigate its inputs using the passed step parameter
+                    // of the calling component
+                    upstreamPipe.push_front(ic->objectName());
+                    ic->getUpstreamPipe(hydra, upstreamPipe, instep);
                 }
+                else
+                {
+                    //NMDebugAI(<< "... stop" << std::endl);
+                    upstreamPipe.push_front(comp->objectName());
+
+                    // if this component hasn't been explored yet, we explore it ...
+                    // alternatively, in NMIterableComponent::createExecSequence()
+                    // doubly included sub-pipes could be eliminated rather than
+                    // preventing double accounting here; however, which way
+                    // performs better depends ultimately on the structure and
+                    // complexity of the graph to be parsed (which we don't know
+                    // in advance); furthermore, doing it here prevents also
+                    // endless loops in case a 'cyclic' execution graph has been
+                    // constructed
+                    bool bnotexplored = true;
+                    foreach(const QStringList& pipe, hydra)
+                    {
+                        if (pipe.last().compare(comp->objectName()) == 0)
+                        {
+                            bnotexplored = false;
+                            break;
+                        }
+                    }
+
+                    // just have a look, whether this component has no inputs,
+                    // as for example a non itk::Process-based Process component,
+                    // such as TableReader, which
+                    // still provides an itk::DataObject as input to a 'normal'
+                    // process component
+                    if (comp->getInputs().size() == 0)
+                    {
+                        bnotexplored = false;
+                    }
 
 
-				if (bnotexplored)
-				{
-					QStringList upstreamUpstreamPipe;
-					upstreamUpstreamPipe.push_front(comp->objectName());
-                    comp->getUpstreamPipe(hydra, upstreamUpstreamPipe, instep);
-					hydra.push_back(upstreamUpstreamPipe);
-				}
-			}
+                    if (bnotexplored)
+                    {
+                        QStringList upstreamUpstreamPipe;
+                        upstreamUpstreamPipe.push_front(comp->objectName());
+                        comp->getUpstreamPipe(hydra, upstreamUpstreamPipe, instep);
+                        hydra.push_back(upstreamUpstreamPipe);
+                    }
+                }
+            }
 		}
 	}
 }

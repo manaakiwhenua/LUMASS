@@ -44,6 +44,7 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     //  dirty hack; needs to be replaced with proper
     //  process registration (i.e. classname plus
     //  individual process factory)
+    mProcRegister << QString::fromLatin1("BMIModel")             ;
     mProcRegister << QString::fromLatin1("ImageReader")          ;
     mProcRegister << QString::fromLatin1("MapAlgebra")           ;
     mProcRegister << QString::fromLatin1("ImageWriter")          ;
@@ -58,6 +59,7 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mProcRegister << QString::fromLatin1("CombineTwo")    ;
     mProcRegister << QString::fromLatin1("ExternalExec");
     mProcRegister << QString::fromLatin1("SQLProcessor");
+    mProcRegister << QString::fromLatin1("SQLRouter");
     mProcRegister << QString::fromLatin1("MapKernelScript");
     mProcRegister << QString::fromLatin1("MapKernelScript2");
     mProcRegister << QString::fromLatin1("TableReader");
@@ -68,6 +70,9 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mProcRegister << QString::fromLatin1("RAMFlowAcc");
     mProcRegister << QString::fromLatin1("TerrainAttributes");
     mProcRegister << QString::fromLatin1("ExtractImageRegion");
+    mProcRegister << QString::fromLatin1("Image2DtoCubeSlice");
+    mProcRegister << QString::fromLatin1("CubeSliceToImage2D");
+    mProcRegister << QString::fromLatin1("Image2Table");
 /*$<RegisterComponentName>$*/
 
     mSinks << QString::fromLatin1("ImageWriter");
@@ -78,6 +83,7 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mSinks << QString::fromLatin1("ImageSorter");
     mSinks << QString::fromLatin1("SpatialOptimisation");
     mSinks << QString::fromLatin1("ImageBufferWriter");
+    mSinks << QString::fromLatin1("SQLRouter");
 /*$<RegisterComponentAsSink>$*/
 
 }
@@ -212,6 +218,26 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     else if (alias.compare("JSMapKernelScript") == 0)
     {
         return QStringLiteral("NMJSKernelFilterWrapper");
+    }
+    else if (alias.compare("BMIModel") == 0)
+    {
+        return QStringLiteral("NMBMIWrapper");
+    }
+    else if (alias.compare("SQLRouter") == 0)
+    {
+        return QStringLiteral("NMSQLiteRouterWrapper");
+    }
+        else if (alias.compare("Image2DtoCubeSlice") == 0)
+    {
+        return "NMImage2DToCubeSliceFilterWrapper";
+    }
+    else if (alias.compare("CubeSliceToImage2D") == 0)
+    {
+        return "NMCubeSliceToImage2DFilterWrapper";
+    }
+    else if (alias.compare("Image2Table") == 0)
+    {
+        return "NMImage2TableFilterWrapper";
     }
 /*$<WrapperClassNameFromComponentName>$*/
     else return proc;

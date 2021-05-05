@@ -27,6 +27,7 @@
 
 #include <QDateTime>
 
+#include "nmtypeinfo.h"
 #include "NMProcess.h"
 #include "NMMfwException.h"
 #include "NMSequentialIterComponent.h"
@@ -368,19 +369,21 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 				NMModelComponent*& ic =
 						const_cast<NMModelComponent*&>(it.value());
 
-                // making sure the input component is linked-up
-                ic->linkComponents(inputstep, repo);
-
                 // double check, whether the input is meant to be linked in as input for this run
                 NMSequentialIterComponent* seqComp = qobject_cast<NMSequentialIterComponent*>(it.value());
                 if (seqComp != nullptr)
                 {
-                    if (seqComp->getNumIterations() == 0)
+                    if (    seqComp->getNumIterations() == 0
+                         || seqComp->evalNumIterationsExpression(step+1) == 0
+                       )
                     {
                         NMLogDebug(<< "'" << inputCompName.toStdString() << "' skipped as input for this run!")
                         continue;
                     }
                 }
+
+                // making sure the input component is linked-up
+                ic->linkComponents(inputstep, repo);
 
                 // note: we're linking anything here! It means the user is responsible for deciding
                 //       whether or not it is a good idea to build a pipeline across timelevels or
@@ -773,17 +776,21 @@ NMProcess::getInputNMComponentType()
 	NMItkDataObjectWrapper::NMComponentType nmtype;
 	switch (this->mInputComponentType)
 	{
-		case otb::ImageIOBase::UCHAR : nmtype = NMItkDataObjectWrapper::NM_UCHAR	; break;
-		case otb::ImageIOBase::CHAR	 : nmtype = NMItkDataObjectWrapper::NM_CHAR	; break;
-		case otb::ImageIOBase::USHORT: nmtype = NMItkDataObjectWrapper::NM_USHORT; break;
-		case otb::ImageIOBase::SHORT : nmtype = NMItkDataObjectWrapper::NM_SHORT	; break;
-		case otb::ImageIOBase::UINT	 : nmtype = NMItkDataObjectWrapper::NM_UINT	; break;
-		case otb::ImageIOBase::INT	 : nmtype =	NMItkDataObjectWrapper::NM_INT	;	break;
-		case otb::ImageIOBase::ULONG : nmtype =	NMItkDataObjectWrapper::NM_ULONG;    break;
-		case otb::ImageIOBase::LONG	 : nmtype =	NMItkDataObjectWrapper::NM_LONG	;   break;
-		case otb::ImageIOBase::FLOAT : nmtype =	NMItkDataObjectWrapper::NM_FLOAT; break;
-		case otb::ImageIOBase::DOUBLE: nmtype =	NMItkDataObjectWrapper::NM_DOUBLE;	break;
-	default: nmtype = NMItkDataObjectWrapper::NM_UNKNOWN; break;
+        case otb::ImageIOBase::UCHAR     : nmtype = NMItkDataObjectWrapper::NM_UCHAR	; break;
+        case otb::ImageIOBase::CHAR      : nmtype = NMItkDataObjectWrapper::NM_CHAR	; break;
+        case otb::ImageIOBase::USHORT    : nmtype = NMItkDataObjectWrapper::NM_USHORT; break;
+        case otb::ImageIOBase::SHORT     : nmtype = NMItkDataObjectWrapper::NM_SHORT	; break;
+        case otb::ImageIOBase::UINT      : nmtype = NMItkDataObjectWrapper::NM_UINT	; break;
+        case otb::ImageIOBase::INT       : nmtype =	NMItkDataObjectWrapper::NM_INT	;	break;
+        case otb::ImageIOBase::ULONG     : nmtype =	NMItkDataObjectWrapper::NM_ULONG;    break;
+        case otb::ImageIOBase::LONG      : nmtype =	NMItkDataObjectWrapper::NM_LONG	;   break;
+#if defined(_WIN32) && SIZEOF_LONGLONG >= 8
+        case otb::ImageIOBase::ULONGLONG : nmtype = NMItkDataObjectWrapper::NM_ULONGLONG;    break;
+        case otb::ImageIOBase::LONGLONG  : nmtype = NMItkDataObjectWrapper::NM_LONGLONG;   break;
+#endif
+        case otb::ImageIOBase::FLOAT     : nmtype =	NMItkDataObjectWrapper::NM_FLOAT; break;
+        case otb::ImageIOBase::DOUBLE    : nmtype =	NMItkDataObjectWrapper::NM_DOUBLE;	break;
+        default: nmtype = NMItkDataObjectWrapper::NM_UNKNOWN; break;
 	}
 
 	return nmtype;
@@ -800,11 +807,15 @@ NMProcess::getOutputNMComponentType()
 		case otb::ImageIOBase::USHORT	 : nmtype = NMItkDataObjectWrapper::NM_USHORT; break;
 		case otb::ImageIOBase::SHORT	 : nmtype = NMItkDataObjectWrapper::NM_SHORT	; break;
 		case otb::ImageIOBase::UINT		 : nmtype = NMItkDataObjectWrapper::NM_UINT	; break;
-		case otb::ImageIOBase::INT	 : nmtype =	NMItkDataObjectWrapper::NM_INT	;	break;
-		case otb::ImageIOBase::ULONG : nmtype =	NMItkDataObjectWrapper::NM_ULONG;    break;
-		case otb::ImageIOBase::LONG	 : nmtype =	NMItkDataObjectWrapper::NM_LONG	;   break;
-		case otb::ImageIOBase::FLOAT : nmtype =	NMItkDataObjectWrapper::NM_FLOAT; break;
-		case otb::ImageIOBase::DOUBLE: nmtype =	NMItkDataObjectWrapper::NM_DOUBLE;	break;
+        case otb::ImageIOBase::INT  	 : nmtype =	NMItkDataObjectWrapper::NM_INT	;	break;
+        case otb::ImageIOBase::ULONG     : nmtype =	NMItkDataObjectWrapper::NM_ULONG;    break;
+        case otb::ImageIOBase::LONG      : nmtype =	NMItkDataObjectWrapper::NM_LONG	;   break;
+#if defined(_WIN32) && SIZEOF_LONGLONG >= 8
+        case otb::ImageIOBase::ULONGLONG : nmtype = NMItkDataObjectWrapper::NM_ULONGLONG;    break;
+        case otb::ImageIOBase::LONGLONG  : nmtype = NMItkDataObjectWrapper::NM_LONGLONG;   break;
+#endif
+        case otb::ImageIOBase::FLOAT     : nmtype =	NMItkDataObjectWrapper::NM_FLOAT; break;
+        case otb::ImageIOBase::DOUBLE    : nmtype =	NMItkDataObjectWrapper::NM_DOUBLE;	break;
 		default: nmtype = NMItkDataObjectWrapper::NM_UNKNOWN; break;
 	}
 
@@ -825,7 +836,15 @@ NMProcess::setInputNMComponentType(NMItkDataObjectWrapper::NMComponentType nmtyp
 		case NMItkDataObjectWrapper::NM_INT: type = otb::ImageIOBase::INT; break;
 		case NMItkDataObjectWrapper::NM_ULONG: type = otb::ImageIOBase::ULONG; break;
 		case NMItkDataObjectWrapper::NM_LONG: type = otb::ImageIOBase::LONG; break;
-		case NMItkDataObjectWrapper::NM_FLOAT: type = otb::ImageIOBase::FLOAT; break;
+#if defined(_WIN32) && SIZEOF_LONGLONG >= 8
+        case NMItkDataObjectWrapper::NM_ULONGLONG: type = otb::ImageIOBase::ULONGLONG; break;
+        case NMItkDataObjectWrapper::NM_LONGLONG: type = otb::ImageIOBase::LONGLONG; break;
+
+#else
+        case NMItkDataObjectWrapper::NM_ULONGLONG: type = otb::ImageIOBase::ULONG; break;
+        case NMItkDataObjectWrapper::NM_LONGLONG: type = otb::ImageIOBase::LONG; break;
+#endif
+        case NMItkDataObjectWrapper::NM_FLOAT: type = otb::ImageIOBase::FLOAT; break;
 		case NMItkDataObjectWrapper::NM_DOUBLE: type = otb::ImageIOBase::DOUBLE; break;
 		default: type = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE; break;
 	}
@@ -853,6 +872,14 @@ NMProcess::setOutputNMComponentType(NMItkDataObjectWrapper::NMComponentType nmty
 		case NMItkDataObjectWrapper::NM_INT: type = otb::ImageIOBase::INT; break;
 		case NMItkDataObjectWrapper::NM_ULONG: type = otb::ImageIOBase::ULONG; break;
 		case NMItkDataObjectWrapper::NM_LONG: type = otb::ImageIOBase::LONG; break;
+#if defined(_WIN32) && SIZEOF_LONGLONG >= 8
+        case NMItkDataObjectWrapper::NM_ULONGLONG: type = otb::ImageIOBase::ULONGLONG; break;
+        case NMItkDataObjectWrapper::NM_LONGLONG: type = otb::ImageIOBase::LONGLONG; break;
+
+#else
+        case NMItkDataObjectWrapper::NM_ULONGLONG: type = otb::ImageIOBase::ULONG; break;
+        case NMItkDataObjectWrapper::NM_LONGLONG: type = otb::ImageIOBase::LONG; break;
+#endif
 		case NMItkDataObjectWrapper::NM_FLOAT: type = otb::ImageIOBase::FLOAT; break;
 		case NMItkDataObjectWrapper::NM_DOUBLE: type = otb::ImageIOBase::DOUBLE; break;
 		default: type = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE; break;

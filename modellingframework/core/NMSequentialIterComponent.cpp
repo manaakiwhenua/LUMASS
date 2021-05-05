@@ -58,6 +58,13 @@ NMSequentialIterComponent::setNumIterations(unsigned int numiter)
     }
 }
 
+void
+NMSequentialIterComponent::setNumIterationsExpression(QStringList iterExpr)
+{
+    this->mNumIterationsExpression = iterExpr;
+    emit NumIterationsExpressionChanged();
+}
+
 unsigned int
 NMSequentialIterComponent::evalNumIterationsExpression(const unsigned int& step)
 {

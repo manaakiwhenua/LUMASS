@@ -283,7 +283,8 @@ public:
      */
     QStringList getNextParamExpr(const QString& expr);
 
-    QString evalFunc(const QString& funcName, const QStringList& args);
+    QString evalFunc(const QString& funcName, const QStringList& args,
+                     const NMIterableComponent* host = nullptr);
     QStringList parseQuotedArguments(const QString& args, const QChar& sep= ',');
 
 public slots:
@@ -368,6 +369,8 @@ public slots:
     void endProv();
     void writeProv(const QString& provLog);
 
+    void registerPythonRequest(const QString& compName);
+
 signals:
 	/*! Signals whether any of the process components controlled
 	 *  by this controller is currently running or not */
@@ -408,6 +411,7 @@ protected:
 	QDateTime mModelStopped;
 
     QStringList mToBeDeleted;
+    QStringList mPythonComponents;
 
     QMap<QString, QVariant> mSettings;
 

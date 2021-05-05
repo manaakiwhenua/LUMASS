@@ -45,12 +45,16 @@ public:
 	signals:
         void NMModelComponentChanged(void);
         void NumIterationsChanged(unsigned int numiter);
+        void NumIterationsExpressionChanged(void);
 
 public:
 	NMSequentialIterComponent(QObject* parent=0);
 	virtual ~NMSequentialIterComponent(void);
 
-    NMPropertyGetSet(NumIterationsExpression, QStringList)
+    //NMPropertyGetSet(NumIterationsExpression, QStringList)
+    void setNumIterationsExpression(QStringList _arg);
+    QStringList getNumIterationsExpression(void)
+        {return mNumIterationsExpression;}
 
     //NMPropertyGetSet(NumIterations, unsigned int)
     void setNumIterations(unsigned int numiter);
@@ -60,6 +64,9 @@ public:
     virtual void linkComponents(unsigned int step,
                    const QMap<QString, NMModelComponent*>& repo);
 
+    // note: step is 1-based as mIterationStep && mIterationStepRun!
+    unsigned int evalNumIterationsExpression(const unsigned int& step);
+
 protected:
 	unsigned int mNumIterations;
     unsigned int mOldIterations;
@@ -67,9 +74,6 @@ protected:
 
     void iterativeComponentUpdate(const QMap<QString, NMModelComponent*>& repo,
     		unsigned int minLevel, unsigned int maxLevel);
-
-    // note: step is 1-based as mIterationStep && mIterationStepRun!
-    unsigned int evalNumIterationsExpression(const unsigned int& step);
 
 private:
 	static const std::string ctx;

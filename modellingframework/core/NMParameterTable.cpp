@@ -95,7 +95,7 @@ NMParameterTable::setFileName(QString fn)
     }
 
     QStringList dbFormats;
-    dbFormats << "ldb" << "db" << "sqlite";
+    dbFormats << "ldb" << "db" << "sqlite" << "gpkg";
     QFileInfo finfo(mFileName);
 
     otb::SQLiteTable::Pointer tab = otb::SQLiteTable::New();

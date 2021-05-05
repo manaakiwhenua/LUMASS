@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -35,6 +35,12 @@
 #   include "nmlog.h"
 #endif
 
+#ifdef LUMASS_PYTHON
+#include "Python_wrapper.h"
+namespace py = pybind11;
+namespace lupy = lumass_python;
+#endif
+
 #include <QRegularExpression>
 #include <QRegularExpressionMatchIterator>
 
@@ -52,18 +58,20 @@
 const std::string NMModelController::ctx = "NMModelController";
 
 NMModelController::NMModelController(QObject* parent)
-	: mbModelIsRunning(false),
+    : mbModelIsRunning(false),
       mRootComponent(0), mbAbortionRequested(false),
       mbLogProv(false)
 {
-	this->setParent(parent);
-	this->mModelStarted = QDateTime::currentDateTime();
-	this->mModelStopped = this->mModelStarted;
+    this->setParent(parent);
+    this->mModelStarted = QDateTime::currentDateTime();
+    this->mModelStopped = this->mModelStarted;
     mLogger = new NMLogger(this);
 }
 
 NMModelController::~NMModelController()
 {
+
+
 }
 
 void
@@ -83,123 +91,123 @@ NMModelController::getOutputFromSource(const QString& inputSrc)
     QSharedPointer<NMItkDataObjectWrapper> w;
     w.clear();
 
-	// parse the input source string
-	QStringList inputSrcParams = inputSrc.split(":", QString::SkipEmptyParts);
-	QString inputCompName = inputSrcParams.at(0);
+    // parse the input source string
+    QStringList inputSrcParams = inputSrc.split(":", QString::SkipEmptyParts);
+    QString inputCompName = inputSrcParams.at(0);
 
-	NMModelComponent* mc = this->getComponent(inputCompName);
-	if (mc == 0)
-		return w;
+    NMModelComponent* mc = this->getComponent(inputCompName);
+    if (mc == 0)
+        return w;
 
-	bool bOK;
-	int outIdx = 0;
-	if (inputSrcParams.size() == 2)
-	{
-		outIdx = inputSrcParams.at(1).toInt(&bOK);
-		if (!bOK)
-		{
+    bool bOK;
+    int outIdx = 0;
+    if (inputSrcParams.size() == 2)
+    {
+        outIdx = inputSrcParams.at(1).toInt(&bOK);
+        if (!bOK)
+        {
             NMLogError(<< ctx << ": failed to interpret input source parameter"
-					<< "'" << inputSrc.toStdString() << "'");
-			return w;
-		}
-	}
+                    << "'" << inputSrc.toStdString() << "'");
+            return w;
+        }
+    }
 
-	w = mc->getOutput(outIdx);
-	return w;
+    w = mc->getOutput(outIdx);
+    return w;
 }
 
 bool
 NMModelController::isModelRunning(void)
 {
-	return this->mbModelIsRunning;
+    return this->mbModelIsRunning;
 }
 
 void
 NMModelController::reportExecutionStopped(const QString & compName)
 {
-	for (int i=0; i < this->mExecutionStack.size(); ++i)
-	{
-		if (compName.compare(this->mExecutionStack.at(i)) == 0)
-		{
-			this->mExecutionStack.remove(i);
-			break;
-		}
-	}
+    for (int i=0; i < this->mExecutionStack.size(); ++i)
+    {
+        if (compName.compare(this->mExecutionStack.at(i)) == 0)
+        {
+            this->mExecutionStack.remove(i);
+            break;
+        }
+    }
 }
 
 void
 NMModelController::reportExecutionStarted(const QString & compName)
 {
-	this->mExecutionStack.push(compName);
+    this->mExecutionStack.push(compName);
 }
 
 
 void
 NMModelController::abortModel(void)
 {
-	NMDebugCtx(ctx, << "...");
-	if (this->mbModelIsRunning)
-	{
-		QString name;
-		if (this->mExecutionStack.size() > 0)
-			name = this->mExecutionStack.pop();
+    NMDebugCtx(ctx, << "...");
+    if (this->mbModelIsRunning)
+    {
+        QString name;
+        if (this->mExecutionStack.size() > 0)
+            name = this->mExecutionStack.pop();
 
-		NMIterableComponent* comp =
-				qobject_cast<NMIterableComponent*>(this->getComponent(name));
-		if (comp != 0)
-		{
-			NMProcess* proc = comp->getProcess();
-			if (proc != 0)
-			{
-				proc->abortExecution();
-			}
-		}
-		this->mbAbortionRequested = true;
+        NMIterableComponent* comp =
+                qobject_cast<NMIterableComponent*>(this->getComponent(name));
+        if (comp != 0)
+        {
+            NMProcess* proc = comp->getProcess();
+            if (proc != 0)
+            {
+                proc->abortExecution();
+            }
+        }
+        this->mbAbortionRequested = true;
 
 //        NMLogInfo(<< "ModelController: Model '" << comp->objectName().toStdString()
 //                  << "' has been requested to abort execution at the next opportunity!");
-	}
-	NMDebugCtx(ctx, << "done!");
+    }
+    NMDebugCtx(ctx, << "done!");
 }
 
 void
 NMModelController::resetExecutionStack(void)
 {
-	// we take all remaining component names from the stack and
-	// signal that they're actually not running any more
-	for (int n=0; n < this->mExecutionStack.size(); ++n)
-	{
-		QString name = this->mExecutionStack.pop();
-		emit signalExecutionStopped(name);
-	}
+    // we take all remaining component names from the stack and
+    // signal that they're actually not running any more
+    for (int n=0; n < this->mExecutionStack.size(); ++n)
+    {
+        QString name = this->mExecutionStack.pop();
+        emit signalExecutionStopped(name);
+    }
 }
 
 NMIterableComponent*
 NMModelController::identifyRootComponent(void)
 {
-	NMDebugCtx(ctx, << "...");
+    NMDebugCtx(ctx, << "...");
 
-	NMIterableComponent* root = 0;
+    NMIterableComponent* root = 0;
 
-	QMapIterator<QString, NMModelComponent*> cit(this->mComponentMap);
-	while(cit.hasNext())
-	{
-		cit.next();
-		NMDebugAI(<< "checking '" << cit.value()->objectName().toStdString()
-				<< "' ...");
-		if (cit.value()->getHostComponent() == 0)
-		{
-			root = qobject_cast<NMIterableComponent*>(cit.value());
-			NMDebug(<< " got it !" << std::endl);
-			break;
-		}
-		NMDebug(<< " nope!" << std::endl);
-	}
+    QMapIterator<QString, NMModelComponent*> cit(this->mComponentMap);
+    while(cit.hasNext())
+    {
+        cit.next();
+        NMDebugAI(<< "checking '" << cit.value()->objectName().toStdString()
+                << "' ...");
+        if (cit.value()->getHostComponent() == 0)
+        {
+            root = qobject_cast<NMIterableComponent*>(cit.value());
+            NMDebug(<< " got it !" << std::endl);
+            break;
+        }
+        NMDebug(<< " nope!" << std::endl);
+    }
 
-	this->mRootComponent = root;
+    this->mRootComponent = root;
 
-	NMDebugCtx(ctx, << "done!");
-	return root;
+    NMDebugCtx(ctx, << "done!");
+    return root;
 }
 
 //void
@@ -278,7 +286,7 @@ NMModelController::updateSettings(const QString& key, QVariant value)
 void
 NMModelController::executeModel(const QString& compName)
 {
-	NMDebugCtx(ctx, << "...");
+    NMDebugCtx(ctx, << "...");
 
     NMModelComponent* comp = this->getComponent(compName);
     if (comp == 0)
@@ -297,9 +305,9 @@ NMModelController::executeModel(const QString& compName)
     }
 
     if (this->mbModelIsRunning)
-	{
-		NMDebugAI(<< "There is already a model running! "
-				<< "Be patient and try later!" << endl);
+    {
+        NMDebugAI(<< "There is already a model running! "
+                << "Be patient and try later!" << endl);
         if (mLogger)
         {
             msg = QString("Model Controller: Cannot execute %1! "
@@ -311,9 +319,9 @@ NMModelController::executeModel(const QString& compName)
                                    NMLogger::NM_LOG_INFO,
                                    msg);
         }
-		NMDebugCtx(ctx, << "done!");
-		return;
-	}
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
 
         //this->mRootComponent = this->identifyRootComponent();
         //QString name = this->mRootComponent->objectName();
@@ -336,11 +344,11 @@ NMModelController::executeModel(const QString& compName)
 
     if (mbLogProv)
     {
-		QString stamp = QDateTime::currentDateTime().toString(Qt::ISODate);
-		stamp = stamp.replace(":", "");
-		stamp = stamp.replace("-", "");
+        QString stamp = QDateTime::currentDateTime().toString(Qt::ISODate);
+        stamp = stamp.replace(":", "");
+        stamp = stamp.replace("-", "");
 
-		QString provFN = QString("%1/%2_%3.provn")
+        QString provFN = QString("%1/%2_%3.provn")
                          .arg(this->getSetting("Workspace").toString())
                          .arg(userID)
                          .arg(stamp);
@@ -349,22 +357,22 @@ NMModelController::executeModel(const QString& compName)
 
     // ================================================
     // we reset all the components
-	// (and thereby delete all data buffers)
-	this->resetComponent(compName);
+    // (and thereby delete all data buffers)
+    this->resetComponent(compName);
 
-	NMDebugAI(<< "running model on thread: "
-			<< this->thread()->currentThreadId() << endl);
+    NMDebugAI(<< "running model on thread: "
+            << this->thread()->currentThreadId() << endl);
 
     msg = QString("Model Controller: Executing model %1 ...").arg(userID);
     mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
                            NMLogger::NM_LOG_INFO,
                            msg);
 
-	// model management
-	this->mbModelIsRunning = true;
-	this->mbAbortionRequested = false;
+    // model management
+    this->mbModelIsRunning = true;
+    this->mbAbortionRequested = false;
 
-	this->mModelStarted = QDateTime::currentDateTime();
+    this->mModelStarted = QDateTime::currentDateTime();
 
 //#ifdef LUMASS_DEBUG
 //#ifndef _WIN32
@@ -376,15 +384,15 @@ NMModelController::executeModel(const QString& compName)
 
     emit signalModelStarted();
 
-	// we catch all exceptions thrown by ITK/OTB, rasdaman
-	// and the LUMASS MFW components
-	// and just report them for now; note this includes
-	// the 'abortion-exception' thrown by ITK/OTB as response to
-	// user-requested model abortion
-	try
-	{
-		comp->update(this->mComponentMap);
-	}
+    // we catch all exceptions thrown by ITK/OTB, rasdaman
+    // and the LUMASS MFW components
+    // and just report them for now; note this includes
+    // the 'abortion-exception' thrown by ITK/OTB as response to
+    // user-requested model abortion
+    try
+    {
+        comp->update(this->mComponentMap);
+    }
     catch (NMMfwException& nmerr)
     {
 //#ifdef LUMASS_DEBUG
@@ -406,15 +414,15 @@ NMModelController::executeModel(const QString& compName)
         NMDebugCtx(ctx, << "done!");
     }
     catch (std::exception& e)
-	{
+    {
 //#ifdef LUMASS_DEBUG
 //#ifndef _WIN32
 //    nmlog::nmindent = ind;
 //#endif
 //#endif
         NMLogError(<< "Model Controller: " << e.what());
-		NMDebugCtx(ctx, << "done!");
-	}
+        NMDebugCtx(ctx, << "done!");
+    }
 
 
 //#ifdef LUMASS_DEBUG
@@ -425,19 +433,19 @@ NMModelController::executeModel(const QString& compName)
 
     emit signalModelStopped();
 
-	this->mModelStopped = QDateTime::currentDateTime();
-	int msec = this->mModelStarted.msecsTo(this->mModelStopped);
-	int min = msec / 60000;
-	double sec = (msec % 60000) / 1000.0;
+    this->mModelStopped = QDateTime::currentDateTime();
+    int msec = this->mModelStarted.msecsTo(this->mModelStopped);
+    int min = msec / 60000;
+    double sec = (msec % 60000) / 1000.0;
 
-	QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
+    QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
     //NMDebugAI(<< "Model run took (min:sec): " << elapsedTime.toStdString() << endl);
-	NMMsg(<< "Model run took (min:sec): " << elapsedTime.toStdString() << endl);
+    NMMsg(<< "Model run took (min:sec): " << elapsedTime.toStdString() << endl);
     NMLogInfo(<< "Model Controller: Model completed in (min:sec): " << elapsedTime.toStdString());
 
-	this->mbModelIsRunning = false;
-	this->mbAbortionRequested = false;
-	emit signalIsControllerBusy(false);
+    this->mbModelIsRunning = false;
+    this->mbAbortionRequested = false;
+    emit signalIsControllerBusy(false);
 
     // ================================================
     // end provenance
@@ -446,11 +454,11 @@ NMModelController::executeModel(const QString& compName)
         endProv();
     }
 
-	// to be on the safe side, we reset the execution stack and
-	// notify all listeners, that those components are no longer
-	// running
-	this->resetExecutionStack();
-	//this->resetComponent(compName);
+    // to be on the safe side, we reset the execution stack and
+    // notify all listeners, that those components are no longer
+    // running
+    this->resetExecutionStack();
+    //this->resetComponent(compName);
 
     // remove objects scheduled for deletion
     foreach(const QString& name, this->mToBeDeleted)
@@ -459,7 +467,7 @@ NMModelController::executeModel(const QString& compName)
     }
     this->mToBeDeleted.clear();
 
-	NMDebugCtx(ctx, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 void
@@ -475,19 +483,19 @@ NMModelController::resetComponent(const QString& compName)
     }
 
     NMModelComponent* comp = this->getComponent(compName);
-	if (comp == 0)
-	{
+    if (comp == 0)
+    {
         NMLogError(<< ctx << ": couldn't find '"
-				<< compName.toStdString() << "'!");
-		return;
-	}
+                << compName.toStdString() << "'!");
+        return;
+    }
 
     NMLogInfo(<< "ModelController: Resetting component '" << compName.toStdString() << "'");
 
 //	NMDebugAI(<< "resetting component '" << compName.toStdString()
 //			  << "'" << endl);
 
-	comp->reset();
+    comp->reset();
 //	NMDebugCtx(ctx, << "done!");
 }
 
@@ -516,7 +524,7 @@ NMModelController::getComponents(const QString &userId)
 
 QString
 NMModelController::addComponent(NMModelComponent* comp,
-		NMModelComponent* host)
+        NMModelComponent* host)
 {
     //	NMDebugCtx(ctx, << "...");
 
@@ -527,65 +535,65 @@ NMModelController::addComponent(NMModelComponent* comp,
     }
 
     NMIterableComponent* ihost = 0;
-	if (host != 0)
-	{
-		ihost = qobject_cast<NMIterableComponent*>(host);
-	}
+    if (host != 0)
+    {
+        ihost = qobject_cast<NMIterableComponent*>(host);
+    }
 
-	if (this->mComponentMap.values().contains(comp))
-	{
+    if (this->mComponentMap.values().contains(comp))
+    {
         NMLogError(<< ctx << ": model component already present in repository!");
-		return "failed";
-	}
+        return "failed";
+    }
 
-	QRegExp re("[0-9]{0,4}$");
-	QString cname = comp->objectName();
-	QString tname = cname;
-	QString numstr;
-	unsigned long cnt = 1;
-	bool bok;
+    QRegExp re("[0-9]{0,4}$");
+    QString cname = comp->objectName();
+    QString tname = cname;
+    QString numstr;
+    unsigned long cnt = 1;
+    bool bok;
 
     while (this->mComponentMap.keys().contains(tname))
-	{
-		if (re.indexIn(tname) > 0)
-		{
-			numstr = re.capturedTexts().at(0);
-			cnt = numstr.toLong(&bok);
-			if (bok)
-			{
-				if (cname.endsWith(numstr))
-					cname = cname.left(cname.size() - numstr.size());
-				++cnt;
-			}
-			else
-				cnt = 1;
-		}
+    {
+        if (re.indexIn(tname) > 0)
+        {
+            numstr = re.capturedTexts().at(0);
+            cnt = numstr.toLong(&bok);
+            if (bok)
+            {
+                if (cname.endsWith(numstr))
+                    cname = cname.left(cname.size() - numstr.size());
+                ++cnt;
+            }
+            else
+                cnt = 1;
+        }
 
-		tname = QString(tr("%1%2")).arg(cname).arg(cnt);
-	}
+        tname = QString(tr("%1%2")).arg(cname).arg(cnt);
+    }
 
-	comp->setParent(0);
-	comp->moveToThread(this->thread());
-	comp->setObjectName(tname);
-	comp->setParent(this);
+    comp->setParent(0);
+    comp->moveToThread(this->thread());
+    comp->setObjectName(tname);
+    comp->setParent(this);
     comp->setLogger(this->mLogger);
     comp->setModelController(this);
 
-	this->mComponentMap.insert(tname, comp);
+    this->mComponentMap.insert(tname, comp);
     this->mUserIdMap.insert(comp->getUserID(), tname);
     connect(comp, SIGNAL(ComponentUserIDChanged(QString, QString)),
             this, SLOT(setUserId(QString, QString)));
 
-	// check, whether we've go a valid host
-	if (ihost != 0)
-	{
-		if (this->mComponentMap.keys().contains(host->objectName()))
-		{
-			ihost->addModelComponent(comp);
-		}
-	}
+    // check, whether we've go a valid host
+    if (ihost != 0)
+    {
+        if (this->mComponentMap.keys().contains(host->objectName()))
+        {
+            ihost->addModelComponent(comp);
+        }
+    }
 
-	return tname;
+    return tname;
 }
 
 void NMModelController::setUserId(const QString& oldId, const QString& newId)
@@ -620,13 +628,13 @@ NMModelController::getUserIDs()
 bool
 NMModelController::contains(const QString& compName)
 {
-	bool ret;
-	if (this->mComponentMap.keys().contains(compName))
-		ret = true;
-	else
-		ret = false;
+    bool ret;
+    if (this->mComponentMap.keys().contains(compName))
+        ret = true;
+    else
+        ret = false;
 
-	return ret;
+    return ret;
 }
 
 QString NMModelController::getComponentNameFromInputSpec(const QString& inputSpec)
@@ -640,18 +648,18 @@ QString NMModelController::getComponentNameFromInputSpec(const QString& inputSpe
 
 bool NMModelController::removeComponent(const QString& name)
 {
-	NMModelComponent* comp = this->getComponent(name);
-	if (comp == 0)
-	{
+    NMModelComponent* comp = this->getComponent(name);
+    if (comp == 0)
+    {
         NMDebugAI(<< "component '" << name.toStdString() << "' is not controlled by this "
-				<< "controller!");
-		return false;
-	}
+                << "controller!");
+        return false;
+    }
 
     NMIterableComponent* host = comp->getHostComponent();
-	if (host != 0)
+    if (host != 0)
     {
-		host->removeModelComponent(name);
+        host->removeModelComponent(name);
     }
     else // name must be 'root' in this case
     {
@@ -673,27 +681,37 @@ bool NMModelController::removeComponent(const QString& name)
 //                  << "' from the UserID map!");
 //    }
 
-	NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
-	if (ic != 0)
-		ic->destroySubComponents(this->mComponentMap);
-	this->mComponentMap.remove(name);
+    NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
+    if (ic != 0)
+        ic->destroySubComponents(this->mComponentMap);
+    this->mComponentMap.remove(name);
 
-	delete comp;
+    std::map<std::string, py::object>::iterator pyit = lupy::pyObjects->find(name.toStdString());
+    if (pyit != lupy::ctrlPyObjects.end())
+    {
+        py::object po = pyit->second;
+        lupy::pyObjects->erase(pyit);
+        po.dec_ref();
+    }
+
+    this->mPythonComponents.removeOne(name);
+
+    delete comp;
 
     emit componentRemoved(name);
-	return true;
+    return true;
 }
 
 
 NMModelComponent*
 NMModelController::getComponent(const QString& name)
 {
-	NMModelComponent* comp = 0;
-	QMap<QString, NMModelComponent*>::iterator cit = this->mComponentMap.find(name);
-	if (cit != this->mComponentMap.end())
-		comp = cit.value();
+    NMModelComponent* comp = 0;
+    QMap<QString, NMModelComponent*>::iterator cit = this->mComponentMap.find(name);
+    if (cit != this->mComponentMap.end())
+        comp = cit.value();
 
-	return comp;
+    return comp;
 }
 
 QStringList
@@ -844,8 +862,29 @@ NMModelController::getNextParamExpr(const QString &expr)
     return innerExpr;
 }
 
+void
+NMModelController::registerPythonRequest(const QString &compName)
+{
+    if (!mPythonComponents.contains(compName))
+    {
+        mPythonComponents << compName;
+    }
+
+#ifdef LUMASS_PYTHON
+//    if (lupy::pyObjects->size() == 0)
+//    {
+        if (!Py_IsInitialized())
+        {
+            py::initialize_interpreter();
+        }
+//    }
+#endif
+
+}
+
 QString
-NMModelController::evalFunc(const QString& funcName, const QStringList& args)
+NMModelController::evalFunc(const QString& funcName, const QStringList& args,
+                            const NMIterableComponent* host)
 {
     QString ret;
     if (funcName.compare("cond") == 0)
@@ -861,9 +900,9 @@ NMModelController::evalFunc(const QString& funcName, const QStringList& args)
             QString exp = args.at(0);
 
             bool isnum;
-            int ival = exp.toInt(&isnum);
+            int ival = exp.toInt(&isnum, 10);
 
-            if (isnum)
+            if (isnum || exp.compare("0.0") == 0 || exp.compare("0") == 0)
             {
                 if (ival != 0)
                 {
@@ -872,11 +911,16 @@ NMModelController::evalFunc(const QString& funcName, const QStringList& args)
             }
             else
             {
-                if (exp.trimmed().compare("false", Qt::CaseInsensitive) == 0)
+                QString exprtrim = exp.trimmed();
+                if (    exprtrim.compare("false", Qt::CaseInsensitive) == 0
+                     || exprtrim.compare("no", Qt::CaseInsensitive) == 0
+                   )
                 {
                     ret = args.at(2);
                 }
-                else if (exp.trimmed().compare("true", Qt::CaseInsensitive) == 0)
+                else if (   exprtrim.compare("true", Qt::CaseInsensitive) == 0
+                         || exprtrim.compare("yes", Qt::CaseInsensitive) == 0
+                        )
                 {
                     ret = args.at(1);
                 }
@@ -894,6 +938,36 @@ NMModelController::evalFunc(const QString& funcName, const QStringList& args)
                             ret = args.at(1);
                         }
                     }
+                    else
+                    {
+                        ret = resStr;
+                    }
+                }
+            }
+        }
+    }
+    else if (funcName.compare("hasAttribute") == 0)
+    {
+        ret = "0";
+
+        if (args.size() >= 2 && host != nullptr)
+        {
+            NMModelComponent* comp = this->getComponent(args.at(0));
+            if (comp == nullptr)
+            {
+                NMIterableComponent* ic = const_cast<NMIterableComponent*>(host);
+                if (ic != nullptr)
+                {
+                    comp = ic->findUpstreamComponentByUserId(args.at(0));
+                }
+            }
+
+            if (comp != nullptr)
+            {
+                QStringList cols = this->getDataComponentProperties(comp);
+                if (cols.contains(args.at(1), Qt::CaseInsensitive))
+                {
+                    ret = "1";
                 }
             }
         }
@@ -996,6 +1070,38 @@ NMModelController::evalFunc(const QString& funcName, const QStringList& args)
             ret = fifo.completeSuffix();
         }
     }
+    else if (funcName.compare("fileOneIsNewer") == 0)
+    {
+        if (args.size() < 2)
+        {
+            ret = "0";
+        }
+        else
+        {
+            QFileInfo fiOne(args.at(0));
+            QFileInfo fiTwo(args.at(1));
+
+            if (fiOne.isFile() && fiTwo.isFile())
+            {
+                if (fiOne.lastModified() > fiTwo.lastModified())
+                {
+                    ret = "1";
+                }
+                else
+                {
+                    ret = "0";
+                }
+            }
+            else if (fiOne.isFile() && !fiTwo.isFile())
+            {
+                ret = "1";
+            }
+            else
+            {
+                ret = "0";
+            }
+        }
+    }
     else if (funcName.compare("strReplace") == 0)
     {
         if (args.size() < 3)
@@ -1055,7 +1161,12 @@ NMModelController::evalFunc(const QString& funcName, const QStringList& args)
             }
             else if (args.size() >= 2)
             {
-                stritems = thestr.split(args.at(1), QString::SkipEmptyParts);
+                QString sep = args.at(1).trimmed();
+                if (sep.isEmpty())
+                {
+                    sep = args.at(1);
+                }
+                stritems = thestr.split(sep, QString::SkipEmptyParts);
                 if (stritems.size() > 0)
                 {
                     if (args.size() == 3)
@@ -1115,7 +1226,12 @@ NMModelController::evalFunc(const QString& funcName, const QStringList& args)
             else if (args.size() == 2)
             {
                 QString thestr = args.at(0).trimmed();
-                QStringList stritems  = thestr.split(args.at(1), QString::SkipEmptyParts);
+                QString sep = args.at(1).trimmed();
+                if (sep.isEmpty())
+                {
+                    sep = args.at(1);
+                }
+                QStringList stritems  = thestr.split(sep, QString::SkipEmptyParts);
                 ret = QString("%1").arg(stritems.length());
             }
             else
@@ -1299,7 +1415,8 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
         innerExp = this->getNextParamExpr(nested);
     }
     /// ToDo: testing!
-    maxcount *= 21;
+    //maxcount *= 21;
+    maxcount = 150;
 
     nested = str;
     innerExp = this->getNextParamExpr(nested);
@@ -1448,11 +1565,12 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                     }
                     else
                     {
+                        tStr = tStr.replace(wholeText, QStringLiteral(""));
                         std::stringstream errstr;
-                        errstr << "ERROR: Couldn't find LUMASS setting '"
-                               << m.at(1).toStdString() << "'!";
-                        //NMLogError(<< errstr.str());
-                        return QString(errstr.str().c_str());
+                        errstr << "WARNING: Couldn't find LUMASS setting '"
+                               << m.at(1).toStdString() << "' - used an empty string instead!";
+                        NMLogDebug(<< errstr.str());
+                        //return QString(errstr.str().c_str());
                     }
                 }
                 else if (m.at(0).compare(QString("func"), Qt::CaseInsensitive) == 0)
@@ -1475,7 +1593,7 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                         }
                     }
 
-                    QString ret = this->evalFunc(funcName, argList);
+                    QString ret = this->evalFunc(funcName, argList, host);
                     if (ret.startsWith("ERROR:"))
                     {
                         std::stringstream msg;
@@ -2258,7 +2376,7 @@ NMModelController::startProv(const QString &fn, const QString& compName)
     if (!mProvFile.open(QIODevice::ReadWrite | QIODevice::Text))
     {
         NMLogError(<< "Model Controller: Failed creating provenance record: "
-			       << mProvFile.errorString().toStdString());
+                   << mProvFile.errorString().toStdString());
         return;
     }
 

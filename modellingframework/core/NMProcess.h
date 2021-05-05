@@ -279,6 +279,7 @@ protected:
 	NMProcess::AdvanceParameter mParameterHandling;
 
 	bool mbLinked;
+    bool mIsSink;
 
     otb::AttributeTable::Pointer mAuxTab;
     int mAuxDataIdx;
@@ -314,7 +315,6 @@ protected:
 
 private:
     unsigned int mStepIndex;
-    bool mIsSink;
     bool mbReleaseData;
 
 };

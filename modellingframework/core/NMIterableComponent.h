@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
+ /******************************************************************************
+ * Created by Alexander Herzig
  * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -76,7 +76,7 @@ public:
         }
         else
         {
-            mComponent = 0;
+            mComponent = nullptr;
             mListPos = -1;
         }
     }
@@ -120,8 +120,6 @@ private:
     QVector<NMModelComponent*> mIterList;
     NMModelComponent* mComponent;
     int mListPos;
-
-
 };
 
 
@@ -132,7 +130,7 @@ private:
 
 class NMMODFRAMECORE_EXPORT NMIterableComponent : public NMModelComponent
 {
-	Q_OBJECT
+    Q_OBJECT
 
     Q_PROPERTY(unsigned int IterationStep READ getIterationStep WRITE setIterationStep)
     //Q_PROPERTY(QString IterationStepExpression READ getIterationStepExpression WRITE setIterationStepExpression)
@@ -144,7 +142,7 @@ public:
 
     virtual ~NMIterableComponent(void);
 
-	void setInternalStartComponent (NMModelComponent* comp )
+    void setInternalStartComponent (NMModelComponent* comp )
         {this->mProcessChainStart = comp;}
 
     /*! Returns the first sub component referenced by the doubly linked
@@ -185,8 +183,10 @@ public:
     /*! Looks for the named sub component and either returns a valid pointer or NULL.*/
     NMModelComponent* findModelComponent(const QString& compName );
 
-    /*! Looks for a subcomponent with the given userId */
-    NMModelComponent* findComponentByUserId(const QString& userId);
+    /*! Looks for a subcomponent with the given userId and timeLevel
+     *  if timeLevel < 0 then components on all timeLevels are considered
+     */
+    NMModelComponent* findComponentByUserId(const QString& userId, const int timeLevel=-1);
 
     /*! Find upstream component by user id */
     NMModelComponent* findUpstreamComponentByUserId(const QString& userId);
@@ -222,8 +222,8 @@ public:
     void destroySubComponents(QMap<QString, NMModelComponent*>& repo);
 
     void mapTimeLevels(unsigned int startLevel,
-    		QMap<unsigned int,
-    		QMap<QString, NMModelComponent*> >& timeLevelMap);
+            QMap<unsigned int,
+            QMap<QString, NMModelComponent*> >& timeLevelMap);
 
     unsigned int getIterationStep(void);
     void setIterationStep(unsigned int step);
@@ -231,12 +231,16 @@ public:
 
     bool isSubComponent(NMModelComponent* comp);
 
+
+    /*! recursive function to get all upstream pipeline components */
+    void getUpstreamPipelineComponents(QStringList &upstrPipeComps);
+
     /* This method identifies executable sub components on the specified
      * time level. Note executable components are components which don't
      * serve as input to any other component on the specified time level.
      */
     const QStringList findExecutableComponents(unsigned int timeLevel,
-    		int step);
+            int step);
 
     NMModelComponentIterator getComponentIterator();
 
@@ -255,7 +259,7 @@ public:
      *
      */
     void createExecSequence(QList<QStringList>& execList,
-    		unsigned int timeLevel, int step);
+            unsigned int timeLevel, int step);
 
 signals:
     void signalProgress(float);
@@ -289,23 +293,23 @@ protected:
      *  largest index. returns -1, if comp is not exec comp.
      */
     int isCompExecComp(const QList<QStringList>& execList,
-    		const QString& compName);
+            const QString& compName);
 
     std::vector<int> findSourceComp(const QList<QStringList>& execList,
-    		const QString& compName);
+            const QString& compName);
 
     std::vector<int> findTargetComp(const QList<QStringList>& execList,
-    		const QString& compName, int step);
+            const QString& compName, int step);
 
     int isInExecList(const QList<QStringList>& execList,
-    		const QString& compName);
+            const QString& compName);
 
 
     virtual void iterativeComponentUpdate(const QMap<QString, NMModelComponent*>& repo,
-    		unsigned int minLevel, unsigned int maxLevel)=0;//{};
+            unsigned int minLevel, unsigned int maxLevel)=0;//{};
     virtual void componentUpdateLogic(const QMap<QString, NMModelComponent*>& repo,
-    		unsigned int minLevel, unsigned int maxLevel,
-    		unsigned int step);
+            unsigned int minLevel, unsigned int maxLevel,
+            unsigned int step);
 
 private:
     static const std::string ctx;

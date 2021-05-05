@@ -33,6 +33,8 @@
 #include "itkLinearInterpolateImageFunction.h"
 #include "itkBSplineInterpolateImageFunction.h"
 #include "itkNearestNeighborInterpolateImageFunction.h"
+#include "itkMeanImageFunction.h"
+#include "itkMedianImageFunction.h"
 
 namespace otb
 {
@@ -48,6 +50,9 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
       m_EdgePaddingValue(),
       m_CheckOutputBounds(true),
       m_Interpolator(),
+      //m_AverageFunc(),
+      m_MeanOperator(),
+      m_MedianOperator(),
       m_ReachableOutputRegion(),
       m_InterpolationMethod("NearestNeighbour")
 {
@@ -273,16 +278,31 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
 
 
     // pad input requested region for interpolation
+    unsigned int pad = 0;
     if (    this->m_InterpolationMethod == "NearestNeighbour"
          || this->m_InterpolationMethod == "Linear"
+         || this->m_InterpolationMethod == "Mean"
+         || this->m_InterpolationMethod == "Median"
        )
     {
-        inRegion.PadByRadius(static_cast<unsigned int>(1));
+        //inRegion.PadByRadius(static_cast<unsigned int>(1));
+        pad = 1;
     }
     else
     {
-        inRegion.PadByRadius(static_cast<unsigned int>(2));
+        //inRegion.PadByRadius(static_cast<unsigned int>(2));
+        pad = 2;
     }
+
+    if (m_MeanOperator.IsNotNull())
+    {
+        pad = m_MeanOperator->GetNeighborhoodRadius() > pad ? m_MeanOperator->GetNeighborhoodRadius() : pad;
+    }
+    else if (m_MedianOperator.IsNotNull())
+    {
+        pad = m_MedianOperator->GetNeighborhoodRadius() > pad ? m_MedianOperator->GetNeighborhoodRadius() : pad;
+    }
+    inRegion.PadByRadius(pad);
 
     // make sure, we don't go over the largest possible
     // region of the input
@@ -312,18 +332,57 @@ void
 NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
 ::SetInterpolatorFromMethodString()
 {
-    typedef typename itk::BSplineInterpolateImageFunction<InputImageType, TInterpolatorPrecision> SplineType;
-    typedef typename itk::NearestNeighborInterpolateImageFunction<InputImageType, TInterpolatorPrecision> NearestType;
-    typedef typename itk::LinearInterpolateImageFunction<InputImageType, TInterpolatorPrecision> LinearType;
+    using SplineType =  typename itk::BSplineInterpolateImageFunction<InputImageType, TInterpolatorPrecision>;
+    using NearestType = typename itk::NearestNeighborInterpolateImageFunction<InputImageType, TInterpolatorPrecision>;
+    using LinearType =  typename itk::LinearInterpolateImageFunction<InputImageType, TInterpolatorPrecision>;
+
+    const InputImageType* inimg = this->GetInput();
+    if (inimg == nullptr)
+    {
+        return;
+    }
+    const OutputImageType* outimg = this->GetOutput();
+    if (outimg == nullptr)
+    {
+        return;
+    }
+
+    double outSpacing = outimg->GetSpacing()[0];
+    double inSpacing = inimg->GetSpacing()[0];
+
+    unsigned int radius = 0;
+    if (outSpacing > inSpacing)
+    {
+        radius = static_cast<unsigned int>(((0.5*outSpacing)/(inSpacing+0.5*inSpacing))+0.5);
+        itkDebugMacro(<< "avg method: " << m_InterpolationMethod
+                      << " | radius: " << radius);
+    }
+    else
+    {
+        if (    m_InterpolationMethod == "Mean"
+             || m_InterpolationMethod == "Median"
+           )
+        {
+            itkWarningMacro(<< "You should use an interpolation method "
+                            << "if the output pixel size is smaller than "
+                            << "then the input pixel size!");
+        }
+    }
 
     if (!m_InterpolationMethod.empty())
     {
         std::string methods[] = {"NearestNeighbour", "Linear", "BSpline0",
-                                 "BSpline1", "BSpline2", "BSpline3", "BSpline4", "BSpline5"};
-        int method = -1;
-        for (int k=0; k < 8; ++k)
+                                 "BSpline1", "BSpline2", "BSpline3", "BSpline4",
+                                 "BSpline5", "Mean", "Median"};
+        std::string um = m_InterpolationMethod;
+        std::transform(um.begin(), um.end(), um.begin(), ::tolower);
+
+        int method = 0;
+        for (int k=0; k < 10; ++k)
         {
-            if (methods[k] == m_InterpolationMethod)
+            std::string m = methods[k];
+            std::transform(m.begin(), m.end(), m.begin(), ::tolower);
+            if (m.compare(um) == 0)
             {
                 method = k;
                 break;
@@ -333,51 +392,63 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
         switch (method)
         {
         case 0: //"NearestNeighbour":
-            m_Interpolator = NearestType::New();
+            m_Interpolator = dynamic_cast<InterpolatorType*>(NearestType::New().GetPointer());
             break;
         case 1: //"Linear":
-            m_Interpolator = LinearType::New();
+            m_Interpolator = dynamic_cast<InterpolatorType*>(LinearType::New().GetPointer());
             break;
         case 2: //"BSpline0":
         {
-            typename SplineType::Pointer spline = SplineType::New();
+            typename SplineType::Pointer spline = SplineType::New();//dynamic_cast<InterpolatorType*>(SplineType::New().GetPointer());
             spline->SetSplineOrder(0);
             m_Interpolator = spline;
         }
             break;
         case 3: //"BSpline1":
         {
-            typename SplineType::Pointer spline = SplineType::New();
+            typename SplineType::Pointer spline = SplineType::New();//dynamic_cast<InterpolatorType*>(SplineType::New().GetPointer());
             spline->SetSplineOrder(1);
             m_Interpolator = spline;
         }
             break;
         case 4: //"BSpline2":
         {
-            typename SplineType::Pointer spline = SplineType::New();
+            typename SplineType::Pointer spline = SplineType::New();//dynamic_cast<InterpolatorType*>(SplineType::New().GetPointer());
             spline->SetSplineOrder(2);
             m_Interpolator = spline;
         }
             break;
         case 5: //"BSpline3":
         {
-            typename SplineType::Pointer spline = SplineType::New();
+            typename SplineType::Pointer spline = SplineType::New();//dynamic_cast<InterpolatorType*>(SplineType::New().GetPointer());
             spline->SetSplineOrder(3);
             m_Interpolator = spline;
         }
             break;
         case 6: //"BSpline4":
         {
-            typename SplineType::Pointer spline = SplineType::New();
+            typename SplineType::Pointer spline = SplineType::New();//dynamic_cast<InterpolatorType*>(SplineType::New().GetPointer());
             spline->SetSplineOrder(4);
             m_Interpolator = spline;
         }
             break;
         case 7: //"BSpline5":
         {
-            typename SplineType::Pointer spline = SplineType::New();
+            typename SplineType::Pointer spline = SplineType::New();//dynamic_cast<InterpolatorType*>(SplineType::New().GetPointer());
             spline->SetSplineOrder(5);
             m_Interpolator = spline;
+        }
+            break;
+        case 8: //"Mean":
+        {
+            m_MeanOperator = MeanImgFuncType::New();
+            m_MeanOperator->SetNeighborhoodRadius(radius);
+        }
+            break;
+        case 9: //"Median":
+        {
+            m_MedianOperator = MedianImgFuncType::New();
+            m_MedianOperator->SetNeighborhoodRadius(radius);
         }
             break;
         default:
@@ -394,15 +465,24 @@ void
 NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
 ::BeforeThreadedGenerateData()
 {
-    this->SetNumberOfThreads(1);
-
-    if ( m_Interpolator.IsNull() )
+    if ( m_Interpolator.IsNull() && m_MedianOperator.IsNull() && m_MeanOperator.IsNull() )
     {
         itkExceptionMacro(<< "Interpolator not set");
     }
 
     // Connect input image to interpolator
-    m_Interpolator->SetInputImage( this->GetInput() );
+    if(m_Interpolator.IsNotNull())
+    {
+        m_Interpolator->SetInputImage( this->GetInput() );
+    }
+    else if (m_MeanOperator.IsNotNull())
+    {
+        m_MeanOperator->SetInputImage( this->GetInput() );
+    }
+    else
+    {
+        m_MedianOperator->SetInputImage( this->GetInput() );
+    }
 
     unsigned int nComponents
             = itk::DefaultConvertPixelTraits<OutputPixelType>::GetNumberOfComponents(
@@ -460,13 +540,19 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
     this->GetOutput()->TransformPhysicalPointToContinuousIndex(inLRp,outLR);
 
     IndexType outputIndex;
-    // This needs to take into account negative spacing
-    outputIndex[0] = vcl_ceil(std::min(outUL[0],outLR[0]));
-    outputIndex[1] = vcl_ceil(std::min(outUL[1],outLR[1]));
-
     SizeType outputSize;
-    outputSize[0] = vcl_floor(std::max(outUL[0],outLR[0])) - outputIndex[0] + 1;
-    outputSize[1] = vcl_floor(std::max(outUL[1],outLR[1])) - outputIndex[1] + 1;
+    // This needs to take into account negative spacing
+    for (int d=0; d < ImageDimension; ++d)
+    {
+        outputIndex[d] = vcl_ceil(std::min(outUL[d],outLR[d]));
+        outputSize[d] = vcl_floor(std::max(outUL[d],outLR[d])) - outputIndex[d] + 1;
+    }
+
+//    outputIndex[0] = vcl_ceil(std::min(outUL[0],outLR[0]));
+//    outputIndex[1] = vcl_ceil(std::min(outUL[1],outLR[1]));
+
+//    outputSize[0] = vcl_floor(std::max(outUL[0],outLR[0])) - outputIndex[0] + 1;
+//    outputSize[1] = vcl_floor(std::max(outUL[1],outLR[1])) - outputIndex[1] + 1;
 
     m_ReachableOutputRegion.SetIndex(outputIndex);
     m_ReachableOutputRegion.SetSize(outputSize);
@@ -547,7 +633,18 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
 
         while(!outIt.IsAtEndOfLine())
         {
-            interpolatorValue = m_Interpolator->EvaluateAtContinuousIndex(inCIndex);
+            if (m_Interpolator.IsNotNull())
+            {
+                interpolatorValue = m_Interpolator->EvaluateAtContinuousIndex(inCIndex);
+            }
+            else if (m_MeanOperator.IsNotNull())
+            {
+                interpolatorValue = m_MeanOperator->EvaluateAtContinuousIndex(inCIndex);
+            }
+            else
+            {
+                interpolatorValue = m_MedianOperator->EvaluateAtContinuousIndex(inCIndex);
+            }
 
             // Cast and check bounds
             this->CastPixelWithBoundsChecking(interpolatorValue,minOutputValue,maxOutputValue,outputValue);
@@ -579,7 +676,18 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
 ::AfterThreadedGenerateData()
 {
     // Disconnect input image from the interpolator
-    m_Interpolator->SetInputImage(ITK_NULLPTR);
+    if (m_Interpolator.IsNotNull())
+    {
+        m_Interpolator->SetInputImage(ITK_NULLPTR);
+    }
+    else if (m_MeanOperator.IsNotNull())
+    {
+        m_MeanOperator->SetInputImage(ITK_NULLPTR);
+    }
+    else if (m_MedianOperator.IsNotNull())
+    {
+        m_MedianOperator->SetInputImage(ITK_NULLPTR);
+    }
 }
 
 

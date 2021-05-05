@@ -41,8 +41,9 @@
 #ifndef otbNMGridResampleImageFilter_h
 #define otbNMGridResampleImageFilter_h
 
-
 #include "itkImageToImageFilter.h"
+#include "itkMeanImageFunction.h"
+#include "itkMedianImageFunction.h"
 #include "itkLinearInterpolateImageFunction.h"
 #include "itkDefaultConvertPixelTraits.h"
 
@@ -81,23 +82,30 @@ public:
   typedef typename OutputImageType::RegionType                            OutputImageRegionType;
   typedef typename TOutputImage::PixelType                                OutputPixelType;
 
-  
+
   typedef itk::DefaultConvertPixelTraits<OutputPixelType>                 OutputPixelConvertType;
   typedef typename OutputPixelConvertType::ComponentType                  OutputPixelComponentType;
-  
+
   /** Interpolator type */
   typedef itk::InterpolateImageFunction<InputImageType,
                                         TInterpolatorPrecision>           InterpolatorType;
+
+  using MeanImgFuncType = itk::MeanImageFunction<InputImageType,
+                                    TInterpolatorPrecision> ;
+  using MedianImgFuncType = itk::MedianImageFunction<InputImageType,
+                                    TInterpolatorPrecision>;
+  using MeanImgFuncTypePointer = typename MeanImgFuncType::Pointer;
+  using MedianImgFuncTypePointer = typename MedianImgFuncType::Pointer;
+
+
   typedef typename InterpolatorType::Pointer                              InterpolatorPointerType;
-  typedef itk::LinearInterpolateImageFunction<InputImageType,
-                                              TInterpolatorPrecision>     DefaultInterpolatorType;
   typedef typename InterpolatorType::OutputType                           InterpolatorOutputType;
   typedef itk::DefaultConvertPixelTraits< InterpolatorOutputType >        InterpolatorConvertType;
   typedef typename InterpolatorConvertType::ComponentType                 InterpolatorComponentType;
-  
+
   /** Input pixel continuous index typdef */
-  typedef typename itk::ContinuousIndex<double,InputImageDimension >      ContinuousInputIndexType;
-  
+  typedef typename itk::ContinuousIndex<TInterpolatorPrecision,InputImageDimension >      ContinuousInputIndexType;
+
   /** ImageBase typedef */
   typedef itk::ImageBase<OutputImageType::ImageDimension>                 ImageBaseType;
   typedef typename ImageBaseType::SpacingType                             SpacingType;
@@ -105,10 +113,10 @@ public:
   typedef typename SizeType::SizeValueType                                SizeValueType;
   typedef typename ImageBaseType::PointType                               PointType;
   typedef typename ImageBaseType::IndexType                               IndexType;
-  
+
   itkSetMacro(OutputStartIndex,IndexType);
   itkGetConstReferenceMacro(OutputStartIndex,IndexType);
-  
+
   void SetSize(SizeType sz);
   void SetSize(SizeValueType* vsz);
 
@@ -132,7 +140,7 @@ public:
   itkSetMacro(CheckOutputBounds,bool);
   itkGetMacro(CheckOutputBounds,bool);
   itkBooleanMacro(CheckOutputBounds);
-  
+
   itkSetObjectMacro(Interpolator,InterpolatorType);
   itkGetObjectMacro(Interpolator,InterpolatorType);
 
@@ -150,16 +158,18 @@ public:
    *  - 'BSpline3'
    *  - 'BSpline4'
    *  - 'BSpline5'
+   *  - 'Mean'
+   *  - 'Median'
    */
   itkSetMacro( InterpolationMethod, std::string& );
   itkGetMacro( InterpolationMethod, std::string );
-  
+
   /** Import output parameters from a given image */
   void SetOutputParametersFromImage(const ImageBaseType * image);
 
   /** Method Compute the Modified Time based on changed to the components. */
   itk::ModifiedTimeType GetMTime(void) const ITK_OVERRIDE;
-  
+
 protected:
   NMGridResampleImageFilter();
 
@@ -171,7 +181,7 @@ protected:
   void GenerateInputRequestedRegion() ITK_OVERRIDE;
 
   void BeforeThreadedGenerateData() ITK_OVERRIDE;
-  
+
   void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId) ITK_OVERRIDE;
 
   void AfterThreadedGenerateData() ITK_OVERRIDE;
@@ -185,13 +195,13 @@ protected:
   {
     // Method imported from itk::ResampleImageFilter
     const unsigned int nComponents = InterpolatorConvertType::GetNumberOfComponents(value);
-    
+
     itk::NumericTraits<OutputPixelType>::SetLength( outputValue, nComponents );
-    
+
     for (unsigned int n=0; n<nComponents; n++)
       {
       InterpolatorComponentType component = InterpolatorConvertType::GetNthComponent( n, value );
-      
+
       if ( m_CheckOutputBounds && component < minComponent )
         {
         OutputPixelConvertType::SetNthComponent( n, outputValue, static_cast<OutputPixelComponentType>( minComponent ) );
@@ -207,8 +217,8 @@ protected:
         }
       }
   }
-  
-  
+
+
   void PrintSelf(std::ostream& os, itk::Indent indent) const ITK_OVERRIDE;
 
 private:
@@ -228,14 +238,18 @@ private:
                                                  // casting?
   std::string             m_InterpolationMethod; // string specifying the
                                                  // interpolation method
+
   InterpolatorPointerType m_Interpolator;        // Interpolator used
                                                  // for resampling
+
+  MedianImgFuncTypePointer m_MedianOperator;
+  MeanImgFuncTypePointer m_MeanOperator;
 
   OutputImageRegionType   m_ReachableOutputRegion; // Internal
                                                    // variable for
                                                    // speed-up. Computed
                                                    // in BeforeThreadedGenerateData
-  
+
 };
 
 } // namespace otb

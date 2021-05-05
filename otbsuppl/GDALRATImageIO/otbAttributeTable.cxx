@@ -30,6 +30,8 @@
 #include <sstream>
 #include <algorithm>
 
+#include "itkIndent.h"
+
 namespace otb
 {
 
@@ -37,58 +39,58 @@ namespace otb
 // ---------------------  PUBLIC GETTER and SETTER functions to manage the Attribute table
 int AttributeTable::GetNumCols()
 {
-	return this->m_vNames.size();
+    return this->m_vNames.size();
 }
 
 long long AttributeTable::GetNumRows()
 {
-	return m_iNumRows;
+    return m_iNumRows;
 }
 
 int
 AttributeTable::ColumnExists(const std::string& sColName)
 {
-    //std::string colname = sColName;
-    //std::transform(sColName.begin(), sColName.end(), colname.begin(), ::tolower);
-	int idx = -1;
-	for (int c=0; c < m_vNames.size(); ++c)
-	{
-		if (::strcmp(m_vNames[c].c_str(), sColName.c_str()) == 0)
-		{
-			idx = c;
-			break;
-		}
-	}
-	return idx;
+//    std::string colname = sColName;
+//    std::transform(sColName.begin(), sColName.end(), colname.begin(), ::tolower);
+    int idx = -1;
+    for (int c=0; c < m_vNames.size(); ++c)
+    {
+        if (::strcmp(m_vNames[c].c_str(), sColName.c_str()) == 0)
+        {
+            idx = c;
+            break;
+        }
+    }
+    return idx;
 }
 
 
 void AttributeTable::SetBandNumber(int iBand)
 {
-	if (iBand > 0)
-		this->m_iBand = iBand;
+    if (iBand > 0)
+        this->m_iBand = iBand;
 }
 
 void AttributeTable::SetImgFileName(const std::string& sFileName)
 {
-	this->m_sImgName = sFileName;
+    this->m_sImgName = sFileName;
 }
 
 std::string
 AttributeTable::GetColumnName(int idx)
 {
-	std::string ret = "";
-	if (idx < 0 || idx > m_vNames.size()-1)
-		return ret;
-	return m_vNames.at(idx);
+    std::string ret = "";
+    if (idx < 0 || idx > m_vNames.size()-1)
+        return ret;
+    return m_vNames.at(idx);
 }
 
 AttributeTable::TableColumnType
 AttributeTable::GetColumnType(int idx)
 {
-	if (idx < 0 || idx > m_vNames.size()-1)
-		return ATTYPE_UNKNOWN;
-	return m_vTypes.at(idx);
+    if (idx < 0 || idx > m_vNames.size()-1)
+        return ATTYPE_UNKNOWN;
+    return m_vTypes.at(idx);
 }
 
 //void
@@ -346,71 +348,71 @@ AttributeTable::GetColumnType(int idx)
 
 int AttributeTable::GetBandNumber(void)
 {
-	return this->m_iBand;
+    return this->m_iBand;
 }
 
 std::string AttributeTable::GetImgFileName(void)
 {
-	return this->m_sImgName;
+    return this->m_sImgName;
 }
 
 // ------------------------------------------------------- other useful public functions
 void AttributeTable::Print(std::ostream& os, itk::Indent indent, int nrows)
 {
-	os << indent << "\n";
-	os << indent << "OTB raster attribute table print-out\n";
-	os << indent << "File: " <<	this->m_sImgName << "\n";
-	os << indent << "Band: " << this->m_iBand << "\n";
-	os << indent << "Columns: " << this->m_vNames.size() << "\n";
-	os << indent << "Rows: " << this->m_iNumRows << "\n";
-	os << "\n";
+    os << indent << "\n";
+    os << indent << "OTB raster attribute table print-out\n";
+    os << indent << "File: " <<	this->m_sImgName << "\n";
+    os << indent << "Band: " << this->m_iBand << "\n";
+    os << indent << "Columns: " << this->m_vNames.size() << "\n";
+    os << indent << "Rows: " << this->m_iNumRows << "\n";
+    os << "\n";
 
-	itk::Indent ii = indent.GetNextIndent();
-	itk::Indent iii = ii.GetNextIndent();
+    itk::Indent ii = indent.GetNextIndent();
+    itk::Indent iii = ii.GetNextIndent();
 
-	os << indent << "Columns:\n";
-	for (int c = 0; c < this->m_vNames.size(); c++)
-		os << ii << c << ": " << this->m_vNames[c] << " (" << typestr(this->m_vTypes[c]) << ")\n";
+    os << indent << "Columns:\n";
+    for (int c = 0; c < this->m_vNames.size(); c++)
+        os << ii << c << ": " << this->m_vNames[c] << " (" << typestr(this->m_vTypes[c]) << ")\n";
 
-	os << indent << "Rows:\n";
-	char val[256];
-	nrows = nrows < this->m_iNumRows ? nrows : this->m_iNumRows;
-	for (int r=0; r < nrows; ++r)
-	{
-		os << ii << "#" << r << " - ROW\n";
-		for (int c=0; c < this->m_vNames.size(); c++)
-		{
-			switch (this->GetColumnType(c))
-			{
-			case ATTYPE_DOUBLE:
-				::sprintf(val, "%g", this->GetDblValue(c, r));
-				break;
-			case ATTYPE_INT:
+    os << indent << "Rows:\n";
+    char val[256];
+    nrows = nrows < this->m_iNumRows ? nrows : this->m_iNumRows;
+    for (int r=0; r < nrows; ++r)
+    {
+        os << ii << "#" << r << " - ROW\n";
+        for (int c=0; c < this->m_vNames.size(); c++)
+        {
+            switch (this->GetColumnType(c))
+            {
+            case ATTYPE_DOUBLE:
+                ::sprintf(val, "%g", this->GetDblValue(c, r));
+                break;
+            case ATTYPE_INT:
                 ::sprintf(val, "%lld", this->GetIntValue(c, r));
-				break;
-			case ATTYPE_STRING:
-				::sprintf(val, "%s", this->GetStrValue(c, r).c_str());
-				break;
-			default:
-				::sprintf(val, "%s", this->m_sNodata.c_str());
-			}
-			os << iii << this->m_vNames[c] << ": " << val << "\n";
-		}
-	}
+                break;
+            case ATTYPE_STRING:
+                ::sprintf(val, "%s", this->GetStrValue(c, r).c_str());
+                break;
+            default:
+                ::sprintf(val, "%s", this->m_sNodata.c_str());
+            }
+            os << iii << this->m_vNames[c] << ": " << val << "\n";
+        }
+    }
 }
 
 void AttributeTable::PrintStructure(std::ostream& os, itk::Indent indent)
 {
-	  itk::Indent i = indent;
-	  itk::Indent ii = i.GetNextIndent();
-	  itk::Indent iii = ii.GetNextIndent();
-	  os << i << "Raster Attribute Table, band #" << this->GetBandNumber() << " ('" <<
-			  this->GetImgFileName() << "')\n";
-	  os << ii << "#columns: " << this->GetNumCols() << ", #rows: " << this->GetNumRows() << "\n";
-	  os << ii << "ColumnIndex: ColumnName (ColumnType):\n";
+      itk::Indent i = indent;
+      itk::Indent ii = i.GetNextIndent();
+      itk::Indent iii = ii.GetNextIndent();
+      os << i << "Raster Attribute Table, band #" << this->GetBandNumber() << " ('" <<
+              this->GetImgFileName() << "')\n";
+      os << ii << "#columns: " << this->GetNumCols() << ", #rows: " << this->GetNumRows() << "\n";
+      os << ii << "ColumnIndex: ColumnName (ColumnType):\n";
 
-	  for (int c = 0; c < m_vNames.size(); c++)
-		  os << iii << c << ": " << m_vNames[c] << " (" << typestr(m_vTypes[c]) << ")\n";
+      for (int c = 0; c < m_vNames.size(); c++)
+          os << iii << c << ": " << m_vNames[c] << " (" << typestr(m_vTypes[c]) << ")\n";
 }
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -418,44 +420,44 @@ void AttributeTable::PrintStructure(std::ostream& os, itk::Indent indent)
 
 std::string AttributeTable::typestr(TableColumnType type)
 {
-	switch(type)
-	{
-	case ATTYPE_DOUBLE:
-		return "double";
-		break;
-	case ATTYPE_INT:
-		return "integer";
-		break;
-	case ATTYPE_STRING:
-		return "string";
-		break;
-	default:
-		return "unknown";
-	}
+    switch(type)
+    {
+    case ATTYPE_DOUBLE:
+        return "double";
+        break;
+    case ATTYPE_INT:
+        return "integer";
+        break;
+    case ATTYPE_STRING:
+        return "string";
+        break;
+    default:
+        return "unknown";
+    }
 }
 
 int
 AttributeTable::valid(const std::string& sColName, int idx)
 {
-	//check if the column exists -> column exists returns the zero-based index of the
-	//particular column within the set of columns or -1 if the column does not exist
-	int colidx = ColumnExists(sColName);
-	if (colidx < 0)
-		return -1;
+    //check if the column exists -> column exists returns the zero-based index of the
+    //particular column within the set of columns or -1 if the column does not exist
+    int colidx = ColumnExists(sColName);
+    if (colidx < 0)
+        return -1;
 
-	//check for the index
-	if (idx > m_iNumRows - 1 || idx < 0)
-		return -1;
+    //check for the index
+    if (idx > m_iNumRows - 1 || idx < 0)
+        return -1;
 
-	return colidx;
+    return colidx;
 }
 
 
 AttributeTable::AttributeTable()
-	: m_iNumRows(0),
-	  m_iBand(1),
-	  m_iNodata(-std::numeric_limits<long>::max()),
-	  m_dNodata(-std::numeric_limits<double>::max()),
+    : m_iNumRows(0),
+      m_iBand(1),
+      m_iNodata(-std::numeric_limits<long>::max()),
+      m_dNodata(-std::numeric_limits<double>::max()),
       m_sNodata("NULL"),
       m_idColName("")
 {

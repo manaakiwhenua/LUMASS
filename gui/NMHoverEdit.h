@@ -58,7 +58,8 @@ signals:
     void signalCompProcChanged();
 
 public slots:
-
+    void forwardModelConfigChanged();
+    void updateExpressionPreview();
 
 protected slots:
     void applyChanges();
@@ -66,7 +67,6 @@ protected slots:
     void setTreeLevel(int level){mPropLevel = level;}
     void updateModelItem(QTreeWidgetItem* item, int col);
     void assistEditing();
-    void updateExpressionPreview();
     void showExpressionPreview(bool preview);
     bool eventFilter(QObject *obj, QEvent *event);
     void closeEvent(QCloseEvent *event);

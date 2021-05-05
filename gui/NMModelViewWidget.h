@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -37,6 +37,8 @@
 #include <QGraphicsView>
 #include <QRectF>
 
+#include <yaml-cpp/yaml.h>
+
 #include "NMProcessComponentItem.h"
 #include "NMComponentLinkItem.h"
 #include "NMAggregateComponentItem.h"
@@ -60,11 +62,11 @@ class NMLogger;
 
 class NMModelViewWidget: public QWidget
 {
-	Q_OBJECT
+    Q_OBJECT
 
 public:
-	NMModelViewWidget(QWidget* parent=0, Qt::WindowFlags f=0);
-	virtual ~NMModelViewWidget();
+    NMModelViewWidget(QWidget* parent=0, Qt::WindowFlags f=0);
+    virtual ~NMModelViewWidget();
 
     NMModelScene* getScene(void){return mModelScene;}
     void addWidget(QWidget* w);
@@ -75,14 +77,14 @@ public:
 public slots:
 
     /*** DEPRECATED - editing done via HoverEdit dialog and tree-built-in editors ***/
-	void callEditComponentDialog(const QString &);
-	void linkProcessComponents(NMComponentLinkItem* link);
-	void createProcessComponent(NMProcessComponentItem* procItem,
-			const QString& procName, QPointF scenePos);
-	void createAggregateComponent(const QString& compType);
-	void createSequentialIterComponent();
-	void createConditionalIterComponent();
-	void ungroupComponents();
+    void callEditComponentDialog(const QString &);
+    void linkProcessComponents(NMComponentLinkItem* link);
+    void createProcessComponent(NMProcessComponentItem* procItem,
+            const QString& procName, QPointF scenePos);
+    void createAggregateComponent(const QString& compType);
+    void createSequentialIterComponent();
+    void createConditionalIterComponent();
+    void ungroupComponents();
     void setGroupTimeLevel();
     void addDeltaTimeLevel();
 
@@ -99,19 +101,22 @@ public slots:
 
     //void compProcChanged();
 
-	void executeModel(void);
-	void resetModel(void);
+    void executeModel(void);
+    void resetModel(void);
     void zoomIn() {zoom(1);}
     void zoomOut() {zoom(-1);}
     void zoom(int delta);
     void zoomToContent(void);
     void zoomToComponent(const QString& name);
     void zoomToComponent(const QUrl& url);
+    void slotFollowFocus(bool follow);
+    void focusExecComp(void);
     void updateTreeEditor(const QString&);
     void updateToolContextBox(void);
     void updateToolContext(const QString& tool);
     void changeFont(void);
     void changeColour(void);
+    void translateModelView(qreal chgval);
     void searchModelComponent(void);
     void importModel(QDataStream& lmv, const QMap<QString, QString>& nameRegister,
                      bool move);
@@ -120,8 +125,8 @@ public slots:
     void moveComponents(const QList<QGraphicsItem*>& moveList,
                         const QPointF & source, const QPointF & target);
 
-	void callItemContextMenu(QGraphicsSceneMouseEvent* event,
-			QGraphicsItem* item);
+    void callItemContextMenu(QGraphicsSceneMouseEvent* event,
+            QGraphicsItem* item);
 
     bool exportItems(const QList<QGraphicsItem*>& items, const QString& filename,
                      bool bSaveRoot);
@@ -133,22 +138,25 @@ public slots:
     void slotModelChanged(const QString& itemName);
     void slotComponentChanged();
 
-	/*! Reflects changes of input components for the first
-	 *  iteration in the model view (i.e. deletes, draws
-	 *  links between components)*/
-	void processProcInputChanged(QList<QStringList> inputs);
+    /*! Reflects changes of input components for the first
+     *  iteration in the model view (i.e. deletes, draws
+     *  links between components)*/
+    void processProcInputChanged(QList<QStringList> inputs);
+
+    void processNumIterExprChanges();
 
 signals:
-	void linkToolToggled(bool);
-	void selToolToggled(bool);
-	void moveToolToggled(bool);
+    void linkToolToggled(bool);
+    void selToolToggled(bool);
+    void moveToolToggled(bool);
     void zoomInToolToggled(bool);
     void zoomOutToolToggled(bool);
-	void requestModelExecution(const QString& compName);
-	void requestModelReset(const QString& compName);
-	void requestModelAbortion(void);
-	void widgetIsExiting(void);
+    void requestModelExecution(const QString& compName);
+    void requestModelReset(const QString& compName);
+    void requestModelAbortion(void);
+    void widgetIsExiting(void);
     void modelViewActivated(QObject* obj);
+    void modelConfigurationChanged();
     void unselectItems(void);
     void idleMode();
     void signalModelChanged(const QString& itemName);
@@ -156,24 +164,24 @@ signals:
     void signalSaveTimerStop();
 
 protected:
-	void dragEnterEvent(QDragEnterEvent* event);
-	void dragMoveEvent(QDragMoveEvent* event);
-	void dropEvent(QDropEvent* event);
+    void dragEnterEvent(QDragEnterEvent* event);
+    void dragMoveEvent(QDragMoveEvent* event);
+    void dropEvent(QDropEvent* event);
 
 protected slots:
-	void removeObjFromOpenEditsList(QObject* obj);
+    void removeObjFromOpenEditsList(QObject* obj);
     void deleteItem(bool bConfirm=true);
-	void deleteLinkComponentItem(NMComponentLinkItem* linkItem);
-	void deleteProcessComponentItem(NMProcessComponentItem* procItem);
-	void deleteAggregateComponentItem(NMAggregateComponentItem* aggrItem);
-	void deleteEmptyComponent(NMModelComponent* comp);
+    void deleteLinkComponentItem(NMComponentLinkItem* linkItem);
+    void deleteProcessComponentItem(NMProcessComponentItem* procItem);
+    void deleteAggregateComponentItem(NMAggregateComponentItem* aggrItem);
+    void deleteEmptyComponent(NMModelComponent* comp);
     void deleteProxyWidget(QGraphicsProxyWidget* pw);
-	int shareLevel(QList<QGraphicsItem*> list);
-	NMModelComponent* componentFromItem(QGraphicsItem* item);
-	QString getComponentItemTitle(QGraphicsItem* item);
+    int shareLevel(QList<QGraphicsItem*> list);
+    NMModelComponent* componentFromItem(QGraphicsItem* item);
+    QString getComponentItemTitle(QGraphicsItem* item);
     void saveBenchItems();
     void loadBenchItems(const QString& fileName);
-	void reportIsModelControllerBusy(bool);
+    void reportIsModelControllerBusy(bool);
     void callLoadItems()
         {loadBenchItems(QString());}
 
@@ -193,8 +201,8 @@ protected slots:
     void unfoldAggrItem();
 
 
-	void getSubComps(NMModelComponent* comp, QStringList& subs);
-	void connectProcessItem(NMProcess* proc, NMProcessComponentItem* procItem);
+    void getSubComps(NMModelComponent* comp, QStringList& subs);
+    void connectProcessItem(NMProcess* proc, NMProcessComponentItem* procItem);
     bool eventFilter(QObject* obj, QEvent* e);
 
     void autoSaveCurrentModel();
@@ -207,10 +215,12 @@ protected slots:
     void bufferComponents(QBuffer*& lmxBuf, QBuffer*& lmvBuf, bool bRemove=false);
 
     void loadYAMLSettings(const QString& yamlFile);
-
+    void configureModel(const YAML::Node& modelConfig);
+    QVariant parseYamlSetting(const YAML::const_iterator& nit, const QObject* obj);
+    bool isYamlSequence(const YAML::Node& node);
 
 private:
-	void initItemContextMenu();
+    void initItemContextMenu();
     // identifies members of any one list, which are not present
     // in all of the other lists (i.e. inputs, which change over
     // iteration steps)
@@ -239,13 +249,14 @@ private:
 
     qreal mScaleFactor;
 
-	bool mbControllerIsBusy;
+    bool mbControllerIsBusy;
+    bool mbFollowFocus;
 
-	QGraphicsView* mModelView;
-	NMModelScene* mModelScene;
-	QMenu* mItemContextMenu;
+    QGraphicsView* mModelView;
+    NMModelScene* mModelScene;
+    QMenu* mItemContextMenu;
 
-	QThread* mModelRunThread;
+    QThread* mModelRunThread;
 
     QBuffer* mProvBufferDoc;
     QBuffer* mProvBufferVis;
@@ -253,34 +264,41 @@ private:
     QBuffer* mCopyBufferVis;
 
 
-	QPointF mLastScenePos;
+    QPointF mLastScenePos;
     QPointF mSceneDropPos;
-	QGraphicsItem* mLastItem;
-	NMModelController* mModelController;
+    QGraphicsItem* mLastItem;
+    NMModelController* mModelController;
 
-#ifdef BUILD_RASSUPPORT	
-	NMRasdamanConnectorWrapper* mRasConn;
-	RasdamanConnector* mPureRasConn;
+#ifdef BUILD_RASSUPPORT
+    NMRasdamanConnectorWrapper* mRasConn;
+    RasdamanConnector* mPureRasConn;
 #endif
-	
-	NMIterableComponent* mRootComponent;
+
+    NMIterableComponent* mRootComponent;
 
     QMap<NMModelComponent*,
         NMEditModelComponentDialog*> mOpenEditors;
 
     NMComponentEditor* mTreeCompEditor;
 
-	QMap<QString, QAction*> mActionMap;
+    QMap<QString, QAction*> mActionMap;
     NMLogger* mLogger;
 
     QComboBox* mToolContext;
     NMModelController* mToolContextController;
     QLineEdit* mModelPathEdit;
+    QLineEdit* mConfigPathEdit;
+
     QPushButton* mSaveModelBtn;
+    //QPushButton* mLoadConfigBtn;
     QString mAutoSaveName;
 
     QThread* mTimerThread;
     QTimer* mTimer;
+
+    QTimeLine* mTimeLine;
+    QPointF mNewCentre;
+    QPointF mOldCentre;
 
     static const std::string ctx;
 

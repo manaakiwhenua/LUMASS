@@ -129,6 +129,7 @@ protected slots:
     void zoom(int mode);
 
     void stretchColourRampToVisMinMax();
+    void importMultiDataSet(const QString& fn);
 
 private:
 

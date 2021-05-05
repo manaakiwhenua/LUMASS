@@ -29,8 +29,6 @@
 #include "NMLayer.h"
 
 #include "vtkPolyData.h"
-#include "vtkOGRLayerMapper.h"
-#include "vtkPolyDataMapper.h"
 #include "vtkActor.h"
 
 class NMVectorLayer: public NMLayer
@@ -50,7 +48,6 @@ public:
 	virtual void setDataSet(vtkDataSet* dataset);
 	virtual void setVisible(bool visible);
 
-	//virtual const vtkTable* getTable(void);
 	const vtkDataSet *getDataSet(void)
         {return this->mDataSet;}
 
@@ -75,15 +72,9 @@ public:
 	//	double getArea();
 	long getNumberOfFeatures(void);
 
-	// map unique values
-	//void mapUniqueValues();
-	//void mapSingleSymbol();
-
 public slots:
 	virtual void selectionChanged(const QItemSelection& newSel, const QItemSelection& oldSel);
 	virtual void writeDataSet(void);
-	//virtual void updateLayerSelection(QList<long> lstCellId,
-	//		QList<long> lstNMId, NMLayerSelectionType seltype);
 
 protected:
 #ifdef VTK_OPENGL2
@@ -108,14 +99,6 @@ protected:
 protected slots:
 	int updateAttributeTable(void);
     void updateSelectionColor();
-
-	//virtual void updateDataSet(QStringList& slAlteredColumns,
-	//		QStringList& slDeletedColumns);
-	//virtual void updateSelectionData(void);
-
-	// void createColourRamp
-
-//	void colorContours(double* rgba);
 
 private:
 

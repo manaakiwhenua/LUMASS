@@ -72,7 +72,7 @@
 #include "vtkDataSetAttributes.h"
 #include "vtkCamera.h"
 #include "vtkProperty.h"
-#include "QVTKOpenGLWidget.h"
+#include "QVTKOpenGLNativeWidget.h"
 #include "vtkCell.h"
 #include "vtkPolygon.h"
 #include "vtkPolyDataReader.h"
@@ -99,6 +99,10 @@
 
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
+
+#include <netcdf>
+#include <map>
+#include "nmNetCDFIO.h"
 
 // end
 
@@ -769,11 +773,11 @@ void ModelComponentList::addLayer(NMLayer* layer)
 	// adjust the number of layers per this render window and add the renderer
 	// to the render window
 	// add the renderer to the render window and update the widget
-    QVTKOpenGLWidget* qvtk = this->topLevelWidget()->findChild<QVTKOpenGLWidget*>(tr("qvtkWidget"));
+    QVTKOpenGLNativeWidget* qvtk = this->topLevelWidget()->findChild<QVTKOpenGLNativeWidget*>(tr("qvtkWidget"));
 
 	// we keep one layer more than required (and keep in mind that we've got the
 	// the background layer as well
-    qvtk->GetRenderWindow()->SetNumberOfLayers(nlayers+2);
+    qvtk->renderWindow()->SetNumberOfLayers(nlayers+2);
 
     //layer->setLayerPos(nlayers-1);
     vtkRenderer* scaleRen = const_cast<vtkRenderer*>(mwin->getScaleRenderer());
@@ -1519,10 +1523,10 @@ void ModelComponentList::dropEvent(QDropEvent* event)
             QFileInfo finfo(fileName);
 
             QStringList tabFormats;
-            tabFormats << "dbf" << "db" << "sqlite" << "ldb" << "csv" << "txt" << "xls" << "shp" << "shx";
+            tabFormats << "dbf" << "db" << "sqlite" << "ldb" << "gpkg" << "csv" << "txt" << "xls" << "shp" << "shx";
             QStringList imgFormats;
             imgFormats << "kea" << "img" << "tiff" << "jpg" << "jpeg" << "tif"
-                       << "png" << "gif" << "adf" << "hdr" << "sdat" << "vrt";
+                       << "png" << "gif" << "adf" << "hdr" << "sdat" << "vrt" << "nc";
             QString ext = finfo.suffix().toLower();
             if (tabFormats.contains(ext))// || fileName.compare(QString::fromLatin1("file::memory:")) == 0)
             {
@@ -1530,7 +1534,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
                 LUMASSMainWin* mainWin = hlp.getMainWindow();
 
                 QStringList sqliteformats;
-                sqliteformats << "db" << "sqlite" << "ldb";
+                sqliteformats << "db" << "sqlite" << "ldb" << "gpkg";
 
                 QString tableName;
                 if (sqliteformats.contains(ext))// || fileName.compare(QString::fromLatin1("file::memory:")) == 0)
@@ -1545,6 +1549,13 @@ void ModelComponentList::dropEvent(QDropEvent* event)
                 {
                     mainWin->importTable(fileName, LUMASSMainWin::NM_TABVIEW_STANDALONE, true);
                 }
+            }
+            else if (    ext.compare(QString::fromLatin1("nc")) == 0
+                      //|| ext.compare(QString::fromLatin1("kea")) == 0
+                      //|| ext.compare(QString::fromLatin1("ovv")) == 0
+                    )
+            {
+                this->importMultiDataSet(fileName);
             }
             else if (imgFormats.contains(ext))
             {
@@ -1582,6 +1593,33 @@ void ModelComponentList::dropEvent(QDropEvent* event)
     //event->setAccepted(true);
     NMDebugCtx(ctx, << "done!");
 
+}
+
+void ModelComponentList::importMultiDataSet(const QString &fn)
+{
+    QString extNcPath = NMGlobalHelper::getNetCDFVarPathInput(fn);
+    if (extNcPath.startsWith("ERROR"))
+    {
+        NMLogError(<< extNcPath.toStdString());
+        return;
+    }
+    extNcPath = extNcPath.split(" ").at(0);
+
+    QStringList namecomps = extNcPath.split("/", QString::SkipEmptyParts);
+
+    QFileInfo fifo(fn);
+    QString layerName = QString("%1_%2").arg(fifo.baseName()).arg(namecomps.back());
+
+    // format final 'extended filename' understood by LUMASS
+    QString extFN = QString("%1:%2").arg(fn).arg(extNcPath);
+
+
+    vtkRenderWindow* renWin = NMGlobalHelper::getRenderWindow();
+    NMImageLayer* fLayer = new NMImageLayer(renWin, 0, this);
+    fLayer->setObjectName(layerName);
+    fLayer->setLogger(NMGlobalHelper::getMainWindow()->getLogger());
+    NMGlobalHelper::getMainWindow()->connectImageLayerProcSignals(fLayer);
+    fLayer->setFileName(extFN);
 }
 
 
@@ -1970,6 +2008,65 @@ void ModelComponentList::test()
 {
 	NMDebugCtx(ctx, << "...");
 
+    bool bok;
+    QString fn = QInputDialog::getText(this,"Image Spec", "", QLineEdit::Normal,
+         //QStringLiteral("/home/users/herziga/crunch/rec2ws15.kea:/BAND1/OVERVIEWS/OVERVIEW6"),
+         QStringLiteral("/home/users/herziga/crunch/STEC/jan/NZ_TDSWB_1km_2016_2018_v20191122.nc:swc"),
+                                       &bok);
+
+    if (!bok)
+    {
+        return;
+    }
+
+
+    otb::NetCDFIO::Pointer nio = otb::NetCDFIO::New();
+    nio->SetFileName(fn.toStdString().c_str());
+
+    if (!nio->CanReadFile(fn.toStdString().c_str()))
+    {
+        NMLogError(<< "Can't read file '" << fn.toStdString() << "'");
+        return;
+    }
+
+    nio->ReadImageInformation();
+
+
+
+
+
+//    netCDF::NcFile ncFile(ncName.toStdString(), netCDF::NcFile::read);
+//    if (ncFile.isNull())
+//        return;
+
+//    std::vector<int> ncids;
+//    netCDF::NcGroup curgrp;
+//    for (int g=0; g < ncGroups.size(); ++g)
+//    {
+//        if (g==0)
+//        {
+//            curgrp = ncFile.getGroup(ncGroups.at(g).toStdString());
+//        }
+//        else
+//        {
+//            curgrp = curgrp.getGroup(ncGroups.at(g).toStdString());
+//        }
+//        if (curgrp.isNull())
+//        {
+//            exit;
+//        }
+//        ncids.push_back(curgrp.getId());
+//    }
+
+//    netCDF::NcGroup theGroup(ncids.back());
+//    netCDF::NcVar nVar = theGroup.getVar(ncVarName.toStdString());
+//    if (nVar.isNull())
+//    {
+//        return;
+//    }
+
+//    std::vector<netCDF::NcDim> ndims = nVar.getDims();
+
 
 	NMDebugCtx(ctx, << "done!");
 }
@@ -2023,8 +2120,11 @@ void ModelComponentList::stretchColourRampToVisMinMax()
             sqlModel->database().commit();
         }
 
-        il->setLower(stats.at(0));
-        il->setUpper(stats.at(1));
+        if (stats.size() >= 2)
+        {
+            il->setLower(stats.at(0));
+            il->setUpper(stats.at(1));
+        }
         il->updateMapping();
     }
 }

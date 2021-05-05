@@ -228,7 +228,11 @@ void NMProcessComponentItem::setTitle(const QString& title)
 	if (!title.isEmpty())
 		this->mTitle = title;
 
-    if (title.contains(QString("ImageReader"), Qt::CaseInsensitive))
+    if (title.contains(QStringLiteral("BMIModel"), Qt::CaseInsensitive))
+    {
+        mIcon.load(":bmi-model.png");
+    }
+    else if (title.contains(QString("ImageReader"), Qt::CaseInsensitive))
     {
         mIcon.load(":image-read.png");
     }

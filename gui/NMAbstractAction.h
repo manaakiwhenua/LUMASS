@@ -116,6 +116,8 @@ public slots:
     QString getModelPath() const
         {return mModelPath;}
 
+    otb::SQLiteTable::Pointer getToolTable(bool bReadOnly=true);
+
     void updateActionParameter(const QString& key, QVariant value, NMAbstractAction::NMActionInputType type);
     void callConfigDlg(void);
     void updatePropSettings(QtProperty* prop, QVariant valueVar);
@@ -146,7 +148,6 @@ protected:
 
     void initMenu();
     void createConfigDialog();
-    otb::SQLiteTable::Pointer getToolTable(bool bReadOnly=true);
 
     /*! action: populates emptyList for '<param>Enum' column in tool table;
      *  return value: index of current enum value, -1 upon failure;

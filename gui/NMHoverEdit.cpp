@@ -148,7 +148,6 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     fl->addWidget(mMainSplitter);
     fl->addItem(bl2);
 
-
     connect(mMainSplitter, SIGNAL(splitterMoved(int,int)),
             this, SLOT(storeSplitterSize(int,int)));
 
@@ -175,6 +174,15 @@ NMHoverEdit::closeEvent(QCloseEvent *event)
         mFindReplaceDlg->close();
     }
     QDialog::closeEvent(event);
+}
+
+void
+NMHoverEdit::forwardModelConfigChanged(void)
+{
+    if (btnPreview->isChecked())
+    {
+        this->showExpressionPreview(true);
+    }
 }
 
 bool
@@ -218,6 +226,7 @@ void
 NMHoverEdit::showExpressionPreview(bool preview)
 {
     NMModelController* ctrl = NMGlobalHelper::getModelController();
+
 
     if (!preview || ctrl == 0)
     {

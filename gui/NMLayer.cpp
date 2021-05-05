@@ -184,44 +184,31 @@ NMLayer::~NMLayer()
     if (this->mTableModel != 0)
     {
         NMSqlTableModel* tmodel = qobject_cast<NMSqlTableModel*>(this->mTableModel);
-        if (tmodel)
+        if (tmodel != nullptr)
         {
-            std::string dbname = tmodel->getDatabaseName().toStdString();
-            tmodel->clear();
-            //tmodel->database().close();
-            delete mTableModel;
-            mTableModel = 0;
+            QString dbconn;
             {
-//                QSqlDatabase db = QSqlDatabase::database(mQSqlConnectionName, false);
-//                if (db.isValid() && db.isOpen())
-//                {
-//                    db.close();
-//                }
+                QSqlDatabase db = tmodel->database();
+                if (db.isValid())
+                {
+                    if (db.isOpen())
+                    {
+                        db.close();
+                    }
+                    dbconn = db.connectionName();
+                }
             }
-//            QSqlDatabase::removeDatabase(mQSqlConnectionName);
 
-            //sqlite3_close(mSqlViewConn);
-            //spatialite_cleanup_ex(mSpatialiteCache);
-            mSpatialiteCache = 0;
-            mSqlViewConn = 0;
-
-//            NMDebug(<< "NMImageLayer: Destroyed QSql connection to '"
-//                    << dbname << "'" << std::endl);
+            if (!dbconn.isEmpty())
+            {
+                QSqlDatabase::removeDatabase(dbconn);
+            }
         }
+        delete mTableModel;
     }
-
-//    if (this->mSqlTableView != 0)
-//    {
-//        this->mSqlTableView->close();
-//        delete this->mSqlTableView;
-//    }
 
     if (mSelectionModel != 0)
 		delete mSelectionModel;
-
-	if (mTableModel != 0)
-		delete mTableModel;
-
 
 
     //NMDebugCtx(ctxNMLayer, << "done!");
@@ -641,12 +628,13 @@ NMLayer::initiateLegend(void)
 double
 NMLayer::getLayerOpacity()
 {
+    double ret = 1;
     if (this->getLayerType() == NMLayer::NM_VECTOR_LAYER)
     {
         NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
         vtkActor* actor = vtkActor::SafeDownCast(
                     const_cast<vtkProp3D*>(vl->getActor()));
-        return actor->GetProperty()->GetOpacity();
+        ret = actor->GetProperty()->GetOpacity();
     }
     else
     {
@@ -655,10 +643,11 @@ NMLayer::getLayerOpacity()
         {
             vtkImageSlice* slice = vtkImageSlice::SafeDownCast(
                         const_cast<vtkProp3D*>(il->getActor()));
-            return slice->GetProperty()->GetOpacity();
+            ret = slice->GetProperty()->GetOpacity();
         }
-
     }
+
+    return ret;
 }
 
 
@@ -1372,6 +1361,7 @@ NMLayer::mapUniqueValues(void)
             }
         }
 	}
+    sqlQuery.finish();
 
     if (mUseIdxMap)
     {
@@ -1978,8 +1968,21 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
                             ++cnt;
                         }
 
-                        int tabidx = kit->second.at(0);
-                        mLookupTable->GetTableValue(tabidx, rgba);
+                        if (kit != mMapValueIndices.end())
+                        {
+                            int tabidx = kit->second.at(0);
+                            if (tabidx < mLookupTable->GetNumberOfTableValues())
+                            {
+                                mLookupTable->GetTableValue(tabidx, rgba);
+                            }
+                            else
+                            {
+                                for (int i=0; i < 4; ++i)
+                                {
+                                    rgba[i] = 0.0;
+                                }
+                            }
+                        }
 					}
 				}
 				break;
@@ -2602,7 +2605,14 @@ QString  NMLayer::getLegendName(const int legendRow)
                         ++cnt;
                     }
 
-                    name = kit->first;
+                    if (kit != mMapValueIndices.end())
+                    {
+                        name = kit->first;
+                    }
+                    else
+                    {
+                        name = "";
+                    }
 				}
 				break;
 

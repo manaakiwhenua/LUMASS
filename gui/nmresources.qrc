@@ -35,5 +35,6 @@
         <file alias="view-map.png">resources/network-globe2.png</file>
         <file alias="document-save.png">resources/document-save.png</file>
         <file alias="document-save-as.png">resources/document-save-as.png</file>
+        <file alias="bmi-model.png">resources/bmi-model.png</file>
     </qresource>
 </RCC>

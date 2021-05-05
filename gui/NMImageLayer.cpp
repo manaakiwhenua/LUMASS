@@ -54,7 +54,7 @@
 #include <QSqlDriver>
 #include <QApplication>
 
-//#include "QtWebSockets/QWebSocket"
+#include "QtWebSockets/QWebSocket"
 //#include <QtNetwork/QSslCertificate>
 //#include <QtNetwork/QSslKey>
 //#include <QtNetwork/QtNetwork>
@@ -98,12 +98,12 @@
 #include "vtkImageCast.h"
 #include "vtkLongArray.h"
 #include "vtkIdList.h"
-#include "vtkGeometryFilter.h"
-#include "vtkExtractCells.h"
+//#include "vtkGeometryFilter.h"
+//#include "vtkExtractCells.h"
 #include "vtkCellData.h"
 #include "vtkContourFilter.h"
 //#include "vtkGenericContourFilter.h"
-#include "vtkExtractSelection.h"
+//#include "vtkExtractSelection.h"
 #include "vtkSelectionNode.h"
 #include "vtkSelection.h"
 #include "vtkProperty.h"
@@ -310,7 +310,14 @@ public:
 
                 for (int d=0; d < Dimension; ++d)
                 {
-                    UpperLeftCorner[d] = theimg->GetOrigin()[d] + 0.5 * theimg->GetSignedSpacing()[d];
+                    if (d >= 2)
+                    {
+                        UpperLeftCorner[d] = theimg->GetOrigin()[d] - 0.5 * theimg->GetSignedSpacing()[d];
+                    }
+                    else
+                    {
+                        UpperLeftCorner[d] = theimg->GetOrigin()[d] + 0.5 * theimg->GetSignedSpacing()[d];
+                    }
                 }
 
                 RegionType reg = theimg->GetLargestPossibleRegion();
@@ -339,7 +346,14 @@ public:
 
                 for (int d=0; d < Dimension; ++d)
                 {
-                    UpperLeftCorner[d] = theimg->GetOrigin()[d] + 0.5 * theimg->GetSignedSpacing()[d];
+                    if (d >= 2)
+                    {
+                        UpperLeftCorner[d] = theimg->GetOrigin()[d] - 0.5 * theimg->GetSignedSpacing()[d];
+                    }
+                    else
+                    {
+                        UpperLeftCorner[d] = theimg->GetOrigin()[d] + 0.5 * theimg->GetSignedSpacing()[d];
+                    }
                 }
 
                 VecRegionType reg = theimg->GetLargestPossibleRegion();
@@ -395,25 +409,25 @@ public:
 //}
 
 NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
-		vtkRenderer* renderer, QObject* parent)
+        vtkRenderer* renderer, QObject* parent)
     : NMLayer(renWin, renderer, parent),
       mHistogramView(0), mbLayerLoaded(false)
 {
-	this->mLayerType = NMLayer::NM_IMAGE_LAYER;
+    this->mLayerType = NMLayer::NM_IMAGE_LAYER;
     this->mReader = 0; //new NMImageReader(this);
-	this->mPipeconn = new NMItk2VtkConnector(this);
+    this->mPipeconn = new NMItk2VtkConnector(this);
 
     //this->mSelPipe = new NMItk2VtkConnector(this);
 
-	this->mFileName = "";
+    this->mFileName = "";
 
-	this->mNumBands = 0;
-	this->mNumDimensions = 0;
+    this->mNumBands = 0;
+    this->mNumDimensions = 0;
     this->mNumRecords = 0;
-	this->mComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
-	this->mbStatsAvailable = false;
+    this->mComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
+    this->mbStatsAvailable = false;
 
-	this->mLayerIcon = QIcon(":image_layer.png");
+    this->mLayerIcon = QIcon(":image_layer.png");
 
     this->mOverviewIdx = -1; // (loading original image)
     this->mbUseOverviews = true;
@@ -423,6 +437,8 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 
     this->mScalarColIdx = -1;
     this->mScalarBufferFile = 0;
+
+    this->mZSliceIdx = 0;
 
     //vtkInteractorObserver* style = mRenderWindow->GetInteractor()->GetInteractorStyle();
     this->mVtkConn = vtkSmartPointer<vtkEventQtSlotConnect>::New();
@@ -461,14 +477,14 @@ NMImageLayer::~NMImageLayer()
         fclose(mScalarBufferFile);
     }
 
-	if (this->mReader)
+    if (this->mReader)
     {
-		delete this->mReader;
+        delete this->mReader;
     }
 
-	if (this->mPipeconn)
+    if (this->mPipeconn)
     {
-		delete this->mPipeconn;
+        delete this->mPipeconn;
     }
 }
 
@@ -680,44 +696,44 @@ void NMImageLayer::test()
 
 double NMImageLayer::getDefaultNodata()
 {
-	double nodata;
+    double nodata;
 
-	switch(this->mComponentType)
-	{
-		case otb::ImageIOBase::UCHAR:
+    switch(this->mComponentType)
+    {
+        case otb::ImageIOBase::UCHAR:
             nodata = std::numeric_limits<unsigned char>::max();//255;
-			break;
-		case otb::ImageIOBase::CHAR:
-			nodata = -std::numeric_limits<char>::max();
-			break;
-		case otb::ImageIOBase::USHORT:
-			nodata = std::numeric_limits<unsigned short>::max();
-			break;
-		case otb::ImageIOBase::SHORT:
-			nodata = -std::numeric_limits<short>::max();
-			break;
-		case otb::ImageIOBase::UINT:
-			nodata = std::numeric_limits<unsigned int>::max();
-			break;
-		case otb::ImageIOBase::INT:
-			nodata = -std::numeric_limits<int>::max();
-			break;
-		case otb::ImageIOBase::ULONG:
-			nodata = std::numeric_limits<unsigned long>::max();
-			break;
-		case otb::ImageIOBase::LONG:
-			nodata = -std::numeric_limits<long>::max();
-			break;
-		case otb::ImageIOBase::DOUBLE:
-			nodata = -std::numeric_limits<double>::max();
-			break;
-		case otb::ImageIOBase::FLOAT:
-			nodata = -std::numeric_limits<float>::max();
-			break;
-		default: break;//					   nodata = -2147483647; break;
-	}
+            break;
+        case otb::ImageIOBase::CHAR:
+            nodata = -std::numeric_limits<char>::max();
+            break;
+        case otb::ImageIOBase::USHORT:
+            nodata = std::numeric_limits<unsigned short>::max();
+            break;
+        case otb::ImageIOBase::SHORT:
+            nodata = -std::numeric_limits<short>::max();
+            break;
+        case otb::ImageIOBase::UINT:
+            nodata = std::numeric_limits<unsigned int>::max();
+            break;
+        case otb::ImageIOBase::INT:
+            nodata = -std::numeric_limits<int>::max();
+            break;
+        case otb::ImageIOBase::ULONG:
+            nodata = std::numeric_limits<unsigned long>::max();
+            break;
+        case otb::ImageIOBase::LONG:
+            nodata = -std::numeric_limits<long>::max();
+            break;
+        case otb::ImageIOBase::DOUBLE:
+            nodata = -std::numeric_limits<double>::max();
+            break;
+        case otb::ImageIOBase::FLOAT:
+            nodata = -std::numeric_limits<float>::max();
+            break;
+        default: break;//					   nodata = -2147483647; break;
+    }
 
-	return nodata;
+    return nodata;
 }
 
 
@@ -730,10 +746,10 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
         wcoord[i] = world[i];
     }
     double spacing[3];
-	double origin[3];
+    double origin[3];
     double ulcorner[3];
     int dims[3] = {0,0,0};
-	double err[3];
+    double err[3];
 
     vtkImageData* img = vtkImageData::SafeDownCast(
                 const_cast<vtkDataSet*>(this->getDataSet()));
@@ -761,8 +777,8 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
         err[d] = ::fabs(spacing[d]) * 0.001;
     }
 
-	// check, whether the user point is within the
-	// image boundary
+    // check, whether the user point is within the
+    // image boundary
     bool bPtInBnds = vtkMath::PointIsWithinBounds(wcoord, mBBox, err);
 
     if (bImgConstrained && !bPtInBnds)
@@ -795,16 +811,18 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
         }
     }
 
+    pixel[2] = this->mZSliceIdx;
+
     // fill up until 3rd dimension with zeros, if applicable
-    for (; d < 3; ++d)
-    {
-        pixel[d] = 0;
-    }
+//    for (; d < 3; ++d)
+//    {
+//        pixel[d] = 0;
+//    }
 }
 
 void
 NMImageLayer::selectionChanged(const QItemSelection& newSel,
-		const QItemSelection& oldSel)
+        const QItemSelection& oldSel)
 {
     // no table, no selection
     otb::SQLiteTable::Pointer sqlTab;
@@ -985,13 +1003,13 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
     this->mImgSelProperty->SetLookupTable(selLut);
     this->mImgSelMapper->Update();
 
-	// call the base class implementation to do datatype agnostic stuff
+    // call the base class implementation to do datatype agnostic stuff
     NMLayer::selectionChanged(newSel, oldSel);
 
     mNumSelRows = selcnt;
 
-	emit visibilityChanged(this);
-	emit legendChanged(this);
+    emit visibilityChanged(this);
+    emit legendChanged(this);
 
 }
 
@@ -1101,18 +1119,18 @@ void NMImageLayer::createTableView(void)
     if (    this->mSqlTableView != 0
         ||  this->mTableView != 0
        )
-	{
-		return;
-	}
+    {
+        return;
+    }
 
-	if (this->mOtbRAT.IsNull())
-	{
-		if (!this->updateAttributeTable())
-			return;
-	}
+    if (this->mOtbRAT.IsNull())
+    {
+        if (!this->updateAttributeTable())
+            return;
+    }
 
-	if (this->mTableModel == 0)
-		return;
+    if (this->mTableModel == 0)
+        return;
 
     NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
     NMQtOtbAttributeTableModel* ramModel = qobject_cast<NMQtOtbAttributeTableModel*>(mTableModel);
@@ -1146,16 +1164,16 @@ void NMImageLayer::createTableView(void)
 int
 NMImageLayer::updateAttributeTable()
 {
-	if (this->mTableModel != 0)
-		return 1;
+    if (this->mTableModel != 0)
+        return 1;
 
     this->mOtbRAT = this->getRasterAttributeTable(1);
     if (mOtbRAT.IsNull())
-	{
+    {
         mOtbRAT = 0;
         //NMDebugAI(<< "No attribute table available!");
-		return 0;
-	}
+        return 0;
+    }
 
     // we do this check only if we've got a RAM table and we don't know the
     // number of rows yet!
@@ -1196,7 +1214,9 @@ NMImageLayer::updateAttributeTable()
          * database connection management is centralised in
          * LUMASSMainWin; by default all tables are opened
          * as readonly and all tables belonging to the same
-         * database (file) share a single database connection
+         * database (file) share a single database connection,
+         * except for read_only concurrent access for fetching
+         * image values for visualisation
          */
 
         const QString dbFileName = sqlTable->GetDbFileName().c_str();
@@ -1220,11 +1240,11 @@ NMImageLayer::updateAttributeTable()
     }
 
 
-	// in any case, we create a new item selection model
+    // in any case, we create a new item selection model
     if (    this->mSelectionModel == 0
         &&  (sqlModel != 0 || ramModel != 0)
        )
-	{
+    {
         if (ramModel != 0)
         {
             this->mSelectionModel = new NMFastTrackSelectionModel(ramModel, this);
@@ -1236,7 +1256,7 @@ NMImageLayer::updateAttributeTable()
             this->mTableModel = sqlModel;
         }
 
-	}
+    }
     ramModel = 0;
     sqlModel = 0;
 
@@ -1266,28 +1286,25 @@ NMImageLayer::updateAttributeTable()
 
     emit legendChanged(this);
 
-	return 1;
+    return 1;
 }
 
 bool
 NMImageLayer::setFileName(QString filename)
 {
-	NMDebugCtx(ctxNMImageLayer, << "...");
+    NMDebugCtx(ctxNMImageLayer, << "...");
 
-	if (filename.isEmpty() || filename.isNull())
-	{
+    if (filename.isEmpty() || filename.isNull())
+    {
         NMLogError(<< ctxNMImageLayer << ": invalid filename!");
-		NMDebugCtx(ctxNMImageLayer, << "done!");
-		return false;
-	}
+        NMDebugCtx(ctxNMImageLayer, << "done!");
+        return false;
+    }
 
     // allocate the reader object, if it hasn't been so
     if (this->mReader == 0)
     {
         this->mReader = new NMImageReader(this);
-        // we always set the RGBMode here, 'cause we never
-        // display more than 3 bands at a time
-        this->mReader->setRGBMode(true);
 
         // also we set the type of RAT we'd like to get from
         // the reader
@@ -1305,30 +1322,30 @@ NMImageLayer::setFileName(QString filename)
         }
     }
 
-	// TODO: find a more unambiguous way of determining
-	// whether we're loading a rasdaman image or not
+    // TODO: find a more unambiguous way of determining
+    // whether we're loading a rasdaman image or not
 #ifdef BUILD_RASSUPPORT
-	if (!filename.contains(".") && this->mpRasconn != 0)
-	{
-		NMRasdamanConnectorWrapper raswrap;
-		raswrap.setConnector(this->mpRasconn);
-		this->mReader->setRasConnector(&raswrap);
-	}
+    if (!filename.contains(".") && this->mpRasconn != 0)
+    {
+        NMRasdamanConnectorWrapper raswrap;
+        raswrap.setConnector(this->mpRasconn);
+        this->mReader->setRasConnector(&raswrap);
+    }
 
 #endif
 
     emit layerProcessingStart();
 
     this->mReader->setFileName(filename);
-	this->mReader->instantiateObject();
+    this->mReader->instantiateObject();
 
-	if (!this->mReader->isInitialised())
-	{
-		emit layerProcessingEnd();
+    if (!this->mReader->isInitialised())
+    {
+        emit layerProcessingEnd();
         NMLogError(<< ctxNMImageLayer << ": couldn't read the image!");
-		NMDebugCtx(ctxNMImageLayer, << "done!");
-		return false;
-	}
+        NMDebugCtx(ctxNMImageLayer, << "done!");
+        return false;
+    }
     if (this->mReader->getNumberOfOverviews() == 0)
     {
         emit layerProcessingEnd();
@@ -1344,14 +1361,41 @@ NMImageLayer::setFileName(QString filename)
         }
     }
 
+    this->mTotalNumBands = this->mReader->getInputNumBands();
+    this->mNumBands = this->mReader->getOutputNumBands();
+
+    if (mNumBands > 1)
+    {
+        // we always set the RGBMode here, 'cause we never
+        // display more than 3 bands at a time
+        this->mReader->setRGBMode(true);
+
+        if (mNumBands == 3)
+        {
+            mBandMap.clear();
+            mBandMap.push_back(1);
+            mBandMap.push_back(2);
+            mBandMap.push_back(3);
+        }
+    }
+
+
     // store overview sizes
+    this->mNumDimensions = this->mReader->getOutputNumDimensions();
+    if (this->mNumDimensions == 3)
+    {
+        mReader->setZSliceIdx(this->mZSliceIdx);
+    }
+
     mOverviewSize.clear();
     const int numOvv = this->mReader->getNumberOfOverviews();
     for (int n=0; n < numOvv; ++n)
     {
-        std::vector<int> size = {0,0};
-        size[0] = this->mReader->getOverviewSize(n)[0];
-        size[1] = this->mReader->getOverviewSize(n)[1];
+        std::vector<int> size;
+        for (int d=0; d < mNumDimensions; ++d)
+        {
+            size.push_back(this->mReader->getOverviewSize(n)[d]);
+        }
         mOverviewSize.push_back(size);
     }
 
@@ -1365,23 +1409,13 @@ NMImageLayer::setFileName(QString filename)
     this->mReader->getUpperLeftCorner(this->mUpperLeftCorner);
 
     // let's store some meta data, in case someone needs it
-	this->mComponentType = this->mReader->getOutputComponentType();
-	this->mNodata = this->getDefaultNodata();
-	this->mNumBands = this->mReader->getOutputNumBands();
-    this->mTotalNumBands = this->mReader->getInputNumBands();
-	this->mNumDimensions = this->mReader->getOutputNumDimensions();
+    this->mComponentType = this->mReader->getOutputComponentType();
+    this->mNodata = this->getDefaultNodata();
 
-    if (mNumBands == 3)
-    {
-        mBandMap.clear();
-        mBandMap.push_back(1);
-        mBandMap.push_back(2);
-        mBandMap.push_back(3);
-    }
     // ==> set the desired overview and requested region, if supported
     this->mapExtentChanged();
 
-	// concatenate the pipeline
+    // concatenate the pipeline
     this->mPipeconn->setInput(this->mReader->getOutput(0));
 
     vtkSmartPointer<NMVtkOpenGLImageSliceMapper> m = vtkSmartPointer<NMVtkOpenGLImageSliceMapper>::New();
@@ -1420,11 +1454,11 @@ NMImageLayer::setFileName(QString filename)
     this->mRenderer->AddViewProp(imgStack);
     imgStack->Delete();
 
-	this->mMapper = m;
+    this->mMapper = m;
     this->mActor = a;
 
-	this->mImage = 0;
-	this->mFileName = filename;
+    this->mImage = 0;
+    this->mFileName = filename;
     //this->mMapper->Update();
 
     this->initiateLegend();
@@ -1433,7 +1467,7 @@ NMImageLayer::setFileName(QString filename)
     emit layerLoaded();
     mbLayerLoaded = true;
     NMDebugCtx(ctxNMImageLayer, << "done!");
-	return true;
+    return true;
 }
 
 std::vector<std::vector<int> >
@@ -1482,9 +1516,13 @@ NMImageLayer::mapExtentChanged(void)
     // get the bbox and fullsize of this layer
     double h_ext = mBBox[1] - mBBox[0];
     double v_ext = mBBox[3] - mBBox[2];
+    double t_ext = mBBox[5] - mBBox[4];
 
     int fullcols = h_ext / mSignedSpacing[0];
     int fullrows = v_ext / ::fabs(mSignedSpacing[1]);
+    int fullslices = mNumDimensions == 3            ?
+                     t_ext / mSignedSpacing[2]   :
+                     0;
 
     double h_res;
     double v_res;
@@ -1497,7 +1535,7 @@ NMImageLayer::mapExtentChanged(void)
     vtkRenderer* ren = const_cast<vtkRenderer*>(NMGlobalHelper::getMainWindow()->getBkgRenderer());
     int* size = ren->GetSize();
 
-    double wminx, wmaxx, wminy, wmaxy, wwidth, wheight;
+    double wminx, wmaxx, wminy, wmaxy, wwidth, wheight, wminz, wmaxz, wdepth;
     bool bHasVisReg = false;
     if (ren)
     {
@@ -1531,6 +1569,17 @@ NMImageLayer::mapExtentChanged(void)
 
         vtkBoundingBox bbworld(wminx, wmaxx, wminy, wmaxy, 0, 0);
         vtkBoundingBox bblayer(mBBox);
+
+        wminz = mBBox[4];
+        wmaxz = mBBox[5];
+
+//        if (mNumDimensions == 3)
+//        {
+//        }
+//        else
+//        {
+//            wminz = wmaxz = wdepth = 0;
+//        }
 
         if (bbworld.Intersects(bblayer) == 0)
         {
@@ -1614,22 +1663,26 @@ NMImageLayer::mapExtentChanged(void)
         xe = ((wmaxx - mBBox[0]) / uspacing[0]);
         ye = ((mBBox[3] - wminy) / ::fabs(uspacing[1]));
 
+
         // calc vtk update extent
         int uext[6];
         uext[0] = xo > cols-1 ? cols-1 : xo < 0 ? 0 : xo;
         uext[1] = xe > cols-1 ? cols-1 : xe < 0 ? 0 : xe;
         uext[2] = yo > rows-1 ? rows-1 : yo < 0 ? 0 : yo;
         uext[3] = ye > rows-1 ? rows-1 : ye < 0 ? 0 : ye;
-        uext[4] = 0;
-        uext[5] = 0;
+        uext[4] = mNumDimensions == 3 ? mZSliceIdx : 0;
+        uext[5] = mNumDimensions == 3 ? mZSliceIdx : 0;
 
         // visible itk image region
         mVisibleRegion[0] = uext[0];                  // x-origin
         mVisibleRegion[1] = uext[1] - uext[0] + 1;    // x-size
         mVisibleRegion[2] = uext[2];                  // y-origin
         mVisibleRegion[3] = uext[3] - uext[2] + 1;    // y-size
-        mVisibleRegion[4] = uext[4];                  // z-origin
-        mVisibleRegion[5] = uext[4] == 0 && uext[5] == 0 ? 0 : uext[5] - uext[4] + 1; // z-size
+        mVisibleRegion[4] = mNumDimensions == 3 ? mZSliceIdx : 0;
+        mVisibleRegion[5] = mNumDimensions == 3 ? 1 : 0;
+
+        //mVisibleRegion[4] = uext[4];                  // z-origin
+        //mVisibleRegion[5] = uext[4] == 0 && uext[5] == 0 ? 0 : uext[5] - uext[4] + 1; // z-size
 
         this->mReader->setOverviewIdx(ovidx, mVisibleRegion);
 
@@ -1704,8 +1757,48 @@ NMImageLayer::getSignedOverviewSpacing(int ovidx, double os[3])
     {
         os[2] = (mBBox[5] - mBBox[4]) / ovwsize[2];
     }
-    os[2] = 0;
+    else
+    {
+        os[2] = 0;
+    }
 }
+
+int
+NMImageLayer::getZSliceIndex()
+{
+    int sli = 0;
+    if (this->mNumDimensions == 3)
+    {
+        sli = mZSliceIdx;
+    }
+
+    return sli;
+}
+
+void
+NMImageLayer::setZSliceIndex(int slindex)
+{
+    if (this->mNumDimensions < 3)
+    {
+        mZSliceIdx = 0;
+        return;
+    }
+
+    if (slindex >= 0)
+    {
+        if (mReader != nullptr)
+        {
+            if (slindex < mReader->getImageIOBase()->GetDimensions(2))
+            {
+                mZSliceIdx = slindex;
+                NMLogDebug(<< this->objectName().toStdString() << "'s ZSliceIndex = " << mZSliceIdx);
+                this->mReader->setZSliceIdx(mZSliceIdx);
+                this->mRenderer->Render();
+            }
+        }
+    }
+}
+
 
 void
 NMImageLayer::mapRGBImage(void)
@@ -2005,11 +2098,11 @@ NMImageLayer::updateScalarBuffer()
     NMDebugCtx(ctxNMImageLayer, << "...");
 
     NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
-    QString conname("NMImageLayer_updateBuffer");
+    QString conSuffix = QString("updateBuffer_%1").arg(NMGlobalHelper::getRandomString(4));
+    QString conname;
     {
-        QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", conname);
-        db.setConnectOptions("QSQLITE_OPEN_READONLY;QSQLITE_OPEN_URI");
-        db.setDatabaseName(sqlModel->getDatabaseName());
+        conname = NMGlobalHelper::getMainWindow()->getDbConnection(sqlModel->getDatabaseName(), false, conSuffix);
+        QSqlDatabase db = QSqlDatabase::database(conname);//QSqlDatabase::addDatabase("QSQLITE", conname);
         if (!db.open())
         {
             NMDebugAI(<< db.lastError().text().toStdString() << std::endl);
@@ -2022,12 +2115,19 @@ NMImageLayer::updateScalarBuffer()
                             .arg(drv->escapeIdentifier(mLegendValueField, QSqlDriver::FieldName))
                             .arg(drv->escapeIdentifier(sqlModel->tableName(), QSqlDriver::TableName));
 
-        db.transaction();
+        if (!db.transaction())
+        {
+            NMLogError(<< ctxNMImageLayer << ": Couldn't fetch scalar values from database: "
+                       << db.lastError().text().toStdString() << std::endl);
+            return;
+        }
+
         QSqlQuery q(db);
         q.setForwardOnly(true);
         if (!q.exec(prepStr))
         {
-            NMLogError(<< ctxNMImageLayer << ": Couldn't fetch scalar values from database!");
+            NMLogError(<< ctxNMImageLayer << ": Couldn't fetch scalar values from database: "
+                       << q.lastError().text().toStdString());
             return;
         }
 
@@ -2070,11 +2170,9 @@ NMImageLayer::updateScalarBuffer()
             }
         }
         q.finish();
-        q.clear();
         db.commit();
-        db.close();
     }
-    QSqlDatabase::removeDatabase(conname);
+    NMGlobalHelper::getMainWindow()->removeDbConnection(sqlModel->getDatabaseName(), conname);
 
     NMDebug(<< std::endl);
     NMDebugCtx(ctxNMImageLayer, << "done!");
@@ -2150,22 +2248,26 @@ NMImageLayer::setLongDBScalars(T* buf,
 {
     NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
 
-    QString conname = QString("NMImageLayerSLS_%1").arg(start);
+    QString conname = QString("NMImageLayer_%1").arg(NMGlobalHelper::getRandomString(4));
 
     // db scope
     // without db and q going out of scope, we cannot remove
     // db without Qt complaining
     {
-        QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", conname);
-        db.setConnectOptions("QSQLITE_OPEN_READONLY;QSQLITE_OPEN_URI");
+        NMQSQLiteDriver* drv = new NMQSQLiteDriver();
+        QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
+        db.setConnectOptions("QSQLITE_ENABLE_SHARED_CACHE;"
+                                "QSQLITE_INIT_SPATIALITE;"
+                                "QSQLITE_OPEN_URI;"
+                                "QSQLITE_OPEN_READONLY");
         db.setDatabaseName(sqlModel->getDatabaseName());
         if (!db.open())
         {
-            NMDebugAI(<< db.lastError().text().toStdString() << std::endl);
-            return;
+            NMLogError(<< ctxNMImageLayer << "::" << __FUNCTION__ << "() - setLongDBScalars '"
+                       << sqlModel->getDatabaseName().toStdString() << "' failed: "
+                       << db.lastError().text().toStdString());
         }
 
-        QSqlDriver* drv = db.driver();
         QString prepStr = QString("SELECT %1 from %2 where %3 = :row")
                             .arg(drv->escapeIdentifier(mLegendValueField, QSqlDriver::FieldName))
                             .arg(drv->escapeIdentifier(sqlModel->tableName(), QSqlDriver::TableName))
@@ -2202,7 +2304,6 @@ NMImageLayer::setLongDBScalars(T* buf,
             NMLogError(<< ctxNMImageLayer << ": " << err);
         }
         q.finish();
-        q.clear();
         db.commit();
         db.close();
     }
@@ -2275,22 +2376,26 @@ NMImageLayer::setDoubleDBScalars(T* buf,
 {
     NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
 
-    QString conname = QString("NMImageLayerSLS_%1").arg(start);
+    QString conname = QString("NMImageLayer_%1").arg(NMGlobalHelper::getRandomString(4));
 
     // db scope
     // without db and q going out of scope, we cannot remove
     // db without Qt complaining
     {
-        QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", conname);
-        db.setConnectOptions("QSQLITE_OPEN_READONLY;QSQLITE_OPEN_URI");
+        NMQSQLiteDriver* drv = new NMQSQLiteDriver();
+        QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
+        db.setConnectOptions("QSQLITE_ENABLE_SHARED_CACHE;"
+                                "QSQLITE_INIT_SPATIALITE;"
+                                "QSQLITE_OPEN_URI;"
+                                "QSQLITE_OPEN_READONLY");
         db.setDatabaseName(sqlModel->getDatabaseName());
         if (!db.open())
         {
-            NMDebugAI(<< db.lastError().text().toStdString() << std::endl);
-            return;
+            NMLogError(<< ctxNMImageLayer << "::" << __FUNCTION__ << "() - setDoubleDBScalars '"
+                       << sqlModel->getDatabaseName().toStdString() << "' failed: "
+                       << db.lastError().text().toStdString());
         }
 
-        QSqlDriver* drv = db.driver();
         QString prepStr = QString("SELECT %1 from %2 where %3 = :row")
                             .arg(drv->escapeIdentifier(mLegendValueField, QSqlDriver::FieldName))
                             .arg(drv->escapeIdentifier(sqlModel->tableName(), QSqlDriver::TableName))
@@ -2328,7 +2433,6 @@ NMImageLayer::setDoubleDBScalars(T* buf,
             NMLogError(<< ctxNMImageLayer << ": " << err);
         }
         q.finish();
-        q.clear();
         db.commit();
         db.close();
     }
@@ -2451,14 +2555,15 @@ NMImageLayer::updateSourceBuffer(void)
         this->mRenderer->Render();
         this->updateMapping();
 
-        //this->sendData(dc->getOutput(0));
+
+
+        this->sendData(dc->getOutput(0));
     }
 }
 
 void
 NMImageLayer::sendData(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
 {
-/*
     const QWebSocketServer* server = NMGlobalHelper::getMainWindow()->getSocketServer();
     if (server == nullptr)
     {
@@ -2559,14 +2664,14 @@ NMImageLayer::sendData(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
 
     delete[] pcar;
     delete[] dbl_rgba;
-*/
+
 }
 
 void
 NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
 {
     if (imgWrapper.data() == 0)
-		return;
+        return;
 
     if (mTableView != nullptr)
     {
@@ -2578,11 +2683,11 @@ NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
     }
 
     this->mbUseOverviews = false;
-	this->mImage = imgWrapper->getDataObject();
+    this->mImage = imgWrapper->getDataObject();
     this->mOtbRAT = imgWrapper->getOTBTab();
-	this->mComponentType = imgWrapper->getItkComponentType();
-	this->mNumDimensions = imgWrapper->getNumDimensions();
-	this->mNumBands = imgWrapper->getNumBands();
+    this->mComponentType = imgWrapper->getItkComponentType();
+    this->mNumDimensions = imgWrapper->getNumDimensions();
+    this->mNumBands = imgWrapper->getNumBands();
 
     if (mNumBands > 1)
     {
@@ -2618,7 +2723,7 @@ NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
     }
 
     // concatenate the pipeline
-	this->mPipeconn->setInput(imgWrapper);
+    this->mPipeconn->setInput(imgWrapper);
 
     vtkSmartPointer<vtkImageResliceMapper> m = vtkSmartPointer<vtkImageResliceMapper>::New();
     m->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
@@ -2627,8 +2732,8 @@ NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
     this->mImgSelMapper->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
     this->mImgSelMapper->SetBorder(1);
 
-	vtkSmartPointer<vtkImageSlice> a = vtkSmartPointer<vtkImageSlice>::New();
-	a->SetMapper(m);
+    vtkSmartPointer<vtkImageSlice> a = vtkSmartPointer<vtkImageSlice>::New();
+    a->SetMapper(m);
 
     this->mImgSelSlice = vtkSmartPointer<vtkImageSlice>::New();
     this->mImgSelSlice->SetMapper(mImgSelMapper);
@@ -2636,8 +2741,8 @@ NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
 
 
     mImgProp = vtkSmartPointer<vtkImageProperty>::New();
-	mImgProp->SetInterpolationTypeToNearest();
-	a->SetProperty(mImgProp);
+    mImgProp->SetInterpolationTypeToNearest();
+    a->SetProperty(mImgProp);
 
     this->mImgSelProperty = vtkSmartPointer<vtkImageProperty>::New();
     this->mImgSelProperty->SetInterpolationTypeToNearest();
@@ -2652,8 +2757,8 @@ NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
     this->mRenderer->AddViewProp(imgStack);
     imgStack->Delete();
 
-	this->mMapper = m;
-	this->mActor = a;
+    this->mMapper = m;
+    this->mActor = a;
 
     // check bouding box before we to into heres
     unsigned int numDims = imgWrapper->getNumDimensions();
@@ -2713,12 +2818,12 @@ void NMImageLayer::getBBox(double bbox[6])
 {
     //NMDebugCtx(ctxNMImageLayer, << "...");
 
-	bbox[0] = this->mBBox[0];
-	bbox[1] = this->mBBox[1];
-	bbox[2] = this->mBBox[2];
-	bbox[3] = this->mBBox[3];
-	bbox[4] = this->mBBox[4];
-	bbox[5] = this->mBBox[5];
+    bbox[0] = this->mBBox[0];
+    bbox[1] = this->mBBox[1];
+    bbox[2] = this->mBBox[2];
+    bbox[3] = this->mBBox[3];
+    bbox[4] = this->mBBox[4];
+    bbox[5] = this->mBBox[5];
 
     //NMDebugCtx(ctxNMImageLayer, << "done!");
 }
@@ -2803,19 +2908,19 @@ QSharedPointer<NMItkDataObjectWrapper> NMImageLayer::getImage(void)
     QSharedPointer<NMItkDataObjectWrapper> dw;
     dw.clear();
 
-	itk::DataObject* img = this->getITKImage();
-	if (img == 0)
+    itk::DataObject* img = this->getITKImage();
+    if (img == 0)
         return dw;
 
     QSharedPointer<NMItkDataObjectWrapper> imgW(new NMItkDataObjectWrapper(0,
-			img, this->mComponentType, this->mNumDimensions,
+            img, this->mComponentType, this->mNumDimensions,
             this->mNumBands));
     if (mNumBands == 3)
     {
         imgW->setIsRGBImage(true);
     }
     imgW->setOTBTab(this->mOtbRAT);
-	return imgW;
+    return imgW;
 }
 
 vtkImageData *NMImageLayer::getVTKImage(void)
@@ -2824,6 +2929,8 @@ vtkImageData *NMImageLayer::getVTKImage(void)
     {
         return mPipeconn->getVtkImage();
     }
+
+    return nullptr;
 }
 
 //vtkIdTypeArray* NMImageLayer::getHistogram(void)
@@ -2839,38 +2946,38 @@ vtkImageData *NMImageLayer::getVTKImage(void)
 itk::DataObject* NMImageLayer::getITKImage(void)
 {
     if (mReader == 0 || mReader->getImageIOBase() == 0)
-		return this->mImage;
-	else
-		return this->mReader->getItkImage();
+        return this->mImage;
+    else
+        return this->mReader->getItkImage();
 }
 
 otb::ImageIOBase::IOComponentType NMImageLayer::getITKComponentType(void)
 {
-	return this->mComponentType;
+    return this->mComponentType;
 }
 
 void
 NMImageLayer::setNthInput(unsigned int idx,
           QSharedPointer<NMItkDataObjectWrapper> inputImg)
 {
-	this->setImage(inputImg);
+    this->setImage(inputImg);
 }
 
 void
 NMImageLayer::writeDataSet(void)
 {
-	NMDebugCtx(ctxNMImageLayer, << "...");
+    NMDebugCtx(ctxNMImageLayer, << "...");
 
-	// call parent first, to deal with the
-	// layer's state recording
-	NMLayer::writeDataSet();
+    // call parent first, to deal with the
+    // layer's state recording
+    NMLayer::writeDataSet();
 
-	if (this->mFileName.isEmpty())
-	{
+    if (this->mFileName.isEmpty())
+    {
         NMLogError(<< ctxNMImageLayer << ": No valid file name set! Abort!")
         NMDebugCtx(ctxNMImageLayer, << "done!");
-		return;
-	}
+        return;
+    }
 
     if (this->mOtbRAT.IsNull())
     {
@@ -2892,53 +2999,53 @@ NMImageLayer::writeDataSet(void)
         }
     }
 
-	bool berr = false;
+    bool berr = false;
     //const char* fn = this->mFileName.toUtf8().constData();
     std::string fn = this->mFileName.toStdString();
-	unsigned int band = this->mOtbRAT->GetBandNumber();
+    unsigned int band = this->mOtbRAT->GetBandNumber();
 
 #ifdef BUILD_RASSUPPORT
-	if (this->isRasLayer())
-	{
-		NMDebugAI(<< "writing rasdaman stuff ... !" << std::endl);
-		otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
-		rio->setRasdamanConnector(this->mpRasconn);
+    if (this->isRasLayer())
+    {
+        NMDebugAI(<< "writing rasdaman stuff ... !" << std::endl);
+        otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
+        rio->setRasdamanConnector(this->mpRasconn);
 
-		rio->SetFileName(fn);
-		if (rio->CanWriteFile(0) && this->mOtbRAT.IsNotNull())
-		{
-			std::vector<double> oids = rio->getOIDs();
-			rio->writeRAT(this->mOtbRAT.GetPointer(), band, oids[band-1]);
-		}
-		else
-		{
-			berr = true;
-		}
-	}
-	else
+        rio->SetFileName(fn);
+        if (rio->CanWriteFile(0) && this->mOtbRAT.IsNotNull())
+        {
+            std::vector<double> oids = rio->getOIDs();
+            rio->writeRAT(this->mOtbRAT.GetPointer(), band, oids[band-1]);
+        }
+        else
+        {
+            berr = true;
+        }
+    }
+    else
 #endif
-	{
-		NMDebugAI(<< "writing GDAL stuff ... !" << std::endl);
+    {
+        NMDebugAI(<< "writing GDAL stuff ... !" << std::endl);
 
-		otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
-		gio->SetFileName(fn);
+        otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
+        gio->SetFileName(fn);
 
         if (gio->CanWriteFile(fn.c_str()))
-		{
-			gio->WriteRAT(this->mOtbRAT, band);
-		}
-		else
-		{
-			berr = true;
-		}
-	}
+        {
+            gio->WriteRAT(this->mOtbRAT, band);
+        }
+        else
+        {
+            berr = true;
+        }
+    }
 
     sqlTab->CloseTable();
 
-	if (berr)
-	{
+    if (berr)
+    {
         NMLogError(<< ctxNMImageLayer << ": Couldn't update the RAT!");
-	}
+    }
 
-	NMDebugCtx(ctxNMImageLayer, << "done!");
+    NMDebugCtx(ctxNMImageLayer, << "done!");
 }

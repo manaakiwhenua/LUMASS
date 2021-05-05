@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -61,11 +61,11 @@ const std::string NMModelScene::ctx = "NMModelScene";
 NMModelScene::NMModelScene(QObject* parent)
     : QGraphicsScene(parent), mLogger(0)
 {
-	//ctx = "NMModelScene";
+    //ctx = "NMModelScene";
     mMode = NMS_UNDEFINED;
     mLinkHitTolerance = 15;
-	mLinkZLevel = 10000;
-	mLinkLine = 0;
+    mLinkZLevel = 10000;
+    mLinkLine = 0;
     mHiddenModelItems.clear();
     mRubberBand = 0;
     mbIdleMove = false;
@@ -174,14 +174,14 @@ NMModelScene::dragMoveEvent(QGraphicsSceneDragDropEvent* event)
 void
 NMModelScene::toggleLinkToolButton(bool linkMode)
 {
-	if (linkMode)
-	{
+    if (linkMode)
+    {
         //NMLogDebug(<< "link on" << std::endl);
         this->setProcCompMoveability(false);
         this->setProcCompSelectability(false);
         this->setLinkCompSelectability(false);
-		this->mMode = NMS_LINK;
-	}
+        this->mMode = NMS_LINK;
+    }
 //    else
 //    {
 //        NMLogDebug(<< "link off" << std::endl);
@@ -389,41 +389,41 @@ NMModelScene::unselectItems(void)
 
 void NMModelScene::setProcCompSelectability(bool selectable)
 {
-	QList<QGraphicsItem*> allItems = this->items();
-	QListIterator<QGraphicsItem*> it(allItems);
-	while(it.hasNext())
-	{
-		QGraphicsItem* item = it.next();
-		if (item != 0)
-		{
+    QList<QGraphicsItem*> allItems = this->items();
+    QListIterator<QGraphicsItem*> it(allItems);
+    while(it.hasNext())
+    {
+        QGraphicsItem* item = it.next();
+        if (item != 0)
+        {
             if (!item->isSelected())
             {
                 item->setFlag(QGraphicsItem::ItemIsSelectable, selectable);
             }
-		}
-	}
+        }
+    }
 }
 
 void NMModelScene::setLinkCompSelectability(bool selectable)
 {
-	QList<QGraphicsItem*> allItems = this->items();
-	QListIterator<QGraphicsItem*> it(allItems);
-	NMComponentLinkItem* item;
-	while(it.hasNext())
-	{
-		item = qgraphicsitem_cast<NMComponentLinkItem*>(it.next());
-		if (item != 0)
-			item->setFlag(QGraphicsItem::ItemIsSelectable, selectable);
-	}
+    QList<QGraphicsItem*> allItems = this->items();
+    QListIterator<QGraphicsItem*> it(allItems);
+    NMComponentLinkItem* item;
+    while(it.hasNext())
+    {
+        item = qgraphicsitem_cast<NMComponentLinkItem*>(it.next());
+        if (item != 0)
+            item->setFlag(QGraphicsItem::ItemIsSelectable, selectable);
+    }
 }
 
 
 void NMModelScene::setProcCompMoveability(bool moveable)
 {
     QList<QGraphicsItem*> allItems = this->items();
-	QListIterator<QGraphicsItem*> it(allItems);
-	while(it.hasNext())
-	{
+    QListIterator<QGraphicsItem*> it(allItems);
+    while(it.hasNext())
+    {
         QGraphicsItem* ni = it.next();
         QGraphicsProxyWidget* pwi = qgraphicsitem_cast<QGraphicsProxyWidget*>(ni);
         if (pwi)
@@ -435,41 +435,41 @@ void NMModelScene::setProcCompMoveability(bool moveable)
         {
             ni->setFlag(QGraphicsItem::ItemIsMovable, moveable);
         }
-	}
+    }
 }
 
 
 QGraphicsItem*
 NMModelScene::getComponentItem(const QString& name)
 {
-	QGraphicsItem* retItem = 0;
-	QList<QGraphicsItem*> allItems = this->items();
-	QListIterator<QGraphicsItem*> it(allItems);
-	while(it.hasNext())
-	{
-		QGraphicsItem* item = it.next();
-		NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
-		NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+    QGraphicsItem* retItem = 0;
+    QList<QGraphicsItem*> allItems = this->items();
+    QListIterator<QGraphicsItem*> it(allItems);
+    while(it.hasNext())
+    {
+        QGraphicsItem* item = it.next();
+        NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
+        NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
         QGraphicsProxyWidget* widgetItem = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
 
-		if (procItem != 0)
-		{
-			if (procItem->getTitle().compare(name) == 0)
-				return procItem;
-		}
-		else if (aggrItem != 0)
-		{
-			if (aggrItem->getTitle().compare(name) == 0)
-				return aggrItem;
-		}
+        if (procItem != 0)
+        {
+            if (procItem->getTitle().compare(name) == 0)
+                return procItem;
+        }
+        else if (aggrItem != 0)
+        {
+            if (aggrItem->getTitle().compare(name) == 0)
+                return aggrItem;
+        }
         else if (widgetItem != 0)
         {
             if (widgetItem->objectName().compare(name) == 0)
                 return widgetItem;
         }
-	}
+    }
 
-	return retItem;
+    return retItem;
 }
 
 void
@@ -523,13 +523,13 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
 
 void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 {
-	NMDebugCtx(ctx, << "...");
+    NMDebugCtx(ctx, << "...");
     mMousePos = event->scenePos();
 //    NMLogDebug( << "drop scene pos: " << mMousePos.x() << ", " << mMousePos.y());
     if (    event->mimeData()->hasFormat("text/plain")
         ||  event->mimeData()->hasUrls())
-	{
-		QString dropText = event->mimeData()->text();
+    {
+        QString dropText = event->mimeData()->text();
         QStringList dropsplit = dropText.split(':');
         QString dropSource = dropsplit.at(0);
         QString dropItem;
@@ -542,15 +542,15 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
             && NMGlobalHelper::getModelController()->isModelRunning()
            )
         {
-			QMessageBox::information(0, "Invalid user request!",
-					"You cannot create new model components\nwhile a "
-					"model is being executed! Please try again later!");
+            QMessageBox::information(0, "Invalid user request!",
+                    "You cannot create new model components\nwhile a "
+                    "model is being executed! Please try again later!");
 
             NMLogError(<< ctx << ": You cannot create new model components while there is "
-					     "a model running. Please try again later!");
-			NMDebugCtx(ctx, << "done!");
-			return;
-		}
+                         "a model running. Please try again later!");
+            NMDebugCtx(ctx, << "done!");
+            return;
+        }
 
         // do something depending on the source of the object
 
@@ -681,7 +681,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 
             // supported formats for parameter tables
             QStringList tabFormats;
-            tabFormats << "dbf" << "db" << "sqlite" << "ldb" << "csv" << "txt" << "xls";
+            tabFormats << "dbf" << "db" << "sqlite" << "ldb" << "gpkg" << "csv" << "txt" << "xls";
 
             // we grab the first we can get hold of and check the ending ...
             QString fileName;
@@ -696,8 +696,10 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
             // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             // LUMASS MODEL FILE
             // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            if (    fileName.endsWith(QString::fromLatin1("lmv"))
-                ||  fileName.endsWith(QString::fromLatin1("lmx"))
+            if (    fileName.endsWith(QStringLiteral("lmv"))
+                ||  fileName.endsWith(QStringLiteral("lmx"))
+                ||  fileName.endsWith(QStringLiteral("yaml"))
+                ||  fileName.endsWith(QStringLiteral("yml"))
                )
             {
                 if (!fileName.isEmpty())
@@ -705,12 +707,13 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                     QFileInfo finfo(fileName);
                     if (finfo.isFile())
                     {
-                        NMDebugAI(<< "gonna import model file: " << fileName.toStdString() << std::endl);
+                        NMDebugAI(<< "gonna import model/config file: " << fileName.toStdString() << std::endl);
 
                         emit signalModelFileDropped(fileName, mMousePos);
                     }
                 }
             }
+            /* Don't think this is practicable and hasn't been used really
             // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             // PARAMETER TABLE
             // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -728,7 +731,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 LUMASSMainWin* mwin = h.getMainWindow();
                 NMSqlTableView* tv = 0;
                 QStringList sqliteformats;
-                sqliteformats << "db" << "sqlite" << "ldb";
+                sqliteformats << "db" << "sqlite" << "ldb" << "gpkg";
 
                 QString tableName;
                 if (sqliteformats.contains(suffix, Qt::CaseInsensitive))
@@ -749,6 +752,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 
                 this->addParameterTable(tv, aggrItem, host);
             }
+            */
             // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             // LIST OF IMAGE/TABLE FILENAMES ON PROCESS COMP ITEM
             // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -798,7 +802,16 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                         if (bOk)
                         {
                             QVariant propVal = proc->property(theProperty.toStdString().c_str());
-                            if (propVal.type() == QVariant::StringList)
+                            if (propVal.type() == QVariant::String)
+                            {
+                                // just take the first from the list
+                                if (fileNames.size() > 0)
+                                {
+                                    QVariant strVar = QVariant::fromValue(fileNames.at(0));
+                                    proc->setProperty(theProperty.toStdString().c_str(), strVar);
+                                }
+                            }
+                            else if (propVal.type() == QVariant::StringList)
                             {
                                 QStringList fnList = propVal.toStringList();
                                 if (event->modifiers() & Qt::ControlModifier)
@@ -830,10 +843,10 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
         {
             NMDebugAI(<< "No valid drag source detected!" << std::endl);
         }
-	}
+    }
 
     //mDragItemList.clear();
-	NMDebugCtx(ctx, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 void
@@ -849,38 +862,38 @@ NMModelScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 {
     mMousePos = event->scenePos();
     if (event->button() == Qt::LeftButton)
-	{
+    {
         QGraphicsItem* item = this->itemAt(event->scenePos(), this->views()[0]->transform());
         QGraphicsProxyWidget* widgetItem = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
         QGraphicsTextItem* textItem = qgraphicsitem_cast<QGraphicsTextItem*>(item);
-		NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
-		NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
-		if (item == 0)
-		{
-			emit rootComponentDblClicked();
-		}
+        NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
+        NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+        if (item == 0)
+        {
+            emit rootComponentDblClicked();
+        }
         else if (widgetItem != 0)
         {
             //emit procAggregateCompDblClicked(widgetItem->objectName());
             emit itemDblClicked(event);
         }
-		else if (procItem != 0)
-		{
-			emit procAggregateCompDblClicked(procItem->getTitle());
-		}
-		else if (aggrItem != 0)
-		{
-			emit procAggregateCompDblClicked(aggrItem->getTitle());
-		}
+        else if (procItem != 0)
+        {
+            emit procAggregateCompDblClicked(procItem->getTitle());
+        }
+        else if (aggrItem != 0)
+        {
+            emit procAggregateCompDblClicked(aggrItem->getTitle());
+        }
         else if (textItem != 0)
         {
             textItem->setTextInteractionFlags(Qt::TextEditorInteraction);
         }
-	}
-	else
-	{
-		QGraphicsScene::mouseDoubleClickEvent(event);
-	}
+    }
+    else
+    {
+        QGraphicsScene::mouseDoubleClickEvent(event);
+    }
 }
 
 void
@@ -922,17 +935,17 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
     NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
     NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
 
-	if (event->button() == Qt::LeftButton)
-	{
+    if (event->button() == Qt::LeftButton)
+    {
         switch(mMode)
-		{
-		case NMS_LINK:
-			mLinkLine = new QGraphicsLineItem(
-					QLineF(event->scenePos(),
-							event->scenePos()));
-			mLinkLine->setPen(QPen(Qt::darkGray, 2));
-			this->addItem(mLinkLine);
-			break;
+        {
+        case NMS_LINK:
+            mLinkLine = new QGraphicsLineItem(
+                    QLineF(event->scenePos(),
+                            event->scenePos()));
+            mLinkLine->setPen(QPen(Qt::darkGray, 2));
+            this->addItem(mLinkLine);
+            break;
 
         case NMS_ZOOM_IN:
         case NMS_ZOOM_OUT:
@@ -1074,11 +1087,11 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
                 // the edit mode is stopped
                 QGraphicsScene::mousePressEvent(event);
             }
-			break;
-		}
-	}
-	else if (event->button() == Qt::RightButton)
-	{
+            break;
+        }
+    }
+    else if (event->button() == Qt::RightButton)
+    {
         QPointF pt = event->scenePos();
         QGraphicsItem* sendItem = 0;
 
@@ -1111,40 +1124,40 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
             //emit itemRightBtnClicked(event, sendItem);
             emit itemRightBtnClicked(event, item);
         }
-	}
-	else
-	{
+    }
+    else
+    {
         QGraphicsScene::mousePressEvent(event);
-	}
+    }
 }
 
 NMComponentLinkItem* NMModelScene::getLinkItem(QPointF pos)
 {
     QGraphicsItem* item = this->itemAt(pos, this->views()[0]->transform());
-	NMComponentLinkItem* link = qgraphicsitem_cast<NMComponentLinkItem*>(item);
+    NMComponentLinkItem* link = qgraphicsitem_cast<NMComponentLinkItem*>(item);
 
-	if (link == 0)
-	{
-		QPointF p = pos;
-		qreal dxy = this->mLinkHitTolerance / 2.0;
-		qreal wh = this->mLinkHitTolerance;
-		QList<QGraphicsItem*> listItems = this->items(p.x()-dxy, p.y()-dxy, wh, wh,
-				Qt::IntersectsItemShape, Qt::DescendingOrder);
-		foreach(QGraphicsItem* i, listItems)
-		{
-			link = qgraphicsitem_cast<NMComponentLinkItem*>(i);
-			if (link != 0)
-			{
-				NMProcessComponentItem* src = const_cast<NMProcessComponentItem*>(link->sourceItem());
-				NMProcessComponentItem* tar = const_cast<NMProcessComponentItem*>(link->targetItem());
-				NMDebugAI(<< "link from " << src->getTitle().toStdString()
-						<< " to " << tar->getTitle().toStdString() << endl);
-				break;
-			}
-		}
-	}
+    if (link == 0)
+    {
+        QPointF p = pos;
+        qreal dxy = this->mLinkHitTolerance / 2.0;
+        qreal wh = this->mLinkHitTolerance;
+        QList<QGraphicsItem*> listItems = this->items(p.x()-dxy, p.y()-dxy, wh, wh,
+                Qt::IntersectsItemShape, Qt::DescendingOrder);
+        foreach(QGraphicsItem* i, listItems)
+        {
+            link = qgraphicsitem_cast<NMComponentLinkItem*>(i);
+            if (link != 0)
+            {
+                NMProcessComponentItem* src = const_cast<NMProcessComponentItem*>(link->sourceItem());
+                NMProcessComponentItem* tar = const_cast<NMProcessComponentItem*>(link->targetItem());
+                NMDebugAI(<< "link from " << src->getTitle().toStdString()
+                        << " to " << tar->getTitle().toStdString() << endl);
+                break;
+            }
+        }
+    }
 
-	return link;
+    return link;
 }
 
 void
@@ -1202,12 +1215,12 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
     //  InteractionMode control
     // ==================================================
     switch(mMode)
-	{
-	case NMS_LINK:
-		if (mLinkLine == 0)
-			break;
-		mLinkLine->setLine(QLineF(mLinkLine->line().p1(), event->scenePos()));
-		break;
+    {
+    case NMS_LINK:
+        if (mLinkLine == 0)
+            break;
+        mLinkLine->setLine(QLineF(mLinkLine->line().p1(), event->scenePos()));
+        break;
 
     case NMS_ZOOM_IN:
     case NMS_ZOOM_OUT:
@@ -1309,7 +1322,7 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         this->invalidate();
         QGraphicsScene::mouseMoveEvent(event);
         break;
-	}
+    }
 }
 
 void
@@ -1317,55 +1330,55 @@ NMModelScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     mMousePos = event->scenePos();
     NMProcessComponentItem* srcComp = 0;
-	NMProcessComponentItem* tarComp = 0;
-	NMComponentLinkItem* link = 0;
-	QList<QGraphicsItem*> srcList;
-	QList<QGraphicsItem*> tarList;
+    NMProcessComponentItem* tarComp = 0;
+    NMComponentLinkItem* link = 0;
+    QList<QGraphicsItem*> srcList;
+    QList<QGraphicsItem*> tarList;
 
     switch(mMode)
-	{
-	case NMS_LINK:
-		if (mLinkLine == 0)
-			break;
+    {
+    case NMS_LINK:
+        if (mLinkLine == 0)
+            break;
 
-		srcList = items(mLinkLine->line().p1());
-		if (srcList.count() && srcList.first() == mLinkLine)
-			srcList.removeFirst();
-		tarList = items(mLinkLine->line().p2());
-		if (srcList.count() && tarList.first() == mLinkLine)
-			tarList.removeFirst();
+        srcList = items(mLinkLine->line().p1());
+        if (srcList.count() && srcList.first() == mLinkLine)
+            srcList.removeFirst();
+        tarList = items(mLinkLine->line().p2());
+        if (srcList.count() && tarList.first() == mLinkLine)
+            tarList.removeFirst();
 
-		removeItem(mLinkLine);
-		delete mLinkLine;
-		mLinkLine = 0;
+        removeItem(mLinkLine);
+        delete mLinkLine;
+        mLinkLine = 0;
 
-		if (srcList.count() > 0 && tarList.count() > 0 &&
-			srcList.first() != tarList.first())
-		{
-			srcComp =
-					qgraphicsitem_cast<NMProcessComponentItem*>(srcList.first());
-			tarComp =
-					qgraphicsitem_cast<NMProcessComponentItem*>(tarList.first());
+        if (srcList.count() > 0 && tarList.count() > 0 &&
+            srcList.first() != tarList.first())
+        {
+            srcComp =
+                    qgraphicsitem_cast<NMProcessComponentItem*>(srcList.first());
+            tarComp =
+                    qgraphicsitem_cast<NMProcessComponentItem*>(tarList.first());
 
-			if (srcComp == 0 || tarComp == 0)
-				break;
-			int st = srcComp->type();
-			int tt = tarComp->type();
+            if (srcComp == 0 || tarComp == 0)
+                break;
+            int st = srcComp->type();
+            int tt = tarComp->type();
 
-			NMDebugAI(<< "types are: " << st << " "
-					<< tt << std::endl);
+            NMDebugAI(<< "types are: " << st << " "
+                    << tt << std::endl);
 
-			link = new NMComponentLinkItem(
-					srcComp, tarComp, 0);
+            link = new NMComponentLinkItem(
+                    srcComp, tarComp, 0);
 
-			srcComp->addOutputLink(-1, link);
-			tarComp->addInputLink(-1, link);
+            srcComp->addOutputLink(-1, link);
+            tarComp->addInputLink(-1, link);
             link->setZValue(this->mLinkZLevel);
             addItem(link);
             this->invalidate();
             emit linkItemCreated(link);
-		}
-		break;
+        }
+        break;
 
     case NMS_ZOOM_IN:
         {
@@ -1509,7 +1522,7 @@ NMModelScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         }
 
         break;
-	}
+    }
 }
 
 bool

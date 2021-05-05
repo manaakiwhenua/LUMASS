@@ -127,6 +127,12 @@ NMComponentEditor::update()
 }
 
 void
+NMComponentEditor::signalModelConfigChanged(void)
+{
+    mHoverEdit->updateExpressionPreview();
+}
+
+void
 NMComponentEditor::setObject(QObject* obj)
 {
     //NMDebugCtx(ctx, << "...");
@@ -364,7 +370,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
     QStringList ctypes;
     ctypes << "uchar" << "char" << "ushort" << "short"
            << "uint" << "int" << "ulong" << "long"
-           << "float" << "double" << "unknown";
+           << "ulonglong" << "longlong" << "float" << "double" << "unknown";
 
     QStringList parammodes;
     parammodes << "NM_USE_UP" << "NM_CYCLE" << "NM_SYNC_WITH_HOST";
@@ -395,7 +401,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
         propType = value.type();
         prop = manager->addProperty(propType, propName);
         prop->setAttribute("minimum", 1);
-        prop->setAttribute("maximum", QVariant::fromValue(INT_MAX));
+        prop->setAttribute("maximum", std::numeric_limits<int>::max());
     }
     else if (QString("float").compare(property.typeName()) == 0)
     {
@@ -657,7 +663,7 @@ void NMComponentEditor::setComponentProperty(const QtProperty* prop,
     QStringList ctypes;
     ctypes << "uchar" << "char" << "ushort" << "short"
            << "uint" << "int" << "ulong" << "long"
-           << "float" << "double" << "unknown";
+           << "ulonglong" << "longlong" << "float" << "double" << "unknown";
 
     QStringList parammodes;
     parammodes << "NM_USE_UP" << "NM_CYCLE" << "NM_SYNC_WITH_HOST";

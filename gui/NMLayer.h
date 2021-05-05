@@ -55,8 +55,14 @@
 #include "vtkEventQtSlotConnect.h"
 #include "vtkUnstructuredGrid.h"
 #include "vtkPolyData.h"
-#include "vtkOGRLayerMapper.h"
-#include "vtkPolyDataMapper.h"
+
+#ifdef VTK_OPENGL2
+    #include "vtkPolyDataMapper.h"
+#else
+    #include "vtkOGRLayerMapper.h"
+#endif
+
+
 #include "vtkColorTransferFunction.h"
 //#include "vtkColorTransferFunctionSpecialNodes.h"
 #include "vtkLookupTable.h"
@@ -537,9 +543,6 @@ protected slots:
 	//		QStringList& slDeletedColumns);
 	virtual void updateSelectionData();
     virtual void updateSelectionColor(void)=0;
-
-private:
-
 
 
 };

@@ -57,8 +57,9 @@ NMChartView::NMChartView(QWidget *parent) : QWidget(parent)
     this->setGeometry(rect);
 
     vtkNew<vtkGenericOpenGLRenderWindow> window;
-    mVTKView = new QVTKOpenGLWidget();
-    mVTKView->SetRenderWindow(window);
+    mVTKView = new QVTKOpenGLNativeWidget();
+    mVTKView->setRenderWindow(window);
+    mVTKView->setEnableHiDPI(true);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->addWidget(mVTKView);
@@ -71,7 +72,7 @@ NMChartView::NMChartView(QWidget *parent) : QWidget(parent)
     //========================================================
     //              SIGNALS & SLOTS
     //========================================================
-//    vtkRenderWindowInteractor* vact = mVTKView->GetRenderWindow()->GetInteractor();
+//    vtkRenderWindowInteractor* vact = mVTKView->renderWindow()->GetInteractor();
 //    mSlotConnect = vtkSmartPointer<vtkEventQtSlotConnect>::New();
 //    mSlotConnect->Connect(vact, vtkCommand::LeftButtonPressEvent,
 //                          this, SLOT(mouseLButtonPressed(vtkObject*)));
@@ -89,7 +90,7 @@ NMChartView::~NMChartView(void)
 vtkRenderWindow*
 NMChartView::getRenderWindow(void)
 {
-    return mVTKView->GetRenderWindow();
+    return mVTKView->renderWindow();
 }
 
 void

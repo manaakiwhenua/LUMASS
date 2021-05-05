@@ -138,6 +138,8 @@ public:
         {this->mScalarBand = band >= 1 && band <= (int)this->mTotalNumBands ? band : 1;}
     int getScalarBand(void) {return this->mScalarBand;}
 
+    int getZSliceIndex();
+    void setZSliceIndex(int slindex);
 
 public slots:
     void updateSourceBuffer(void);
@@ -234,6 +236,7 @@ protected:
 
     int mVisibleRegion[6];
 
+    int mZSliceIdx;
     int mOverviewIdx;
     bool mbUpdateScalars;
 

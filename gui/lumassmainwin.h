@@ -35,12 +35,14 @@
 #include <QListWidget>
 #include "qttreepropertybrowser.h"
 
-//#include <QtWebSockets/QWebSocketServer>
+#include <QtWebSockets/QWebSocketServer>
+#include <QSslError>
 
 //#include <QTcpServer>
 //#include <QTcpSocket>
 //#include <QNetworkSession>
 
+//#include <qsslerror.h>
 
 
 // OGR
@@ -119,8 +121,8 @@ public:
     vtkRenderWindow* getRenderWindow(void);
     const vtkRenderer* getBkgRenderer(void);
     const vtkRenderer* getScaleRenderer(void);
-//    const QWebSocketServer* getSocketServer(void) {return mServer;}
-//    const QList<QWebSocket*> getSocketClients(void) {return mClientList;}
+    const QWebSocketServer* getSocketServer(void) {return mServer;}
+    const QList<QWebSocket*> getSocketClients(void) {return mClientList;}
     void displayChart(vtkTable* srcTab);
     void updateCoordLabel(const QString& newCoords);
     const NMComponentEditor* getCompEditor(void);
@@ -149,9 +151,20 @@ public:
      * requested setting and the associated connection name returned.
      * Whenever an empty connection name is return, something went wrong!
      */
-    QString getDbConnection(const QString& dbFileName, bool bReadWrite=true);
-
+    QString getDbConnection(const QString& dbFileName, bool bReadWrite=true, const QString& conSuffix=QString());
     QString getSessionDbFileName(void) {return mSessionDbFileName;}
+
+    /*! removes a database connection by providing either the database's
+     *  filename or its connection name
+     *
+     *  @param dbFileName  database filename
+     *  @param conname     connection name
+     *  @returns true      if the database connection was found and removed
+
+        */
+    bool removeDbConnection(const QString& dbFileName, const QString& conname);
+
+
 
     void checkRemoveLayerInfo(NMLayer* l);
     void checkInteractiveLayer();
@@ -177,24 +190,24 @@ signals:
 public slots:
 
 #ifdef BUILD_RASSUPPORT
-	void loadRasdamanLayer();
-	void updateRasMetaView();
-	void fetchRasLayer(const QString& imagespec,
-			const QString& covname);
-	void eraseRasLayer(const QString& imagespec);
+    void loadRasdamanLayer();
+    void updateRasMetaView();
+    void fetchRasLayer(const QString& imagespec,
+            const QString& covname);
+    void eraseRasLayer(const QString& imagespec);
 #endif
-	void connectImageLayerProcSignals(NMLayer* layer);
-	void showBusyStart();
+    void connectImageLayerProcSignals(NMLayer* layer);
+    void showBusyStart();
     void showBusyValue(int);
-	void showBusyEnd();
-	void loadImageLayer();
+    void showBusyEnd();
+    void loadImageLayer();
     void loadImageLayer(const QString& fileName);
-	void import3DPointSet();			// imports char (" " | "," | ";" | "\t") seperated text (x,y,z)
-	void toggle3DStereoMode();
-	void toggle3DSimpleMode();
-	void loadVTKPolyData();			// loads VTK *vtp PolyData
-	void loadVectorLayer();
-	void doMOSO();
+    void import3DPointSet();			// imports char (" " | "," | ";" | "\t") seperated text (x,y,z)
+    void toggle3DStereoMode();
+    void toggle3DSimpleMode();
+    void loadVTKPolyData();			// loads VTK *vtp PolyData
+    void loadVectorLayer();
+    void doMOSO();
     void showComponentsView(bool);
     void showComponentsInfoView(bool);
     void showMapView(bool);
@@ -205,20 +218,20 @@ public slots:
     void showCoordinateAxes(bool);
     void mapViewMode();
     void modelViewMode();
-	void updateCoords(vtkObject* obj);
-	void removeAllObjects();
-	void pickObject(vtkObject* obj);
-	void zoomFullExtent();
-	void saveAsVtkPolyData();
+    void updateCoords(vtkObject* obj);
+    void removeAllObjects();
+    void pickObject(vtkObject* obj);
+    void zoomFullExtent();
+    void saveAsVtkPolyData();
     void saveSelectionAsVtkPolyData();
-	void test();
-	void saveAsVectorLayerOGR();
+    void test();
+    void saveAsVectorLayerOGR();
     void saveImageFile();
     void saveMapAsImage();
     void updateLayerInfo(NMLayer* l, long long cellId);
     void importTableObject();
-	void aboutLUMASS();
-	void addLayerToCompList();
+    void aboutLUMASS();
+    void addLayerToCompList();
     void addLayerToCompList(NMLayer* layer);
     void image2PolyData(vtkImageData* img, QList<int>& unitIds);
     void setMapBackgroundColour();
@@ -243,6 +256,16 @@ public slots:
     void zoomToCoords(double* box);
     void updateExclusiveActions(const QString& checkedAction,
                                 bool toggled);
+    void forwardModelConfigChanged(void);
+
+    /*! SLICE SELECTION */
+    void setImageLayerZSliceIdx(int delta);
+
+
+    /*! LUMASS settings & session configuration */
+    void createNewSessionDb();
+    void openSessionDb(const QString& sessionDb);
+
     void configureSettings(void);
     //void searchModelComponent(void);
 
@@ -277,9 +300,9 @@ public slots:
 
     QStringList getNextParamExpr(const QString& expr);
 
-	QStandardItemModel* prepareResChartModel(vtkTable* restab);
+    QStandardItemModel* prepareResChartModel(vtkTable* restab);
 
-	virtual bool notify(QObject* receiver, QEvent* event);
+    virtual bool notify(QObject* receiver, QEvent* event);
 
     static int sqlite_resCallback(void *NotUsed, int argc, char **argv, char **azColName);
 
@@ -287,6 +310,10 @@ public slots:
 //                   const int& dnIdx, QList<int>& idHistory,
 //                   QAbstractItemModel* tableModel, const int &nrows);
 
+
+    /// ====================================================================
+    ///                 SOME GISy HYDROy FUNCTIONS
+    /// ====================================================================
     /*!
      * \brief treeAnalysis - calls specific tree analysis functions
      *        depending on the mode
@@ -348,6 +375,10 @@ public slots:
 
     void importShapeFile(const QString& filename);
 
+    /*! WebSocket Server start/stop */
+    void startWebSocketServer(void);
+    void stopWebSocketServer(void);
+
 protected slots:
     void settingsFeeder(QtProperty* prop, const QStringList& strVal);
     void updateSettings(QtProperty* prop, const QVariant& val);
@@ -358,6 +389,7 @@ protected slots:
     // client & server
     void onNewConnection();
     void onWebSocketServerClosed();
+    void onSSlErrors(const QList<QSslError>& errors);
     void processTextMessage(QString message);
     void processBinaryMessage(QByteArray message);
     void socketDisconnected();
@@ -390,11 +422,11 @@ protected:
     void vtkPolygonPolydataToOGR(GDALDataset* ds, NMVectorLayer *vectorLayer);
 #endif
 
-	// those conversion functions are dealing as well with the particular "Multi-"
-	// case (i.e. MultiPoint, etc.)
-	vtkSmartPointer<vtkPolyData> wkbPointToPolyData(OGRLayer& l);
-	vtkSmartPointer<vtkPolyData> wkbLineStringToPolyData(OGRLayer& l);
-	vtkSmartPointer<vtkPolyData> wkbPolygonToPolyData(OGRLayer& l);
+    // those conversion functions are dealing as well with the particular "Multi-"
+    // case (i.e. MultiPoint, etc.)
+    vtkSmartPointer<vtkPolyData> wkbPointToPolyData(OGRLayer& l);
+    vtkSmartPointer<vtkPolyData> wkbLineStringToPolyData(OGRLayer& l);
+    vtkSmartPointer<vtkPolyData> wkbPolygonToPolyData(OGRLayer& l);
     vtkSmartPointer<vtkPolyData> wkbPolygonToTesselatedPolyData(OGRLayer& l);
 
     /* testing whether pt lies in the cell (2d case)
@@ -420,96 +452,96 @@ protected:
         *out = static_cast<vtkIdType>(*in);
     }
 
-	template<class T>
-	static int compare_asc(const void* a, const void* b)
-	{
-		if (*(T*)a < *(T*)b) return -1;
-		if (*(T*)a > *(T*)b) return 1;
-		return 0;
-	}
+    template<class T>
+    static int compare_asc(const void* a, const void* b)
+    {
+        if (*(T*)a < *(T*)b) return -1;
+        if (*(T*)a > *(T*)b) return 1;
+        return 0;
+    }
 
-	template<class T>
-	static int compare_desc(const void* a, const void* b)
-	{
-		if (*(T*)a < *(T*)b) return 1;
-		if (*(T*)a > *(T*)b) return -1;
-		return 0;
-	}
+    template<class T>
+    static int compare_desc(const void* a, const void* b)
+    {
+        if (*(T*)a < *(T*)b) return 1;
+        if (*(T*)a > *(T*)b) return -1;
+        return 0;
+    }
 
-	/** merging to adjacent arrays a and b; a sits in front of b,
-	 *  and both arrays share the same element type T */
-	template<class T>
-	static void merge_adj(char* a, char* b, int a_size, int b_size)
-	{
-		T* aar = reinterpret_cast<T*>(a);
-		T* bar = reinterpret_cast<T*>(b);
+    /** merging to adjacent arrays a and b; a sits in front of b,
+     *  and both arrays share the same element type T */
+    template<class T>
+    static void merge_adj(char* a, char* b, int a_size, int b_size)
+    {
+        T* aar = reinterpret_cast<T*>(a);
+        T* bar = reinterpret_cast<T*>(b);
 
-		long totalcnt = 0;
-		long acnt = 0;
-		long bcnt = 0;
+        long totalcnt = 0;
+        long acnt = 0;
+        long bcnt = 0;
 
-		while (totalcnt < a_size+b_size)
-		{
-			if (acnt < a_size && bcnt < b_size)
-			{
-				if (aar[acnt] >= bar[bcnt])
-				{
-					aar[totalcnt] = aar[acnt];
-					++acnt;
-				}
-				else
-				{
-					aar[totalcnt] = bar[bcnt];
-					++bcnt;
-				}
-			}
-			else if (acnt < a_size)
-			{
-				aar[totalcnt] = aar[acnt];
-				++acnt;
-			}
-			else if (bcnt < b_size)
-			{
-				aar[totalcnt] = bar[bcnt];
-				++bcnt;
-			}
-			++totalcnt;
-		}
-	}
+        while (totalcnt < a_size+b_size)
+        {
+            if (acnt < a_size && bcnt < b_size)
+            {
+                if (aar[acnt] >= bar[bcnt])
+                {
+                    aar[totalcnt] = aar[acnt];
+                    ++acnt;
+                }
+                else
+                {
+                    aar[totalcnt] = bar[bcnt];
+                    ++bcnt;
+                }
+            }
+            else if (acnt < a_size)
+            {
+                aar[totalcnt] = aar[acnt];
+                ++acnt;
+            }
+            else if (bcnt < b_size)
+            {
+                aar[totalcnt] = bar[bcnt];
+                ++bcnt;
+            }
+            ++totalcnt;
+        }
+    }
 
 
-	inline void quicksort(QList<int>& ar, int left, int right, bool asc)
-	{
-		int le=left, ri=right, row=0;
-		int middle = (le + ri) / 2;
+    inline void quicksort(QList<int>& ar, int left, int right, bool asc)
+    {
+        int le=left, ri=right, row=0;
+        int middle = (le + ri) / 2;
 
-		int mval = ar[middle];
+        int mval = ar[middle];
 
-		do
-		{
-			if (asc)
-			{
-				while (mval > ar[le]) ++le;
-				while (ar[ri] > mval) --ri;
-			}
-			else
-			{
-				while (mval < ar[le]) ++le;
-				while (ar[ri] < mval) --ri;
-			}
+        do
+        {
+            if (asc)
+            {
+                while (mval > ar[le]) ++le;
+                while (ar[ri] > mval) --ri;
+            }
+            else
+            {
+                while (mval < ar[le]) ++le;
+                while (ar[ri] < mval) --ri;
+            }
 
-			if (le <= ri)
-			{
-				int t = ar[le];
-				ar[le] = ar[ri];
-				ar[ri] = t;
-				++le;
-				--ri;
-			}
-		} while (le <= ri);
-		if (left < ri) quicksort(ar, left, ri, asc);
-		if (right > le) quicksort(ar, le, right, asc);
-	}
+            if (le <= ri)
+            {
+                int t = ar[le];
+                ar[le] = ar[ri];
+                ar[ri] = t;
+                ++le;
+                --ri;
+            }
+        } while (le <= ri);
+        if (left < ri) quicksort(ar, left, ri, asc);
+        if (right > le) quicksort(ar, le, right, asc);
+    }
 
     void
     offset2index(const long long int& offset,
@@ -549,8 +581,8 @@ protected:
 
 private:
 
-	// holds the current 3D state (i.e. is interaction
-	// in all 3 dims allowed or restricted to 2D)
+    // holds the current 3D state (i.e. is interaction
+    // in all 3 dims allowed or restricted to 2D)
     bool m_b3D;
 
     // indicates whether the main window is being
@@ -559,7 +591,7 @@ private:
 
     // the GUI containing all controls of the main window
     Ui::LUMASSMainWin *ui;
-	// for showing the mouse position in real world coordinates
+    // for showing the mouse position in real world coordinates
     QLabel* m_coordLabel;
     // for showing pixel values
     QLabel* mPixelValLabel;
@@ -604,16 +636,17 @@ private:
     QAbstractItemModel* mPetaMetaModel;
 
     QString mSessionDbFileName;
+    QString mSessionDbConName;
 
     // keep track of any imported table data (GIS mode)
-	//   (unique) table name        
+    //   (unique) table name
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > > mTableList;
 
     // db path name, view name (linking back to mTableList)
     QMultiMap<QString, QString> mTableDbNames;
 
     // db path name, connection name
-    QMap<QString, QString> mQSqlDbConnectionNameMap;
+    QMultiMap<QString, QString> mQSqlDbConnectionNameMap;
 
     QMap<QString, NMAbstractAction*> mUserActions;
 
@@ -639,8 +672,8 @@ private:
 
     //NMModelController* mModelController;
 
-//    QWebSocketServer* mServer;
-//    QList<QWebSocket*> mClientList;
+    QWebSocketServer* mServer;
+    QList<QWebSocket*> mClientList;
 
 #ifdef BUILD_RASSUPPORT
     RasdamanConnector *mpRasconn;

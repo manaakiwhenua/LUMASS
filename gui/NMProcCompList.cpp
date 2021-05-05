@@ -32,6 +32,7 @@ NMProcCompList::NMProcCompList(QWidget* parent)
 {
 	ctx = "NMProcCompList";
 
+    this->addItem(QString::fromLatin1("BMIModel"));
     this->addItem(QString::fromLatin1("CastImage"));
     //this->addItem(QString::fromLatin1("CombineTwo"));
     this->addItem(QString::fromLatin1("CostDistanceBuffer"));
@@ -50,6 +51,7 @@ NMProcCompList::NMProcCompList(QWidget* parent)
     this->addItem(QString::fromLatin1("RandomImage"));
     this->addItem(QString::fromLatin1("ResampleImage"));
     this->addItem(QString::fromLatin1("SQLProcessor"));
+    this->addItem(QString::fromLatin1("SQLRouter"));
     this->addItem(QString::fromLatin1("SummarizeZones"));
     this->addItem(QString::fromLatin1("UniqueCombination"));
     this->addItem(QString::fromLatin1("TableReader"));
@@ -61,6 +63,9 @@ NMProcCompList::NMProcCompList(QWidget* parent)
     this->addItem(QString::fromLatin1("TerrainAttributes"));
     this->addItem(QString::fromLatin1("ExtractImageRegion"));
     this->addItem(QString::fromLatin1("JSMapKernelScript"));
+    this->addItem(QString::fromLatin1("Image2DtoCubeSlice"));
+    this->addItem(QString::fromLatin1("CubeSliceToImage2D"));
+    this->addItem(QString::fromLatin1("Image2Table"));
 /*$<AddComponentToGUICompList>$*/
 
     this->sortItems();

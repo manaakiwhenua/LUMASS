@@ -73,6 +73,7 @@ signals:
 public slots:
     void update(void);
     void clear(void);
+    void signalModelConfigChanged();
 
 private slots:
     void applySettings(QtProperty* prop, const QVariant& val);

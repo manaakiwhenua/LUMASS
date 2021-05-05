@@ -426,15 +426,23 @@ NMAggregateComponentItem::paint(QPainter* painter,
     // EDGE EFFECT
     // ============================================================================
 
-    painter->setCompositionMode(QPainter::CompositionMode_DestinationIn);
+    //painter->setCompositionMode(QPainter::CompositionMode_DestinationIn);
+
+    //const int cr = ;
+
+    std::vector<int> clr = {red, green, blue};
 
     // blend the corners
     QRadialGradient cornerglare;
-    cornerglare.setColorAt(0.00, QColor(255,255,255,255));
-    cornerglare.setColorAt(0.50, QColor(255,255,255,200));
-    cornerglare.setColorAt(0.75, QColor(255,255,255,180));
-    cornerglare.setColorAt(0.85, QColor(255,255,255,150));
-    cornerglare.setColorAt(1.00, QColor(255,255,255,100));
+    cornerglare.setColorAt(0.00, QColor(clr[0], clr[1], clr[2], 200)); //QColor(255,255,255,255));
+    for (int i=0; i < 3; ++i) {clr[i] = std::max(0, clr[i] - 20);}
+    cornerglare.setColorAt(0.50, QColor(clr[0], clr[1], clr[2], 200)); //QColor(255,255,255,200));
+    for (int i=0; i < 3; ++i) {clr[i] = std::max(0, clr[i] - 30);}
+    cornerglare.setColorAt(0.75, QColor(clr[0], clr[1], clr[2], 200)); //QColor(255,255,255,180));
+    for (int i=0; i < 3; ++i) {clr[i] = std::max(0, clr[i] - 30);}
+    cornerglare.setColorAt(0.85, QColor(clr[0], clr[1], clr[2], 200)); //QColor(255,255,255,150));
+    for (int i=0; i < 3; ++i) {clr[i] = std::max(0, clr[i] - 20);}
+    cornerglare.setColorAt(1.00, QColor(clr[0], clr[1], clr[2], 200)); //QColor(255,255,255,100));
 
 
     // top left
@@ -475,12 +483,20 @@ NMAggregateComponentItem::paint(QPainter* painter,
     // ----------------------------------------------------------------------
     // glare the edges on top of it
     
+    clr[0] = red;
+    clr[1] = green;
+    clr[2] = blue;
+
     QLinearGradient glare(l+(w/2.0), t+8, l+(w/2.0), t);
-    glare.setColorAt(0.00, QColor(255,255,255,255));
-    glare.setColorAt(0.50, QColor(255,255,255,200));
-    glare.setColorAt(0.75, QColor(255,255,255,180));
-    glare.setColorAt(0.85, QColor(255,255,255,150));
-    glare.setColorAt(1.00, QColor(255,255,255,100));
+    glare.setColorAt(0.00, QColor(clr[0], clr[1], clr[2], 200)); //QColor(255,255,255,255));
+    for (int i=0; i < 3; ++i) {clr[i] = std::max(0, clr[i] - 20);}
+    glare.setColorAt(0.50, QColor(clr[0], clr[1], clr[2], 200)); //QColor(255,255,255,200));
+    for (int i=0; i < 3; ++i) {clr[i] = std::max(0, clr[i] - 30);}
+    glare.setColorAt(0.75, QColor(clr[0], clr[1], clr[2], 200)); //QColor(255,255,255,180));
+    for (int i=0; i < 3; ++i) {clr[i] = std::max(0, clr[i] - 30);}
+    glare.setColorAt(0.85, QColor(clr[0], clr[1], clr[2], 200)); //QColor(255,255,255,150));
+    for (int i=0; i < 3; ++i) {clr[i] = std::max(0, clr[i] - 20);}
+    glare.setColorAt(1.00, QColor(clr[0], clr[1], clr[2], 200)); //QColor(255,255,255,100));
 
     // glare top
     QRect glareRect = QRect(l+8,t,w,8);
@@ -508,7 +524,7 @@ NMAggregateComponentItem::paint(QPainter* painter,
 	// ============================================================================
     // other stuff
 	// ============================================================================
-    painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
+    //painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
 
     QRectF wr = QRectF(l+10, t+12, bnd.width()-20,
                        mDash.height());

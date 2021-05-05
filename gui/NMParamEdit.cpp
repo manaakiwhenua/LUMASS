@@ -53,7 +53,8 @@ NMParamEdit::NMParamEdit(QWidget *parent)
     connect(mCompleter->popup()->selectionModel(), SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
             SLOT(showContextInfo(QItemSelection,QItemSelection)));
 
-    mPropBlackList << "objectName" << "Description" << "Inputs"
+    mPropBlackList << "objectName"
+                   << "Description" << "Inputs"
                    << "InputComponents"
                    << "ParameterHandling" << "NMInputComponentType"
                    << "NMOutputComponentType" << "InputNumDimensions"
@@ -66,11 +67,13 @@ NMParamEdit::NMParamEdit(QWidget *parent)
     mFunctionsAndTips.insert("cond", "(<boolean>, <true string>, <false string>)");
     mFunctionsAndTips.insert("isFile", "(<filename>)");
     mFunctionsAndTips.insert("isDir", "(<filename>)");
+    mFunctionsAndTips.insert("hasAttribute", "(\"<UserID>\", \"<ColumnName>\")");
     mFunctionsAndTips.insert("fileBaseName", "(<filename>)");
     mFunctionsAndTips.insert("fileCompleteBaseName", "(<filename>)");
     mFunctionsAndTips.insert("filePath", "(<filename>)");
     mFunctionsAndTips.insert("fileSuffix", "(<filename>)");
     mFunctionsAndTips.insert("fileCompleteSuffix", "(<filename>)");
+    mFunctionsAndTips.insert("fileOneIsNewer", "(<filename_one>, <filename_two)");
     mFunctionsAndTips.insert("strIsEmpty", "(<string>)");
     mFunctionsAndTips.insert("strLength", "(<string>)");
     mFunctionsAndTips.insert("strListItem", "(\"<string>\", \"<sep>\", <idx>)");

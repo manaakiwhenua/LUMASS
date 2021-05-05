@@ -26,7 +26,7 @@
 #define NMCHARTVIEW_H
 
 //#include "QVTKWidget.h"
-#include "QVTKOpenGLWidget.h"
+#include "QVTKOpenGLNativeWidget.h"
 //#include <QVTKOpenGLNativeWidget.h>
 #include <QObject>
 #include <QWidget>
@@ -63,7 +63,7 @@ protected:
 
     NMLogger* mLogger;
     //QVTKWidget* mVTKView;
-    QVTKOpenGLWidget* mVTKView;
+    QVTKOpenGLNativeWidget* mVTKView;
     vtkSmartPointer<vtkContextView> mContextView;
     vtkSmartPointer<vtkEventQtSlotConnect> mSlotConnect;
 };

@@ -22,6 +22,7 @@
 #include "NMImageReader.h"
 #include "NMModelComponent.h"
 #include "NMIterableComponent.h"
+#include "NMSequentialIterComponent.h"
 #include "NMMfwException.h"
 
 #include <string>
@@ -729,6 +730,17 @@ NMRATBandMathImageFilterWrapper
                 e.setDescription(msg.str());
                 throw e;
             }
+
+            // is this component taking part in this 'round'?
+            NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(comp);
+            if (    sic != nullptr
+                 && sic->evalNumIterationsExpression(step+1) == 0
+               )
+            {
+                NMLogDebug(<< ctx << inputCompName.toStdString() << "::NumIterationExpression = 0 : we're skipping it!" );
+                continue;
+            }
+
 
             NMDebugAI(<< "img-name #" << cnt << ": " << inputCompName.toStdString() << std::endl;)
 

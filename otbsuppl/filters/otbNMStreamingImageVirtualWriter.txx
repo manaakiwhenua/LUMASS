@@ -36,7 +36,7 @@
 #define __otbNMStreamingImageVirtualWriter_txx
 
 #include "nmlog.h"
-#define ctxSIFR "NMStreamingImageVirtualWriter"
+#define ctxSIVR "NMStreamingImageVirtualWriter"
 
 #include "otbNMStreamingImageVirtualWriter.h"
 #include "itkImageFileWriter.h"
@@ -48,7 +48,7 @@
 #include "itkImageIORegion.h"
 
 #ifdef BUILD_RASSUPPORT
-	#include "otbRasdamanImageIO.h"
+    #include "otbRasdamanImageIO.h"
 #endif
 
 #include "itkMetaDataObject.h"
@@ -79,10 +79,6 @@ NMStreamingImageVirtualWriter<TInputImage>
   m_UserSpecifiedIORegion = true;
   m_FactorySpecifiedImageIO = false;
 
-  // By default, we use tiled streaming, with automatic tile size
-  // We don't set any parameter, so the memory size is retrieved from
-  // the OTB configuration options
-  // this->SetAutomaticTiledStreaming();
   this->SetAutomaticStrippedStreaming(512);
 
   m_ResamplingType = "NEAREST";
@@ -387,19 +383,19 @@ void
 NMStreamingImageVirtualWriter<TInputImage>
 ::EnlargeOutputRequestedRegion(itk::DataObject* output)
 {
-	Superclass::EnlargeOutputRequestedRegion(output);
-	OutputImageType* out = static_cast<OutputImageType*>(output);
+    Superclass::EnlargeOutputRequestedRegion(output);
+    OutputImageType* out = static_cast<OutputImageType*>(output);
 
-	if (m_UpdateMode && m_UseForcedLPR)
-	{
-		itk::ImageRegion<TInputImage::ImageDimension> outr;
-		for (unsigned int d=0; d < TInputImage::ImageDimension; ++d)
-		{
-			outr.SetIndex(d, m_ForcedLargestPossibleRegion.GetIndex()[d]);
-			outr.SetSize(d, m_ForcedLargestPossibleRegion.GetSize()[d]);
-		}
-		out->SetLargestPossibleRegion(outr);
-	}
+    if (m_UpdateMode && m_UseForcedLPR)
+    {
+        itk::ImageRegion<TInputImage::ImageDimension> outr;
+        for (unsigned int d=0; d < TInputImage::ImageDimension; ++d)
+        {
+            outr.SetIndex(d, m_ForcedLargestPossibleRegion.GetIndex()[d]);
+            outr.SetSize(d, m_ForcedLargestPossibleRegion.GetSize()[d]);
+        }
+        out->SetLargestPossibleRegion(outr);
+    }
 }
 
 
@@ -408,7 +404,7 @@ void
 NMStreamingImageVirtualWriter<TInputImage>
 ::GenerateInputRequestedRegion()
  {
-    //NMDebugCtx(ctxSIFR, << "...");
+    //NMDebugCtx(ctxSIVR, << "...");
   Superclass::GenerateInputRequestedRegion();
 
   InputImageType * inputPtr = const_cast<InputImageType*>(this->GetInput());
@@ -431,7 +427,7 @@ NMStreamingImageVirtualWriter<TInputImage>
 
   inputPtr->SetRequestedRegion(lregion);
 
-    //NMDebugCtx(ctxSIFR, << "done!");
+    //NMDebugCtx(ctxSIVR, << "done!");
 }
 
 template<class TInputImage>
@@ -439,12 +435,12 @@ void
 NMStreamingImageVirtualWriter<TInputImage>
 ::SetForcedLargestPossibleRegion(const itk::ImageIORegion& forcedReg)
 {
-	if (m_ForcedLargestPossibleRegion != forcedReg)
-	{
-		m_ForcedLargestPossibleRegion = forcedReg;
-		this->m_UseForcedLPR = true;
-		this->Modified();
-	}
+    if (m_ForcedLargestPossibleRegion != forcedReg)
+    {
+        m_ForcedLargestPossibleRegion = forcedReg;
+        this->m_UseForcedLPR = true;
+        this->Modified();
+    }
 }
 
 template<class TInputImage>
@@ -452,18 +448,18 @@ void
 NMStreamingImageVirtualWriter<TInputImage>
 ::SetUpdateRegion(const itk::ImageIORegion& updateRegion)
 {
-	if ((updateRegion.GetIndex()[0] + updateRegion.GetSize()[0]) <= m_ForcedLargestPossibleRegion.GetSize()[0] &&
-		(updateRegion.GetIndex()[1] + updateRegion.GetSize()[1]) <= m_ForcedLargestPossibleRegion.GetSize()[1]     )
-	{
-		this->m_UpdateRegion = updateRegion;
-		this->m_UseUpdateRegion = true;
-		this->Modified();
-	}
-	else
-	{
+    if ((updateRegion.GetIndex()[0] + updateRegion.GetSize()[0]) <= m_ForcedLargestPossibleRegion.GetSize()[0] &&
+        (updateRegion.GetIndex()[1] + updateRegion.GetSize()[1]) <= m_ForcedLargestPossibleRegion.GetSize()[1]     )
+    {
+        this->m_UpdateRegion = updateRegion;
+        this->m_UseUpdateRegion = true;
+        this->Modified();
+    }
+    else
+    {
         NMProcWarn(<< "The provided update region does not fit into the configured 'forced largest possible region'!");
-		this->m_UseUpdateRegion = false;
-	}
+        this->m_UseUpdateRegion = false;
+    }
 }
 
 #ifdef BUILD_RASSUPPORT
@@ -471,18 +467,18 @@ template<class TInputImage>
 void NMStreamingImageVirtualWriter<TInputImage>
 ::SetRasdamanConnector(RasdamanConnector* rascon)
  {
-	if (rascon)
-	{
-		this->mRasconn = rascon;
-		otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
-		rio->setRasdamanConnector(rascon);
-		this->m_ImageIO = rio;
-	}
-	else
-	{
-		this->mRasconn = 0;
-		this->m_ImageIO = NULL;
-	}
+    if (rascon)
+    {
+        this->mRasconn = rascon;
+        otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
+        rio->setRasdamanConnector(rascon);
+        this->m_ImageIO = rio;
+    }
+    else
+    {
+        this->mRasconn = 0;
+        this->m_ImageIO = NULL;
+    }
  }
 #endif
 
@@ -491,15 +487,6 @@ void
 NMStreamingImageVirtualWriter<TInputImage>
 ::AllocateOutputs()
 {
-    const InputImageType* inImg = this->GetInput();
-    InputImageRegionType lpr = inImg->GetLargestPossibleRegion();
-
-    OutputImageType* outImg = this->GetOutput();
-    outImg->SetLargestPossibleRegion(lpr);
-    //outImg->SetRequestedRegion(lpr);
-    outImg->SetBufferedRegion(lpr);
-    outImg->Allocate();
-    m_OutputImage = outImg;
 }
 
 /**
@@ -510,7 +497,7 @@ void
 NMStreamingImageVirtualWriter<TInputImage>
 ::UpdateOutputData(itk::DataObject *itkNotUsed(output))
 {
-    //    NMDebugCtx(ctxSIFR, << "...");
+    //    NMDebugCtx(ctxSIVR, << "...");
 
   unsigned int idx;
   /**
@@ -525,8 +512,6 @@ NMStreamingImageVirtualWriter<TInputImage>
    * Prepare all the outputs. This may deallocate previous bulk data.
    */
   this->PrepareOutputs();
-
-//  this->AllocateOutputs();
 
   /**
    * Make sure we have the necessary inputs
@@ -554,90 +539,6 @@ NMStreamingImageVirtualWriter<TInputImage>
   OutputImageRegionType outputRegion = outputPtr->GetLargestPossibleRegion();
 
 
-  /** Prepare ImageIO  : create ImageFactory */
-
-//  if (m_FileName == "")
-//    {
-//    // Make sure that we can write the file given the name
-//    itkExceptionMacro(<< "No filename was specified");
-//    }
-
-//  if (m_ImageIO.IsNotNull())
-//  {
-//	  m_ImageIO->SetFileName(m_FileName.c_str());
-//  }
-
-//  if (m_ImageIO.IsNull())
-//    {
-//	  // if the image io hasn't been set, we're using the GDALRATImageIO by default;
-//	  GDALRATImageIO::Pointer gio = GDALRATImageIO::New();
-//      if (gio.IsNull())
-//      {
-//          itkExceptionMacro(<< "Failed to create instance of GDALRATImageIO");
-//      }
-
-//	  gio->SetFileName(this->m_FileName);
-//	  this->m_ImageIO = gio;
-
-//    }
-//  /** End of Prepare ImageIO  : create ImageFactory */
-
-
-//  /** set writer and imageIO output information */
-//  GDALRATImageIO* gio = dynamic_cast<otb::GDALRATImageIO*>(m_ImageIO.GetPointer());
-//#ifdef BUILD_RASSUPPORT
-//  RasdamanImageIO* rio = dynamic_cast<otb::RasdamanImageIO*>(m_ImageIO.GetPointer());
-//#endif
-
-//  if (m_InputRAT.IsNotNull())
-//  {
-//	  if (gio != 0)
-//	  {
-//		  gio->setRasterAttributeTable(m_InputRAT, 1);
-//	  }
-//#ifdef BUILD_RASSUPPORT
-//	  else if (rio != 0)
-//	  {
-//		  rio->setRasterAttributeTable(m_InputRAT, 1);
-//	  }
-//#endif
-//  }
-
-
-//  if (m_UpdateMode)
-//  {
-//	  if (gio != 0)
-//		  gio->SetImageUpdateMode(true);
-//#ifdef BUILD_RASSUPPORT
-//	  else if (rio != 0)
-//		  rio->SetImageUpdateMode(true);
-//#endif
-//  }
-
-//  /* in case we want to make the image bigger than the we've currently data for
-//   * (e.g. for externally driven sequential writing with intertwined reading),
-//   */
-//  if (m_UseForcedLPR)
-//  {
-//	  if (gio != 0)
-//		  gio->SetForcedLPR(m_ForcedLargestPossibleRegion);
-//#ifdef BUILD_RASSUPPORT
-//	  else if (rio != 0)
-//		  rio->SetForcedLPR(m_ForcedLargestPossibleRegion);
-//#endif
-//  }
-
-//  // in case the user specified an explicit update region for externally controlled
-//  // streaming, we set this as the outputRegion to allow for streaming over this region
-//  if (m_UpdateMode && m_UseUpdateRegion)
-//  {
-//	  for (unsigned int d=0; d < TInputImage::ImageDimension; ++d)
-//	  {
-//		  outputRegion.SetIndex(d, m_UpdateRegion.GetIndex()[d]);
-//		  outputRegion.SetSize(d, m_UpdateRegion.GetSize()[d]);
-//	  }
-//  }
-
   /**
    * Grab the input
    */
@@ -664,14 +565,6 @@ NMStreamingImageVirtualWriter<TInputImage>
    * and what the Splitter thinks is a reasonable value.
    */
 
-//  /** Control if the ImageIO is CanStreamWrite*/
-//  if (m_ImageIO->CanStreamWrite() == false || InputImageDimension == 1)
-//  {
-//      otbWarningMacro(
-//                  << "ImageIO doesn't support streaming, or we've got a 1D image!");
-//      this->SetNumberOfDivisionsStrippedStreaming(1);
-//  }
-//  else
   if (inputPtr->GetBufferedRegion() == inputPtr->GetLargestPossibleRegion())
   {
       otbMsgDevMacro(<< "Buffered region is the largest possible region, there is no need for streaming.");
@@ -693,45 +586,6 @@ NMStreamingImageVirtualWriter<TInputImage>
    * piece, and copy the results into the output image.
    */
   InputImageRegionType streamRegion;
-
-//  //
-//  // Setup the ImageIO with information from outputPtr
-//  //
-//  m_ImageIO->SetNumberOfDimensions(TInputImage::ImageDimension);
-//  const typename TInputImage::SpacingType&   spacing = outputPtr->GetSpacing();
-//  const typename TInputImage::PointType&     origin = outputPtr->GetOrigin();
-//  const typename TInputImage::DirectionType& direction = outputPtr->GetDirection();
-
-//  for (unsigned int i = 0; i < TInputImage::ImageDimension; ++i)
-//  {
-//      // Final image size
-//      m_ImageIO->SetDimensions(i, outputRegion.GetSize(i));
-//      m_ImageIO->SetSpacing(i, spacing[i]);
-//      m_ImageIO->SetOrigin(i, origin[i]);
-
-//      vnl_vector<double> axisDirection(TInputImage::ImageDimension);
-//      // Please note: direction cosines are stored as columns of the
-//      // direction matrix
-//      for (unsigned int j = 0; j < TInputImage::ImageDimension; ++j)
-//      {
-//          axisDirection[j] = direction[j][i];
-//      }
-//      m_ImageIO->SetDirection(i, axisDirection);
-//  }
-
-//  m_ImageIO->SetUseCompression(m_UseCompression);
-//  m_ImageIO->SetMetaDataDictionary(inputPtr->GetMetaDataDictionary());
-
-  /** Create Image file */
-  // Setup the image IO for writing.
-  //
-  //NMDebugAI(<< "Image information for ImageIO ..." << endl);
-  //NMDebugAI(<< "  origin: " << origin[0] << ", " << origin[1] << endl);
-  //NMDebugAI(<< "  spacing: " << spacing[0] << ", " << spacing[1] << endl);
-  //NMDebugAI(<< "  region ... " << endl);
-  //outputRegion.Print(std::cout, itk::Indent(nmlog::nmindent + 4));
-
-//  m_ImageIO->WriteImageInformation();
 
   // Notify START event observers
   this->InvokeEvent(itk::StartEvent());
@@ -757,7 +611,6 @@ NMStreamingImageVirtualWriter<TInputImage>
           ioRegion.SetIndex(i, streamRegion.GetIndex(i));
       }
       this->SetIORegion(ioRegion);
-//      m_ImageIO->SetIORegion(m_IORegion);
 
       // Start writing stream region in the image file
       if (m_WriteImage)
@@ -765,15 +618,6 @@ NMStreamingImageVirtualWriter<TInputImage>
           this->GenerateData();
       }
   }
-
-//  /** build overviews */
-//  if (m_ResamplingType.compare("NONE") != 0 && m_WriteImage)
-//  {
-//      if (gio != 0)
-//      {
-//          gio->BuildOverviews(m_ResamplingType);
-//      }
-//  }
 
   /**
    * If we ended due to aborting, push the progress up to 1.0 (since
@@ -788,25 +632,6 @@ NMStreamingImageVirtualWriter<TInputImage>
   this->InvokeEvent(itk::EndEvent());
 
 
-//  // ONLY WHEN RAT AVAILABLE AND HAS NOT BEEN WRITTEN WITH IMAGE (above)
-//  if (!m_WriteImage && m_InputRAT.IsNotNull())
-//  {
-//      if (gio)
-//      {
-//          NMProcDebug(<< "writing ONLY RAT!");
-//          gio->WriteRAT(m_InputRAT);
-//      }
-//      if (m_InputRAT->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
-//      {
-//          otb::SQLiteTable* sqltab = static_cast<otb::SQLiteTable*>(m_InputRAT.GetPointer());
-//          if (sqltab)
-//          {
-//              sqltab->CloseTable();
-//          }
-//      }
-//  }
-
-
   /**
    * Now we have to mark the data as up to data.
    */
@@ -818,17 +643,7 @@ NMStreamingImageVirtualWriter<TInputImage>
       }
     }
 
-  // Write the image keyword list if any
-  // ossimKeywordlist geom_kwl;
-  // ImageKeywordlist otb_kwl;
-
-  // itk::MetaDataDictionary dict = this->GetInput()->GetMetaDataDictionary();
-  // itk::ExposeMetaData<ImageKeywordlist>(dict, MetaDataKey::OSSIMKeywordlistKey, otb_kwl);
-  // otb_kwl.convertToOSSIMKeywordlist(geom_kwl);
-  //FIXME: why nothing is done with otb_kwl in that case???
-  // If required, put a call to WriteGeometry() here
-
-  /**
+   /**
    * Release any inputs if marked for release
    */
 
@@ -837,31 +652,7 @@ NMStreamingImageVirtualWriter<TInputImage>
   // Mark that we are no longer updating the data in this filter
   this->m_Updating = false;
 
-  // close the GDALDataset
-//  if (gio != 0)
-//  {
-//      gio->CloseDataset();
-//  }
-
-  //NMDebugCtx(ctxSIFR, << "done!");
-
-}
-
-//---------------------------------------------------------
-
-//template<class TInputImage>
-//void
-//NMStreamingImageVirtualWriter<TInputImage>
-//::ResetPipeline()
-//{
-
-//}
-
-template<class TInputImage>
-void
-NMStreamingImageVirtualWriter<TInputImage>
-::BeforeThreadedGenerateData()
-{
+  //NMDebugCtx(ctxSIVR, << "done!");
 
 }
 
@@ -871,29 +662,70 @@ NMStreamingImageVirtualWriter<TInputImage>
 template<class TInputImage>
 void
 NMStreamingImageVirtualWriter<TInputImage>
-//::GenerateData(void)
-::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId )
+::GenerateData(void)
 {
-    InputImageType * input = const_cast<InputImageType*>(this->GetInput());
-    OutputImageType* output = this->GetOutput();
-
-    itk::ProgressReporter progress(this, threadId, outputRegionForThread.GetNumberOfPixels());
-
-
-    typedef itk::ImageRegionConstIterator<InputImageType> InIteratorType;
-    InIteratorType inIter(input, outputRegionForThread);
-
-    typedef itk::ImageRegionIterator<OutputImageType> OutIteratorType;
-    OutIteratorType outIter(output, outputRegionForThread);
-
-    inIter.GoToBegin();
-    outIter.GoToBegin();
-    while(!inIter.IsAtEnd())
+    if (m_NcVar.isNull())
     {
-        outIter.Set(static_cast<OutputImagePixelType>(inIter.Value()));
-        ++inIter;
-        ++outIter;
-        progress.CompletedPixel();
+        return;
+    }
+
+    InputImageType* output = const_cast<InputImageType*>(this->GetInput());
+    InputImageRegionType outregion = output->GetBufferedRegion();
+    std::vector<size_t> vStart;
+    std::vector<size_t> vCount;
+
+    for (int d = output->ImageDimension - 1; d >= 0; --d)
+    {
+        vStart.push_back(outregion.GetIndex(d));
+        vCount.push_back(outregion.GetSize(d));
+    }
+
+    const netCDF::NcType nctype = m_NcVar.getType();
+    const netCDF::NcType::ncType vtype = nctype.getTypeClass();
+    InputImagePixelType* buf = output->GetBufferPointer();
+
+    switch (vtype)
+    {
+    case netCDF::NcType::nc_BYTE:
+        m_NcVar.putVar(vStart, vCount, (char*)(buf));
+        break;
+
+    case netCDF::NcType::nc_UBYTE:
+        m_NcVar.putVar(vStart, vCount, (unsigned char*)(buf));
+        break;
+
+    case netCDF::NcType::nc_SHORT:
+        m_NcVar.putVar(vStart, vCount, (short*)(buf));
+        break;
+
+    case netCDF::NcType::nc_USHORT:
+        m_NcVar.putVar(vStart, vCount, (unsigned short*)(buf));
+        break;
+
+    case netCDF::NcType::nc_INT:
+        m_NcVar.putVar(vStart, vCount, (int*)(buf));
+        break;
+
+    case netCDF::NcType::nc_UINT:
+        m_NcVar.putVar(vStart, vCount, (unsigned int*)(buf));
+        break;
+
+    case netCDF::NcType::nc_UINT64:
+        m_NcVar.putVar(vStart, vCount, (unsigned long long*)(buf));
+        break;
+
+    case netCDF::NcType::nc_INT64:
+        m_NcVar.putVar(vStart, vCount, (long long*)(buf));
+        break;
+
+    case netCDF::NcType::nc_DOUBLE:
+        m_NcVar.putVar(vStart, vCount, (double*)(buf));
+        break;
+
+    case netCDF::NcType::nc_FLOAT:
+    default:
+        m_NcVar.putVar(vStart, vCount, (float*)(buf));
+        break;
     }
 }
 

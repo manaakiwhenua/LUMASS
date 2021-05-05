@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -36,7 +36,7 @@
 #define __otbStreamingRATImageFileWriter_h
 
 #ifdef BUILD_RASSUPPORT
-	#include "RasdamanConnector.hh"
+    #include "RasdamanConnector.hh"
 #endif
 
 #include "otbAttributeTable.h"
@@ -208,7 +208,7 @@ public:
     m_FileName = filename;
 //#ifdef BUILD_RASSUPPORT
 //    if (this->mRasconn == 0)
-    	m_ImageIO = NULL;
+        m_ImageIO = NULL;
 //#endif
     this->Modified();
   }
@@ -304,7 +304,9 @@ public:
    */
   void SetUpdateRegion(const itk::ImageIORegion& updateRegion);
 
-  void EnlargeOutputRequestedRegion(itk::DataObject* output);
+//  void EnlargeOutputRequestedRegion(itk::DataObject* output);
+
+  void BuildOverviews();
 
 
 protected:
@@ -315,7 +317,7 @@ protected:
   /** Does the real work. */
   virtual void GenerateData(void);
 
-  virtual void GenerateInputRequestedRegion();
+//  virtual void GenerateInputRequestedRegion();
 
 
 private:
@@ -364,7 +366,7 @@ private:
   bool m_UseInputMetaDataDictionary; // whether to use the
                                      // MetaDataDictionary from the
                                      // input or not.
-  
+
   bool m_WriteGeomFile;              // Write a geom file to store the kwl
 
   StreamingManagerPointerType m_StreamingManager;

@@ -52,6 +52,7 @@
 #include "otbMetaDataKey.h"
 #include "otbCurlHelper.h"
 
+#include "nmNetCDFIO.h"
 #include "otbGDALRATImageIO.h"
 #include "otbAttributeTable.h"
 #ifdef BUILD_RASSUPPORT
@@ -76,6 +77,7 @@ NMImageReader<TOutputImage>
       m_Curl(CurlHelper::New()),
       //m_FilenameHelper(FNameHelperType::New()),
       m_OverviewIdx(-1),
+      m_ZSliceIdx(0),
       m_UseUserLargestPossibleRegion(false),
       m_RAT(0),
       m_RGBMode(false),
@@ -122,110 +124,21 @@ void NMImageReader<TOutputImage>
         this->m_RAT->PrintStructure(os, indent);
 }
 
-//template <class TOutputImage>
-//void
-//NMImageReader<TOutputImage>
-//::SetFileName(const char* filename)
-//{
-//    this->m_FileName = filename;
-
-//#ifdef BUILD_RASSUPPORT
-//    if (this->mRasconn != 0 && m_FileName.find('.') == std::string::npos)
-//    {
-//        if (this->mRasconn->getRasConnection() != 0)
-//        {
-//            this->mbRasMode = true;
-//        }
-//    }
-
-//    if (mbRasMode)
-//    {
-//        otb::RasdamanImageIO::Pointer ario = dynamic_cast<otb::RasdamanImageIO*>(this->GetImageIO());
-//        if (ario.IsNull())
-//        {
-//            if (!this->mRasconn)
-//            {
-//                this->Print(std::cerr);
-//                ImageFileReaderException e(__FILE__, __LINE__);
-//                std::ostringstream msg;
-//                msg
-//                        << " How inconvenient, someone forgot to set the RasdamanConnector object!"
-//                        << std::endl;
-//                msg << " We can't do anything without it!!" << std::endl;
-//                e.SetDescription(msg.str().c_str());
-//                throw e;
-//                return;
-//            }
-
-//            ario = otb::RasdamanImageIO::New();
-//            if (ario.IsNotNull())
-//            {
-//                ario->setRasdamanConnector(this->mRasconn);
-//                this->SetImageIO(dynamic_cast<otb::ImageIOBase*>(ario.GetPointer()));
-//            }
-//        }
-//    }
-//    else
-//#endif
-//    {
-//        // Find real image file name
-//        // !!!!  Update FileName
-//        std::string lFileName;
-//        bool found = GetGdalReadImageFileName(m_FileName.c_str(), lFileName);
-//        if (found == false)
-//        {
-//            otbMsgDebugMacro(
-//                    << "Filename was NOT unknown. May be recognized by a Image factory ! ");
-//        }
-//        // Update FileName
-//        this->m_FileName = lFileName;
-
-//        // Test if the file exists and if it can be opened.
-//        // An exception will be thrown otherwise.
-//        // We catch the exception because some ImageIO's may not actually
-//        // open a file. Still reports file error if no ImageIO is loaded.
-
-//        try
-//        {
-//            m_ExceptionMessage = "";
-//            this->TestFileExistanceAndReadability();
-//        }
-//        catch (itk::ExceptionObject & err)
-//        {
-//            m_ExceptionMessage = err.GetDescription();
-//        }
-
-
-//        otb::GDALRATImageIO::Pointer gio = dynamic_cast<otb::GDALRATImageIO*>(this->GetImageIO());
-//        if (gio.IsNull())
-//        {
-//            gio = otb::GDALRATImageIO::New();
-//            if (gio.IsNotNull())
-//            {
-//                this->SetImageIO(dynamic_cast<otb::ImageIOBase*>(gio.GetPointer()));
-//                gio->SetFileName(m_FileName);
-//                gio->SetOverviewIdx(this->m_OverviewIdx);
-//                gio->SetRATSupport(this->m_RATSupport);
-//                gio->SetRGBMode(m_RGBMode);
-//                this->m_RAT = gio->ReadRAT(1);
-//            }
-//        }
-//    }
-//}
-
-
 template <class TOutputImage>
 void
 NMImageReader<TOutputImage>
 ::BuildOverviews(const std::string& method)
 {
-    GDALRATImageIO* gio = static_cast<GDALRATImageIO*>(this->GetImageIO());
-    if (gio == 0)
+    GDALRATImageIO* gio = dynamic_cast<GDALRATImageIO*>(this->GetImageIO());
+    NetCDFIO* nio = dynamic_cast<NetCDFIO*>(this->GetImageIO());
+    if (gio != nullptr)
     {
-        return;
+        gio->BuildOverviews(method);
     }
-
-    gio->BuildOverviews(method);
+    else if (nio != nullptr)
+    {
+        nio->BuildOverviews(method);
+    }
 }
 
 template <class TOutputImage>
@@ -332,8 +245,11 @@ NMImageReader<TOutputImage>
 
         this->GetImageIO()->Read(loadBuffer);
 
+#if defined(OTB_VERSION_SIX)
+        this->DoNMConvertBuffer(loadBuffer, region.GetNumberOfPixels());
+#else
         this->DoConvertBuffer(loadBuffer, region.GetNumberOfPixels());
-
+#endif
         delete[] loadBuffer;
     }
 }
@@ -396,10 +312,25 @@ NMImageReader<TOutputImage>
     // which marks the ImageIO as 'UserSpecified' to prevent any
     // 'automatic' change further down the track
 
+    otb::NetCDFIO* nio = dynamic_cast<otb::NetCDFIO*>(this->GetImageIO());
+    if (nio == 0)
+    {
+        std::string fn = this->GetFileName();
+        if (fn.find(".nc") != std::string::npos)
+        {
+            otb::NetCDFIO::Pointer pnio = otb::NetCDFIO::New();
+            pnio->SetFileName(fn.c_str());
+            this->SetImageIO(pnio);
+
+        }
+    }
+
+
+    nio = dynamic_cast<otb::NetCDFIO*>(this->GetImageIO());
+    otb::GDALRATImageIO* gio = dynamic_cast<otb::GDALRATImageIO*>(this->GetImageIO());
 #ifdef BUILD_RASSUPPORT
-    otb::RasdamanImageIO* rio = static_cast<otb::RasdamanImageIO*>(this->GetImageIO());
-    otb::GDALRATImageIO* gio = static_cast<otb::GDALRATImageIO*>(this->GetImageIO());
-    if (rio == 0 && gio == 0)
+    otb::RasdamanImageIO* rio = dynamic_cast<otb::RasdamanImageIO*>(this->GetImageIO());
+    if (rio == nullptr && gio == nullptr && nio == nullptr)
     {
         std::string tmpFN = this->GetFileName();
         if (this->mRasconn != 0 && tmpFN.find('.') == std::string::npos)
@@ -440,8 +371,7 @@ NMImageReader<TOutputImage>
         }
         else
 #else
-    otb::GDALRATImageIO* gio = static_cast<otb::GDALRATImageIO*>(this->GetImageIO());
-    if (gio == 0)
+    if (nio == nullptr && gio == nullptr)
     {
 #endif
         {
@@ -474,7 +404,7 @@ NMImageReader<TOutputImage>
 
 
             otb::GDALRATImageIO::Pointer gio = dynamic_cast<otb::GDALRATImageIO*>(this->GetImageIO());
-            if (gio.IsNull())
+            if (gio.IsNull() && nio == nullptr)
             {
                 gio = otb::GDALRATImageIO::New();
                 if (gio.IsNotNull())
@@ -492,13 +422,13 @@ NMImageReader<TOutputImage>
         }
 
     }
-    else
-    {
-        gio->SetRATType(m_RATType);
-        gio->SetDbRATReadOnly(m_DbRATReadOnly);
-    }
+//    else
+//    {
+//        gio->SetRATType(m_RATType);
+//        gio->SetDbRATReadOnly(m_DbRATReadOnly);
+//    }
 
-    if ( this->GetImageIO() == 0 )
+    if ( this->GetImageIO() == nullptr )
     {
         this->Print( std::cerr );
         ImageFileReaderException e(__FILE__, __LINE__);
@@ -516,6 +446,10 @@ NMImageReader<TOutputImage>
     {
         typename GDALRATImageIO::Pointer imageIO =
                 dynamic_cast<GDALRATImageIO*>(this->GetImageIO());
+
+        imageIO->SetRATType(m_RATType);
+        imageIO->SetDbRATReadOnly(m_DbRATReadOnly);
+
 
         // Hint the IO whether the OTB image type takes complex pixels
         // this will determine the strategy to fill up a vector image
@@ -562,12 +496,17 @@ NMImageReader<TOutputImage>
     }
 #endif
 
+    if (nio != nullptr)
+    {
+        m_UpperLeftCorner = nio->getUpperLeftCorner();
+    }
+
     SizeType dimSize;
     double spacing[ TOutputImage::ImageDimension ];
     double origin[ TOutputImage::ImageDimension ];
     typename TOutputImage::DirectionType direction;
     std::vector<double> axis;
-    int spacing_sign (0);
+    double spacing_sign (0);
 
     for (unsigned int i=0; i<TOutputImage::ImageDimension; ++i)
     {
@@ -583,7 +522,7 @@ NMImageReader<TOutputImage>
                 spacing_sign = 1;
             }
             spacing[i] = this->GetImageIO()->GetSpacing(i) * spacing_sign;
-            origin[i]  = this->GetImageIO()->GetOrigin(i);
+            origin[i] = this->GetImageIO()->GetOrigin(i);
             // Please note: direction cosines are stored as columns of the
             // direction matrix
             axis = this->GetImageIO()->GetDirection(i);
@@ -625,18 +564,6 @@ NMImageReader<TOutputImage>
     output->SetOrigin( origin );       // Set the image origin
     output->SetDirection( direction ); // Set the image direction cosines
 
-    // Update otb Keywordlist
-	ImageKeywordlist otb_kwl;// = ReadGeometryFromImage(lFileNameOssimKeywordlist);
-
-    // Update itk MetaData Dictionary
-    itk::MetaDataDictionary& dict = this->GetImageIO()->GetMetaDataDictionary();
-
-    // Don't add an empty ossim keyword list
-    if( otb_kwl.GetSize() != 0 )
-    {
-        itk::EncapsulateMetaData<ImageKeywordlist>(dict,
-                                                   MetaDataKey::OSSIMKeywordlistKey, otb_kwl);
-    }
 
     //Copy MetaDataDictionary from instantiated reader to output image.
     output->SetMetaDataDictionary(this->GetImageIO()->GetMetaDataDictionary());
@@ -721,24 +648,64 @@ NMImageReader<TOutputImage>::SetOverviewIdx(int ovvidx)
         if (ovvidx != this->m_OverviewIdx)
         {
             this->m_OverviewIdx = ovvidx;
-            otb::GDALRATImageIO* gio = static_cast<otb::GDALRATImageIO*>(
+            otb::NetCDFIO* nio = dynamic_cast<otb::NetCDFIO*>(this->GetImageIO());
+            otb::GDALRATImageIO* gio = dynamic_cast<otb::GDALRATImageIO*>(
                         this->GetImageIO());
-            if (gio)
+            if (gio != nullptr)
             {
                 gio->SetOverviewIdx(ovvidx);
+                this->Modified();
+            }
+            else if (nio != nullptr)
+            {
+                nio->SetOverviewIdx(ovvidx);
                 this->Modified();
             }
         }
     }
 }
 
+template<class TOutputImage>
+void
+NMImageReader<TOutputImage>::SetZSliceIdx(int slindex)
+{
+    if (!mbRasMode)
+    {
+        if (slindex != this->m_ZSliceIdx)
+        {
+            this->m_ZSliceIdx = slindex;
+            otb::NetCDFIO* nio = dynamic_cast<otb::NetCDFIO*>(this->GetImageIO());
+            if (nio != nullptr)
+            {
+                nio->SetZSliceIdx(slindex);
+                this->Modified();
+            }
+        }
+    }
+}
+
+
 template <class TOutputImage>
 void
 NMImageReader<TOutputImage>
 ::TestFileExistanceAndReadability()
 {
-  // Test if the file a server name
+  // check first and foremost for a
+  // netcdf file
   std::string tmpFN = this->GetFileName();
+  if (tmpFN.find(".nc") != std::string::npos)
+  {
+      otb::NetCDFIO::Pointer nio = dynamic_cast<otb::NetCDFIO*>(this->GetImageIO());
+      if (nio.IsNotNull())
+      {
+          if (nio->CanReadFile(tmpFN.c_str()))
+          {
+              return;
+          }
+      }
+  }
+
+  // Test if the file a server name
   if  (tmpFN.find("http") == 0)
         //      [0] == 'h'
         //       && this->GetFileName()[1] == 't'
@@ -914,6 +881,164 @@ NMImageReader<TOutputImage>
     return( fic_trouve );
 }
 
+#ifdef OTB_VERSION_SIX
+template <class TOutputImage >
+void
+NMImageReader< TOutputImage >
+::DoNMConvertBuffer(void* inputData,
+                  size_t numberOfPixels)
+{
+  // get the pointer to the destination buffer
+  OutputImagePixelType *outputData =
+    this->GetOutput()->GetPixelContainer()->GetBufferPointer();
+
+  // TODO:
+  // Pass down the PixelType (RGB, VECTOR, etc.) so that any vector to
+  // scalar conversion be type specific. i.e. RGB to scalar would use
+  // a formula to convert to luminance, VECTOR to scalar would use
+  // vector magnitude.
+
+
+  // Create a macro as this code is a bit lengthy and repetitive
+  // if the ImageIO pixel type is typeid(type) then use the ConvertPixelBuffer
+  // class to convert the data block to TOutputImage's pixel type
+  // see DefaultConvertPixelTraits and ConvertPixelBuffer
+
+  // The first else if block applies only to images of type itk::VectorImage
+  // VectorImage needs to copy out the buffer differently.. The buffer is of
+  // type InternalPixelType, but each pixel is really 'k' consecutive pixels.
+
+  typedef typename otb::DefaultConvertPixelTraits<OutputImagePixelType> ConvertPixelTraits;
+
+#define OTB_CONVERT_BUFFER_IF_BLOCK(type)               \
+ else if( this->GetImageIO()->GetComponentTypeInfo() == typeid(type) )   \
+   {   \
+   if( strcmp( this->GetOutput()->GetNameOfClass(), "VectorImage" ) == 0 ) \
+     { \
+     ConvertPixelBuffer<                                 \
+      type,                                             \
+      OutputImagePixelType,                             \
+      ConvertPixelTraits                                \
+      >                                                 \
+      ::ConvertVectorImage(                             \
+       static_cast<type*>(inputData),                  \
+       this->GetImageIO()->GetNumberOfComponents(),             \
+       outputData,                                     \
+       numberOfPixels);              \
+     } \
+   else \
+     { \
+     ConvertPixelBuffer<                                 \
+      type,                                             \
+      OutputImagePixelType,                             \
+      ConvertPixelTraits                                \
+      >                                                 \
+      ::Convert(                                        \
+        static_cast<type*>(inputData),                  \
+        this->GetImageIO()->GetNumberOfComponents(),             \
+        outputData,                                     \
+        numberOfPixels);              \
+      } \
+    }
+#define OTB_CONVERT_CBUFFER_IF_BLOCK(type)               \
+ else if( this->GetImageIO()->GetComponentTypeInfo() == typeid(type) )   \
+   {  \
+   if( strcmp( this->GetOutput()->GetNameOfClass(), "VectorImage" ) == 0 ) \
+     { \
+     if( (typeid(OutputImagePixelType) == typeid(std::complex<double>))     \
+         || (typeid(OutputImagePixelType) == typeid(std::complex<float>))   \
+         || (typeid(OutputImagePixelType) == typeid(std::complex<int>))     \
+         || (typeid(OutputImagePixelType) == typeid(std::complex<short>)) ) \
+       {\
+       ConvertPixelBuffer<                                 \
+        type::value_type,        \
+        OutputImagePixelType,                             \
+        ConvertPixelTraits                                \
+        >                                                 \
+        ::ConvertComplexVectorImageToVectorImageComplex(                             \
+         static_cast<type*>(inputData),                \
+         this->GetImageIO()->GetNumberOfComponents(),             \
+         outputData,                                     \
+         numberOfPixels); \
+       }\
+     else\
+       {\
+       ConvertPixelBuffer<                                 \
+        type::value_type,        \
+        OutputImagePixelType,                             \
+        ConvertPixelTraits                                \
+        >                                                  \
+        ::ConvertComplexVectorImageToVectorImage(                             \
+         static_cast<type*>(inputData),                \
+         this->GetImageIO()->GetNumberOfComponents(),             \
+         outputData,                                     \
+         numberOfPixels);              \
+       }\
+     } \
+   else \
+     { \
+     ConvertPixelBuffer<                                 \
+      type::value_type,        \
+      OutputImagePixelType,                             \
+      ConvertPixelTraits                                \
+      >                                                 \
+      ::ConvertComplexToGray(                                        \
+       static_cast<type*>(inputData),                  \
+       this->GetImageIO()->GetNumberOfComponents(),             \
+       outputData,                                     \
+       numberOfPixels);              \
+     } \
+   }
+
+  if(0)
+    {
+    }
+  OTB_CONVERT_BUFFER_IF_BLOCK(unsigned char)
+  OTB_CONVERT_BUFFER_IF_BLOCK(char)
+  OTB_CONVERT_BUFFER_IF_BLOCK(unsigned short)
+  OTB_CONVERT_BUFFER_IF_BLOCK(short)
+  OTB_CONVERT_BUFFER_IF_BLOCK(unsigned int)
+  OTB_CONVERT_BUFFER_IF_BLOCK(int)
+  OTB_CONVERT_BUFFER_IF_BLOCK(unsigned long)
+  OTB_CONVERT_BUFFER_IF_BLOCK(long)
+  OTB_CONVERT_BUFFER_IF_BLOCK(unsigned long long)
+  OTB_CONVERT_BUFFER_IF_BLOCK(long long)
+  OTB_CONVERT_BUFFER_IF_BLOCK(float)
+  OTB_CONVERT_BUFFER_IF_BLOCK(double)
+  OTB_CONVERT_CBUFFER_IF_BLOCK(std::complex<short>)
+  OTB_CONVERT_CBUFFER_IF_BLOCK(std::complex<int>)
+  OTB_CONVERT_CBUFFER_IF_BLOCK(std::complex<float>)
+  OTB_CONVERT_CBUFFER_IF_BLOCK(std::complex<double>)
+  else
+    {
+    otb::ImageFileReaderException e(__FILE__, __LINE__);
+    std::ostringstream msg;
+    msg <<"Couldn't convert component type: "
+        << std::endl << "    "
+        << this->GetImageIO()->GetComponentTypeAsString(this->GetImageIO()->GetComponentType())
+        << std::endl << "to one of: "
+        << std::endl << "    " << typeid(unsigned char).name()
+        << std::endl << "    " << typeid(char).name()
+        << std::endl << "    " << typeid(unsigned short).name()
+        << std::endl << "    " << typeid(short).name()
+        << std::endl << "    " << typeid(unsigned int).name()
+        << std::endl << "    " << typeid(int).name()
+        << std::endl << "    " << typeid(unsigned long).name()
+        << std::endl << "    " << typeid(long).name()
+        << std::endl << "    " << typeid(unsigned long long).name()
+        << std::endl << "    " << typeid(long long).name()
+        << std::endl << "    " << typeid(float).name()
+        << std::endl << "    " << typeid(double).name()
+        << std::endl;
+    e.SetDescription(msg.str().c_str());
+    e.SetLocation(ITK_LOCATION);
+    throw e;
+    return;
+    }
+#undef OTB_CONVERT_BUFFER_IF_BLOCK
+#undef OTB_CONVERT_CBUFFER_IF_BLOCK
+}
+#endif // OTB_VERSION_6
 
 } //namespace otb
 

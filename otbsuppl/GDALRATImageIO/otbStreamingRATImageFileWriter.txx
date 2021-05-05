@@ -47,9 +47,11 @@
 #include "itkImageRegionMultidimensionalSplitter.h"
 #include "otbImageIOFactory.h"
 #include "otbGDALRATImageIO.h"
+#include "nmNetCDFIO.h"
+#include "itkMultiResolutionPyramidImageFilter.h"
 
 #ifdef BUILD_RASSUPPORT
-	#include "otbRasdamanImageIO.h"
+    #include "otbRasdamanImageIO.h"
 #endif
 
 #include "itkMetaDataObject.h"
@@ -191,10 +193,10 @@ void
 StreamingRATImageFileWriter<TInputImage>
 ::SetBufferMemorySize(unsigned long memory_size_divisions)
 {
-  itkWarningMacro("SetNumberOfDivisionsStrippedStreaming is DEPRECATED. "
-                  "Use one of SetNumberOfLinesStrippedStreaming, "
-                  "SetAutomaticStrippedStreaming, SetTileDimensionTiledStreaming, "
-                  "or SetAutomaticTiledStreaming." );
+//  itkWarningMacro("SetNumberOfDivisionsStrippedStreaming is DEPRECATED. "
+//                  "Use one of SetNumberOfLinesStrippedStreaming, "
+//                  "SetAutomaticStrippedStreaming, SetTileDimensionTiledStreaming, "
+//                  "or SetAutomaticTiledStreaming." );
 
   unsigned int ram = static_cast<unsigned int>(memory_size_divisions / 1024 / 1024);
   this->SetAutomaticStrippedStreaming(ram);
@@ -208,10 +210,10 @@ void
 StreamingRATImageFileWriter<TInputImage>
 ::SetBufferNumberOfLinesDivisions(unsigned long nb_lines_divisions)
 {
-  itkWarningMacro("SetBufferNumberOfLinesDivisions is DEPRECATED. "
-                  "Use one of SetNumberOfLinesStrippedStreaming, "
-                  "SetAutomaticStrippedStreaming, SetTileDimensionTiledStreaming, "
-                  "or SetAutomaticTiledStreaming." );
+//  itkWarningMacro("SetBufferNumberOfLinesDivisions is DEPRECATED. "
+//                  "Use one of SetNumberOfLinesStrippedStreaming, "
+//                  "SetAutomaticStrippedStreaming, SetTileDimensionTiledStreaming, "
+//                  "or SetAutomaticTiledStreaming." );
 
   unsigned int nb_lines = static_cast<unsigned int>(nb_lines_divisions);
   this->SetNumberOfLinesStrippedStreaming(nb_lines);
@@ -225,10 +227,10 @@ void
 StreamingRATImageFileWriter<TInputImage>
 ::SetNumberOfStreamDivisions(unsigned long nb_divisions)
 {
-  itkWarningMacro("SetNumberOfStreamDivisions is DEPRECATED. "
-                  "Use one of SetNumberOfLinesStrippedStreaming, "
-                  "SetAutomaticStrippedStreaming, SetTileDimensionTiledStreaming, "
-                  "or SetAutomaticTiledStreaming." );
+//  itkWarningMacro("SetNumberOfStreamDivisions is DEPRECATED. "
+//                  "Use one of SetNumberOfLinesStrippedStreaming, "
+//                  "SetAutomaticStrippedStreaming, SetTileDimensionTiledStreaming, "
+//                  "or SetAutomaticTiledStreaming." );
   unsigned int nb_div = static_cast<unsigned int>(nb_divisions);
   this->SetNumberOfDivisionsStrippedStreaming(nb_div);
 }
@@ -367,59 +369,77 @@ StreamingRATImageFileWriter<TInputImage>
     }
 }
 
-template<class TInputImage>
-void
-StreamingRATImageFileWriter<TInputImage>
-::EnlargeOutputRequestedRegion(itk::DataObject* output)
-{
-	Superclass::EnlargeOutputRequestedRegion(output);
-	OutputImageType* out = static_cast<OutputImageType*>(output);
+//template<class TInputImage>
+//void
+//StreamingRATImageFileWriter<TInputImage>
+//::EnlargeOutputRequestedRegion(itk::DataObject* output)
+//{
+//    Superclass::EnlargeOutputRequestedRegion(output);
+//    OutputImageType* out = static_cast<OutputImageType*>(output);
 
-	if (m_UpdateMode && m_UseForcedLPR)
-	{
-		itk::ImageRegion<TInputImage::ImageDimension> outr;
-		for (unsigned int d=0; d < TInputImage::ImageDimension; ++d)
-		{
-			outr.SetIndex(d, m_ForcedLargestPossibleRegion.GetIndex()[d]);
-			outr.SetSize(d, m_ForcedLargestPossibleRegion.GetSize()[d]);
-		}
-		out->SetLargestPossibleRegion(outr);
-	}
-}
+//    if (m_UpdateMode && m_UseForcedLPR)
+//    {
+//        itk::ImageRegion<TInputImage::ImageDimension> outr;
+//        for (unsigned int d=0; d < TInputImage::ImageDimension; ++d)
+//        {
+//            outr.SetIndex(d, m_ForcedLargestPossibleRegion.GetIndex()[d]);
+//            outr.SetSize(d, m_ForcedLargestPossibleRegion.GetSize()[d]);
+//        }
+//        out->SetLargestPossibleRegion(outr);
+//    }
+//}
 
-template<class TInputImage>
-void StreamingRATImageFileWriter<TInputImage>
-::GenerateInputRequestedRegion()
- {
-    //NMDebugCtx(ctxSIFR, << "...");
-    Superclass::GenerateInputRequestedRegion();
+//template<class TInputImage>
+//void StreamingRATImageFileWriter<TInputImage>
+//::GenerateInputRequestedRegion()
+// {
+//    //NMDebugCtx(ctxSIFR, << "...");
+//    Superclass::GenerateInputRequestedRegion();
 
-    InputImageType * inputPtr = const_cast<InputImageType*>(this->GetInput());
+//    InputImageType * inputPtr = const_cast<InputImageType*>(this->GetInput());
 
-    if(!inputPtr)
-    {
-        return;
-    }
-    typename InputImageType::RegionType lregion = inputPtr->GetLargestPossibleRegion();
+//    if(!inputPtr)
+//    {
+//        return;
+//    }
+//    typename InputImageType::RegionType lregion = inputPtr->GetLargestPossibleRegion();
 
-    typename InputImageType::SizeType rsize;
-    rsize.Fill(0);
-    lregion.SetSize(rsize);
+//    typename InputImageType::SizeType rsize;
+//    rsize.Fill(0);
+//    lregion.SetSize(rsize);
 
-    inputPtr->SetRequestedRegion(lregion);
-}
+//    inputPtr->SetRequestedRegion(lregion);
+//}
 
 template<class TInputImage>
 void
 StreamingRATImageFileWriter<TInputImage>
 ::SetForcedLargestPossibleRegion(const itk::ImageIORegion& forcedReg)
 {
-	if (m_ForcedLargestPossibleRegion != forcedReg)
-	{
-		m_ForcedLargestPossibleRegion = forcedReg;
-		this->m_UseForcedLPR = true;
-		this->Modified();
-	}
+    if (m_ForcedLargestPossibleRegion != forcedReg)
+    {
+        m_ForcedLargestPossibleRegion = forcedReg;
+        this->m_UseForcedLPR = true;
+        this->Modified();
+    }
+}
+
+template<class TInputImage>
+void
+StreamingRATImageFileWriter<TInputImage>
+::BuildOverviews(void)
+{
+    GDALRATImageIO* gio = dynamic_cast<GDALRATImageIO*>(this->GetImageIO());
+    NetCDFIO* nio = dynamic_cast<NetCDFIO*>(this->GetImageIO());
+
+    if (nio != nullptr)
+    {
+        nio->BuildOverviews(m_ResamplingType);
+    }
+    else if (gio != nullptr)
+    {
+        gio->BuildOverviews(m_ResamplingType);
+    }
 }
 
 template<class TInputImage>
@@ -427,18 +447,18 @@ void
 StreamingRATImageFileWriter<TInputImage>
 ::SetUpdateRegion(const itk::ImageIORegion& updateRegion)
 {
-	if ((updateRegion.GetIndex()[0] + updateRegion.GetSize()[0]) <= m_ForcedLargestPossibleRegion.GetSize()[0] &&
-		(updateRegion.GetIndex()[1] + updateRegion.GetSize()[1]) <= m_ForcedLargestPossibleRegion.GetSize()[1]     )
-	{
-		this->m_UpdateRegion = updateRegion;
-		this->m_UseUpdateRegion = true;
-		this->Modified();
-	}
-	else
-	{
+    if ((updateRegion.GetIndex()[0] + updateRegion.GetSize()[0]) <= m_ForcedLargestPossibleRegion.GetSize()[0] &&
+        (updateRegion.GetIndex()[1] + updateRegion.GetSize()[1]) <= m_ForcedLargestPossibleRegion.GetSize()[1]     )
+    {
+        this->m_UpdateRegion = updateRegion;
+        this->m_UseUpdateRegion = true;
+        this->Modified();
+    }
+    else
+    {
         NMProcWarn(<< "The provided update region does not fit into the configured 'forced largest possible region'!");
-		this->m_UseUpdateRegion = false;
-	}
+        this->m_UseUpdateRegion = false;
+    }
 }
 
 #ifdef BUILD_RASSUPPORT
@@ -446,18 +466,18 @@ template<class TInputImage>
 void StreamingRATImageFileWriter<TInputImage>
 ::SetRasdamanConnector(RasdamanConnector* rascon)
  {
-	if (rascon)
-	{
-		this->mRasconn = rascon;
-		otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
-		rio->setRasdamanConnector(rascon);
-		this->m_ImageIO = rio;
-	}
-	else
-	{
-		this->mRasconn = 0;
-		this->m_ImageIO = NULL;
-	}
+    if (rascon)
+    {
+        this->mRasconn = rascon;
+        otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
+        rio->setRasdamanConnector(rascon);
+        this->m_ImageIO = rio;
+    }
+    else
+    {
+        this->mRasconn = 0;
+        this->m_ImageIO = NULL;
+    }
  }
 #endif
 
@@ -510,7 +530,6 @@ StreamingRATImageFileWriter<TInputImage>
   OutputImagePointer    outputPtr = this->GetOutput(0);
   OutputImageRegionType outputRegion = this->GetOutput(0)->GetLargestPossibleRegion();
 
-
   /** Prepare ImageIO  : create ImageFactory */
 
   if (m_FileName == "")
@@ -521,26 +540,45 @@ StreamingRATImageFileWriter<TInputImage>
 
   if (m_ImageIO.IsNotNull())
   {
-	  m_ImageIO->SetFileName(m_FileName.c_str());
+      m_ImageIO->SetFileName(m_FileName.c_str());
   }
 
   if (m_ImageIO.IsNull())
     {
-	  // if the image io hasn't been set, we're using the GDALRATImageIO by default;
-	  GDALRATImageIO::Pointer gio = GDALRATImageIO::New();
-      if (gio.IsNull())
+      if (m_FileName.find(".nc") != std::string::npos)
       {
-          itkExceptionMacro(<< "Failed to create instance of GDALRATImageIO");
+          NetCDFIO::Pointer nioPtr = NetCDFIO::New();
+          if (nioPtr.IsNotNull() && nioPtr->CanWriteFile(m_FileName.c_str()))
+          {
+              nioPtr->SetFileName(m_FileName.c_str());
+              this->m_ImageIO = nioPtr;
+          }
+          else
+          {
+              itkExceptionMacro(<< "Failed to create image file '"
+                                << m_FileName.c_str() << "'!");
+          }
       }
+      // ... otherwise use GDALRATImageIO
+      else
+      {
+          // if the image io hasn't been set, we're using the GDALRATImageIO by default;
+          GDALRATImageIO::Pointer gioPtr = GDALRATImageIO::New();
+          if (gioPtr.IsNull())
+          {
+              itkExceptionMacro(<< "Failed to create instance of GDALRATImageIO");
+          }
 
-	  gio->SetFileName(this->m_FileName);
-	  this->m_ImageIO = gio;
+          gioPtr->SetFileName(this->m_FileName);
+          this->m_ImageIO = gioPtr;
+      }
 
     }
   /** End of Prepare ImageIO  : create ImageFactory */
 
 
   /** set writer and imageIO output information */
+  NetCDFIO* nio = dynamic_cast<NetCDFIO*>(m_ImageIO.GetPointer());
   GDALRATImageIO* gio = dynamic_cast<otb::GDALRATImageIO*>(m_ImageIO.GetPointer());
 #ifdef BUILD_RASSUPPORT
   RasdamanImageIO* rio = dynamic_cast<otb::RasdamanImageIO*>(m_ImageIO.GetPointer());
@@ -548,26 +586,37 @@ StreamingRATImageFileWriter<TInputImage>
 
   if (m_InputRAT.IsNotNull())
   {
-	  if (gio != 0)
-	  {
-		  gio->setRasterAttributeTable(m_InputRAT, 1);
-	  }
+      if (nio != nullptr)
+      {
+          nio->setRasterAttributeTable(m_InputRAT, 1);
+      }
+      else if (gio != nullptr)
+      {
+          gio->setRasterAttributeTable(m_InputRAT, 1);
+      }
 #ifdef BUILD_RASSUPPORT
-	  else if (rio != 0)
-	  {
-		  rio->setRasterAttributeTable(m_InputRAT, 1);
-	  }
+      else if (rio != nullptr)
+      {
+          rio->setRasterAttributeTable(m_InputRAT, 1);
+      }
 #endif
   }
 
 
   if (m_UpdateMode)
-  {
-	  if (gio != 0)
-		  gio->SetImageUpdateMode(true);
+  {   if (nio != nullptr)
+      {
+          nio->SetImageUpdateMode(true);
+      }
+      else if (gio != nullptr)
+      {
+          gio->SetImageUpdateMode(true);
+      }
 #ifdef BUILD_RASSUPPORT
-	  else if (rio != 0)
-		  rio->SetImageUpdateMode(true);
+      else if (rio != nullptr)
+      {
+          rio->SetImageUpdateMode(true);
+      }
 #endif
   }
 
@@ -575,12 +624,19 @@ StreamingRATImageFileWriter<TInputImage>
    * (e.g. for externally driven sequential writing with intertwined reading),
    */
   if (m_UseForcedLPR)
-  {
-	  if (gio != 0)
-		  gio->SetForcedLPR(m_ForcedLargestPossibleRegion);
+  {   if (nio != nullptr)
+      {
+          nio->SetForcedLPR(m_ForcedLargestPossibleRegion);
+      }
+      else if (gio != nullptr)
+      {
+          gio->SetForcedLPR(m_ForcedLargestPossibleRegion);
+      }
 #ifdef BUILD_RASSUPPORT
-	  else if (rio != 0)
-		  rio->SetForcedLPR(m_ForcedLargestPossibleRegion);
+      else if (rio != nullptr)
+      {
+          rio->SetForcedLPR(m_ForcedLargestPossibleRegion);
+      }
 #endif
   }
 
@@ -588,11 +644,11 @@ StreamingRATImageFileWriter<TInputImage>
   // streaming, we set this as the outputRegion to allow for streaming over this region
   if (m_UpdateMode && m_UseUpdateRegion)
   {
-	  for (unsigned int d=0; d < TInputImage::ImageDimension; ++d)
-	  {
-		  outputRegion.SetIndex(d, m_UpdateRegion.GetIndex()[d]);
-		  outputRegion.SetSize(d, m_UpdateRegion.GetSize()[d]);
-	  }
+      for (unsigned int d=0; d < TInputImage::ImageDimension; ++d)
+      {
+          outputRegion.SetIndex(d, m_UpdateRegion.GetIndex()[d]);
+          outputRegion.SetSize(d, m_UpdateRegion.GetSize()[d]);
+      }
   }
 
   /**
@@ -620,17 +676,18 @@ StreamingRATImageFileWriter<TInputImage>
    * and what the Splitter thinks is a reasonable value.
    */
 
+
   /** Control if the ImageIO is CanStreamWrite*/
   if (m_ImageIO->CanStreamWrite() == false || InputImageDimension == 1)
   {
-      otbWarningMacro(
-                  << "ImageIO doesn't support streaming, or we've got a 1D image!");
+//      otbWarningMacro(
+//                  << "ImageIO doesn't support streaming, or we've got a 1D image!");
       this->SetNumberOfDivisionsStrippedStreaming(1);
   }
   else if (inputPtr->GetBufferedRegion() == inputPtr->GetLargestPossibleRegion())
   {
-      otbMsgDevMacro(<< "Requested region is the largest possible region, "
-                     << "let's honour that, he preceding filter might not have a choice!");
+//      otbMsgDevMacro(<< "Requested region is the largest possible region, "
+//                     << "let's honour that, he preceding filter might not have a choice!");
       this->SetNumberOfDivisionsStrippedStreaming(1);
   }
   else if (m_StreamingMethod.compare("NO_STREAMING") == 0)
@@ -646,7 +703,7 @@ StreamingRATImageFileWriter<TInputImage>
   {
       m_NumberOfDivisions = 1;
   }
-  otbMsgDebugMacro(<< "Number Of Stream Divisions : " << m_NumberOfDivisions);
+  //otbMsgDebugMacro(<< "Number Of Stream Divisions : " << m_NumberOfDivisions);
 
   /**
    * Loop over the number of pieces, execute the upstream pipeline on each
@@ -736,10 +793,7 @@ StreamingRATImageFileWriter<TInputImage>
   /** build overviews */
   if (m_ResamplingType.compare("NONE") != 0 && m_WriteImage)
   {
-      if (gio != 0)
-      {
-          gio->BuildOverviews(m_ResamplingType);
-      }
+      this->BuildOverviews();
   }
 
   /**
@@ -758,7 +812,11 @@ StreamingRATImageFileWriter<TInputImage>
   // ONLY WHEN RAT AVAILABLE AND HAS NOT BEEN WRITTEN WITH IMAGE (above)
   if (!m_WriteImage && m_InputRAT.IsNotNull())
   {
-      if (gio)
+      if (nio != nullptr)
+      {
+          nio->WriteRAT(m_InputRAT);
+      }
+      else if (gio)
       {
           NMProcDebug(<< "writing ONLY RAT!");
           gio->WriteRAT(m_InputRAT);

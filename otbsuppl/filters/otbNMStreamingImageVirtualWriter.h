@@ -36,7 +36,7 @@
 #define __otbNMStreamingImageVirtualWriter_h
 
 #ifdef BUILD_RASSUPPORT
-	#include "RasdamanConnector.hh"
+    #include "RasdamanConnector.hh"
 #endif
 
 #include "otbAttributeTable.h"
@@ -45,29 +45,19 @@
 
 #include "otbStreamingManager.h"
 
+#include "netcdf.h"
+
 namespace otb
 {
 
 /** \class NMStreamingImageVirtualWriter
- * \brief Writes image data to a single file with streaming process.
  *
- * NMStreamingImageVirtualWriter writes its input data to a single output file.
- * NMStreamingImageVirtualWriter interfaces with an ImageIO class to write out the
- * data whith streaming process.
+ * 'sucks' an image throught the processing piepline
+ * without writing the output of the previous filter
+ * actually to disk. However, it may be used to stream
+ * write an arbitarily typed NetCDF variable of
+ * InputImageDimension.
  *
- * NMStreamingImageVirtualWriter will divide the output into several pieces
- * (controlled by SetNumberOfDivisionsStrippedStreaming, SetNumberOfLinesStrippedStreaming,
- * SetAutomaticStrippedStreaming, SetTileDimensionTiledStreaming or SetAutomaticTiledStreaming),
- * and call the upstream pipeline for each piece, tiling the individual outputs into one large
- * output. This reduces the memory footprint for the application since
- * each filter does not have to process the entire dataset at once.
- *
- * NMStreamingImageVirtualWriter will write directly the streaming buffer in the image file, so
- * that the output image never needs to be completely allocated
- *
- * \sa ImageFileWriter
- * \sa ImageSeriesReader
- * \sa ImageIOBase
  */
 template <class TInputImage>
 class ITK_EXPORT NMStreamingImageVirtualWriter : public itk::ImageToImageFilter<TInputImage, TInputImage>
@@ -210,7 +200,7 @@ public:
     m_FileName = filename;
 //#ifdef BUILD_RASSUPPORT
 //    if (this->mRasconn == 0)
-    	m_ImageIO = NULL;
+        m_ImageIO = NULL;
 //#endif
     this->Modified();
   }
@@ -271,6 +261,9 @@ public:
   void setRAT(unsigned int idx, AttributeTable::Pointer tab)
     {m_InputRAT = tab;}
 
+  void setNcVar(netCDF::NcVar& ncVar)
+    {m_NcVar = ncVar;}
+
 
   /** Indicate whether the writer should be used in 'update' mode for
    *  allowing externally driven streaming as well as updating
@@ -323,16 +316,12 @@ protected:
   void PrintSelf(std::ostream& os, itk::Indent indent) const;
 
   /** Does the real work. */
-  //virtual void GenerateData(void);
-
-  void BeforeThreadedGenerateData();
-  void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId );
+  virtual void GenerateData(void);
 
   virtual void GenerateInputRequestedRegion();
 
   virtual void AllocateOutputs();
 
-  //void ResetPipeline();
 
 private:
   NMStreamingImageVirtualWriter(const NMStreamingImageVirtualWriter &); //purposely not implemented
@@ -380,7 +369,7 @@ private:
   bool m_UseInputMetaDataDictionary; // whether to use the
                                      // MetaDataDictionary from the
                                      // input or not.
-  
+
   bool m_WriteGeomFile;              // Write a geom file to store the kwl
 
   StreamingManagerPointerType m_StreamingManager;
@@ -401,6 +390,8 @@ private:
 
   AttributeTable::Pointer m_InputRAT;
   bool m_RATHaveBeenWritten;
+
+  netCDF::NcVar m_NcVar;
 
   //static const std::string ctx;
 };

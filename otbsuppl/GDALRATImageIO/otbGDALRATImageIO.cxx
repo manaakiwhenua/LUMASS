@@ -54,6 +54,8 @@
 #include "itkRGBAPixel.h"
 #include "itkTimeProbe.h"
 
+#include "nmtypeinfo.h"
+
 //#include "valgrind/callgrind.h"
 
 const std::string otb::GDALRATImageIO::ctx = "GDALRATImageIO";
@@ -644,38 +646,46 @@ void GDALRATImageIO::InternalReadImageInformation()
 
   if (this->GetComponentType() == CHAR)
     {
-    m_BytePerPixel = 1;
+    m_BytePerPixel = sizeof(char);
     }
   else if (this->GetComponentType() == UCHAR)
     {
-    m_BytePerPixel = 1;
+    m_BytePerPixel = sizeof(unsigned char);
     }
   else if (this->GetComponentType() == USHORT)
     {
-    m_BytePerPixel = 2;
+    m_BytePerPixel = sizeof(unsigned short);
     }
   else if (this->GetComponentType() == SHORT)
     {
-    m_BytePerPixel = 2;
+    m_BytePerPixel = sizeof(short);
     }
   else if (this->GetComponentType() == INT)
     {
-    m_BytePerPixel = 4;
+    m_BytePerPixel = sizeof(int);
     }
   else if (this->GetComponentType() == UINT)
     {
-    m_BytePerPixel = 4;
+    m_BytePerPixel = sizeof(unsigned int);
     }
   else if (this->GetComponentType() == LONG)
     {
-    long tmp;
-    m_BytePerPixel = sizeof(tmp);
+    m_BytePerPixel = sizeof(long);
     }
   else if (this->GetComponentType() == ULONG)
     {
-    long tmp;
-    m_BytePerPixel = sizeof(tmp);
+    m_BytePerPixel = sizeof(unsigned long);
     }
+#if defined(_WIN32) && SIZEOF_LONGLONG >= 8
+  else if (this->GetComponentType() == LONGLONG)
+    {
+      m_BytePerPixel = sizeof(long long);
+    }
+  else if (this->GetComponentType() == ULONGLONG)
+    {
+      m_BytePerPixel = sizeof(unsigned long long);
+    }
+#endif
   else if (this->GetComponentType() == FLOAT)
     {
     m_BytePerPixel = 4;
@@ -870,7 +880,7 @@ void GDALRATImageIO::InternalReadImageInformation()
       const GDAL_GCP *psGCP;
       psGCP = m_Dataset->GetGCPs() + cpt;
 
-      OTB_GCP pOtbGCP;
+      GCP pOtbGCP;
       pOtbGCP.m_Id = std::string(psGCP->pszId);
       pOtbGCP.m_Info = std::string(psGCP->pszInfo);
       pOtbGCP.m_GCPRow = psGCP->dfGCPLine;
@@ -884,7 +894,7 @@ void GDALRATImageIO::InternalReadImageInformation()
       lStream << MetaDataKey::GCPParametersKey << cpt;
       key = lStream.str();
 
-      itk::EncapsulateMetaData<OTB_GCP>(dict, key, pOtbGCP);
+      itk::EncapsulateMetaData<GCP>(dict, key, pOtbGCP);
 
       }
 
@@ -1033,79 +1043,79 @@ void GDALRATImageIO::InternalReadImageInformation()
     hBand = GDALGetRasterBand(m_Dataset, iBand + 1);
     GDALColorTableH hTable = GDALGetRasterColorTable(hBand);
     if (!m_RATSupport)
-    	{
-		if ((GDALGetRasterColorInterpretation(hBand) == GCI_PaletteIndex)
-			&& (hTable != NULL))
-		  {
-		  m_IsIndexed = true;
+        {
+        if ((GDALGetRasterColorInterpretation(hBand) == GCI_PaletteIndex)
+            && (hTable != NULL))
+          {
+          m_IsIndexed = true;
 
-		  unsigned int ColorEntryCount = GDALGetColorEntryCount(hTable);
+          unsigned int ColorEntryCount = GDALGetColorEntryCount(hTable);
 
-		  itk::EncapsulateMetaData<std::string>(dict, MetaDataKey::ColorTableNameKey,
-												static_cast<std::string>(GDALGetPaletteInterpretationName(
-																		   GDALGetPaletteInterpretation(hTable))));
+          itk::EncapsulateMetaData<std::string>(dict, MetaDataKey::ColorTableNameKey,
+                                                static_cast<std::string>(GDALGetPaletteInterpretationName(
+                                                                           GDALGetPaletteInterpretation(hTable))));
 
-		  itk::EncapsulateMetaData<unsigned int>(dict, MetaDataKey::ColorEntryCountKey, ColorEntryCount);
+          itk::EncapsulateMetaData<unsigned int>(dict, MetaDataKey::ColorEntryCountKey, ColorEntryCount);
 
-		  for (int i = 0; i < GDALGetColorEntryCount(hTable); ++i)
-			{
-			GDALColorEntry sEntry;
-			MetaDataKey::VectorType VColorEntry;
+          for (int i = 0; i < GDALGetColorEntryCount(hTable); ++i)
+            {
+            GDALColorEntry sEntry;
+            MetaDataKey::VectorType VColorEntry;
 
-			GDALGetColorEntryAsRGB(hTable, i, &sEntry);
+            GDALGetColorEntryAsRGB(hTable, i, &sEntry);
 
-			VColorEntry.push_back(sEntry.c1);
-			VColorEntry.push_back(sEntry.c2);
-			VColorEntry.push_back(sEntry.c3);
-			VColorEntry.push_back(sEntry.c4);
+            VColorEntry.push_back(sEntry.c1);
+            VColorEntry.push_back(sEntry.c2);
+            VColorEntry.push_back(sEntry.c3);
+            VColorEntry.push_back(sEntry.c4);
 
-			itk::EncapsulateMetaData<MetaDataKey::VectorType>(dict, MetaDataKey::ColorEntryAsRGBKey, VColorEntry);
+            itk::EncapsulateMetaData<MetaDataKey::VectorType>(dict, MetaDataKey::ColorEntryAsRGBKey, VColorEntry);
 
-			}
-		  }
-    	}
+            }
+          }
+        }
     else
-		{
-			m_IsIndexed = false;
+        {
+            m_IsIndexed = false;
 
-			if (hTable != NULL)
-			{
-				unsigned int ColorEntryCount = GDALGetColorEntryCount(hTable);
+            if (hTable != NULL)
+            {
+                unsigned int ColorEntryCount = GDALGetColorEntryCount(hTable);
 
-				itk::EncapsulateMetaData<std::string>(dict,
-						MetaDataKey::ColorTableNameKey,
-						static_cast<std::string>(GDALGetPaletteInterpretationName(
-								GDALGetPaletteInterpretation(hTable))));
+                itk::EncapsulateMetaData<std::string>(dict,
+                        MetaDataKey::ColorTableNameKey,
+                        static_cast<std::string>(GDALGetPaletteInterpretationName(
+                                GDALGetPaletteInterpretation(hTable))));
 
-				itk::EncapsulateMetaData<unsigned int>(dict,
-						MetaDataKey::ColorEntryCountKey, ColorEntryCount);
+                itk::EncapsulateMetaData<unsigned int>(dict,
+                        MetaDataKey::ColorEntryCountKey, ColorEntryCount);
 
-				// NEW in the RAT version of this ImageIO:
-				// the older version seemed to just have read one colour entry per band;
-				// this version puts all colour entries (VColorEntry) into a vector
-				// which can be fetched from the MetaDataDictionary using MetaDataKey::ColorEntryAsRGBKey key
+                // NEW in the RAT version of this ImageIO:
+                // the older version seemed to just have read one colour entry per band;
+                // this version puts all colour entries (VColorEntry) into a vector
+                // which can be fetched from the MetaDataDictionary using MetaDataKey::ColorEntryAsRGBKey key
 
-				typedef std::vector<MetaDataKey::VectorType> VectorVectorType;
-				VectorVectorType VVColorEntries;
-				for (int i = 0; i < GDALGetColorEntryCount(hTable); ++i)
-				{
-					GDALColorEntry sEntry;
-					MetaDataKey::VectorType VColorEntry;
+                typedef std::vector<MetaDataKey::VectorType> VectorVectorType;
+                VectorVectorType VVColorEntries;
+                for (int i = 0; i < GDALGetColorEntryCount(hTable); ++i)
+                {
+                    GDALColorEntry sEntry;
+                    MetaDataKey::VectorType VColorEntry;
 
-					GDALGetColorEntryAsRGB(hTable, i, &sEntry);
+                    GDALGetColorEntryAsRGB(hTable, i, &sEntry);
 
-					VColorEntry.push_back(sEntry.c1);
-					VColorEntry.push_back(sEntry.c2);
-					VColorEntry.push_back(sEntry.c3);
-					VColorEntry.push_back(sEntry.c4);
+                    VColorEntry.push_back(sEntry.c1);
+                    VColorEntry.push_back(sEntry.c2);
+                    VColorEntry.push_back(sEntry.c3);
+                    VColorEntry.push_back(sEntry.c4);
 
-					VVColorEntries.push_back(VColorEntry);
-				}
+                    VVColorEntries.push_back(VColorEntry);
+                }
 
-				itk::EncapsulateMetaData<VectorVectorType>(dict,
-						MetaDataKey::ColorEntryAsRGBKey, VVColorEntries);
-			}
-		}
+                itk::EncapsulateMetaData<VectorVectorType>(dict,
+                        MetaDataKey::ColorEntryAsRGBKey, VVColorEntries);
+            }
+        }
     }
 
   if (m_IsIndexed)
@@ -1196,7 +1206,7 @@ void GDALRATImageIO::Write(const void* buffer)
 
 
     if (m_ImageUpdateMode &&  m_CanStreamWrite)
-	{
+    {
         if (!m_CreatedNotWritten)
         {
             // make sure we open the dataset in update mode before we proceed
@@ -1208,20 +1218,20 @@ void GDALRATImageIO::Write(const void* buffer)
         }
 
         if (m_Dataset != 0)
-		{
+        {
             NMLogDebug(<< "opened '" << m_FileName << "' in update mode.");
 
-			// being in update mode may mean that we're not aware of some essential
-			// metadata we need later on for the RasterIO call, so we read from the
-			// just read image ...
+            // being in update mode may mean that we're not aware of some essential
+            // metadata we need later on for the RasterIO call, so we read from the
+            // just read image ...
             m_NbBands = m_Dataset->GetRasterCount();
             m_GDALComponentType = m_Dataset->GetRasterBand(1)->GetRasterDataType();
             m_BytePerPixel = GDALGetDataTypeSize(m_GDALComponentType) / 8;
             m_Dimensions[0] = m_Dataset->GetRasterXSize();
             m_Dimensions[1] = m_Dataset->GetRasterYSize();
-		}
-		else
-		{
+        }
+        else
+        {
             if (m_CreatedNotWritten)
             {
                 NMLogError(
@@ -1234,65 +1244,65 @@ void GDALRATImageIO::Write(const void* buffer)
                         << "GDAL: couldn't open '" << m_FileName << "' in update mode."
                         << " Double check whether the file format supports update!");
             }
-		}
-	}
-	else if (m_ImageUpdateMode && !m_CanStreamWrite)
-	{
+        }
+    }
+    else if (m_ImageUpdateMode && !m_CanStreamWrite)
+    {
         NMLogError(
-				<< "GDAL: file (format) cannot be used in update mode!")
-	}
+                << "GDAL: file (format) cannot be used in update mode!")
+    }
 
     // Compute offset and size
-	unsigned int lNbLines = this->GetIORegion().GetSize()[1];
-	unsigned int lNbColumns = this->GetIORegion().GetSize()[0];
-	int lFirstLine = this->GetIORegion().GetIndex()[1]; // [1... ]
-	int lFirstColumn = this->GetIORegion().GetIndex()[0]; // [1... ]
+    unsigned int lNbLines = this->GetIORegion().GetSize()[1];
+    unsigned int lNbColumns = this->GetIORegion().GetSize()[0];
+    int lFirstLine = this->GetIORegion().GetIndex()[1]; // [1... ]
+    int lFirstColumn = this->GetIORegion().GetIndex()[0]; // [1... ]
 
-	// adjust overall image dimensions (ie largest possible region) when we've set
-	// the forced largest possible region
-	if (m_UseForcedLPR)
-	{
-		for (unsigned int d=0; d < this->GetNumberOfDimensions(); ++d)
-		{
-			m_Dimensions[d] = m_ForcedLPR.GetSize()[d];
-		}
-	}
+    // adjust overall image dimensions (ie largest possible region) when we've set
+    // the forced largest possible region
+    if (m_UseForcedLPR)
+    {
+        for (unsigned int d=0; d < this->GetNumberOfDimensions(); ++d)
+        {
+            m_Dimensions[d] = m_ForcedLPR.GetSize()[d];
+        }
+    }
 
-	// Particular case: checking that the written region is the same size
-	// of the entire image
-	// starting at offset 0 (when no streaming)
-	if ((lNbLines == m_Dimensions[1]) && (lNbColumns == m_Dimensions[0]) && !m_ImageUpdateMode)
-	{
-		lFirstLine = 0;
-		lFirstColumn = 0;
-	}
+    // Particular case: checking that the written region is the same size
+    // of the entire image
+    // starting at offset 0 (when no streaming)
+    if ((lNbLines == m_Dimensions[1]) && (lNbColumns == m_Dimensions[0]) && !m_ImageUpdateMode)
+    {
+        lFirstLine = 0;
+        lFirstColumn = 0;
+    }
 
-	// Convert buffer from void * to unsigned char *
-	//unsigned char *p = static_cast<unsigned char*>( const_cast<void *>(buffer));
+    // Convert buffer from void * to unsigned char *
+    //unsigned char *p = static_cast<unsigned char*>( const_cast<void *>(buffer));
     //printDataBuffer(p,  m_GDALComponentType, m_NbBands, 10*2); // Buffer incorrect
 
-	// If driver supports streaming
-	if (m_CanStreamWrite)
-	{
+    // If driver supports streaming
+    if (m_CanStreamWrite)
+    {
 
         NMLogDebug(<< "RasterIO Write requested region : " << this->GetIORegion() <<
-				"\n, lNbColumns =" << lNbColumns <<
-				"\n, lNbLines =" << lNbLines <<
+                "\n, lNbColumns =" << lNbColumns <<
+                "\n, lNbLines =" << lNbLines <<
                 "\n, m_GDALComponentType =" << GDALGetDataTypeName(m_GDALComponentType) <<
-				"\n, m_NbBands =" << m_NbBands <<
-				"\n, m_BytePerPixel ="<< m_BytePerPixel <<
-				"\n, Pixel offset =" << m_BytePerPixel * m_NbBands << // is nbComp * BytePerPixel
-				"\n, Line offset =" << m_BytePerPixel * m_NbBands * lNbColumns <<// is pixelOffset * nbColumns
-				"\n, Band offset =" << m_BytePerPixel)//  is BytePerPixel
+                "\n, m_NbBands =" << m_NbBands <<
+                "\n, m_BytePerPixel ="<< m_BytePerPixel <<
+                "\n, Pixel offset =" << m_BytePerPixel * m_NbBands << // is nbComp * BytePerPixel
+                "\n, Line offset =" << m_BytePerPixel * m_NbBands * lNbColumns <<// is pixelOffset * nbColumns
+                "\n, Band offset =" << m_BytePerPixel)//  is BytePerPixel
 
-		itk::TimeProbe chrono;
+        itk::TimeProbe chrono;
 
-		//NMDebugAI(<< "PARAMETERS for GDAL RasterIO ... " << std::endl);
-		//NMDebugAI(<< "IO start col: "<< lFirstColumn << " row: " << lFirstLine << std::endl);
-		//NMDebugAI(<< "IO width:" << lNbColumns << " height: " << lNbLines << std::endl);
-		//NMDebugAI(<< "image width: " << m_Dimensions[0] << " image height: " << m_Dimensions[1] << std::endl);
+        //NMDebugAI(<< "PARAMETERS for GDAL RasterIO ... " << std::endl);
+        //NMDebugAI(<< "IO start col: "<< lFirstColumn << " row: " << lFirstLine << std::endl);
+        //NMDebugAI(<< "IO width:" << lNbColumns << " height: " << lNbLines << std::endl);
+        //NMDebugAI(<< "image width: " << m_Dimensions[0] << " image height: " << m_Dimensions[1] << std::endl);
         //NMDebugAI(<< "no bands: " << m_NbBands << " of type: " << GDALGetDataTypeName(m_GDALComponentType)
-		//		<< " of " << m_BytePerPixel << " bytes" << std::endl);
+        //		<< " of " << m_BytePerPixel << " bytes" << std::endl);
 
         // set up band map parameter
         int* bandMap = 0;
@@ -1303,67 +1313,67 @@ void GDALRATImageIO::Write(const void* buffer)
             numWriteBands = m_BandMap.size();
         }
 
-		chrono.Start();
+        chrono.Start();
         CPLErr lCrGdal = m_Dataset->RasterIO(GF_Write,
-							lFirstColumn,
-							lFirstLine,
-							lNbColumns,
-							lNbLines,
-							const_cast<void *>(buffer),
-							lNbColumns,
-							lNbLines,
+                            lFirstColumn,
+                            lFirstLine,
+                            lNbColumns,
+                            lNbLines,
+                            const_cast<void *>(buffer),
+                            lNbColumns,
+                            lNbLines,
                             m_GDALComponentType,
                             numWriteBands,
-							// We want to write all bands
+                            // We want to write all bands
                             bandMap,
-							// Pixel offset
-							// is nbComp * BytePerPixel
-							m_BytePerPixel * m_NbBands,
-							// Line offset
-							// is pixelOffset * nbColumns
-							m_BytePerPixel * m_NbBands * lNbColumns,
-							// Band offset is BytePerPixel
-							m_BytePerPixel);
-		chrono.Stop();
+                            // Pixel offset
+                            // is nbComp * BytePerPixel
+                            m_BytePerPixel * m_NbBands,
+                            // Line offset
+                            // is pixelOffset * nbColumns
+                            m_BytePerPixel * m_NbBands * lNbColumns,
+                            // Band offset is BytePerPixel
+                            m_BytePerPixel);
+        chrono.Stop();
         NMLogDebug(<< "RasterIO Write took " << chrono.GetTotal() << " sec")
 
         m_CreatedNotWritten = false;
 
-		// Check if writing succeed
-		if (lCrGdal == CE_Failure)
-		{
+        // Check if writing succeed
+        if (lCrGdal == CE_Failure)
+        {
             NMLogError(
-					<< "Error while writing image (GDAL format) " << m_FileName.c_str() << ".");
-		}
+                    << "Error while writing image (GDAL format) " << m_FileName.c_str() << ".");
+        }
 
-		// In update mode, we better close the GDAL data set (and with it the wrapper)
-		// to avoid unpredictable behaviour of some drivers; in stream write mode, we
-		// just flush the dataset cache though
-		if (m_ImageUpdateMode)
-		{
+        // In update mode, we better close the GDAL data set (and with it the wrapper)
+        // to avoid unpredictable behaviour of some drivers; in stream write mode, we
+        // just flush the dataset cache though
+        if (m_ImageUpdateMode)
+        {
             // also update RAT's
             NMLogDebug( << "Writing RATs ...");
-			for (unsigned int ti = 0; ti < this->m_vecRAT.size(); ++ti)
-			{
-				otb::AttributeTable::Pointer tab = this->m_vecRAT.at(ti);
-				if (tab.IsNull())
-					continue;
+            for (unsigned int ti = 0; ti < this->m_vecRAT.size(); ++ti)
+            {
+                otb::AttributeTable::Pointer tab = this->m_vecRAT.at(ti);
+                if (tab.IsNull())
+                    continue;
 
-				// for now, we assume ti=band
-				this->WriteRAT(tab, ti + 1);
-			}
+                // for now, we assume ti=band
+                this->WriteRAT(tab, ti + 1);
+            }
 
             this->CloseDataset();
-		}
-		else
-		{
+        }
+        else
+        {
             m_Dataset->FlushCache();
-		}
-	}
-	else
-	{
-		// We only wrote data to the memory dataset
-		// Now write it to the real file with CreateCopy()
+        }
+    }
+    else
+    {
+        // We only wrote data to the memory dataset
+        // Now write it to the real file with CreateCopy()
         //		std::string gdalDriverShortName = FilenameToGdalDriverShortName(
         //				m_FileName);
         //		std::string realFileName = GetGdalWriteImageFileName(
@@ -1414,11 +1424,11 @@ void GDALRATImageIO::Write(const void* buffer)
         //        }
 
 
-		GDALClose(hOutputDS);
+        GDALClose(hOutputDS);
         std::cout << "raw DS::close" << std::endl;
-	}
+    }
 
-	//NMDebugCtx(ctx, << "done!");
+    //NMDebugCtx(ctx, << "done!");
 }
 
 void
@@ -1505,9 +1515,9 @@ void GDALRATImageIO::WriteImageInformation()
 
 void GDALRATImageIO::SetForcedLPR(const itk::ImageIORegion& forcedLPR)
 {
-	this->m_ForcedLPR = forcedLPR;
-	this->m_UseForcedLPR = true;
-	//this->m_FlagWriteImageInformation = true;
+    this->m_ForcedLPR = forcedLPR;
+    this->m_UseForcedLPR = true;
+    //this->m_FlagWriteImageInformation = true;
 }
 
 //void GDALRATImageIO::SetUpdateRegion(const itk::ImageIORegion& updateRegion)
@@ -1629,6 +1639,26 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
               }
         m_GDALComponentType = GDT_UInt32;
       }
+#if defined(_WIN32) && SIZEOF_LONGLONG >= 8
+    else if (this->GetComponentType() == LONGLONG)
+    {
+        m_BytePerPixel = sizeof(long long);
+        if (m_BytePerPixel == 8)
+        {
+            NMProcWarn(<< "Cast a long long (64 bits) image into an int (32 bits) one.")
+        }
+        m_GDALComponentType = GDT_Int32;
+    }
+    else if (this->GetComponentType() == ULONGLONG)
+    {
+        m_BytePerPixel = sizeof(unsigned long long);
+        if (m_BytePerPixel == 8)
+        {
+            NMProcWarn(<< "Cast an unsigned long long (64 bits) image into an unsigned int (32 bits) one.")
+        }
+        m_GDALComponentType = GDT_UInt32;
+    }
+#endif
     else if (this->GetComponentType() == FLOAT)
       {
       m_BytePerPixel = 4;
@@ -1661,8 +1691,8 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
   unsigned int totalRegionLines = m_Dimensions[1];
   if (m_UseForcedLPR)
   {
-	  totalRegionCols = m_ForcedLPR.GetSize()[0];
-	  totalRegionLines = m_ForcedLPR.GetSize()[1];
+      totalRegionCols = m_ForcedLPR.GetSize()[0];
+      totalRegionLines = m_ForcedLPR.GetSize()[1];
   }
 
 
@@ -1694,7 +1724,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
       papszOptions = CSLAddNameValue( papszOptions, "BLOCKYSIZE", oss.str().c_str() );
 
       if (this->m_UseCompression)
-  		papszOptions = CSLAddNameValue( papszOptions, "COMPRESS", "LZW");
+        papszOptions = CSLAddNameValue( papszOptions, "COMPRESS", "LZW");
 
 
       }
@@ -1807,8 +1837,8 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
         lStream << MetaDataKey::GCPParametersKey << gcpIndex;
         std::string key = lStream.str();
 
-        OTB_GCP gcp;
-        itk::ExposeMetaData<OTB_GCP>(dict, key, gcp);
+        GCP gcp;
+        itk::ExposeMetaData<GCP>(dict, key, gcp);
 
         gdalGcps[gcpIndex].pszId = const_cast<char *>(gcp.m_Id.c_str());
         gdalGcps[gcpIndex].pszInfo = const_cast<char *>(gcp.m_Info.c_str());
@@ -1900,12 +1930,12 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
   NMLogDebug( << "Writing RATs ...");
   for (unsigned int ti = 0; ti < this->m_vecRAT.size(); ++ti)
   {
-  	otb::AttributeTable::Pointer tab = this->m_vecRAT.at(ti);
-  	if (tab.IsNull())
-  		continue;
+    otb::AttributeTable::Pointer tab = this->m_vecRAT.at(ti);
+    if (tab.IsNull())
+        continue;
 
-  	// for now, we assume ti=band
-  	this->WriteRAT(tab, ti+1);
+    // for now, we assume ti=band
+    this->WriteRAT(tab, ti+1);
   }
 
 }
@@ -1936,7 +1966,7 @@ std::string GDALRATImageIO::FilenameToGdalDriverShortName(const std::string& nam
   else if ( extension == "lbl" || extension == "pix" )
     gdalDriverShortName="ISIS2";
   else if ( extension == "kea")
-	gdalDriverShortName="KEA";
+    gdalDriverShortName="KEA";
   else
     gdalDriverShortName = "NOT-FOUND";
 
@@ -2290,20 +2320,20 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 {
     //CALLGRIND_START_INSTRUMENTATION;
 
-	// if m_Dataset hasn't been instantiated before, we do it here, because
-	// we might want to fetch the attribute table before the pipeline has
-	// been executed
-	GDALDataset* img;
+    // if m_Dataset hasn't been instantiated before, we do it here, because
+    // we might want to fetch the attribute table before the pipeline has
+    // been executed
+    GDALDataset* img;
     bool bClose = false;
     if (m_Dataset == 0)
-	{
+    {
         m_Dataset = (GDALDataset*)GDALOpen(this->GetFileName(), GA_ReadOnly);
         if (m_Dataset == 0)
-			return 0;
+            return 0;
         bClose = true;
-	}
+    }
 
-	// data set already available?
+    // data set already available?
     //img = m_Dataset->GetDataSet();
 //	if (img == 0)
 //	{
@@ -2312,11 +2342,11 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 //		return 0;
 //	}
 
-	// how many bands? (band index is 1-based)
+    // how many bands? (band index is 1-based)
     if (m_Dataset->GetRasterCount() < iBand)
     {
         if (bClose) this->CloseDataset();
-		return 0;
+        return 0;
     }
 
     // format the database filename for the external lumass db file
@@ -2330,17 +2360,17 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
     }
     dbFN += ".ldb";
 
-	// get the RAT for the specified band
+    // get the RAT for the specified band
 #ifdef GDAL_NEWRATAPI
     GDALRasterAttributeTable* rat = m_Dataset->GetRasterBand(iBand)->GetDefaultRAT();
 #else
     const GDALRasterAttributeTable* rat = m_Dataset->GetRasterBand(iBand)->GetDefaultRAT();
 #endif
-	if (rat == 0)
-	{
+    if (rat == 0)
+    {
         if (bClose) this->CloseDataset();
-		return 0;
-	}
+        return 0;
+    }
 
     // double check, whether the table actually contains some data
     int nrows = rat->GetRowCount();
@@ -2420,11 +2450,11 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
     }
 
 
-	// set filename and band number
+    // set filename and band number
     otbTab->SetBandNumber(iBand);
 
-	//NMDebugAI(<< "filename we want to set: '" << this->GetFileName() << "'" << std::endl);
-	otbTab->SetImgFileName(this->GetFileName());
+    //NMDebugAI(<< "filename we want to set: '" << this->GetFileName() << "'" << std::endl);
+    otbTab->SetImgFileName(this->GetFileName());
 
     // the rowidx field is handled internally in otb::AttributeTable's slqite-based
     // implementation
@@ -2500,7 +2530,7 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 
     for (int c=0; c < ncols; ++c)
     {
-    	colnames.push_back(rat->GetNameOfCol(c));
+        colnames.push_back(rat->GetNameOfCol(c));
 #ifdef GDAL_NEWRATAPI
         switch(rat->GetTypeOfCol(c))
         {
@@ -2714,13 +2744,13 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 void
 GDALRATImageIO::setRasterAttributeTable(AttributeTable* rat, int band)
 {
-	if (band < 1)
-		return;
+    if (band < 1)
+        return;
 
-	if (this->m_vecRAT.capacity() < band)
-		this->m_vecRAT.resize(band);
+    if (this->m_vecRAT.capacity() < band)
+        this->m_vecRAT.resize(band);
 
-	this->m_vecRAT[band-1] = rat;
+    this->m_vecRAT[band-1] = rat;
 }
 
 
@@ -3007,12 +3037,12 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
 void
 GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned int iBand)
 {
-	// if m_Dataset hasn't been instantiated before, we do it here, because
-	// we just do an independent write of the RAT into the data set
-	// (i.e. outside any pipeline activities ...)
+    // if m_Dataset hasn't been instantiated before, we do it here, because
+    // we just do an independent write of the RAT into the data set
+    // (i.e. outside any pipeline activities ...)
     bool bCloseDataSet = false;
     if (m_Dataset == 0)
-	{
+    {
         m_Dataset = (GDALDataset*)GDALOpen(this->GetFileName(), GA_Update);
         if (m_Dataset == 0)
         {
@@ -3020,23 +3050,23 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
             return;
         }
         bCloseDataSet = true;
-	}
+    }
 
-	// how many bands? (band index is 1-based)
+    // how many bands? (band index is 1-based)
     if (m_Dataset->GetRasterCount() < iBand)
     {
         if (bCloseDataSet) this->CloseDataset();
-		return;
+        return;
     }
 
-	// fetch the band
+    // fetch the band
     GDALRasterBand* band = m_Dataset->GetRasterBand(iBand);
 
-	// create a new raster attribute table
-	// note: we just create a whole new table and replace the
-	// current one; we don't bother with just writing changed
-	// values (too lazy for doing the required housekeeping
-	// beforehand) ...
+    // create a new raster attribute table
+    // note: we just create a whole new table and replace the
+    // current one; we don't bother with just writing changed
+    // values (too lazy for doing the required housekeeping
+    // beforehand) ...
 #ifdef GDAL_NEWRATAPI
     GDALDefaultRasterAttributeTable* gdaltab = new GDALDefaultRasterAttributeTable();
 #else
@@ -3098,44 +3128,44 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
     gdaltab->SetRowCount(rowcount);
     std::vector<std::string> colnames;
 
-	CPLErr err;
+    CPLErr err;
 
     // add all columns to the table
     for (int col = 0; col < tab->GetNumCols(); ++col)
-	{
-		GDALRATFieldType type;
+    {
+        GDALRATFieldType type;
         switch(tab->GetColumnType(col))
-		{
-		case otb::AttributeTable::ATTYPE_INT:
-			type = GFT_Integer;
-			break;
-		case otb::AttributeTable::ATTYPE_DOUBLE:
-			type = GFT_Real;
-			break;
+        {
+        case otb::AttributeTable::ATTYPE_INT:
+            type = GFT_Integer;
+            break;
+        case otb::AttributeTable::ATTYPE_DOUBLE:
+            type = GFT_Real;
+            break;
         case otb::AttributeTable::ATTYPE_STRING:
-			type = GFT_String;
-			break;
+            type = GFT_String;
+            break;
         default:
             {
                 NMLogError(<< "Type of column #" << col
                     << " '" << tab->GetColumnName(col).c_str() << "' is undefined!");
             }
-		}
+        }
 
-		GDALRATFieldUsage usage = GFU_Generic;
-		err = gdaltab->CreateColumn(tab->GetColumnName(col).c_str(),
-							type, usage);
-		if (err == CE_Failure)
-		{
+        GDALRATFieldUsage usage = GFU_Generic;
+        err = gdaltab->CreateColumn(tab->GetColumnName(col).c_str(),
+                            type, usage);
+        if (err == CE_Failure)
+        {
             NMLogError(<< "Failed creating column #" << col
-					<< " '" << tab->GetColumnName(col).c_str() << "!");
-		}
+                    << " '" << tab->GetColumnName(col).c_str() << "!");
+        }
 
         colnames.push_back(tab->GetColumnName(col));
 
         NMLogDebug(<< "Created column #" << col << " '"
-				<< tab->GetColumnName(col).c_str() << "'");
-	}
+                << tab->GetColumnName(col).c_str() << "'");
+    }
 
     tab->BeginTransaction();
     tab->PrepareBulkGet(colnames, "");
@@ -3143,9 +3173,9 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
     std::vector< otb::AttributeTable::ColumnValue > values;
     values.resize(tab->GetNumCols());
 
-	// copy values row by row
+    // copy values row by row
     for (long long row=0; row < tab->GetNumRows(); ++row)
-	{
+    {
         if (!tab->DoBulkGet(values))
         {
             NMProcWarn(<< "Copying records failed at row idx=" << row
@@ -3153,16 +3183,16 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
             break;
         }
         for (int col=0; col < tab->GetNumCols(); ++col)
-		{
-			switch(tab->GetColumnType(col))
-			{
-			case otb::AttributeTable::ATTYPE_INT:
+        {
+            switch(tab->GetColumnType(col))
+            {
+            case otb::AttributeTable::ATTYPE_INT:
                 gdaltab->SetValue(row, col, static_cast<int>(values[col].ival));
                 break;
-			case otb::AttributeTable::ATTYPE_DOUBLE:
+            case otb::AttributeTable::ATTYPE_DOUBLE:
                 gdaltab->SetValue(row, col, values[col].dval);
                 break;
-			case otb::AttributeTable::ATTYPE_STRING:
+            case otb::AttributeTable::ATTYPE_STRING:
                 if (values[col].tval == 0)
                 {
                     const char nullval = '\0';
@@ -3172,16 +3202,16 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
                 {
                     gdaltab->SetValue(row, col, values[col].tval);
                 }
-				break;
-			default:
+                break;
+            default:
                 delete gdaltab;
-				gdaltab = nullptr;
+                gdaltab = nullptr;
                 NMLogError(<< "Unrecognised field type! Couldn't set value col=" << col
-						<< " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
-				break;
-			}
-		}
-	}
+                        << " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
+                break;
+            }
+        }
+    }
     tab->EndTransaction();
 
     // if we've just established the connection for writing the RAT
@@ -3190,7 +3220,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
     tab->SetUseSharedCache(bOpenSharedCache);
     if (bCloseConnection) tab->CloseTable();
 
-	// associate the table with the band
+    // associate the table with the band
     // (only if there is actually a record in the table yet,
     // it could be we're in update mode and the table is only
     // being made available once all pixels have been processed
@@ -3202,7 +3232,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
         {
             if (bCloseDataSet) this->CloseDataset();
             delete gdaltab;
-			gdaltab = nullptr;
+            gdaltab = nullptr;
             NMLogError(<< "Failed writing table to band!");
         }
         else
@@ -3221,7 +3251,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
     // the data set run's out of scope
     //m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
 
-	delete gdaltab;
+    delete gdaltab;
 }
 
 

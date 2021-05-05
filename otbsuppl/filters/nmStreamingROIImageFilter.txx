@@ -151,6 +151,23 @@ StreamingROIImageFilter< TInputImage, TOutputImage>
       region.SetSize( m_RegionOfInterest.GetSize() );
   }
 
+  bool babort = false;
+  for (unsigned int dd=0; dd < TInputImage::ImageDimension; ++dd)
+  {
+      if (region.GetSize(dd) == 0 || m_RegionOfInterest.GetSize(dd) == 0)
+      {
+          babort = true;
+      }
+  }
+
+  if (babort)
+  {
+    NMProcErr(<< "The specified ROI is invalid! Double check your parameters! You need to specify either "
+              << "the ROIIndex and ROISize in pixel space or the ROIOrigin and ROILength (i.e. axis length)"
+              << " in coordinate space!");
+    return;
+  }
+
   // start with copying all input data without modification
   outputPtr->CopyInformation(inputPtr);
 
@@ -258,8 +275,8 @@ StreamingROIImageFilter< TInputImage, TOutputImage>
 {
     if (idx.size() != TInputImage::ImageDimension )
     {
-        NMProcWarn(<< "SetROIIndex: The number of supplied parameters"
-                  << " does not match the number of image dimensions!");
+//        NMProcWarn(<< "SetROIIndex: The number of supplied parameters"
+//                  << " does not match the number of image dimensions!");
         return;
     }
 
@@ -276,8 +293,8 @@ StreamingROIImageFilter< TInputImage, TOutputImage>
 {
     if (size.size() != TInputImage::ImageDimension)
     {
-        NMProcWarn(<< "SetROISize: The number of supplied parameters"
-                  << " does not match the number of image dimensions!");
+//        NMProcWarn(<< "SetROISize: The number of supplied parameters"
+//                  << " does not match the number of image dimensions!");
         return;
     }
 
@@ -294,8 +311,8 @@ StreamingROIImageFilter< TInputImage, TOutputImage>
 {
     if (origin.size() != TInputImage::ImageDimension)
     {
-        NMProcWarn(<< "SetROIOrigin: The number of supplied parameters"
-                  << " does not match the number of image dimensions!");
+//        NMProcWarn(<< "SetROIOrigin: The number of supplied parameters"
+//                  << " does not match the number of image dimensions!");
         return;
     }
 
@@ -312,8 +329,8 @@ StreamingROIImageFilter< TInputImage, TOutputImage>
 {
     if (length.size() != TInputImage::ImageDimension)
     {
-        NMProcWarn(<< "SetROILength: The number of supplied parameters"
-                  << " does not match the number of image dimensions!");
+//        NMProcWarn(<< "SetROILength: The number of supplied parameters"
+//                  << " does not match the number of image dimensions!");
         return;
     }
 

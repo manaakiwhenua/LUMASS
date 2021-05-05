@@ -32,7 +32,7 @@
 
 #include <QObject>
 #include "NMItkDataObjectWrapper.h"
-#include "vtkImageImport.h"
+#include "NMVtkImageImport.h"
 #include "vtkSmartPointer.h"
 #include "itkDataObject.h"
 #include "otbImageIOBase.h"
@@ -56,7 +56,7 @@ public:
 	vtkImageData *getVtkImage(void);
 	vtkAlgorithmOutput *getVtkAlgorithmOutput(void);
 
-    vtkImageImport* getVtkImageImport(void);
+    NMVtkImageImport* getVtkImageImport(void);
 
     bool isConnected(void)
         {return this->mbIsConnected;}
@@ -70,7 +70,7 @@ public:
 private:
 	NMItk2VtkConnector & operator=(const NMItk2VtkConnector&);
 
-	vtkSmartPointer<vtkImageImport> mVtkImgImp;
+	vtkSmartPointer<NMVtkImageImport> mVtkImgImp;
 	vtkSmartPointer<vtkImageChangeInformation> mVtkImgChangeInfo;
 	itk::VTKImageExportBase::Pointer mVtkImgExp;
 

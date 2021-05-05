@@ -74,7 +74,7 @@ public:
 
     static void connectPipeline(
 			itk::VTKImageExportBase::Pointer& vtkImgExp,
-			vtkSmartPointer<vtkImageImport>& vtkImgImp,
+			vtkSmartPointer<NMVtkImageImport>& vtkImgImp,
 			vtkSmartPointer<vtkImageChangeInformation>& vtkImgChangeInfo,
 			itk::DataObject::Pointer& imgObj,
 			unsigned int numBands)
@@ -203,7 +203,7 @@ void NMItk2VtkConnector::setNthInput(unsigned int numInput, QSharedPointer<NMItk
     this->mInputNumDimensions = imgWrapper->getNumDimensions();
     this->mInputNumBands = imgWrapper->getNumBands();
 
-	this->mVtkImgImp = vtkSmartPointer<vtkImageImport>::New();
+	this->mVtkImgImp = vtkSmartPointer<NMVtkImageImport>::New();
     //this->mVtkImgChangeInfo = vtkSmartPointer<vtkImageChangeInformation>::New();
 
 	bool connect = true;
@@ -288,7 +288,7 @@ vtkAlgorithmOutput * NMItk2VtkConnector::getVtkAlgorithmOutput()
     return this->mVtkImgImp->GetOutputPort();
 }
 
-vtkImageImport*
+NMVtkImageImport*
 NMItk2VtkConnector::getVtkImageImport(void)
 {
     return this->mVtkImgImp.Get();

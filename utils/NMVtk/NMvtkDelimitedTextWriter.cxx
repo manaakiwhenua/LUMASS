@@ -55,6 +55,7 @@
 
 #include <vector>
 #include <sstream>
+#include <limits>
 
 vtkStandardNewMacro(NMvtkDelimitedTextWriter);
 

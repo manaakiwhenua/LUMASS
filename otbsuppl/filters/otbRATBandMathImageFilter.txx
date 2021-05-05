@@ -302,6 +302,19 @@ void RATBandMathImageFilter<TImage>
 ::ResetPipeline()
 {
     m_TableColumnCache.clear();
+    /*
+    m_VAttrTypes.clear();
+    m_VAttrValues.clear();
+    m_VRAT.clear();
+    m_VTabAttr.clear();
+    m_VVarName.clear();
+    m_VParser.clear();
+    m_AImage.clear();
+    m_UserNames.clear();
+    m_Expression.clear();
+    m_ThreadOverflow.clear();
+    m_ThreadUnderflow.clear();
+    */
 }
 
 
@@ -326,7 +339,7 @@ void RATBandMathImageFilter<TImage>
 
         otb::SQLiteTable::Pointer dbtab = static_cast<otb::SQLiteTable*>(tab.GetPointer());
 
-        std::map<int, std::map<long, double> > tab_map;
+        std::map<int, std::map<long long, double> > tab_map;
         std::vector<std::string> colnames;
         colnames.push_back(dbtab->GetPrimaryKey());
 
@@ -338,8 +351,8 @@ void RATBandMathImageFilter<TImage>
                 colnames.push_back(col_name);
             }
 
-            std::map<long, double> col_map;
-            tab_map.insert(std::pair<int, std::map<long, double> >(
+            std::map<long long, double> col_map;
+            tab_map.insert(std::pair<int, std::map<long long, double> >(
                                m_VTabAttr.at(t).at(c), col_map));
         }
 
@@ -354,7 +367,7 @@ void RATBandMathImageFilter<TImage>
 
         for (int i=m_TableColumnCache.size(); i < t; ++i)
         {
-            std::map<int, std::map<long, double> > tm;
+            std::map<int, std::map<long long, double> > tm;
             m_TableColumnCache.push_back(tm);
         }
 
@@ -752,6 +765,10 @@ void RATBandMathImageFilter<TImage>
                    << "And " << m_OverflowCount        << " Overflow(s) "   << std::endl
                    << "The Parsed Expression, The Inputs And The Output "
                    << "Type May Be Incompatible !");
+
+//    m_VVarName.clear();
+//    m_VAttrValues.clear();
+//    m_VParser.clear();
 }
 
 template< typename TImage >
@@ -775,7 +792,7 @@ void RATBandMathImageFilter<TImage>
     {
         if (m_VRAT[threadId].size() > 0)
         {
-            if (&m_VRAT[threadId][ii] != 0)
+            if (m_VRAT[threadId][ii].GetPointer() != nullptr)
             {
                 if (m_VRAT[threadId][ii].IsNotNull())
                     vTabAvail[ii] = true;

@@ -243,6 +243,8 @@ public:
 	vtkSmartPointer<vtkTable> getDataSetAsTable();
 
     void cancelSolving(void) {this->mbCanceled = true;}
+    int configureProblem(void);
+    void solveProblem(void);
 	int solveLp(void);
 	int mapLp(void);
     int mapLpTab(void);

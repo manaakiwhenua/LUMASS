@@ -350,6 +350,7 @@ NMMosraDataSet::getNumRecs()
                         recs = q.value(0).toInt();
                     }
                 }
+                q.finish();
             }
         }
         break;
@@ -679,7 +680,7 @@ NMMosraDataSet::getQSqlTableValue(const QString &column, int row)
             val = q.value(0);
         }
     }
-
+    q.finish();
     return val;
 }
 
@@ -768,17 +769,12 @@ NMMosraDataSet::addColumn(const QString &colName, NMMosraDataSetDataType type)
                     .arg(typeStr);
 
             QSqlDatabase db = mSqlMod->database();
-            //db.transaction();
-
             QSqlQuery q(db);
             if (!q.exec(qStr))
             {
                 MosraLogError(<< "Failed adding column '" << colName.toStdString() << "'!");
             }
-            //db.commit();
-
-            //mSqlMod->setTable(drv->escapeIdentifier(tableName, QSqlDriver::TableName));
-            //mSqlMod->select();
+            q.finish();
 
             if (mColTypes.empty())
             {
@@ -835,15 +831,13 @@ NMMosraDataSet::setIntValue(const QString &colname, int row, int value)
                     .arg(value)
                     .arg(whereClause);
 
-            //db.transaction();
             QSqlQuery qUpdate(db);
             if (!qUpdate.exec(qStr))
             {
                 MosraLogError(<< "Failed to set value='" << value << "' for column '" << colname.toStdString()
                               << "' in row=" << row << "!");
             }
-            //db.commit();
-            //mSqlMod->select();
+            qUpdate.finish();
         }
         break;
 
@@ -888,15 +882,14 @@ NMMosraDataSet::setDblValue(const QString &colname, int row, double value)
                     .arg(value)
                     .arg(whereClause);
 
-            //db.transaction();
+
             QSqlQuery qUpdate(db);
             if (!qUpdate.exec(qStr))
             {
                 MosraLogError(<< "Failed to set value='" << value << "' for column '" << colname.toStdString()
                               << "' in row=" << row << "!");
             }
-            //db.commit();
-            //mSqlMod->select();
+            qUpdate.finish();
         }
         break;
 
@@ -942,7 +935,7 @@ NMMosraDataSet::setStrValue(const QString &colname, int row, const QString& valu
                     .arg(value)
                     .arg(whereClause);
 
-            //db.transaction();
+
             QSqlQuery qUpdate(db);
             if (!qUpdate.exec(qStr))
             {
@@ -950,8 +943,7 @@ NMMosraDataSet::setStrValue(const QString &colname, int row, const QString& valu
                               << colname.toStdString()
                               << "' in row=" << row << "!");
             }
-            //db.commit();
-            //mSqlMod->select();
+            qUpdate.finish();
         }
         break;
 
@@ -1040,6 +1032,7 @@ NMMosraDataSet::getColumnType(const QString& colname)
             {
                 MosraLogError(<< "Failed retreiving data type of column '" << colname.toStdString()
                               << "'!");
+                sqlq.finish();
                 return dtype;
             }
 
@@ -1083,6 +1076,7 @@ NMMosraDataSet::getColumnType(const QString& colname)
                     mColTypes.insert(colname.trimmed(), ctype);
                 }
             }
+            sqlq.finish();
         }
 
         dtype = mColTypes[colname];
@@ -1198,6 +1192,7 @@ NMMosraDataSet::getDataSetAsVtkTable()
             }
             ++rowcount;
         }
+        q.finish();
     }
     else if (mOtbTab.IsNotNull())
     {
@@ -1593,10 +1588,12 @@ NMMosraDataSet::updateRow(const QVariantList &values, const int &row)
             MosraLogError(<< "Failed updating table record: "
                           << mRowUpdateQuery.lastQuery().toStdString() << std::endl
                           << mRowUpdateQuery.lastError().text().toStdString());
+            mRowUpdateQuery.finish();
             ret = false;
         }
         else
         {
+            mRowUpdateQuery.finish();
             ret = true;
         }
     }
@@ -1780,6 +1777,7 @@ NMMosraDataSet::getRowValues(QVariantList &values, const int &row)
             MosraLogError(<< "Failed getting row values: "
                           << mRowGetQuery.lastQuery().toStdString() << std::endl
                           << "ERROR: " << mRowGetQuery.lastError().text().toStdString());
+            mRowGetQuery.finish();
             ret = false;
         }
         else
@@ -1788,6 +1786,7 @@ NMMosraDataSet::getRowValues(QVariantList &values, const int &row)
             {
                 values[val] = QVariant::fromValue(mRowGetQuery.value(val));
             }
+            mRowGetQuery.finish();
             ret = true;
         }
     }
@@ -2598,16 +2597,16 @@ QString NMMosra::getLayerName(void)
 	return this->msLayerName;
 }
 
-int NMMosra::solveLp(void)
+int NMMosra::configureProblem(void)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...");
 
-	// check, whether all settings are ok
-	if (!this->checkSettings())
-	{
-		NMDebugCtx(ctxNMMosra, << "done!");
-		return 0;
-	}
+    // check, whether all settings are ok
+    if (!this->checkSettings())
+    {
+        NMDebugCtx(ctxNMMosra, << "done!");
+        return 0;
+    }
     MosraLogInfo(<< "checking optimisation settings - OK")
 
     // calc baseline
@@ -2617,40 +2616,40 @@ int NMMosra::solveLp(void)
 
     this->makeLp();
 
-	if (!this->addObjFn())
-	{
-		NMDebugCtx(ctxNMMosra, << "done!");
-		return 0;
-	}
+    if (!this->addObjFn())
+    {
+        NMDebugCtx(ctxNMMosra, << "done!");
+        return 0;
+    }
     MosraLogInfo(<< "adding objective function - OK")
 
-	if (this->meScalMeth == NMMosra::NM_MOSO_INTERACTIVE &&
-			this->mmslObjCons.size() > 0)
+    if (this->meScalMeth == NMMosra::NM_MOSO_INTERACTIVE &&
+            this->mmslObjCons.size() > 0)
     {
-		this->addObjCons();
+        this->addObjCons();
         MosraLogInfo(<< "adding objective constraints - OK")
     }
 
-	// doe we have any additional constraints?
-	if (this->mmslAreaCons.size() > 0)
-	{
-		if (!this->addExplicitAreaCons())
-		{
-			NMDebugCtx(ctxNMMosra, << "done!");
-			return 0;
-		}
+    // doe we have any additional constraints?
+    if (this->mmslAreaCons.size() > 0)
+    {
+        if (!this->addExplicitAreaCons())
+        {
+            NMDebugCtx(ctxNMMosra, << "done!");
+            return 0;
+        }
         MosraLogInfo(<< "adding allocation constraints - OK")
-	}
+    }
 
-	if (this->mmslCriCons.size() > 0)
-	{
-		if (!this->addCriCons())
-		{
-			NMDebugCtx(ctxNMMosra, << "done!");
-			return 0;
-		}
+    if (this->mmslCriCons.size() > 0)
+    {
+        if (!this->addCriCons())
+        {
+            NMDebugCtx(ctxNMMosra, << "done!");
+            return 0;
+        }
         MosraLogInfo(<< "adding performance constraints - OK")
-	}
+    }
 
     if (this->mmslIncentives.size() > 0)
     {
@@ -2735,13 +2734,172 @@ int NMMosra::solveLp(void)
     this->mLp->SetScaling(SCALE_GEOMETRIC |
                           SCALE_DYNUPDATE);
 
-	this->mLp->Solve();
+    NMDebugCtx(ctxNMMosra, << "done!");
+    return 1;
+}
 
-	this->createReport();
+void NMMosra::solveProblem(void)
+{
+    NMDebugCtx(ctxNMMosra, << "...");
+
+    this->mLp->Solve();
+
+    this->createReport();
 
     MosraLogInfo(<< "Optimisation Report ... \n" << this->getReport().toStdString() << endl);
 
-	NMDebugCtx(ctxNMMosra, << "done!");
+    NMDebugCtx(ctxNMMosra, << "done!");
+}
+
+int NMMosra::solveLp(void)
+{
+//	NMDebugCtx(ctxNMMosra, << "...");
+
+//	// check, whether all settings are ok
+//	if (!this->checkSettings())
+//	{
+//		NMDebugCtx(ctxNMMosra, << "done!");
+//		return 0;
+//	}
+//    MosraLogInfo(<< "checking optimisation settings - OK")
+
+//    // calc baseline
+//    this->calcBaseline();
+//    MosraLogInfo(<< "calculdated baseline alright!");
+
+
+//    this->makeLp();
+
+//	if (!this->addObjFn())
+//	{
+//		NMDebugCtx(ctxNMMosra, << "done!");
+//		return 0;
+//	}
+//    MosraLogInfo(<< "adding objective function - OK")
+
+//	if (this->meScalMeth == NMMosra::NM_MOSO_INTERACTIVE &&
+//			this->mmslObjCons.size() > 0)
+//    {
+//		this->addObjCons();
+//        MosraLogInfo(<< "adding objective constraints - OK")
+//    }
+
+//	// doe we have any additional constraints?
+//	if (this->mmslAreaCons.size() > 0)
+//	{
+//		if (!this->addExplicitAreaCons())
+//		{
+//			NMDebugCtx(ctxNMMosra, << "done!");
+//			return 0;
+//		}
+//        MosraLogInfo(<< "adding allocation constraints - OK")
+//	}
+
+//	if (this->mmslCriCons.size() > 0)
+//	{
+//		if (!this->addCriCons())
+//		{
+//			NMDebugCtx(ctxNMMosra, << "done!");
+//			return 0;
+//		}
+//        MosraLogInfo(<< "adding performance constraints - OK")
+//	}
+
+//    if (this->mmslIncentives.size() > 0)
+//    {
+//        if (!this->addIncentCons())
+//        {
+//            NMDebugCtx(ctxNMMosra, << "done!");
+//            return 0;
+//        }
+//        MosraLogInfo(<< "adding incentives 'constraints' - OK")
+//    }
+
+//    if (this->mslZoneConstraints.size() > 0)
+//    {
+//        if (!this->addZoneCons())
+//        {
+//            NMDebugCtx(ctxNMMosra, << "done!");
+//            return 0;
+//        }
+//        MosraLogInfo(<< "adding zone constraints - OK")
+//    }
+
+
+//    if (this->mmslFeatCons.size() > 0)
+//    {
+//        if (!this->addFeatureCons())
+//        {
+//            NMDebugCtx(ctxNMMosra, << "done!");
+//            return 0;
+//        }
+//        MosraLogInfo(<< "adding feature constraints - OK");
+//    }
+//    else
+//    {
+//        if (!this->addImplicitAreaCons())
+//        {
+//            NMDebugCtx(ctxNMMosra, << "done!");
+//            return 0;
+//        }
+//        MosraLogInfo(<< "adding internal areal (consistency) constraints - OK")
+//    }
+
+//    if (this->mbBreakAtFirst)
+//    {
+//        this->mLp->SetBreakAtFirst(true);
+
+//        MosraLogInfo(<< "solver stops at first feasible solution!" << std::endl);
+//    }
+//    else
+//    {
+//        this->mLp->SetTimeout(this->muiTimeOut);
+
+//        MosraLogInfo(<< "solver times out after " << this->muiTimeOut
+//                << " seconds!" << std::endl);
+//    }
+//    this->mbCanceled = false;
+//    this->mLp->SetAbortFunc((void*)this, NMMosra::callbackIsSolveCanceled);
+//    this->mLp->SetLogFunc((void*)this, NMMosra::lpLogCallback);
+
+//    // if the user wishes, we write out the problem we've just created ...
+//    if (!this->mProblemFilename.isEmpty())
+//    {
+//        if (this->mProblemType == NM_MOSO_LP)
+//        {
+//            this->mLp->WriteLp(this->mProblemFilename.toStdString());
+//        }
+//        else
+//        {
+//            this->mLp->WriteMps(this->mProblemFilename.toStdString());
+//        }
+//    }
+
+//    this->mLp->SetPresolve(PRESOLVE_COLS |
+//                           PRESOLVE_ROWS |
+//                           PRESOLVE_IMPLIEDFREE |
+//                           PRESOLVE_REDUCEGCD |
+//                           PRESOLVE_MERGEROWS |
+//                           PRESOLVE_ROWDOMINATE |
+//                           PRESOLVE_COLDOMINATE |
+//                           PRESOLVE_KNAPSACK |
+//                           PRESOLVE_PROBEFIX);
+
+//    this->mLp->SetScaling(SCALE_GEOMETRIC |
+//                          SCALE_DYNUPDATE);
+    if (!this->configureProblem())
+    {
+        return 0;
+    }
+
+    this->solveProblem();
+//	this->mLp->Solve();
+
+//	this->createReport();
+
+//    MosraLogInfo(<< "Optimisation Report ... \n" << this->getReport().toStdString() << endl);
+
+//	NMDebugCtx(ctxNMMosra, << "done!");
 	return 1;
 }
 
@@ -5636,20 +5794,23 @@ int NMMosra::addExplicitAreaCons(void)
             }
             else // set the coefficients for a non-zone constraintcoeffCcoeffCounterounter
             {
-                // set the coefficient
-                switch(this->meDVType)
+                for (int no=0; no < numOptions; ++no)
                 {
-                case NMMosra::NM_MOSO_BINARY:
-                    pdRow[coeffCounter] = ::atof(sConsVal.toStdString().c_str());
-                    break;
-                default: // i.e. for all other DV  types (real, integer)
-                    pdRow[coeffCounter] = 1;
-                    break;
-                }
+                    // set the coefficient
+                    switch(this->meDVType)
+                    {
+                    case NMMosra::NM_MOSO_BINARY:
+                        pdRow[coeffCounter] = ::atof(sConsVal.toStdString().c_str());
+                        break;
+                    default: // i.e. for all other DV  types (real, integer)
+                        pdRow[coeffCounter] = 1;
+                        break;
+                    }
 
-                // set the column number
-                piColno[coeffCounter] = vlCounter[0];
-                ++coeffCounter;
+                    // set the column number
+                    piColno[coeffCounter] = vlCounter[no];
+                    ++coeffCounter;
+                }
             }
 
             for(int no=0; no < numOptions; ++no)
@@ -6298,9 +6459,8 @@ NMMosra::calcBaseline(void)
         ret = calcBaselineTab();
     }
 
-    return ret;
-
     MosraLogDebug(<< "Done with baseline performance!");
+    return ret;
 }
 
 int

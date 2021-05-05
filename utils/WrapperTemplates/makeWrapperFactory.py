@@ -12,7 +12,7 @@ import errno
 # ===============================================================================
 if __name__ == '__main__':
     '''
-    open the files, to the copy, and do the main
+    open the files, do the copy, and do the main
     workflow here, then we'll break out to do some things
     more special
     '''

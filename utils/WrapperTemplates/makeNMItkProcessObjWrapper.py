@@ -2,20 +2,23 @@
 
 import sys
 import shutil
-import inspect, os
+import inspect
+import os
 import string
 import re
 import errno
 
 # ========================================================================================
+
+
 def buildDict(profileFile):
     ''' parse the lumass wrapper profile and build a
         dictionary with of keywords and properties
     '''
     fp = profileFile
-    
+
     # define keywords to look for
-    keys = ["Year", "WrapperClassName", "FileDate", "Author", 
+    keys = ["Year", "WrapperClassName", "FileDate", "Author",
             "FilterClassFileName", "FilterTypeDef",
             "RATGetSupport", "RATSetSupport",
             "ForwardInputUserIDs", "NumTemplateArgs",
@@ -25,7 +28,7 @@ def buildDict(profileFile):
     # initialise list elements
     pdict['Property'] = []
     pdict['InputTypeFunc'] = []
-    
+
     # now crawl through the file line by line
     # and build a dictionary with string objects
     with fp as f:
@@ -34,8 +37,10 @@ def buildDict(profileFile):
             if len(cleanline) == 0 or cleanline[0] == '#':
                 continue
 
-            if (line.find('Property') >= 0 and line.find('Property') < line.find('=')) \
-               or (line.find('InputTypeFunc') >= 0 and line.find('InputTypeFunc') < line.find('=')):
+            if (line.find('Property') >= 0
+               and line.find('Property') < line.find('=')) \
+               or (line.find('InputTypeFunc') >= 0
+               and line.find('InputTypeFunc') < line.find('=')):
                 # handle properties
                 tl = line.split('=')
                 tkey = tl[0]
@@ -56,10 +61,12 @@ def buildDict(profileFile):
                         tl = line.split('=')
                         if len(tl[1]) > 0:
                             pdict[k] = tl[1].strip()
-                            
-    return pdict                    
+
+    return pdict
 
 # ===============================================================================
+
+
 def getPropertyType(propertyElementList):
     '''
     returns the wrapper type given the list of properties
@@ -67,10 +74,10 @@ def getPropertyType(propertyElementList):
         OutputSpacing:2:double:OutputSpacingValueType
     '''
     if len(propertyElementList) < 3:
-        print ("ERROR - Invalid property element list length!")
+        print("ERROR - Invalid property element list length!")
         return None
     propDim = int(propertyElementList[1])
-    
+
     if propDim == 0:
         type = propertyElementList[2]
     elif propDim == 1:
@@ -80,78 +87,85 @@ def getPropertyType(propertyElementList):
     elif propDim == 3:
         type = 'QList< QList<QStringList> >'
     else:
-        print ("ERROR - cannot handle property with 3+ dimensions!")
+        print("ERROR - cannot handle property with 3+ dimensions!")
         type = None
-    
+
     return type
 
-    
+
 # ===============================================================================
+
+
 def formatPropertyDefinition(propertyList):
     '''
     formats the property definition section of a header file
     given the property elements (name, dimension, type), e.g.
-    Q_PROPERTY(QList<QList<QStringList> > Weights READ getWeights WRITE setWeights)
-    '''     
-    
-    defSection = ''  
+    Q_PROPERTY(QList<QList<QStringList> > Weights READ getWeights
+    WRITE setWeights)
+    '''
+
+    defSection = ''
     for prop in propertyList:
         propType = getPropertyType(prop)
-        tmp = "    Q_PROPERTY(%s %s READ get%s WRITE set%s)" % (propType, prop[0], prop[0], prop[0])
+        tmp = "    Q_PROPERTY(%s %s READ get%s WRITE set%s)" \
+            % (propType, prop[0], prop[0], prop[0])
         defSection = defSection + '\n' + tmp
-        
+
     return defSection
 
 # ===============================================================================
+
+
 def formatPropertyGetSet(propertyList):
     '''
-    formats properties' getter and setter methods using an NMMacro, e.g. 
-    NMPropertyGetSet ( Weights, QList<QList<QStringList> >)    
-    '''     
+    formats properties' getter and setter methods using an NMMacro, e.g.
+    NMPropertyGetSet ( Weights, QList<QList<QStringList> >)
+    '''
 
-    getset = ''  
+    getset = ''
     for prop in propertyList:
         propType = getPropertyType(prop)
         tmp = "    NMPropertyGetSet( %s, %s )" % (prop[0], propType)
         getset = getset + '\n' + tmp
-        
+
     return getset
 
 
 # ===============================================================================
 def formatPropertyVariable(propertyList):
     '''
-    formats the properties' variables 
+    formats the properties' variables
     QList<QList<QStringList> >  mWeights;
-    '''    
-    
+    '''
+
     vardef = ''
-    tmp = ''  
+    tmp = ''
     for prop in propList:
         propType = getPropertyType(prop)
-        #propVarType = prop[2]
-        #propDim = int(prop[1])
-        
+        # propVarType = prop[2]
+        # propDim = int(prop[1])
+
         tmp = "    %s m%s;" % (propType, prop[0])
 
-        #if propDim == 0:
+        # if propDim == 0:
         #    tmp = "    %s m%s;" % (propVarType, prop[0])
-        #elif propDim > 0:
+        # elif propDim > 0:
         #    tmp = "    %s m%s;" % (propType, prop[0])
 
-        
         vardef = vardef + '\n' + tmp
         tmp = ''
     return vardef
 
 # ===============================================================================
+
+
 def formatTypeConversion(type):
-    
+
     typeConv = ''
     if type == "int":
         typeConv = ".toInt(&bok)"
     elif type == "unsigned int":
-        typeConv = ".toUInt(&bok)";
+        typeConv = ".toUInt(&bok)"
     elif type == "double":
         typeConv = ".toDouble(&bok)"
     elif type == "long":
@@ -162,11 +176,13 @@ def formatTypeConversion(type):
         typeConv = ".toInt(&bok)"
     elif type == "std::string" or type == "string":
         typeConv = ".toString().toStdString()"
-        #typeConv = ".toStdString().c_str()"
+        # typeConv = ".toStdString().c_str()"
 
     return typeConv
 
 # ===============================================================================
+
+
 def formatInternalParamSetting(propertyList, className):
     '''
     formats parameter setting of the internal templated
@@ -175,9 +191,9 @@ def formatInternalParamSetting(propertyList, className):
     '''
 
     #tmp = "    %s m%s" % (propType, prop[0])
-    # -> setMTime 
+    # -> setMTime
     # -> NMProcess::mapHostIndexToPolicyIndex
-    
+
     #step = this->mapHostIndexToPolicyIndex(givenStep, this->mMapExpressions.size());
     #QString currentExpression;
     #if (step < this->mMapExpressions.size())
@@ -185,7 +201,7 @@ def formatInternalParamSetting(propertyList, className):
     #    currentExpression = this->mMapExpressions.at(step);//.toLower();
     #    this->setInternalExpression(currentExpression);
     #}
-    
+
     # in case something goes wrong while parsing / setting parameters, we debug
     # and throw an exception, roughly like this ...
     #NMErr("NMFocalNeighbourhoodDistanceWeighting_Internal",
@@ -194,7 +210,7 @@ def formatInternalParamSetting(propertyList, className):
     #NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
     #e.setDescription("Invalid weights matrix detected!");
     #throw e;
-    
+
     paramSetting = ''
     tmp = ''
     for prop in propertyList:
@@ -269,7 +285,7 @@ def formatInternalParamSetting(propertyList, className):
                 "            f->Set%s(cur%s);\n"                                             \
                 % (propName, propName)
                 tmp = tmp + test
-                
+
             tmp = tmp + \
             "        }\n"
 
@@ -332,11 +348,11 @@ def formatInternalParamSetting(propertyList, className):
         else:
             print ("WARNING - cannot format multi-dimensional parameter settings yet!!")
             return None
-        
+
         if tmp != '':
-            paramSetting = paramSetting + '\n' + tmp        
+            paramSetting = paramSetting + '\n' + tmp
         tmp = ''
-        
+
     return paramSetting
 
 # ===============================================================================
@@ -528,20 +544,20 @@ def formatInternalHelperInst(clname, nargs):
 # ===============================================================================
 if __name__ == '__main__':
     '''
-    open the files, to the copy, and do the main 
+    open the files, to the copy, and do the main
     workflow here, then we'll break out to do some things
     more special
     '''
 
     # -----------------------------------------------------------------------
     # check input profile file
-    
+
     # get the profile file path from the command line
     if len(sys.argv) < 2:
         print ("    Usage: $ %s <LUMASS wrapper profile file name>.lwp" % sys.argv[0])
         sys.exit()
     profile = sys.argv[1]
-    
+
     # check whether we've got actually access to the file
     try:
         fp = open(profile)
@@ -550,7 +566,7 @@ if __name__ == '__main__':
             print ("Failed opening %s" % profile)
             sys.exit()
         raise
-    
+
     # -----------------------------------------------------------------------
     # parsing the profile file
     print ("    >>> using '%s' as lumass wrapper profile ..." % str(profile))
@@ -560,10 +576,10 @@ if __name__ == '__main__':
     print(pDict)
     print('')
 
-    # ---------------------------------------------------------------------  
+    # ---------------------------------------------------------------------
     # copying the wrapper template to new files
     print("    >>> creating wrapper class files ...")
-        
+
     className = pDict['WrapperClassName']
 
     # copy file
@@ -624,17 +640,17 @@ if __name__ == '__main__':
         for key in pDict:
             if key == 'Property':
                 propList = pDict[key]
-                
+
                 # property definition, e.g. Q_PROPERTY(QList<QList<QStringList> > Weights READ getWeights WRITE setWeights)
                 propDef    = formatPropertyDefinition(propList)
                 hStr = hStr.replace("/*$<WrapperPropertyList>$*/", propDef)
-                
+
                 propGetSet = formatPropertyGetSet(propList)
                 hStr = hStr.replace("/*$<WrapperPropertyGetSetter>$*/", propGetSet)
-                
+
                 propVarDef = formatPropertyVariable(propList)
                 hStr = hStr.replace("/*$<PropertyVarDef>$*/", propVarDef)
-            
+
             elif key == 'RATGetSupport':
                 getsupp = int(pDict[key])
                 if getsupp == 1:
@@ -652,10 +668,10 @@ if __name__ == '__main__':
         # check whether there is any keyword left unreplaced ...
         if hStr.find("/*$<") != -1:
             print("WARNING: There's likely one or more unreplaced wrapper keywords left in %s!" % (hPath))
-    
+
     with open(hPath, 'w') as hWrapper:
         hWrapper.write(hStr)
-    
+
 
 
     print("    >>> processing wrapper c++ implementation file ...")
@@ -686,11 +702,11 @@ if __name__ == '__main__':
         for key in pDict:
             if key == 'Property':
                 propList = pDict[key]
-                
-                # internal property setting 
+
+                # internal property setting
                 paramSetting = formatInternalParamSetting(propList, className)
                 cppStr = cppStr.replace("/*$<InternalFilterParamSetter>$*/", paramSetting)
-            
+
             elif key == 'RATGetSupport':
                 getsupp = int(pDict[key])
                 if getsupp == 1:
@@ -730,11 +746,11 @@ if __name__ == '__main__':
             else:
                 keyword = "/*$<%s>$*/" % str(key)
                 cppStr = cppStr.replace(keyword, pDict[key])
-                
+
         # check whether there is any keyword left unreplaced ...
         if hStr.find("/*$<") != -1:
             print ("WARNING: There's likely one or more unreplaced wrapper keywords left in %s!" % (cppPath))
-    
+
     with open(cppPath, 'w') as cppWrapper:
         cppWrapper.write(cppStr)
 

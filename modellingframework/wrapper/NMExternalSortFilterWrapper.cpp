@@ -98,7 +98,7 @@ public:
 		if (f == 0)
 		{
 			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
-            e.setSource(p->parent()->objectName().toStdString());
+                        e.setSource(p->parent()->objectName().toStdString());
 			e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
 			throw e;
 			return;

@@ -119,7 +119,8 @@ protected:
     virtual ~UniqueCombinationFilter();
 
     void GenerateData();
-    void AllocateOutputs(){this->InternalAllocateOutput();}
+    // outputs are produced by the internally used filters ...
+    void AllocateOutputs(){}
 
     std::string getRandomString(int length=15);
     unsigned int nextUpperIterationIdx(unsigned int idx, unsigned long long& accIdx);

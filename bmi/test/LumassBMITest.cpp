@@ -21,6 +21,9 @@
 #include <iostream>
 #include <sstream>
 
+#ifdef LUMASS_PYTHON
+#include "Python_wrapper.h"
+#endif
 
 /* ErrorExit is based on these sources	https://docs.microsoft.com/en-nz/windows/desktop/Debug/retrieving-the-last-error-code 	https://stackoverflow.com/questions/1387064/how-to-get-the-error-message-from-the-error-code-returned-by-getlasterror*/
 
@@ -200,6 +203,13 @@ int main(int argc, char** argv)
 		log(4, msg.str().c_str());
         return EXIT_FAILURE;
     }
+
+#ifdef LUMASS_PYTHON
+    if (Py_IsInitialized())
+    {
+        pybind11::finalize_interpreter();
+    }
+#endif
 
     msg << "LumassBMITest successfully completed!" << std::endl;
 	log(2, msg.str().c_str());

@@ -1,0 +1,32 @@
+# LUMASS otb::Image2TableFilter wrapper profile
+# recognised (filter variable) types: double, long, long long, bool, string
+# dim = 0 -> property type: plain type
+# dim = 1 -> property type: QStringList
+# dim = 2 -> property type: QList<QStringList>
+# dim = 3 -> property type: QList< QList<QStringList> >
+
+# FilterTypeDef: InImgType and OutImgType correspond with first and second
+#                template argument (i.e. TInputImage and TOutputImage)
+
+# InputTypeFunc_# = IDX:TYPE:SETMETHOD
+#                -> uses SETMETHOD to set the IDXth input of TYPE
+
+
+Year                        = 2021
+WrapperClassName            = NMImage2TableFilterWrapper
+ComponentName               = Image2Table
+FileDate                    = 2020-12-05
+Author                      = Alexander Herzig
+FilterClassFileName         = otbImage2TableFilter
+FilterTypeDef               = otb::Image2TableFilter<InImgType>
+ComponentIsSink             = 0
+RATGetSupport               = 0
+RATSetSupport               = 0
+#ForwardInputUserIDs         = SetImageNames
+Property_1                  = TableFileName:1:string:string
+Property_2                  = TableName:1:string:string
+Property_3                  = ImageVarName:1:string:string
+Property_4                  = NcImageContainer:1:string:string
+Property_5                  = NcGroupName:1:string:string
+Property_6                  = DimVarNames:2:string:string:vector
+Property_7                  = AuxVarNames:2:string:string:vector

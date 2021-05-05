@@ -63,6 +63,12 @@
 #include "gdal.h"
 #include "gdal_priv.h"
 #include <sqlite3.h>
+#include <yaml-cpp/yaml.h>
+#include <yaml-cpp/exceptions.h>
+
+#ifdef LUMASS_PYTHON
+#include "Python_wrapper.h"
+#endif
 
 #include "NMMosra.h"
 #include "MOSORunnable.h"
@@ -131,6 +137,272 @@ NMLoggingProvider::writeLogMsg(const QString &msg)
     QTextStream out(&mLogFile);
     out << msg;
 }
+
+//////////////////////////////////////////////////////
+/// YAML PARSING FUNCTIONS
+//////////////////////////////////////////////////////
+
+QString
+getYamlNodeTypeAsString(const YAML::Node &node)
+{
+    // Undefined, Null, Scalar, Sequence, Map
+    QString type = "";
+
+    switch(node.Type())
+    {
+    case YAML::NodeType::Null: type = "Null"; break;
+    case YAML::NodeType::Scalar: type = "Scalar"; break;
+    case YAML::NodeType::Sequence: type = "Sequence"; break;
+    case YAML::NodeType::Map: type = "Map"; break;
+    default: type = "Undefined";
+    }
+
+    return type;
+}
+
+bool
+isYamlSequence(const YAML::Node& node)
+{
+    bool ret = false;
+
+    if (node.Type() == YAML::NodeType::Sequence)
+    {
+        ret = true;
+    }
+
+    return ret;
+}
+
+QVariant
+parseYamlSetting(const YAML::const_iterator& nit, const QObject* obj)
+{
+
+    QVariant ret;
+
+    // 'global' LUMASS setting
+    if (obj == nullptr)
+    {
+        QString value;
+        if (isYamlSequence(nit->second))
+        {
+            QStringList sl;
+            for (int l=0; l < nit->second.size(); ++l)
+            {
+                sl << nit->second[l].as<std::string>().c_str();
+            }
+            value = sl.join(' ');
+        }
+        else
+        {
+            value = nit->second.as<std::string>().c_str();
+        }
+        ret = QVariant::fromValue(value);
+    }
+    else
+    {
+        QString name = nit->first.as<std::string>().c_str();
+        QVariant prop = obj->property(name.toStdString().c_str());
+
+        if (QString("QString").compare(prop.typeName()) == 0)
+        {
+            QString sv = nit->second.as<std::string>().c_str();
+            ret = QVariant::fromValue(sv);
+        }
+        else if (QString("QStringList").compare(prop.typeName()) == 0)
+        {
+            QStringList lst;
+            for (int e=0; isYamlSequence(nit->second) && e < nit->second.size(); ++e)
+            {
+                lst << nit->second[e].as<std::string>().c_str();
+            }
+
+            ret = QVariant::fromValue(lst);
+        }
+        else if (QString("QList<QStringList>").compare(prop.typeName()) == 0)
+        {
+            QList<QStringList> lsl;
+            for (int l=0; isYamlSequence(nit->second) && l < nit->second.size(); ++l)
+            {
+                QStringList lst;
+                for (int g=0; isYamlSequence(nit->second[l]) && g < nit->second[l].size(); ++g)
+                {
+                    lst << nit->second[l][g].as<std::string>().c_str();
+                }
+                lsl << lst;
+            }
+            ret = QVariant::fromValue(lsl);
+        }
+        else if (QString("QList<QList<QStringList> >").compare(prop.typeName()) == 0)
+        {
+            QList<QList<QStringList> > llsl;
+            for (int ll=0; isYamlSequence(nit->second) && ll < nit->second.size(); ++ll)
+            {
+                QList<QStringList> lsl;
+                for (int l=0; isYamlSequence(nit->second[ll]) && l < nit->second[ll].size(); ++l)
+                {
+                    QStringList lst;
+                    for (int g=0; isYamlSequence(nit->second[ll][l]) && g < nit->second[ll][l].size(); ++g)
+                    {
+                        lst << nit->second[ll][l][g].as<std::string>().c_str();
+                    }
+                    lsl << lst;
+                }
+                llsl << lsl;
+            }
+            ret = QVariant::fromValue(llsl);
+        }
+    }
+
+    return ret;
+}
+
+int
+configureModel(const YAML::Node& modelConfig, NMModelController* mController)
+{
+    NMLoggingProvider* log = NMLoggingProvider::This();
+
+    mController->clearModelSettings();
+
+    // =====================================================================
+    // iterate over model components
+
+    //std::cout << "configure model from YAML ... " << std::endl;
+
+    YAML::const_iterator mit = modelConfig.begin();
+    while (mit != modelConfig.end())
+    {
+         YAML::Node compNode = mit->second;
+         if (!compNode.IsNull())
+         {
+             QString compName = mit->first.as<std::string>().c_str();
+             //std::cout << "  " << compName.toStdString().c_str() << std::endl;
+
+             bool bCompProps = true;
+             bool bProcProps = false;
+             if (compName.compare("Settings") == 0)
+             {
+                 bCompProps = false;
+                 bProcProps = false;
+             }
+
+             NMModelComponent* comp = mController->getComponent(compName);
+             if (bCompProps && comp == nullptr)
+             {
+                 std::stringstream msg;
+                 msg << "ERROR - Model Configuration: Couldn't find component '"
+                     << compName.toStdString() << "'!";
+                 log->writeLogMsg(msg.str().c_str());
+                 return 1;
+             }
+
+             // ----------------------------------------------------------
+             // iterate over component properties
+
+             YAML::const_iterator pit = compNode.begin();
+             while (pit != compNode.end())
+             {
+                 QString propName = pit->first.as<std::string>().c_str();
+                 //std::cout << "    - " << propName.toStdString().c_str() << "=";
+
+                 // check whether the specified property is a property of the
+                 // given model component
+                 NMProcess* proc = nullptr;
+                 if (bCompProps)
+                 {
+                     QVariant prop;
+                     QStringList props = mController->getPropertyList(comp);
+                     if (!props.contains(propName))
+                     {
+                         NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
+                         if (ic != nullptr && ic->getProcess() != nullptr)
+                         {
+                             proc = ic->getProcess();
+                             QStringList procProps = mController->getPropertyList(proc);
+                             if (procProps.contains(propName))
+                             {
+                                 bProcProps = true;
+                                 prop = proc->property(propName.toStdString().c_str());
+                             }
+                         }
+
+                         if (!bCompProps && !bProcProps)
+                         {
+                             std::stringstream wmsg;
+                             wmsg << "WARN - Model Configuration: Component '"
+                                       << compName.toStdString() << "' doesn't "
+                                       << " have a '" << propName.toStdString()
+                                       << " ' property'! We better skip this one.";
+                             log->writeLogMsg(wmsg.str().c_str());
+                             ++pit;
+                             continue;
+                         }
+                     }
+                     else
+                     {
+                         prop = comp->property(propName.toStdString().c_str());
+                     }
+                 }
+                 else
+                 {
+                     bProcProps = false;
+                 }
+
+                 QVariant val;
+                 if (bProcProps)
+                 {
+                     val = parseYamlSetting(pit, proc);
+                     if (val.isNull() || !val.isValid())
+                     {
+                         std::stringstream emsg;
+                         emsg << "ERROR - Found invalid value for '" << comp->objectName().toStdString() << ":"
+                                    << propName.toStdString() << "'!";
+                         log->writeLogMsg(emsg.str().c_str());
+                     }
+                     if (!proc->setProperty(propName.toStdString().c_str(), val))
+                     {
+                         std::stringstream emsg;
+                         emsg << "ERROR - Failed setting '" << comp->objectName().toStdString() << ":"
+                                    << propName.toStdString() << "'!";
+                         log->writeLogMsg(emsg.str().c_str());
+                     }
+                 }
+                 else if (bCompProps)
+                 {
+                     val = parseYamlSetting(pit, comp);
+                     if (val.isNull() || !val.isValid())
+                     {
+                         std::stringstream emsg;
+                         emsg << "ERROR - Found invalid value for '" << comp->objectName().toStdString() << ":"
+                                    << propName.toStdString() << "'!";
+                         log->writeLogMsg(emsg.str().c_str());
+                     }
+                     // set property value
+                     if (!comp->setProperty(propName.toStdString().c_str(), val))
+                     {
+                         std::stringstream emsg;
+                         emsg << "ERROR - Failed setting '" << comp->objectName().toStdString() << ":"
+                                    << propName.toStdString() << "'!";
+                         log->writeLogMsg(emsg.str().c_str());
+                     }
+                 }
+                 else
+                 {
+                     val = parseYamlSetting(pit, nullptr);
+                     // update global setting
+                     mController->updateSettings(propName, val);
+                 }
+
+                 //std::cout << val.toString().toStdString().c_str() << std::endl;
+
+                 ++pit;
+             }
+         }
+         ++mit;
+    }
+
+    return 0;
+}
+
 
 //////////////////////////////////////////////////////
 /// lumassengine implementation
@@ -275,7 +547,7 @@ void doMOSOsingle(const QString& losFileName)
     mosra->loadSettings(losFileName);
 
     QStringList ltypes;
-    ltypes << "vtk" << "ldb" << "db" << "sqlite";
+    ltypes << "vtk" << "ldb" << "db" << "sqlite" << "gpkg";
 
     QString dsFileName;
     QFileInfo dsinfo;
@@ -311,13 +583,61 @@ void doMOSOsingle(const QString& losFileName)
     QThreadPool::globalInstance()->start(m);
 }
 
-void doModel(const QString& modelFile, QString &workspace, QString& enginePath, bool bLogProv)
+void doModel(const QString& userFile, QString &workspace, QString& enginePath, bool bLogProv)
 {
     NMDebugCtx(ctx, << "...");
 
     // ==============================================
     //  import the model
     // ==============================================
+    QString modelFile;
+    QFileInfo ufinfo(userFile);
+    YAML::Node configFile;
+    if (ufinfo.suffix().compare(QString("yaml"), Qt::CaseInsensitive) == 0)
+    {
+        // read yaml configuration file
+        try
+        {
+            configFile = YAML::LoadFile(userFile.toStdString());
+            YAML::Node engineConfig;
+            if (configFile["EngineConfig"])
+            {
+                engineConfig = configFile["EngineConfig"];
+            }
+            else
+            {
+                NMErr(ctx, << "No 'EngineConfig' found in YAML file!");
+                return;
+            }
+
+            if (engineConfig["modelfile"])
+            {
+                modelFile = engineConfig["modelfile"].as<std::string>().c_str();
+            }
+        }
+        catch (YAML::BadConversion& bc)
+        {
+            std::stringstream msg;
+            msg << "ERROR: " << bc.what();
+            NMErr(ctx, << msg.str().c_str());
+            //std::cout << "cout: " << msg.str() << std::endl;
+            return;
+        }
+        catch (YAML::ParserException& pe)
+        {
+            std::stringstream msg;
+            msg << "ERROR: " << pe.what();
+            NMErr(ctx, << msg.str().c_str());
+            //std::cout << "cout: " << msg.str() << std::endl;
+            return;
+        }
+    }
+    else
+    {
+        modelFile = userFile;
+    }
+
+
     QFileInfo fi(modelFile);
     if (fi.suffix().compare(QString("lmx"), Qt::CaseInsensitive) != 0)
     {
@@ -380,6 +700,28 @@ void doModel(const QString& modelFile, QString &workspace, QString& enginePath, 
 
     nameRegister = xmlS.parseComponent(modelFile, 0, ctrl.data());
 
+    // if we've got a YAML, use that for overriding the
+    // models hard wired configuration
+    if (!configFile.IsNull())
+    {
+        try
+        {
+            if (configFile["ModelConfig"])
+            {
+                YAML::Node modelConfig = configFile["ModelConfig"];
+                configureModel(modelConfig, ctrl.data());
+            }
+        }
+        catch(YAML::ParserException& pe)
+        {
+            NMErr(ctx, << pe.what());
+        }
+        catch(YAML::RepresentationException& re)
+        {
+            NMErr(ctx, << re.what());
+        }
+    }
+
     // ==============================================
     //  EXECUTE MODEL
     // ==============================================
@@ -407,7 +749,7 @@ void showHelp()
                            << _lumass_version_revision
                            << std::endl << std::endl;
     std::cout << "Usage: lumassengine --moso <settings file (*.los)> | "
-                                  << "--model <LUMASS model file (*.lmx)> "
+                                  << "--model <LUMASS model file (*.lmx | *.yaml)> "
                                   << "[--workspace <absolute directory path for '$[LUMASS:Workspace]$'>] "
                                   << "[--logfile <file name>] [--logprov]"
                                   << std::endl << std::endl;
@@ -558,6 +900,13 @@ int main(int argc, char** argv)
                     << std::endl);
 		break;
 	}
+
+#ifdef LUMASS_PYTHON
+    if (Py_IsInitialized())
+    {
+        pybind11::finalize_interpreter();
+    }
+#endif
 
 	NMDebugCtx(ctx, << "done!");
 	return EXIT_SUCCESS;

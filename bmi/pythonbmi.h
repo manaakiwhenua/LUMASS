@@ -29,14 +29,14 @@
 
 namespace py = pybind11;
 
-//#if defined _WIN32
-//#pragma push_macro("GetCurrentTime")
-//#undef GetCurrentTime
+#if defined _WIN32
+#pragma push_macro("GetCurrentTime")
+#undef GetCurrentTime
+    #include "NMBMIWrapper.h"
+#pragma pop_macro("GetCurrentTime")
+#else
 #include "NMBMIWrapper.h"
-//#pragma pop_macro("GetCurrentTime")
-//#else
-//#include "NMBMIWrapper.h"
-//#endif
+#endif
 
 #include "lumasspythonbmi_export.h"
 

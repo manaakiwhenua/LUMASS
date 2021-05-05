@@ -661,6 +661,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 
     // SYSTEM
     connect(this, SIGNAL(windowLoaded()), this, SLOT(readSettings()));
+    connect(this, SIGNAL(windowLoaded()), this, SLOT(populateProcCompList()));
     //connect(this, SIGNAL(windowLoaded()), this, SLOT(createNewSessionDb()));
 
     // TEST TEST TEST
@@ -1056,6 +1057,14 @@ LUMASSMainWin::~LUMASSMainWin()
     delete ui;
 
     NMDebugCtx(ctxLUMASSMainWin, << "done!");
+}
+
+void LUMASSMainWin::populateProcCompList()
+{
+    NMProcCompList* compWidget = ui->compWidgetList->findChild<NMProcCompList*>(QStringLiteral("processComponents"));
+    compWidget->clear();
+    compWidget->addItems(NMProcessFactory::instance().getRegisteredComponents());
+    compWidget->sortItems();
 }
 
 

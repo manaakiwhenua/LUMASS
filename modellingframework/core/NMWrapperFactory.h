@@ -14,9 +14,8 @@ public:
     virtual NMProcess* createWrapper(void)=0;
     virtual bool isSinkProcess(void)=0;
     virtual QString getWrapperClassName(void)=0;
-
-protected:
-
+    virtual QString getComponentAlias(void)=0;
+    virtual QString getComponentInfo(void) {return QStringLiteral("");}
 
 };
 

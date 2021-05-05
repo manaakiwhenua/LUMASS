@@ -276,7 +276,7 @@ public slots:
     void readSettings(void);
     QMenu* createPopupMenu(void);
 
-    // USER MODELS & TOOLS
+    // PROCESS COMPONENTS & USER MODELS & TOOLS
     void addUserToolBar();
     void createUserToolBar(const QString& tbname,
                            const QByteArray& ba=QByteArray());
@@ -385,6 +385,8 @@ protected slots:
     void updateSettings(const QString& setting, const QVariant& val);
 
     void updateCursor();
+    void populateProcCompList();
+
 
     // client & server
     void onNewConnection();

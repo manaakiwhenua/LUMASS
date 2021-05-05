@@ -93,7 +93,7 @@ NMPolygonToTriangles::RequestData(vtkInformation* vtkNotUsed(request),
     std::cout << "polys2tris: npolys: " << npolys << "\n";
 
     vtkIdType numPts;
-    vtkIdType* pts;
+    const vtkIdType* pts;
 
     vtkSmartPointer<vtkLongArray> nm_id = vtkSmartPointer<vtkLongArray>::New();
     nm_id->SetName("nm_id");
@@ -231,7 +231,7 @@ void NMPolygonToTriangles::reportTris(vtkPolyData *pd, int minCell, int maxCell)
 
     cells->InitTraversal();
     vtkIdType numpts = 0;
-    vtkIdType* cellpts;
+    const vtkIdType* cellpts;
     vtkIdType cellcount = 0;
     while (cells->GetNextCell(numpts, cellpts))
     {

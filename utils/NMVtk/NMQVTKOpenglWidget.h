@@ -33,26 +33,22 @@
 #ifndef NMQVTKOPENGLWIDGET_H
 #define NMQVTKOPENGLWIDGET_H
 
-#include <QVTKOpenGLWidget.h>
-
-class NMQVTKOpenGLWidget : public QVTKOpenGLWidget
+#include <vtkGenericOpenGLRenderWindow.h>
+#include <QVTKOpenGLNativeWidget.h>
+class NMQVTKOpenGLWidget : public QVTKOpenGLNativeWidget
 {
     Q_OBJECT
-    typedef QVTKOpenGLWidget Superclass;
+    typedef QVTKOpenGLNativeWidget Superclass;
 public:
     NMQVTKOpenGLWidget(QWidget* parent = Q_NULLPTR,
                        Qt::WindowFlags f = Qt::WindowFlags());
-    NMQVTKOpenGLWidget(QOpenGLContext *shareContext, QWidget* parent = Q_NULLPTR,
-      Qt::WindowFlags f = Qt::WindowFlags());
     NMQVTKOpenGLWidget(vtkGenericOpenGLRenderWindow* w,
-      QWidget* parent = Q_NULLPTR, Qt::WindowFlags f = Qt::WindowFlags());
-    NMQVTKOpenGLWidget(vtkGenericOpenGLRenderWindow* w, QOpenGLContext *shareContext,
       QWidget* parent = Q_NULLPTR, Qt::WindowFlags f = Qt::WindowFlags());
     ~NMQVTKOpenGLWidget() override;
 
 protected:
-    /*! \brief replaces the integer with the qreal devicePixelRatio */
-    virtual void resizeEvent(QResizeEvent* event) Q_DECL_OVERRIDE;
+//    /*! \brief replaces the integer with the qreal devicePixelRatio */
+//    virtual void resizeEvent(QResizeEvent* event) Q_DECL_OVERRIDE;
 };
 
 #endif // NMQVTKOPENGLWIDGET_H

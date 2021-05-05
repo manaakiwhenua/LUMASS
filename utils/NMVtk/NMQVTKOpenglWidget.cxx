@@ -50,31 +50,42 @@
 
 //-----------------------------------------------------------------------------
 NMQVTKOpenGLWidget::NMQVTKOpenGLWidget(QWidget* parent, Qt::WindowFlags f)
-  : NMQVTKOpenGLWidget(QOpenGLContext::currentContext(), parent, f)
-{}
+  : Superclass(parent, f)
+{
+    setEnableHiDPI(true);
+#ifdef __linux__
+    this->setProperty("_kde_no_window_grab", true);
+#endif
+}
 
 //-----------------------------------------------------------------------------
-NMQVTKOpenGLWidget::NMQVTKOpenGLWidget(QOpenGLContext *shareContext,
-  QWidget* parent, Qt::WindowFlags f)
-  : NMQVTKOpenGLWidget(nullptr, shareContext, parent, f)
-{}
+//NMQVTKOpenGLWidget::NMQVTKOpenGLWidget(QOpenGLContext *shareContext,
+//  QWidget* parent, Qt::WindowFlags f)
+//  : NMQVTKOpenGLWidget(nullptr, shareContext, parent, f)
+//{setEnableHiDPI(true);}
 
 //-----------------------------------------------------------------------------
 NMQVTKOpenGLWidget::NMQVTKOpenGLWidget(vtkGenericOpenGLRenderWindow* w,
   QWidget* parent, Qt::WindowFlags f)
-  : NMQVTKOpenGLWidget(w, QOpenGLContext::currentContext(), parent, f)
-{}
+  : Superclass(w, parent, f)
+{
+    setEnableHiDPI(true);
+#ifdef __linux__
+    this->setProperty("_kde_no_window_grab", true);
+#endif
+}
+
 
 //-----------------------------------------------------------------------------
-NMQVTKOpenGLWidget::NMQVTKOpenGLWidget(vtkGenericOpenGLRenderWindow* w,
-  QOpenGLContext *shareContext, QWidget* parent, Qt::WindowFlags f)
-  : Superclass(w, shareContext, parent, f)
-{}
+//NMQVTKOpenGLWidget::NMQVTKOpenGLWidget(vtkGenericOpenGLRenderWindow* w,
+//  QOpenGLContext *shareContext, QWidget* parent, Qt::WindowFlags f)
+//  : Superclass(w, shareContext, parent, f)
+//{setEnableHiDPI(true);}
 
 NMQVTKOpenGLWidget::~NMQVTKOpenGLWidget()
 {}
 
-
+/*
 void NMQVTKOpenGLWidget::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
@@ -122,3 +133,4 @@ void NMQVTKOpenGLWidget::resizeEvent(QResizeEvent* event)
     // issues with its internal QOpenGLWindow.
     Q_ASSERT(this->testAttribute(Qt::WA_NativeWindow) == false);
 }
+*/

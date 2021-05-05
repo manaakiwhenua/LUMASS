@@ -214,7 +214,7 @@ private :
   OriginType                            m_Origin;
 
   bool                                  m_UseTableColumnCache;
-  std::vector<std::map<int, std::map<long, double> > >  m_TableColumnCache;
+  std::vector<std::map<int, std::map<long long, double> > >  m_TableColumnCache;
   long                                  m_UnderflowCount;
   long                                  m_OverflowCount;
   itk::Array<long>                      m_ThreadUnderflow;

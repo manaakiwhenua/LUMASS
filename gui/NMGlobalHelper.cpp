@@ -29,7 +29,7 @@
 #include <QSqlQuery>
 #include <QSqlError>
 
-#include "QVTKOpenGLWidget.h"
+//#include "QVTKOpenGLWidget.h"
 
 #include "ui_lumassmainwin.h"
 #include "lumassmainwin.h"
@@ -91,16 +91,103 @@ NMGlobalHelper::getMultiLineInput(const QString& title,
     //NMDebugAI(<< "dialog closed: " << ret << std::endl);
 
     QString retText = textEdit->toPlainText();
-    //    if (ret == 0)
-    //    {
-    //        retText = "0";
-    //    }
+    if (ret == 0)
+    {
+        retText.clear();
+    }
     //NMDebugAI(<< "user text: " << retText.toStdString() << std::endl);
 
     dlg->deleteLater();
     return retText;
 
 }
+
+QString
+NMGlobalHelper::getNetCDFVarPathInput(const QString& ncFilename)
+{
+    QString ret;
+    using namespace netCDF;
+
+    QStringList varPaths;
+    try
+    {
+        NcFile nc(ncFilename.toStdString(), NcFile::read);
+        if (nc.isNull())
+        {
+            ret = QString("ERROR - Failed reading '%1'!").arg(ncFilename);
+            return ret;
+        }
+
+        NcGroup grp(nc.getId());
+        NMGlobalHelper::parseNcGroup(grp, varPaths);
+
+    }
+    catch(exceptions::NcException& e)
+    {
+        ret = QString("ERROR - %1").arg(e.what());
+        return ret;
+    }
+
+    bool bOK;
+    ret = QInputDialog::getItem(nullptr, "NcVars...", "Pick a variable to display", varPaths, 0, false, &bOK);
+    if (!bOK)
+    {
+        ret = QString("ERROR - Well, you canceled it - not much I can do about that!");
+        return ret;
+    }
+
+    return ret;
+}
+
+void
+NMGlobalHelper::parseNcGroup(const netCDF::NcGroup& grp, QStringList& varPaths)
+{
+    using namespace netCDF;
+
+    try
+    {
+        // collecting the variables of this group
+        std::multimap<std::string, NcVar> vars = grp.getVars();
+        std::multimap<std::string, NcVar>::const_iterator varIt = vars.cbegin();
+        std::string gpath = grp.getName(true).c_str();
+        if (gpath.compare("/") == 0)
+        {
+            gpath.clear();
+        }
+        std::stringstream dimstr;
+        while (varIt != vars.cend())
+        {
+            std::vector<NcDim> dims = varIt->second.getDims();
+            for (int d=dims.size()-1; d >=0; --d)
+            {
+                dimstr << dims[d].getName() << ": " << dims[d].getSize();
+                if (d > 0)
+                {
+                    dimstr << ", ";
+                }
+            }
+
+            QString ventry = QString("%1/%2 (%3)").arg(gpath.c_str()).arg(varIt->first.c_str()).arg(dimstr.str().c_str());
+            varPaths << ventry;
+            ++varIt;
+            dimstr.str("");
+        }
+
+        // parsing any subgroups
+        std::multimap<std::string, NcGroup> groups = grp.getGroups();
+        std::multimap<std::string, NcGroup>::const_iterator groupsIt = groups.cbegin();
+        while (groupsIt != groups.cend())
+        {
+            NMGlobalHelper::parseNcGroup(groupsIt->second, varPaths);
+            ++groupsIt;
+        }
+    }
+    catch(exceptions::NcException& e)
+    {
+        throw e;
+    }
+}
+
 
 void
 NMGlobalHelper::logQsqlConnections(void)
@@ -169,6 +256,7 @@ NMGlobalHelper::identifyExternalDbs(QSqlDatabase targetDb, const QString &origex
         QString dbfn = prQuery.value(0).toString();
         ret.removeOne(dbfn);
     }
+    prQuery.finish();
 
     return ret;
 }
@@ -185,7 +273,8 @@ NMGlobalHelper::attachMultipleDbs(QSqlDatabase dbTarget, const QStringList& dbFi
     int dbcounter = 0;
     foreach (const QString& fn, dbFileNames)
     {
-        const QString sname = QString("db_%1").arg(++dbcounter);
+        QString sname;// = QString("db_%1").arg(++dbcounter);
+        sname = QFileInfo(fn).baseName();
         if (NMGlobalHelper::attachDatabase(dbTarget, fn, sname))
         {
             ret = true;
@@ -227,14 +316,27 @@ NMGlobalHelper::attachDatabase(QSqlDatabase dbTarget, const QString dbFileName, 
                             QDateTime::currentDateTime().time().toString(),
                             NMLogger::NM_LOG_ERROR,
                             msg);
+        q.finish();
         return false;
     }
+    q.finish();
 
     return true;
 }
 
 bool NMGlobalHelper::detachDatabase(QSqlDatabase db, QString schemaName)
 {
+    if (!db.isOpen())
+    {
+        QString msg = QString("Failed detaching database '%1' from '%2': Target database is not open!")
+                .arg(schemaName).arg(db.databaseName());
+        NMGlobalHelper::getMainWindow()->getLogger()->processLogMsg(
+                            QDateTime::currentDateTime().time().toString(),
+                            NMLogger::NM_LOG_ERROR,
+                            msg);
+        return false;
+    }
+
     QSqlDriver* drv = db.driver();
     if (drv == nullptr)
     {
@@ -252,8 +354,147 @@ bool NMGlobalHelper::detachDatabase(QSqlDatabase db, QString schemaName)
                             QDateTime::currentDateTime().time().toString(),
                             NMLogger::NM_LOG_ERROR,
                             msg);
+        q.finish();
         return false;
     }
+    q.finish();
+
+    return true;
+}
+
+bool NMGlobalHelper::detachMultipleDbs(QSqlDatabase dbTarget, const QStringList &dbFileNames)
+{
+    bool ret = true;
+    foreach(const QString& fn, dbFileNames)
+    {
+        const QString schema = QFileInfo(fn).baseName();
+        if (!detachDatabase(dbTarget, schema))
+        {
+            ret = false;
+        }
+    }
+
+    return ret;
+}
+
+bool NMGlobalHelper::detachAllDbs(QSqlDatabase dbTarget)
+{
+    if (!dbTarget.isOpen())
+    {
+        QString msg = QString("Failed detaching external databases from '%1'. "
+                              "The database is not open!").arg(dbTarget.databaseName());
+        NMGlobalHelper::getMainWindow()->getLogger()->processLogMsg(
+                            QDateTime::currentDateTime().time().toString(),
+                            NMLogger::NM_LOG_ERROR,
+                            msg);
+        return false;
+    }
+
+#ifdef LUMASS_DEBUG
+
+    QString strEdbs = QString("select name, file from pragma_database_list");
+
+    NMGlobalHelper::getMainWindow()->getLogger()->processLogMsg(
+                        QDateTime::currentDateTime().time().toString(),
+                        NMLogger::NM_LOG_DEBUG,
+                        QStringLiteral("detachAllDbs() - current external dbs ... "));
+
+
+    QSqlQuery externalDbs(dbTarget);
+    externalDbs.exec(strEdbs);
+    while (externalDbs.next())
+    {
+       QString name = externalDbs.value(0).toString();
+       QString file = externalDbs.value(1).toString();
+       QString msg = QString("%1 | %2").arg(name).arg(file);
+       NMGlobalHelper::getMainWindow()->getLogger()->processLogMsg(
+                           QDateTime::currentDateTime().time().toString(),
+                           NMLogger::NM_LOG_DEBUG,
+                           msg);
+    }
+    externalDbs.finish();
+
+#endif
+
+    // ======================================================================
+    //              GET A LIST OF DETACHABLE DATABASE SCHEMA NAMES
+    // ======================================================================
+
+    QString strDetach = QString("Select name from pragma_database_list "
+                                "where name != 'main' and name != 'temp';");
+
+    QSqlQuery qDetach(dbTarget);
+    if (!qDetach.exec(strDetach))
+    {
+        QString msg = QString("Failed detaching external databases from '%1': %2")
+                .arg(dbTarget.lastError().text());
+        NMGlobalHelper::getMainWindow()->getLogger()->processLogMsg(
+                            QDateTime::currentDateTime().time().toString(),
+                            NMLogger::NM_LOG_ERROR,
+                            msg);
+        qDetach.finish();
+        return false;
+    }
+
+    QStringList detachNames;
+    while (qDetach.next())
+    {
+        detachNames << qDetach.value(0).toString();
+    }
+    qDetach.finish();
+
+
+    // ======================================================================
+    //              DETACH INDIVIDUAL SCHEMA NAMES
+    // ======================================================================
+
+
+    if (!dbTarget.transaction())
+    {
+        QString msg = QString("Failed detaching external databases from '%1'. "
+                              "%2").arg(dbTarget.databaseName())
+                                   .arg(dbTarget.lastError().text());
+        NMGlobalHelper::getMainWindow()->getLogger()->processLogMsg(
+                            QDateTime::currentDateTime().time().toString(),
+                            NMLogger::NM_LOG_ERROR,
+                            msg);
+        dbTarget.rollback();
+        return false;
+    }
+
+
+    QString strD2 = QString("detach database ?");
+    QSqlQuery qD2(dbTarget);
+    if (!qD2.prepare(strD2))
+    {
+        QString msg = QString("Failed detaching external databases from '%1': %2")
+                .arg(dbTarget.databaseName()).arg(qD2.lastError().text());
+        NMGlobalHelper::getMainWindow()->getLogger()->processLogMsg(
+                            QDateTime::currentDateTime().time().toString(),
+                            NMLogger::NM_LOG_ERROR,
+                            msg);
+        qD2.finish();
+        dbTarget.rollback();
+        return false;
+    }
+
+    foreach(const QString& sName, detachNames)
+    {
+        const QString dname = dbTarget.driver()->escapeIdentifier(sName, QSqlDriver::TableName);
+        qD2.bindValue(0, dname);
+        if (!qD2.exec())
+        {
+            QString msg = QString("Failed detaching database '%1' from '%2': %3")
+                    .arg(sName).arg(dbTarget.databaseName()).arg(qD2.lastError().text());
+            NMGlobalHelper::getMainWindow()->getLogger()->processLogMsg(
+                                QDateTime::currentDateTime().time().toString(),
+                                NMLogger::NM_LOG_ERROR,
+                                msg);
+        }
+        qD2.finish();
+    }
+    qD2.finish();
+    dbTarget.commit();
 
     return true;
 }
@@ -549,8 +790,7 @@ NMGlobalHelper::getRenderWindow()
    return NMGlobalHelper::getMainWindow()->getRenderWindow();
 }
 
-QVTKOpenGLWidget*
-NMGlobalHelper::getVTKWidget()
+QVTKOpenGLNativeWidget *NMGlobalHelper::getVTKWidget()
 {
     return NMGlobalHelper::getMainWindow()->ui->qvtkWidget;
 }

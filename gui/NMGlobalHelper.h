@@ -26,10 +26,13 @@
 #include <QAbstractItemModel>
 #include <QList>
 #include <QItemSelection>
+#include <netcdf>
+
 #include "lumassmainwin.h"
 #include "NMLogWidget.h"
 
-class QVTKOpenGLWidget;
+//class QVTKOpenGLWidget;
+#include "QVTKOpenGLNativeWidget.h"
 class vtkRenderWindow;
 class NMModelController;
 
@@ -45,12 +48,14 @@ public:
     static NMModelController* getModelController(void);
     static NMLogWidget* getLogWidget(void);
     static vtkRenderWindow* getRenderWindow(void);
-    static QVTKOpenGLWidget* getVTKWidget(void);
+    static QVTKOpenGLNativeWidget* getVTKWidget(void);
     static QString getUserSetting(const QString& key);
     static QStringList getUserSettingsList(void);
     static QStringList getModelSettingsList(void);
     static QString getMultiLineInput(const QString& title,
                               const QString& suggestion, QWidget* parent=0);
+    static QString getNetCDFVarPathInput(const QString& ncFilename);
+    static void parseNcGroup(const netCDF::NcGroup& grp, QStringList& varPaths);
     static QStringList getMultiItemSelection(const QString& title,
                                          const QString& label,
                                          const QStringList& items,
@@ -64,6 +69,8 @@ public:
     static void appendLogMsg(const QString& msg);
     static bool attachDatabase(QSqlDatabase dbTarget, const QString dbFileName, const QString schemaName=QStringLiteral("attached"));
     static bool detachDatabase(QSqlDatabase db, QString schemaName);
+    static bool detachMultipleDbs(QSqlDatabase dbTarget, const QStringList& dbFileNames);
+    static bool detachAllDbs(QSqlDatabase dbTarget);
 
     static bool attachMultipleDbs(QSqlDatabase dbTarget, const QStringList &dbFileNames);
     static QStringList identifyExternalDbs(QSqlDatabase targetDb, const QString& origexpr);

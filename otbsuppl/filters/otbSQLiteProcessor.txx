@@ -182,9 +182,18 @@ void SQLiteProcessor< TInputImage, TOutputImage >
         if (!m_vRAT.at(0)->AttachDatabase(m_vRAT.at(i)->GetDbFileName(),
                                           m_ImageNames.at(i)))
         {
-            itkExceptionMacro(<< "Failed attaching input databases - "
-                              << m_vRAT.at(0)->getLastLogMsg());
-            return;
+            if (m_vRAT.at(0)->getLastLogMsg().find("already attached") != std::string::npos)
+            {
+                NMProcInfo(<< "Database '" << m_vRAT.at(i)->GetDbFileName() << "' "
+                    << "is already attached.");
+            }
+            else
+            {
+                itkExceptionMacro(<< "Failed attaching input databases - "
+                    << m_vRAT.at(0)->getLastLogMsg());
+                return;
+
+            }
         }
     }
 
@@ -194,6 +203,7 @@ void SQLiteProcessor< TInputImage, TOutputImage >
         // we only report an error for the following
         // conditions:
         // - database is locked
+        // - database is readonly
         //
         // all other conditions are treated as OK; for instance
         // we just give a warning if try to a add a column that
@@ -202,7 +212,9 @@ void SQLiteProcessor< TInputImage, TOutputImage >
 
 
         std::string lastlog = m_vRAT.at(0)->getLastLogMsg();
-        if (lastlog.find("database is locked") != std::string::npos)
+        if (    lastlog.find("database is locked") != std::string::npos
+            ||  lastlog.find("database is readonly") != std::string::npos
+           )
         {
             NMProcErr(<< "SQL processing failed - "
                       << lastlog);

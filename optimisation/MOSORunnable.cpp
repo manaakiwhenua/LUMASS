@@ -19,6 +19,7 @@
 #include "vtkPolyDataReader.h"
 #include "vtkPolyData.h"
 #include "vtkDataSet.h"
+#include "vtkUnsignedCharArray.h"
 #include "vtkTable.h"
 #include "NMvtkDelimitedTextWriter.h"
 
@@ -70,7 +71,7 @@ MOSORunnable::loadDataSet(NMMosra* mosra)
     }
 
     QStringList dbFormats;
-    dbFormats << "ldb" << "db" << "sqlite";
+    dbFormats << "ldb" << "db" << "sqlite" << "gpkg";
 
     const QString suffix = dsInfo.suffix();
     if (suffix.compare("vtk") == 0)

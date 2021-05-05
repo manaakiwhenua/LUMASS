@@ -151,6 +151,9 @@ public:
     void setOverviewIdx(int ovvidx, const int* userLPR);
     void setRequestedRegion(itk::ImageIORegion& ior);
 
+    void setZSliceIdx(int slindex);
+    int getZSliceIdx(){return mZSliceIdx;}
+
 protected:
 	void UpdateProgressInfo(itk::Object* obj,
 			const itk::EventObject& event);
@@ -182,6 +185,8 @@ private:
     bool mDbRATReadOnly;
     QString mRATType;
     QStringList mRATEnum;
+
+    int mZSliceIdx;
 
     otb::ImageIOBase::Pointer mItkImgIOBase;
 

@@ -100,6 +100,10 @@ public:
   itkGetMacro(OverviewIdx, int)
   void SetOverviewIdx(int ovvidx);
 
+  /** Get/Set the ZSliceIndex (if available) */
+  itkGetMacro(ZSliceIdx, int)
+  void SetZSliceIdx(int slindex);
+
   std::vector<double> GetUpperLeftCorner(void);
 
   /** Allow for retro-fitting of overviews, in case not present */
@@ -179,6 +183,7 @@ protected:
 
   std::vector<double> m_UpperLeftCorner;
 
+  int m_ZSliceIdx;
   int m_OverviewIdx;
   bool m_UseUserLargestPossibleRegion;
   ImageRegionType m_UserLargestPossibleRegion;

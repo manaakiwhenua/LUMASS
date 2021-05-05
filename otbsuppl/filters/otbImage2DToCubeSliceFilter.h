@@ -42,71 +42,55 @@ class OTBSUPPLFILTERS_EXPORT Image2DToCubeSliceFilter
 {
 public:
 
-  typedef Image2DToCubeSliceFilter							Self;
-  typedef itk::ImageToImageFilter<TInputImage, TOutputImage>		Superclass;
-  typedef itk::SmartPointer<Self>								Pointer;
-  typedef itk::SmartPointer<const Self>							ConstPointer;
+  using Self                =  Image2DToCubeSliceFilter;
+  using Superclass          =  itk::ImageToImageFilter<TInputImage, TOutputImage>;
+  using Pointer             =  itk::SmartPointer<Self>;
+  using ConstPointer        =  itk::SmartPointer<const Self>;
 
   itkStaticConstMacro(InputImageDimension, unsigned int, TInputImage::ImageDimension);
   itkStaticConstMacro(OutputImageDimension, unsigned int, TOutputImage::ImageDimension);
 
-  itkNewMacro(Self);
-  itkTypeMacro(Image2DToCubeSliceFilter, itk::ImageToImageFilter);
+  itkNewMacro(Self)
+  itkTypeMacro(Image2DToCubeSliceFilter, itk::ImageToImageFilter)
 
-  typedef TInputImage						InputImageType;
-  typedef typename InputImageType::Pointer	InputImagePointer;
-  typedef typename InputImageType::RegionType InputRegionType;
-  typedef typename InputImageType::PixelType  InputImagePixelType;
-  typedef typename InputImageType::SizeType InputSizeType;
-  typedef typename InputImageType::IndexType InputIndexType;
-  typedef typename InputImageType::SpacingType InputSpacingType;
-  typedef typename InputImageType::PointType InputPointType;
+  using InputImageType      = TInputImage;
+  using InputImagePointer   = typename InputImageType::Pointer;
+  using InputRegionType     = typename InputImageType::RegionType;
+  using InputImagePixelType = typename InputImageType::PixelType;
+  using InputsizeType       = typename InputImageType::SizeType;
+  using InputIndexType      = typename InputImageType::IndexType;
+  using InputSpacingType    = typename InputImageType::SpacingType;
+  using InputPointType      = typename InputImageType::PointType;
 
-
-  typedef TOutputImage						OutputImageType;
-  typedef typename OutputImageType::Pointer	OutputImagePointer;
-  typedef typename OutputImageType::RegionType OutputRegionType;
-  typedef typename OutputImageType::PixelType  OutputImagePixelType;
-  typedef typename OutputImageType::SizeType OutputSizeType;
-  typedef typename OutputImageType::IndexType OutputIndexType;
-  typedef typename OutputImageType::SpacingType OutputSpacingType;
-  typedef typename OutputImageType::PointType OutputPointType;
-
-  /** Typedef to describe the output and input image region types. */
-  typedef typename TOutputImage::RegionType OutputImageRegionType;
-  typedef typename TInputImage::RegionType  InputImageRegionType;
+  using OutputImageType      = TOutputImage;
+  using OutputImagePointer   = typename OutputImageType::Pointer;
+  using OutputRegionType     = typename OutputImageType::RegionType;
+  using OutputImagePixelType = typename OutputImageType::PixelType;
+  using OutputsizeType       = typename OutputImageType::SizeType;
+  using OutputIndexType      = typename OutputImageType::IndexType;
+  using OutputSpacingType    = typename OutputImageType::SpacingType;
+  using OutputPointType      = typename OutputImageType::PointType;
+  using OutputDirectionType  = typename OutputImageType::DirectionType;
 
 
-//  typedef enum{ZSLICE, YSLICE, XSLICE} TargetSliceDimension;
+  void SetDimMapping(std::vector<int>& vec) {m_DimMapping = vec;}
+  std::vector<int> GetDimMapping(std::vector<int>& vec) {return m_DimMapping;}
 
-//  void SetTargetSliceDimension(TargetSliceDimension tsd)
-//  	  {this->mTargetDimension = tsd;}
-//  TargetSliceDimension GetTargetSliceDimension(void)
-//  	  {return this->mTargetDimension;}
+  void SetOutputOrigin(std::vector<double>& vec) {m_OutputOrigin = vec;}
+  std::vector<double> GetOutputOrigin(std::vector<double>& vec) {return m_OutputOrigin;}
 
-  itkSetMacro(ZLevel, unsigned int)
-  itkGetMacro(ZLevel, unsigned int)
+  void SetOutputSpacing(std::vector<double>& vec) {m_OutputSpacing = vec;}
+  std::vector<double> GetOutputSpacing(std::vector<double>& vec) {return m_OutputSpacing;}
 
-//  void SetZLevel(unsigned int level)
-//  {
-//	  if (level > 0)
-//	  {
-//		  this->m_ZLevel = level;
-//		  if (this->m_FirstZLevel == -1)
-//			  this->m_FirstZLevel = level;
-//		  this->Modified();
-//	  }
-//  }
+  void SetOutputSize(std::vector<long long>& vec) {m_OutputSize = vec;}
+  std::vector<long long> GetOutputSize(std::vector<long long>& vec) {return m_OutputSize;}
 
-  itkSetMacro(ZSpacing, double);
-  itkGetMacro(ZSpacing, double);
-
-  itkSetMacro(ZOrigin, double);
-  itkGetMacro(ZOrigin, double);
+  void SetOutputIndex(std::vector<long long>& vec) {m_OutputIndex = vec;}
+  std::vector<long long> GetOutputIndex(std::vector<long long>& vec) {return m_OutputIndex;}
 
   void GenerateOutputInformation(void);
-//  void GenerateInputRequestedRegion(void);
-  void EnlargeOutputRequestedRegion(itk::DataObject* output);
+  void GenerateInputRequestedRegion(void);
+
 
 protected:
   Image2DToCubeSliceFilter();
@@ -114,16 +98,18 @@ protected:
 
   void
   ThreadedGenerateData(
-		  const OutputImageRegionType& outputRegionForThread,
+          const OutputRegionType& outputRegionForThread,
           itk::ThreadIdType threadId );
 
-  unsigned int m_ZLevel;
-  double m_ZSpacing;
-  double m_ZOrigin;
 
-//  unsigned int m_FirstZLevel;
+  std::vector<int> m_DimMapping;
 
-//  TargetSliceDimension mTargetDimension;
+  std::vector<long long> m_OutputSize;
+  std::vector<long long> m_OutputIndex;
+  std::vector<double> m_OutputSpacing;
+  std::vector<double> m_OutputOrigin;
+
+
 
 }; // end of class definition
 
@@ -136,3 +122,4 @@ protected:
 #endif
 
 #endif // ifndef header
+

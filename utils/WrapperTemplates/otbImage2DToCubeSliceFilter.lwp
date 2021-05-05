@@ -1,0 +1,32 @@
+# LUMASS otb::Image2DToCubeSliceFilter wrapper profile
+# recognised (filter variable) types: double, long, long long, bool, string
+# dim = 0 -> property type: plain type
+# dim = 1 -> property type: QStringList
+# dim = 2 -> property type: QList<QStringList>
+# dim = 3 -> property type: QList< QList<QStringList> >
+
+# FilterTypeDef: InImgType and OutImgType correspond with first and second
+#                template argument (i.e. TInputImage and TOutputImage)
+
+# InputTypeFunc_# = IDX:TYPE:SETMETHOD
+#                -> uses SETMETHOD to set the IDXth input of TYPE
+
+
+Year                        = 2020
+WrapperClassName            = NMImage2DToCubeSliceFilterWrapper
+ComponentName               = Image2DtoCubeSlice
+FileDate                    = 2020-12-05
+Author                      = Alexander Herzig
+FilterClassFileName         = otbImage2DToCubeSliceFilter
+FilterTypeDef               = otb::Image2DToCubeSliceFilter<InImgType, OutImgType>
+ComponentIsSink             = 0
+RATGetSupport               = 0
+RATSetSupport               = 0
+#ForwardInputUserIDs         = SetImageNames
+Property_1                  = DimMapping:2:int:int:vector
+Property_2                  = OutputOrigin:2:double:double:vector
+Property_3                  = OutputSpacing:2:double:double:vector
+Property_4                  = OutputSize:2:long long:long long:vector
+Property_5                  = OutputIndex:2:long long:long long:vector
+
+

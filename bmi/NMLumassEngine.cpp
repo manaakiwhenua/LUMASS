@@ -335,7 +335,14 @@ NMLumassEngine::configureModel(const YAML::Node& modelConfig)
                  QVariant val;
                  if (bProcProps)
                  {
-                    val = parseYamlSetting(pit, proc);
+                     val = parseYamlSetting(pit, proc);
+                     if (val.isNull() || !val.isValid())
+                     {
+                         std::stringstream emsg;
+                         emsg << "Found invalid value for '" << comp->objectName().toStdString() << ":"
+                                    << propName.toStdString() << "'!";
+                         log("ERROR", emsg.str().c_str());
+                     }
                      if (!proc->setProperty(propName.toStdString().c_str(), val))
                      {
 						 std::stringstream emsg;
@@ -347,6 +354,13 @@ NMLumassEngine::configureModel(const YAML::Node& modelConfig)
                  else if (bCompProps)
                  {
                      val = parseYamlSetting(pit, comp);
+                     if (val.isNull() || !val.isValid())
+                     {
+                         std::stringstream emsg;
+                         emsg << "Found invalid value for '" << comp->objectName().toStdString() << ":"
+                                    << propName.toStdString() << "'!";
+                         log("ERROR", emsg.str().c_str());
+                     }
                      // set property value
                      if (!comp->setProperty(propName.toStdString().c_str(), val))
                      {

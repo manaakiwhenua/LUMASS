@@ -38,7 +38,8 @@ public:
 
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return false;}
-    QString getWrapperClassName() {return "NMRandomImageSourceWrapper";}
+    QString getWrapperClassName() {return QStringLiteral("NMRandomImageSourceWrapper");}
+    QString getComponentAlias() {return QStringLiteral("RandomImage");}
 };
 
 #endif // NMRandomImageSourceWrapperFactory_H

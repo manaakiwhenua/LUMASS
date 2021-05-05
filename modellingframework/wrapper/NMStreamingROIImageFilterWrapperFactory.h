@@ -38,7 +38,8 @@ public:
 
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return false;}
-    QString getWrapperClassName() {return "NMStreamingROIImageFilterWrapper";}
+    QString getWrapperClassName() {return QStringLiteral("NMStreamingROIImageFilterWrapper");}
+    QString getComponentAlias() {return QStringLiteral("ExtractImageRegion");}
 };
 
 #endif // NMStreamingROIImageFilterWrapperFactory_H

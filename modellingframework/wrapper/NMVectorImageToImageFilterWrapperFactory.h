@@ -38,7 +38,8 @@ public:
 
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return false;}
-    QString getWrapperClassName() {return "NMVectorImageToImageFilterWrapper";}
+    QString getWrapperClassName() {return QStringLiteral("NMVectorImageToImageFilterWrapper");}
+    QString getComponentAlias() {return QStringLiteral("ExtractBand");}
 };
 
 #endif // NMVectorImageToImageFilterWrapperFactory_H

@@ -39,6 +39,7 @@ public:
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return true;}
     QString getWrapperClassName() {return "NMExternalExecWrapper";}
+    QString getComponentAlias() {return QStringLiteral("ExternalExec");}
 };
 
 #endif // NMExternalExecWrapperFactory_H

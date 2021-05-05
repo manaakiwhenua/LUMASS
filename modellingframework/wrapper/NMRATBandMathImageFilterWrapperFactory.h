@@ -38,7 +38,8 @@ public:
 
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return false;}
-    QString getWrapperClassName() {return "NMRATBandMathImageFilterWrapper";}
+    QString getWrapperClassName() {return QStringLiteral("NMRATBandMathImageFilterWrapper");}
+    QString getComponentAlias() {return QStringLiteral("MapAlgebra");}
 };
 
 #endif // NMRATBandMathImageFilterWrapperFactory_H

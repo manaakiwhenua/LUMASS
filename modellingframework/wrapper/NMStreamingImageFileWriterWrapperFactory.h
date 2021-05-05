@@ -38,7 +38,8 @@ public:
 
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return true;}
-    QString getWrapperClassName() {return "NMStreamingImageFileWriterWrapper";}
+    QString getWrapperClassName() {return QStringLiteral("NMStreamingImageFileWriterWrapper");}
+    QString getComponentAlias() {return QStringLiteral("ImageWriter");}
 };
 
 #endif // NMStreamingImageFileWriterWrapperFactory_H

@@ -38,7 +38,8 @@ public:
 
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return true;}
-    QString getWrapperClassName() {return "NMUniqueCombinationFilterWrapper";}
+    QString getWrapperClassName() {return QStringLiteral("NMUniqueCombinationFilterWrapper");}
+    QString getComponentAlias() {return QStringLiteral("UniqueCombination");}
 };
 
 #endif // NMUniqueCombinationFilterWrapperFactory_H

@@ -39,6 +39,7 @@ public:
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return false;}
     QString getWrapperClassName() {return "NMItkCastImageFilterWrapper";}
+    QString getComponentAlias() {return QStringLiteral("CastImage");}
 };
 
 #endif // NMItkCastImageFilterWrapperFactory_H

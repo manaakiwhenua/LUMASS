@@ -39,6 +39,7 @@ public:
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return false;}
     QString getWrapperClassName() {return "NMDEMSlopeAspectFilterWrapper";}
+    QString getComponentAlias() {return QStringLiteral("TerrainAttributes");}
 };
 
 #endif // NMDEMSlopeAspectFilterWrapperFactory_H

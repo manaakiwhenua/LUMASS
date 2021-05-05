@@ -38,7 +38,8 @@ public:
 
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return false;}
-    QString getWrapperClassName() {return "NMResampleImageFilterWrapper";}
+    QString getWrapperClassName() {return QStringLiteral("NMResampleImageFilterWrapper");}
+    QString getComponentAlias() {return QStringLiteral("ResampleImage");}
 };
 
 #endif // NMResampleImageFilterWrapperFactory_H

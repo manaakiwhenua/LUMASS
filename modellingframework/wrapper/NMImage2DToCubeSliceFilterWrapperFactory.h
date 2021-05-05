@@ -39,6 +39,7 @@ public:
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return false;}
     QString getWrapperClassName() {return "NMImage2DToCubeSliceFilterWrapper";}
+    QString getComponentAlias() {return QStringLiteral("Image2DtoCubeSlice");}
 };
 
 #endif // NMImage2DToCubeSliceFilterWrapperFactory_H

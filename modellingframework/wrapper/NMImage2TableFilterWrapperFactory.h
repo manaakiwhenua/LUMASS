@@ -39,6 +39,7 @@ public:
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return false;}
     QString getWrapperClassName() {return "NMImage2TableFilterWrapper";}
+    QString getComponentAlias() {return QStringLiteral("Image2Table");}
 };
 
 #endif // NMImage2TableFilterWrapperFactory_H

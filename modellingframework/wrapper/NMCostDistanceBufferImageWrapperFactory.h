@@ -39,6 +39,7 @@ public:
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return true;}
     QString getWrapperClassName() {return "NMCostDistanceBufferImageWrapper";}
+    QString getComponentAlias() {return QStringLiteral("CostDistanceBuffer");}
 };
 
 #endif // NMCostDistanceBufferImageWrapperFactory_H

@@ -38,7 +38,8 @@ public:
 
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return false;}
-    QString getWrapperClassName() {return "NMScriptableKernelFilter2Wrapper";}
+    QString getWrapperClassName() {return QStringLiteral("NMScriptableKernelFilter2Wrapper");}
+    QString getComponentAlias() {return QStringLiteral("MapKernelScript2");}
 };
 
 #endif // NMScriptableKernelFilter2WrapperFactory_H

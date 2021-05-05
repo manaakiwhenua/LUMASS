@@ -39,6 +39,7 @@ public:
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return false;}
     QString getWrapperClassName() {return "NMFlowAccumulationFilterWrapper";}
+    QString getComponentAlias() {return QStringLiteral("RAMFlowAcc");}
 };
 
 #endif // NMFlowAccumulationFilterWrapperFactory_H

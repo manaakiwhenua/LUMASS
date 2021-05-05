@@ -38,7 +38,8 @@ public:
 
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return false;}
-    QString getWrapperClassName() {return "NMSumZonesFilterWrapper";}
+    QString getWrapperClassName() {return QStringLiteral("NMSumZonesFilterWrapper");}
+    QString getComponentAlias() {return QStringLiteral("SummarizeZones");}
 };
 
 #endif // NMSumZonesFilterWrapperFactory_H

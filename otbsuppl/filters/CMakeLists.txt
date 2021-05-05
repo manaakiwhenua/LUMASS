@@ -3,6 +3,8 @@ PROJECT(filters)
 INCLUDE_DIRECTORIES(
     ${GDALRATImageIO_SOURCE_DIR}
     ${GDALRATImageIO_BINARY_DIR}
+    ${NCXX4_INCLUDE_DIRS}
+    ${NETCDF_INCLUDE_DIRS}
     ${filters_SOURCE_DIR}
     ${filters_BINARY_DIR}
     ${shared_SOURCE_DIR}
@@ -16,6 +18,7 @@ INCLUDE_DIRECTORIES(
     ${lumass_SOURCE_DIR}/utils/ITK
     ${lumass_SOURCE_DIR}
     #${TCADB_INCLUDE_DIR}
+    ${PYBIND11_INCLUDE_DIR}
 )
 
 LINK_DIRECTORIES(
@@ -52,7 +55,7 @@ if(WIN32)
         add_definitions(-DOTBGDALRATIMAGEIO_STATIC_DEFINE)
         ADD_LIBRARY(OTBSupplFilters STATIC ${OTBSUPPL_FILTERS})
 else(WIN32)
-	ADD_LIBRARY(OTBSupplFilters SHARED ${OTBSUPPL_FILTERS})
+        ADD_LIBRARY(OTBSupplFilters SHARED ${OTBSUPPL_FILTERS})
 endif(WIN32)
 
 set_target_properties(OTBSupplFilters PROPERTIES
@@ -66,10 +69,10 @@ if(LUMASS_OTB_VERSION VERSION_LESS "5.0.0")
         #tokyocabinet
         )
 else()
-	target_link_libraries(OTBSupplFilters OTBCommon OTBIOGDAL 
-	OTBExtendedFilename OTBCurlAdapters OTBImageIO OTBImageBase 
+        target_link_libraries(OTBSupplFilters #OTBCommon OTBIOGDAL
+        #OTBExtendedFilename OTBCurlAdapters OTBImageIO OTBImageBase
         #OTBMathParser
-        OTBStreaming
+        #OTBStreaming
         OTBGDALRATImageIO
         Qt5Core Qt5Qml
         #tokyocabinet
@@ -84,11 +87,11 @@ add_dependencies(OTBSupplFilters OTBGDALRATImageIO)
 
 install(FILES ${OTBSUPPL_HEADER} DESTINATION include)
 if(WIN32)
-	install(TARGETS OTBSupplFilters 
+        install(TARGETS OTBSupplFilters
                 #LIBRARY DESTINATION lib
                 ARCHIVE DESTINATION lib
-		RUNTIME DESTINATION lib
-	)
+                RUNTIME DESTINATION lib
+        )
 else()
-	install(TARGETS OTBSupplFilters LIBRARY DESTINATION lib)
+        install(TARGETS OTBSupplFilters LIBRARY DESTINATION lib)
 endif()

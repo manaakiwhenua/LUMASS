@@ -14,8 +14,11 @@ INCLUDE_DIRECTORIES(
     ${mfw_wrapper_BINARY_DIR}
     ${muParserX_SOURCE_DIR}
     ${shared_SOURCE_DIR}
+    ${shared_BINARY_DIR}
     ${GDALRATImageIO_SOURCE_DIR}
     ${GDALRATImageIO_BINARY_DIR}
+    ${NETCDFIO_SOURCE_DIR}
+    ${NETCDFIO_BINARY_DIR}
     ${rimageio_SOURCE_DIR}
     ${filters_SOURCE_DIR}
     ${filters_BINARY_DIR}
@@ -26,36 +29,56 @@ INCLUDE_DIRECTORIES(
     ${OTB_INCLUDE_DIRS}
     ${LPSOLVE_INCLUDE_DIR}
     ${opt_SOURCE_DIR}
+    ${NCXX4_INCLUDE_DIR}
+    ${NETCDF_INCLUDE_DIR}
+    ${pybind11_INCLUDE_DIRS}
+    ${bmi_SOURCE_DIR}
+    ${bmi_BINARY_DIR}
+    ${YAML_CPP_INCLUDE_DIR}
 )
 
 LINK_DIRECTORIES(
-    ${OTB_DIR}/lib
-    ${OTB_DIR}/bin
+#    ${OTB_DIR}/lib
+#    ${OTB_DIR}/bin
     ${QT5_LINK_DIRS}
-    ${RASDAMAN_LIBRARIES_DIR}
-    ${mfw_core_BINARY_DIR}
-    ${LIBRARY_OUTPUT_PATH}
-    ${LIBRARY_OUTPUT_PATH}/${CMAKE_BUILD_TYPE}
+#    ${RASDAMAN_LIBRARIES_DIR}
+#    ${mfw_core_BINARY_DIR}
+#    ${LIBRARY_OUTPUT_PATH}
+#    ${LIBRARY_OUTPUT_PATH}/${CMAKE_BUILD_TYPE}
     ${OSGEO4W_ROOT}/lib
-    ${SPATIALITE_LIB_DIR}
-    ${SPATIALITE_LIBLIB_DIR}
+#    ${SPATIALITE_LIB_DIR}
+#    ${SPATIALITE_LIBLIB_DIR}
+#    ${NCXX_LIB_DIR}
+#    ${NETCDF_LIB_DIR}
+#    ${bmi_BINARY_DIR}
 )
+
+
+if (${VTK_VERSION_STRING} VERSION_LESS "8.90")
+    SET(LUMASS_WRAPPER_VTK_LIBRARIES
+        vtkCommonDataModel
+        vtkCommonCore
+        vtkIOCore
+    )
+else()
+   SET(LUMASS_WRAPPER_VTK_LIBRARIES
+       VTK::CommonDataModel
+       VTK::CommonCore
+       VTK::IOCore
+   )
+endif()
+
 
 set(MFW_WRAPPER_LINK_LIBS
-                NMModFrameCore
-                OTBSupplFilters
-                #RasImageIO
-                #Qt5Xml
-                Qt5Core
-                #Qt5Qml
-                #Qt5Concurrent
-                #spatialite
-                vtkCommonDataModel
-                vtkCommonCore
-                vtkIOCore
-                ${LPSOLVE_LIBRARY}
+    NMModFrameCore
+    OTBSupplFilters
+    Qt5::Core
+    ${LUMASS_WRAPPER_VTK_LIBRARIES}
 )
 
+set(NMMOSRA_WRAPPER_LINKLIBS ${MFW_WRAPPER_LINK_LIBS} Qt5::Sql ${LPSOLVE_LIBRARY})
+set(NMJSKERNEL_WRAPPER_LINKLIBS ${MFW_WRAPPER_LINK_LIBS} Qt5::Qml)
+set(NMBMI_WRAPPER_LINKLIBS ${MFW_WRAPPER_LINK_LIBS} ${YAML_CPP_LIBRARIES})
 
 set(MFW_WRAPPER_DEP_LIBS
     OTBSupplFilters
@@ -75,9 +98,6 @@ IF(RASSUPPORT)
 ENDIF()
 
 add_definitions(-DNMModFrameWrapper_EXPORTS -DNM_PROC_LOG)
-if (LUMASS_OTB_VERSION VERSION_GREATER "5.8.0")
-    add_definitions(-DOTB_VERSION_SIX)
-endif()
 
 set(CMAKE_AUTOMOC YES)
 
@@ -85,28 +105,40 @@ foreach( wrapper ${MFW_WRAPPER_NAMES} )
         file(GLOB MFW_WRAPPER_SOURCE_FILES "${mfw_wrapper_SOURCE_DIR}/${wrapper}*.c*")
         file(GLOB MFW_WRAPPER_HEADER_FILES "${mfw_wrapper_SOURCE_DIR}/${wrapper}*.h")
 
+        set(LINKLIBS ${MFW_WRAPPER_LINK_LIBS})
         if (${wrapper} STREQUAL "NMMosraFilterWrapper")
             list(APPEND MFW_WRAPPER_SOURCE_FILES ${opt_SOURCE_DIR}/NMMosra.cpp)
             list(APPEND MFW_WRAPPER_SOURCE_FILES ${opt_SOURCE_DIR}/LpHelper.cpp)
             list(APPEND MFW_WRAPPER_HEADER_FILES ${opt_SOURCE_DIR}/NMMosra.h)
             list(APPEND MFW_WRAPPER_HEADER_FILES ${opt_SOURCE_DIR}/LpHelper.h)
-            #list(APPEND MFW_WRAPPER_SOURCE_FILES ${gui_SOURCE_DIR}/NMSqlTableModel.cpp)
-            #list(APPEND MFW_WRAPPER_HEADER_FILES ${gui_SOURCE_DIR}/NMSqlTableModel.h)
-            list(APPEND MFW_WRAPPER_LINK_LIBS Qt5Sql)
+            set(LINKLIBS ${NMMOSRA_WRAPPER_LINKLIBS})
         elseif (${wrapper} STREQUAL "NMJSKernelFilterWrapper")
-            list(APPEND MFW_WRAPPER_LINK_LIBS Qt5Qml)
+            set(LINKLIBS ${NMJSKERNEL_WRAPPER_LINKLIBS})
+        elseif (${wrapper} STREQUAL "NMBMIWrapper")
+            set(LINKLIBS ${NMBMI_WRAPPER_LINKLIBS})
+            if (PYTHONSUPPORT)
+                add_definitions(-DLUMASS_PYTHON)
+                list(APPEND LINKLIBS
+                        pybind11::embed pybind11::pybind11
+                        LumassPythonBMI
+                     )
+            endif()
         endif()
 
-        #message(STATUS "source files in lib ${MFW_WRAPPER_SOURCE_FILES}")
-        #message(STATUS "source files in lib ${MFW_WRAPPER_HEADER_FILES}")
+        message(STATUS "${wrapper}'s LINK_LIBS: ${LINKLIBS}")
+
 
         include(GenerateExportHeader)
         ADD_LIBRARY(${wrapper} SHARED ${MFW_WRAPPER_SOURCE_FILES})
 
         generate_export_header(${wrapper})
 
-        TARGET_LINK_LIBRARIES(${wrapper} ${MFW_WRAPPER_LINK_LIBS})
+        TARGET_LINK_LIBRARIES(${wrapper} ${LINKLIBS})
         ADD_DEPENDENCIES(${wrapper} ${MFW_WRAPPER_DEP_LIBS})
+
+        if (${VTK_VERSION_STRING} VERSION_GREATER_EQUAL "8.90")
+            vtk_module_autoinit(TARGETS ${wrapper} MODULES ${LUMASS_WRAPPER_VTK_LIBRARIES})
+        endif()
 
         install(FILES ${MFW_WRAPPER_HEADER_FILES} DESTINATION include)
         if(WIN32)

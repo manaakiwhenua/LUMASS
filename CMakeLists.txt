@@ -12,6 +12,11 @@ SET(CMAKE_MODULE_PATH
     ${CMAKE_SOURCE_DIR}/cmake/Modules
 )
 
+# ugly hack for now ... (2020-07-28)
+if (WIN32)
+        list(APPEND CMAKE_MODULE_PATH "C:/src/pybind11/tools")
+endif()
+
 ######### DEBUG DEBUG DEBUG ########
 #set(CMAKE_VERBOSE_MAKEFILE on)
 ####################################
@@ -29,7 +34,7 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 IF(NOT WIN32)
         SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fPIC -fPIE")
 
-	# this cmake variable doesn't seem to be honoured with this CMAKE version
+        # this cmake variable doesn't seem to be honoured with this CMAKE version
         SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fPIC -fPIE")
 
         SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -g -fPIC -fno-aggressive-loop-optimizations")
@@ -42,9 +47,20 @@ ELSE(NOT WIN32)
 ENDIF(NOT WIN32)
 
 IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-	SET(CMAKE_INSTALL_PREFIX "/opt/lumass" 
-		CACHE PATH "LUMASS installation directory" FORCE)
+        SET(CMAKE_INSTALL_PREFIX "/opt/lumass"
+                CACHE PATH "LUMASS installation directory" FORCE)
 ENDIF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+
+# check whether long is 64bit
+include(CheckTypeSize)
+CHECK_TYPE_SIZE(long SIZEOF_LONG LANGUAGE CXX)
+CHECK_TYPE_SIZE("unsigned long" SIZEOF_ULONG LANGUAGE CXX)
+message(STATUS "SIZEOF_LONG= ${SIZEOF_LONG}")
+message(STATUS "SIZEOF_LONG_CODE= ${SIZEOF_LONG_CODE}")
+CHECK_TYPE_SIZE("long long" SIZEOF_LONGLONG LANGUAGE CXX)
+CHECK_TYPE_SIZE("unsigned long long" SIZEOF_ULONGLONG LANGUAGE CXX)
+message(STATUS "SIZEOF_LONGLONG= ${SIZEOF_LONGLONG}")
+message(STATUS "SIZEOF_LONGLONG_CODE= ${SIZEOF_LONGLONG_CODE}")
 
 #==================================================================
 # set a RPATH for the whole project
@@ -85,7 +101,7 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Setting build type to 'Debug' as none was specified.")
-  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
+  set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Choose the type of build." FORCE)
   # Set the possible values of build type for cmake-gui
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
     "MinSizeRel" "RelWithDebInfo")
@@ -102,19 +118,19 @@ endif (testvar_in STREQUAL testvar_target)
 
 
 #==================================================================
-# LUMASS VERSION AND REVISION 
+# LUMASS VERSION AND REVISION
 #==================================================================
 
 find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
 SET(LUMASS_VERSION_MINOR 9)
-SET(LUMASS_VERSION_REVISION 62)
+SET(LUMASS_VERSION_REVISION 64)
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
 
 message(STATUS "building LUMASS ${LUMASS_VERSION_MAJOR}.${LUMASS_VERSION_MINOR}.${LUMASS_VERSION_REVISION} (${CMAKE_BUILD_TYPE})"
-               " - commit ${GIT_SHA1} from ${LUMASS_COMMIT_DATE}")               
+               " - commit ${GIT_SHA1} from ${LUMASS_COMMIT_DATE}")
 
 #====================================================================
 # QT 5
@@ -122,7 +138,7 @@ message(STATUS "building LUMASS ${LUMASS_VERSION_MAJOR}.${LUMASS_VERSION_MINOR}.
 
 FIND_PACKAGE(LUMASSQt5)
 IF(NOT QT5_PREFIX_PATH)
-	message(FATAL_ERROR "Need to specify Qt5 install DIR!")
+        message(FATAL_ERROR "Need to specify Qt5 install DIR!")
 ENDIF()
 #if (${QT5_VERSION_STRING} VERSION_LESS "5.7")
 #    message(FATAL_ERROR "LUMASS >= 0.9.60 requires Qt >= 5.7")
@@ -130,17 +146,21 @@ ENDIF()
 
 
 #====================================================================
-# OpenGL 
+# OpenGL
 #====================================================================
 
-#FIND_PACKAGE(LUMASSOpenGL)
+if (${CMAKE_VERSION} VERSION_GREATER "3.11.0")
+    cmake_policy(SET CMP0072 NEW)
+    SET(OpenGL_GL_PREFERENCE "LEGACY")
+endif()
+
 FIND_PACKAGE(OpenGL)
 
 if(NOT OPENGL_INCLUDE_DIR)
   if(WIN32)
-	set(OPENGL_INCLUDE_DIR "C:/Program Files/Microsoft SDKs/Windows/v7.1/Include")
+        set(OPENGL_INCLUDE_DIR "C:/Program Files/Microsoft SDKs/Windows/v7.1/Include")
   else()
-	message(FATAL_ERROR "LUMASS requires OpenGL's GL/glu.h !")
+        message(FATAL_ERROR "LUMASS requires OpenGL's GL/glu.h !")
   endif()
 endif()
 
@@ -149,7 +169,19 @@ message(STATUS "OpenGL's GL library:  ${OPENGL_gl_LIBRARY}")
 message(STATUS "OpenGL's GLU library: ${OPENGL_glu_LIBRARY}")
 
 #====================================================================
-# Orfeo Toolbox 
+# Find boost
+#====================================================================
+
+FIND_PACKAGE(Boost COMPONENTS filesystem)
+if (NOT Boost_FOUND)
+    message(FATAL_ERROR "Please install the Boost::filesystem library!")
+else()
+    message(STATUS "Boost version: " ${Boost_VERSION_STRING})
+    message(STATUS "Boost LIB DIRS: " ${Boost_LIBRARY_DIRS})
+endif()
+
+#====================================================================
+# Orfeo Toolbox
 #====================================================================
 
 # if on windows, ask for the OSGEO4W_ROOT PATH
@@ -160,49 +192,61 @@ if(WIN32)
     endif()
 endif()
 
-FIND_PACKAGE(LUMASSOTB)  
+FIND_PACKAGE(LUMASSOTB)
 if(NOT OTB_FOUND)
   message(FATAL_ERROR "You have to install Orfeo Toolbox prior to compiling LUMASS!")
 endif(NOT OTB_FOUND)
-if(ITK_FOUND)
-    SET(LUMASS_ITK_VERSION "${ITK_VERSION_MAJOR}.${ITK_VERSION_MINOR}.${ITK_VERSION_PATCH}")
-    message(STATUS "found ITK ${LUMASS_ITK_VERSION}")
-    message(STATUS "ITK library DIRS: ${ITK_LIBRARY_DIRS}")
-endif(ITK_FOUND)
-if (${LUMASS_ITK_VERSION} VERSION_LESS "4.11")
-    message(FATAL_ERROR "LUMASS >= 0.9.60 requires ITK >= 4.11")
+
+SET(LUMASS_OTB_VERSION "${OTB_VERSION_MAJOR}.${OTB_VERSION_MINOR}.${OTB_VERSION_PATCH}")
+SET(LUMASS_OTB_LIB_VERSION "${OTB_VERSION_MAJOR}.${OTB_VERSION_MINOR}")
+if (LUMASS_OTB_VERSION VERSION_LESS "6.4")
+    message(FATAL_ERROR "LUMASS >= 0.9.60 requires OTB >= 6.4")
+else()
+    add_definitions(-DOTB_VERSION_SIX)
 endif ()
 
-INCLUDE(${OTB_USE_FILE})
-SET(LUMASS_OTB_VERSION "${OTB_VERSION_MAJOR}.${OTB_VERSION_MINOR}.${OTB_VERSION_PATCH}")
-message(STATUS "found OTB ${LUMASS_OTB_VERSION}")
-if (${LUMASS_OTB_VERSION} VERSION_LESS "6.4")
-    message(FATAL_ERROR "LUMASS >= 0.9.60 requires OTB >= 6.4")
-endif ()
+message(STATUS "ITK_VERSION: ${LUMASS_ITK_VERSION}")
+message(STATUS "ITK_LIBRARY_DIRS: ${ITK_LIBRARY_DIRS}")
+message(STATUS "ITK_INCLUDE_DIRS: ${ITK_INCLUDE_DIRS}")
+message(STATUS "ITK_LIBRARIES: ${ITK_LIBRARIES}")
+message(STATUS "ITK_LINK_DIR: ${ITK_LINK_DIR}")
+message(STATUS "OTB_VERSION: ${LUMASS_OTB_VERSION}")
+message(STATUS "OTB_LIBRARY_DIRS: ${OTB_LIBRARY_DIRS}")
+message(STATUS "OTB_INCLUDE_DIRS: ${OTB_INCLUDE_DIRS}")
+message(STATUS "OTB_LIBRARIES: ${OTB_LIBRARIES}")
+message(STATUS "OTB_LINK_DIR: ${OTB_LINK_DIR}")
 
 #====================================================================
-# VTK 
+# VTK
 #====================================================================
 
 # here we just make sure we've got a proper VTK version
 # available; set up specifics later with respect to the
 # different executables
 
-set(VTK_DIR "VTK_DIR NOT FOUND" CACHE STRING "VTK directory (to VTKConfig.cmake)")
-FIND_PACKAGE(LUMASSVTK)
-#FIND_PACKAGE(VTK)
+#FIND_PACKAGE(LUMASSVTK)
 
-if(NOT VTK_DIR)
+if(NOT LUMASS_VTK_DIR)
+    set(LUMASS_VTK_DIR "LUMASS_VTK_DIR NOT FOUND" CACHE STRING "VTK directory (to vtk-config.cmake)")
     message(FATAL_ERROR "Couldn't find VTK!")
+else()
+    message(STATUS "LUMASS_VTK_DIR set to '${LUMASS_VTK_DIR}'")
+    find_package(VTK REQUIRED PATHS ${LUMASS_VTK_DIR} NO_DEFAULT_PATH)
+    #include("${LUMASS_VTK_DIR}/vtk-config.cmake"})
+
+#    if (EXISTS "${VTK_DIR}/vtk-config.cmake")
+#        include("${VTK_DIR}/vtk-config.cmake")
+        set(VTK_VERSION_STRING "${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}.${VTK_BUILD_VERSION}")
+        message(STATUS "found VTK ${VTK_VERSION_STRING} at ${VTK_DIR}")
+        message(STATUS "found VTK Components: ${VTK_AVAILABLE_COMPONENTS}")
+
+#        if (${VTK_VERSION_STRING} VERSION_LESS "8.2")
+#            message(FATAL_ERROR "LUMASS >= 0.9.60 requires VTK >= 8.2")
+#        endif ()
+#    endif()
 endif()
 
-find_package(VTK NO_MODULE)
-set(VTK_VERSION_STRING "${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}.${VTK_BUILD_VERSION}")
-message(STATUS "found VTK ${VTK_VERSION_STRING} at ${VTK_DIR}")
-
-if (${VTK_VERSION_STRING} VERSION_LESS "8.2")
-    message(FATAL_ERROR "LUMASS >= 0.9.60 requires VTK >= 8.2")
-endif ()
+#find_package(VTK NO_MODULE)
 
 #====================================================================
 # GDAL SUPPORT - always required otherwise we pull out
@@ -232,7 +276,7 @@ message(STATUS "gdal include dir: ${GDAL_INCLUDE_DIR}")
 
 
 #====================================================================
-# FIND LPSOLVE 
+# FIND LPSOLVE
 #====================================================================
 
 FIND_PACKAGE(Lpsolve)
@@ -263,12 +307,79 @@ set(NM_SQLite_VERSION "3.31.1")
 # loof for spatialite
 find_package(LUMASSSpatialite)
 if(NOT SPATIALITE_FOUND)
-	message(FATAL_ERROR "Please install Spatialite prior to installing LUMASS!")
+        message(FATAL_ERROR "Please install Spatialite prior to installing LUMASS!")
 endif()
 
 message(STATUS "Spatialite include dir: ${SPATIALITE_INCLUDE_DIR}")
 message(STATUS "Spatialite library dir: ${SPATIALITE_LIBLIB_DIR}")
 message(STATUS "Spatialite library: ${SPATIALITE_LIB}")
+
+#====================================================================
+# FIND netCDF CXX
+#====================================================================
+
+if (WIN32)
+        if (NOT NETCDF_INCLUDE_DIR OR NOT NETCDF_LIB_DIR)
+                set(NETCDF_INCLUDE_DIR "C:/src/netcdf-c-4.7.3/include" CACHE PATH "Please check the netCDF include DIR!")
+                set(NETCDF_LIB_DIR "C:/opt/netcdf-c-4.7.3/liblib/Release" CACHE PATH "Please check the netCDF lib DIR!")
+                set(NETCDF_LIBRARY "C:/opt/netcdf-c-4.7.3/liblib/Release/netcdf.lib" CACHE PATH "Please check the path to the netCDF library!")
+                SET(LUMASS_NETCDF_VERSION "4.7.3")
+        endif()
+
+        if (NOT NCXX4_INCLUDE_DIR OR NOT NCXX4_LIBRARY)
+                set(NCXX4_INCLUDE_DIR "C:/src/netcdf-cxx4-4.3.1/cxx4" CACHE PATH "Please check the netCDF include DIR!")
+                set(NCXX4_LIB_DIR "C:/opt/netcdf-cxx4-4.3.1/cxx4/Release" CACHE PATH "Please check the netCDF lib DIR!")
+                SET(NCXX4_LIBRARY "C:/opt/netcdf-cxx4-4.3.1/cxx4/Release/netcdf-cxx4.lib" CACHE PATH "Please check the path to the ncxx library!")
+                SET(LUMASS_NCXX4_VERSION "4.3.1")
+        endif()
+else()
+        find_package(LUMASSNetCDF)
+
+        SET(LUMASS_NETCDF_VERSION ${NETCDF_VERSION})
+        SET(LUMASS_NCXX4_VERSION ${NCXX4_VERSTION})
+endif()
+
+message(STATUS "NETCDF_INCLUDE_DIR=${NETCDF_INCLUDE_DIR}")
+message(STATUS "NCXX4_INCLUDE_DIR=${NCXX4_INCLUDE_DIR}")
+
+#====================================================================
+# FIND PYBIND11
+#====================================================================
+
+OPTION(PYTHONSUPPORT "Build LUMASS with Python support?" OFF )
+
+if (PYTHONSUPPORT)
+
+    find_path(pybind11_DIR pybind11Config.cmake
+        HINTS
+            /opt/pybind11-bin/install/share/cmake/pybind11
+        PATHS
+            /opt/pybind11-bin/install
+            /usr/lib/x86_64-linux/cmake
+            /usr/local/lib
+            /usr
+            /usr/local
+        PATH_SUFFIXES
+            share/cmake/pybind11
+            cmake/pybind11
+            pybind11
+    )
+    message(STATUS "pybind11_DIR=${pybind11_DIR}")
+
+    if (pybind11_DIR-NOTFOUND)
+        set(pybind11_DIR "NOT_FOUND" CACHE PATH "Please specify the path to pybind11Config.cmake !")
+        message(FATAL_ERROR "Please specify the path to pybind11Config.cmake")
+    else ()
+        include(${pybind11_DIR}/pybind11Config.cmake)
+        message(STATUS "pybind11_VERSION=${pybind11_VERSION}")
+        message(STATUS "pybind11_INCLUDE_DIR=${pybind11_INCLUDE_DIR}")
+        message(STATUS "pybind11_INCLUDE_DIRS=${pybind11_INCLUDE_DIRS}")
+        message(STATUS "pybind11_LIBRARIES=${pybind11_LIBRARIES}")
+        message(STATUS "pybind11_DEFINITIONS=${pybind11_DEFINITIONS}")
+    endif()
+
+endif(PYTHONSUPPORT)
+
 
 #====================================================================
 # FIND TOKYO CABINET
@@ -286,15 +397,45 @@ message(STATUS "Spatialite library: ${SPATIALITE_LIB}")
 # ask for YAML library and header dir
 #====================================================================
 
-IF(NOT YAML_LIBDIR)
-    set(YAML_LIBDIR "/opt/yaml-cpp/install/lib" CACHE STRING "Path to yaml library directory")
-    message(FATAL_ERROR "Please specify the yaml lib dir!")
+find_package(yaml-cpp
+    HINTS
+        /usr/lib/x86_64-linux-gnu/cmake/yaml-cpp/yaml-cpp-config.cmake
+    PATHS
+        /usr/lib/x86_64-linux-gnu/cmake
+        /usr/lib/cmake
+)
+
+IF(NOT YAML_CPP_INCLUDE_DIR)
+    set(YAML_CPP_INCLUDE_DIR "YAML_CPP_INCLUDE_DIR-NOTFOUND" CACHE STRING "Location of yaml-cpp include directory" )
+    message(FATAL_ERROR "Please specify the YAML_CPP_INCLUDE_DIR!" )
 ENDIF()
 
-IF(NOT YAML_HEADERDIR)
-    set(YAML_HEADERDIR "/opt/yaml-cpp/install/include" CACHE STRING "Path to yaml header directory")
-    message(FATAL_ERROR "Please specify the yaml header dir!")
+IF(NOT YAML_CPP_LIB_DIR)
+    set(YAML_CPP_LIB_DIR "YAML_CPP_LIB_DIR" CACHE STRING "Location of yaml-cpp library directory" )
+    message(FATAL_ERROR "Please specify the YAML_CPP_LIB_DIR!" )
+else()
+    FIND_LIBRARY(YAML_CPP_LIBRARIES libyaml-cpp.so ${YAML_CPP_LIB_DIR} NO_DEFAULT_PATH)
+    if (NOT YAML_CPP_LIBRARIES)
+        FIND_LIBRARY(YAML_CPP_LIBRARIES libyaml-cppd.so ${YAML_CPP_LIB_DIR} NO_DEFAULT_PATH)
+    endif()
 ENDIF()
+
+
+#find_package(yaml-cpp PATHS ${yaml-cpp_DIR} NO_DEFAULT_PATH)
+#if (NOT ${yaml-cpp_DIR} )
+#    message(FATAL_ERROR "Please specify the directory containing yaml-cpp-config.cmake" )
+#endif()
+#find_package(yaml-cpp)
+#include(/opt/yaml-debug/install/share/cmake/yaml-cpp/yaml-cpp-config.cmake)
+message(STATUS "YAML_CPP_INCLUDE_DIR=${YAML_CPP_INCLUDE_DIR}")
+message(STATUS "YAML_CPP_LIBRARIES=${YAML_CPP_LIBRARIES}")
+
+#IF(NOT YAML_HEADERDIR)
+#    set(YAML_HEADERDIR "/opt/yaml-cpp/install/include" CACHE STRING "Path to yaml header directory")
+#    message(FATAL_ERROR "Please specify the yaml header dir!")
+#ENDIF()
+
+
 
 
 #====================================================================
@@ -346,6 +487,10 @@ ENDIF(UNIX)
 configure_file("${CMAKE_SOURCE_DIR}/LUMASSConfig.h.in"
                "${lumass_BINARY_DIR}/LUMASSConfig.h" @ONLY)
 
+configure_file("${CMAKE_SOURCE_DIR}/shared/nmtypeinfo.h.in"
+               "${lumass_BINARY_DIR}/shared/nmtypeinfo.h" @ONLY)
+
+
 configure_file("${CMAKE_SOURCE_DIR}/docs/lumassDocConfig.in"
               "${CMAKE_SOURCE_DIR}/docs/lumassDocConfig" @ONLY)
 
@@ -354,6 +499,7 @@ configure_file("${CMAKE_SOURCE_DIR}/docs/lumassDocConfig.in"
 #====================================================================
 
 SET(MFW_WRAPPER_NAMES
+    NMBMIWrapper
     NMMosraFilterWrapper
     NMDEMSlopeAspectFilterWrapper
     NMFlowAccumulationFilterWrapper
@@ -369,8 +515,23 @@ SET(MFW_WRAPPER_NAMES
     NMJSKernelFilterWrapper
     NMExternalExecWrapper
     NMSQLiteProcessorWrapper
+    NMSQLiteRouterWrapper
     NMUniqueCombinationFilterWrapper
     NMStreamingROIImageFilterWrapper
+    NMImage2DToCubeSliceFilterWrapper
+    NMCubeSliceToImage2DFilterWrapper
+    NMImage2TableFilterWrapper
+)
+
+SET(OTB_LINK_LIBS
+    OTBCommon
+    OTBExtendedFilename
+    OTBImageBase
+    OTBImageIO
+    OTBIOGDAL
+    OTBOSSIMAdapters
+    otbossimplugins
+    #OTBStreaming
 )
 
 

@@ -80,6 +80,8 @@ IF(NOT OTB_DIR)
         OTB-6.2
         OTB-6.4
         OTB-6.6
+        OTB-7.0
+        OTB-7.1
         cmake/OTB-5.0
         cmake/OTB-4.4
         cmake/OTB-5.1
@@ -92,6 +94,8 @@ IF(NOT OTB_DIR)
         cmake/OTB-6.2
         cmake/OTB-6.4
         cmake/OTB-6.6
+        cmake/OTB-7.0
+        cmake/OTB-7.1
         OTB/build
     PATHS
     # Look for an environment variable OTB_DIR.
@@ -128,7 +132,6 @@ IF(OTB_DIR)
   SET(OTB_FOUND 1)
   INCLUDE(${OTB_DIR}/OTBConfig.cmake)
   
-
   # Set USE_OTB_FILE for backward-compatability.
   SET(USE_OTB_FILE ${OTB_USE_FILE})
 ELSE(OTB_DIR)
@@ -137,3 +140,46 @@ ELSE(OTB_DIR)
     MESSAGE(FATAL_ERROR "Please set OTB_DIR to the ${OTB_DIR_STRING}")
   ENDIF(OTB_FIND_REQUIRED)
 ENDIF(OTB_DIR)
+
+## some more stuff .. 
+if(ITK_FOUND)
+    SET(LUMASS_ITK_VERSION "${ITK_VERSION_MAJOR}.${ITK_VERSION_MINOR}.${ITK_VERSION_PATCH}")
+    if (UNIX AND NOT APPLE)
+        find_path(ITK_LINK_DIR libITKCommon-${ITK_VERSION_MAJOR}.${ITK_VERSION_MINOR}.so
+            PATHS
+                /usr/lib
+                /usr/lib/x86_64-linux-gnu
+        )
+    endif()
+endif(ITK_FOUND)
+if (${LUMASS_ITK_VERSION} VERSION_LESS "4.11")
+    message(FATAL_ERROR "LUMASS >= 0.9.60 requires ITK >= 4.11")
+endif ()
+
+INCLUDE(${USE_OTB_FILE})
+
+# define OTB_LINK_DIR
+if (UNIX AND NOT APPLE)
+    find_path(OTB_LINK_DIR libOTBCommon-${OTB_VERSION_MAJOR}.${OTB_VERSION_MINOR}.so
+        PATHS
+            /usr
+            /usr/lib
+            /usr/lib/x86_64-linux-gnu
+            /opt/otb-bin
+            /opt/OTB-bin
+            /opt/OTB-7.0
+            /opt/OTB-7.1
+            /opt/OTB-7.2
+        PATH_SUFFIXES
+            lib
+            local/lib
+            install/lib
+    )
+endif()
+
+#message(STATUS "ITK_VERSION: ${LUMASS_ITK_VERSION}")
+#message(STATUS "ITK_LIBRARY_DIRS: ${ITK_LIBRARY_DIRS}")
+#message(STATUS "ITK_INCLUDE_DIRS: ${ITK_INCLUDE_DIRS}")
+#message(STATUS "ITK_LIBRARIES: ${ITK_LIBRARIES}")
+#message(STATUS "ITK_LINK_DIR: ${ITK_LINK_DIR}")
+#message(STATUS "OTB_LINK_DIR: ${OTB_LINK_DIR}")

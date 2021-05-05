@@ -1,10 +1,23 @@
 PROJECT(VisIt)
 
-find_package(VTK COMPONENTS
+if (${VTK_VERSION_STRING} VERSION_LESS "8.90")
+    find_package(VTK COMPONENTS
+            vtkCommonDataModel
+            vtkCommonCore
+            vtkIOCore
+    )
+    set(VTK_LIBRARIES
         vtkCommonDataModel
         vtkCommonCore
         vtkIOCore
-)
+    )
+else()
+    set(VTK_LIBRARIES
+        VTK::CommonDataModel
+        VTK::CommonCore
+        VTK::IOCore
+    )
+endif()
 
 
 INCLUDE_DIRECTORIES(
@@ -30,34 +43,18 @@ file(GLOB VisItTesselator_HEADER
 )
 
 add_definitions(-DVisItTesselator_EXPORT)
-#if(WIN32)
-#    ADD_LIBRARY(VisItTesselator SHARED )
-#else()
-    ADD_LIBRARY(VisItTesselator SHARED ${VisItTesselator_SOURCE})
-    target_link_libraries(VisItTesselator
-            vtkCommonDataModel
-            vtkCommonCore
-            vtkIOCore
-    )
-#endif()
+ADD_LIBRARY(VisItTesselator SHARED ${VisItTesselator_SOURCE})
+target_link_libraries(VisItTesselator ${VTK_LIBRARIES})
+
+if (${VTK_VERSION_STRING} VERSION_GREATER_EQUAL "8.90")
+    vtk_module_autoinit(TARGETS VisItTesselator MODULES ${VTK_LIBRARIES})
+endif()
 
 include(GenerateExportHeader)
 generate_export_header(VisItTesselator)
 
 install(FILES ${VisItTesselator_HEADER} DESTINATION include)
 if(WIN32)
-#        install(TARGETS VisItTesselator
-#                LIBRARY DESTINATION lib
-#                RUNTIME DESTINATION lib
-#                ARCHIVE DESTINATION lib
-#        )
-
-#        install(TARGETS VisItTesselator
-#                LIBRARY DESTINATION lib
-#                RUNTIME DESTINATION lib
-#        )
-
-
         install(TARGETS VisItTesselator
                 ARCHIVE DESTINATION lib
         )

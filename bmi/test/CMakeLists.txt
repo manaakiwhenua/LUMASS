@@ -1,16 +1,29 @@
 PROJECT(LumassBMITest)
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.5.1)
 
 SET(EXECUTABLE_OUTPUT_PATH ${LumassBMITest_BINARY_DIR})
 
 INCLUDE_DIRECTORIES(
-	${LumassBMITest_SOURCE_DIR}
+    ${LumassBMITest_SOURCE_DIR}
+    ${LumassBMITest_BINARY_DIR}
+    ${pybind11_INCLUDE_DIRS}
 )
+
+set(BMI_TEST_LINK_LIBS)
+
+if (PYTHONSUPPORT)
+    ADD_DEFINITIONS(-DLUMASS_PYTHON)
+    list(APPEND BMI_TEST_LINK_LIBS pybind11::pybind11 pybind11::embed)
+endif()
+message(STATUS "bmi link libs: ${BMI_TEST_LINK_LIBS}")
+
 
 ADD_EXECUTABLE(LumassBMITest ${LumassBMITest_SOURCE_DIR}/LumassBMITest.cpp)
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-	TARGET_LINK_LIBRARIES(LumassBMITest dl)
+        TARGET_LINK_LIBRARIES(LumassBMITest dl ${BMI_TEST_LINK_LIBS})
+else()
+        TARGET_LINK_LIBRARIES(LumassBMITest ${BMI_TEST_LINK_LIBS})
 endif()
 
 SET(BMITESTFILES

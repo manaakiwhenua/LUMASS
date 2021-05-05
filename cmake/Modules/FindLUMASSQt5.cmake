@@ -51,6 +51,7 @@ if(WIN32)
             5.11.0/qtbase
 			5.11.2/qtbase
 			5.11.2
+			5.15.2/qtbase
     )
 else()
     set(QT5_CORE_LIB "libQt5Core.so")
@@ -116,6 +117,7 @@ else()
             5.5/gcc_64
             5.5/gcc
             qt5
+            qt5/plugins/sqldrivers
     )
 endif()
 
@@ -129,6 +131,20 @@ FIND_PATH(QT5_PREFIX_PATH ${QT5_CORE_LIB}
         ${QT5_PATHS}
 )
 message(STATUS "QT5_PREFIX_PATH: ${QT5_PREFIX_PATH} ")
+
+# ==================================================
+# find Qt5 sqldrivers plugins
+# ==================================================
+FIND_PATH(QT5_SQLDRIVERS_DIR ${QT5SQLite_PLUGIN_LIBRARY}
+    PATH_SUFFIXES
+		plugins/sqldrivers
+        ${QT5_PATH_SUFFIXES}
+    PATHS
+		${QT5_PREFIX_PATH}/..
+        ${QT5_PREFIX_PATH}
+		${QT5_PATHS}
+)
+message(STATUS "QT5_SQLDRIVERS_DIR: ${QT5_SQLDRIVERS_DIR}")
 
 
 # ============================================================================
@@ -148,7 +164,7 @@ else()
         "Qt5Sql"
         "Qt5Qml"
         #"Qt5Network"
-        #"Qt5WebSockets"
+        "Qt5WebSockets"
     )
 	
 	foreach(QT5COMP ${QT5_COMP_LIST})

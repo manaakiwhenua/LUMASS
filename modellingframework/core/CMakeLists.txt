@@ -1,12 +1,19 @@
 PROJECT(mfw_core)
 
-find_package(VTK COMPONENTS
+if (${VTK_VERSION_STRING} VERSION_LESS "8.90")
+    SET(MFW_CORE_VTK_LIBRARIES
         vtkCommonDataModel
         vtkCommonCore
         vtkIOCore
-)
-
-include(${VTK_USE_FILE})
+    )
+        include(${VTK_USE_FILE})
+else()
+   SET(MFW_CORE_VTK_LIBRARIES
+       VTK::CommonDataModel
+       VTK::CommonCore
+       VTK::IOCore
+   )
+endif()
 
 INCLUDE_DIRECTORIES(
     ${SPATIALITE_INCLUDE_DIR}
@@ -16,7 +23,6 @@ INCLUDE_DIRECTORIES(
 #    ${RASDAMAN_INCLUDE_DIR}
 #    ${RASDAMAN_INCLUDE_DIR}/raslib
     ${VTK_INCLUDE_DIRS}
-
     ${mfw_core_BINARY_DIR}
     ${mfw_core_SOURCE_DIR}
     ${mfw_wrapper_SOURCE_DIR}
@@ -25,6 +31,10 @@ INCLUDE_DIRECTORIES(
     ${shared_SOURCE_DIR}
     ${GDALRATImageIO_SOURCE_DIR}
     ${GDALRATImageIO_BINARY_DIR}
+    ${NETCDFIO_SOURCE_DIR}
+    ${NETCDFIO_BINARY_DIR}
+        ${NETCDF_INCLUDE_DIR}
+        ${NCXX4_INCLUDE_DIR}
 #    ${rimageio_SOURCE_DIR}
     ${filters_SOURCE_DIR}
     ${filters_BINARY_DIR}
@@ -33,6 +43,8 @@ INCLUDE_DIRECTORIES(
     ${lumass_SOURCE_DIR}
     ${otbsuppl_core_SOURCE_DIR}
     ${OTB_INCLUDE_DIRS}
+    ${pybind11_INCLUDE_DIRS}
+    ${shared_BINARY_DIR}
 )
 
 LINK_DIRECTORIES(
@@ -47,6 +59,8 @@ LINK_DIRECTORIES(
     ${OSGEO4W_ROOT}/lib
     ${SPATIALITE_LIB_DIR}
     ${SPATIALITE_LIBLIB_DIR}
+    #${NETCDF_LIB_DIR}
+    #${NCXX_LIB_DIR}
 )
 
 file(GLOB MFW_CORE_CPP
@@ -74,35 +88,47 @@ file(GLOB MFW_CORE_H
 #  list(REMOVE_ITEM MFW_H
 #  	"${mfw_wrapper_SOURCE_DIR}/NMRasdamanConnectorWrapper.h"
 #  )
-  
+
 #  list(REMOVE_ITEM MFW_CPP
 #        "${mfw_wrapper_SOURCE_DIR}/NMRasdamanConnectorWrapper.cpp"
 #  )
 #endif()
-    
+
 
 SET(MFW_CORE_MOC_H ${MFW_CORE_H})
 LIST(REMOVE_ITEM MFW_CORE_MOC_H ${mfw_core_SOURCE_DIR}/NMMfwException.h)
 LIST(APPEND MFW_CORE_MOC_H ${shared_SOURCE_DIR}/NMLogger.h)
 
 set(MFW_CORE_LINK_LIBS
-                OTBGDALRATImageIO
-                OTBSupplFilters
-		#RasImageIO
-		Qt5Xml
-		Qt5Core
-		Qt5Concurrent
-                ITKCommon
-                #spatialite
+    #${OTB_LIBRARIES}
+    #${OTB_LINK_LIBS}
+    OTBGDALRATImageIO
+    OTBSupplFilters
+    NetCDFIO
+    #RasImageIO
+    Qt5::Xml
+    Qt5::Core
+    Qt5::Concurrent
+    #ITKCommon
+    #spatialite
 )
+
+if(PYTHONSUPPORT)
+    list(APPEND MFW_CORE_LINK_LIBS
+            pybind11::pybind11
+            pybind11::embed
+        )
+
+endif()
 
 set(MFW_CORE_DEP_LIBS
     OTBGDALRATImageIO
     OTBSupplFilters
+    NetCDFIO
     #RasImageIO
 )
 
-QT5_WRAP_CPP(MFW_CORE_MOC_CPP ${MFW_CORE_MOC_H} )
+SET(CMAKE_AUTOMOC YES)
 
 #IF(RASSUPPORT)
 #    add_definitions(-DBUILD_RASSUPPORT)
@@ -110,24 +136,25 @@ QT5_WRAP_CPP(MFW_CORE_MOC_CPP ${MFW_CORE_MOC_H} )
 #    LIST(APPEND MFW_DEP_LIBS RasImageIO)
 #ENDIF(RASSUPPORT)
 
-add_definitions(-DNMModFrameCore_EXPORTS -DNM_PROC_LOG)
-if (LUMASS_OTB_VERSION VERSION_GREATER "5.8.0")
-    add_definitions(-DOTB_VERSION_SIX)
+if (PYTHONSUPPORT)
+    add_definitions(-DLUMASS_PYTHON)
 endif()
 
+add_definitions(-DNMModFrameCore_EXPORTS -DNM_PROC_LOG)
+
 include(GenerateExportHeader)
-ADD_LIBRARY(NMModFrameCore SHARED ${MFW_CORE_CPP} ${MFW_CORE_MOC_CPP})
+ADD_LIBRARY(NMModFrameCore SHARED ${MFW_CORE_CPP})
 generate_export_header(NMModFrameCore)
 
-TARGET_LINK_LIBRARIES(NMModFrameCore ${MFW_CORE_LINK_LIBS})
+target_link_libraries(NMModFrameCore ${MFW_CORE_LINK_LIBS})
 ADD_DEPENDENCIES(NMModFrameCore ${MFW_CORE_DEP_LIBS})
 
 install(FILES ${MFW_CORE_H} DESTINATION include)
 if(WIN32)
         install(TARGETS NMModFrameCore
-		LIBRARY DESTINATION lib
-		RUNTIME DESTINATION lib
-	)
+                LIBRARY DESTINATION lib
+                RUNTIME DESTINATION lib
+        )
 else()
         install(TARGETS NMModFrameCore LIBRARY DESTINATION lib)
 endif()

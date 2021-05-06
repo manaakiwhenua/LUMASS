@@ -1063,6 +1063,10 @@ void LUMASSMainWin::populateProcCompList()
 {
     NMProcCompList* compWidget = ui->compWidgetList->findChild<NMProcCompList*>(QStringLiteral("processComponents"));
     compWidget->clear();
+    compWidget->addItem(QStringLiteral("DataBuffer"));
+    compWidget->addItem(QStringLiteral("DataBufferReference"));
+    compWidget->addItem(QStringLiteral("ParameterTable"));
+    compWidget->addItem(QStringLiteral("TextLabel"));
     compWidget->addItems(NMProcessFactory::instance().getRegisteredComponents());
     compWidget->sortItems();
 }

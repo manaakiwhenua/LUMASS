@@ -37,7 +37,7 @@ public:
     NMMosraFilterWrapperFactory(QObject *parent = nullptr);
 
     NMProcess* createWrapper();
-    bool isSinkProcess(void) {return false;}
+    bool isSinkProcess(void) {return true;}
     QString getWrapperClassName() {return "NMMosraFilterWrapper";}
     QString getComponentAlias() {return QStringLiteral("SpatialOptimisation");}
 };

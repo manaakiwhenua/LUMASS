@@ -37,7 +37,7 @@ public:
     NMSQLiteProcessorWrapperFactory(QObject *parent = nullptr);
 
     NMProcess* createWrapper();
-    bool isSinkProcess(void) {return false;}
+    bool isSinkProcess(void) {return true;}
     QString getWrapperClassName() {return QStringLiteral("NMSQLiteProcessorWrapper");}
     QString getComponentAlias() {return QStringLiteral("SQLProcessor");}
 };

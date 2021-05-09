@@ -2362,11 +2362,12 @@ LUMASSMainWin::getRasdamanConnector(void)
 
 void LUMASSMainWin::aboutLUMASS(void)
 {
-    QString vinfo = QString("Version %2.%3.%4 (%1)\nCommit %5\nLast updated %6")
+    QString vinfo = QString("Version %2.%3.%4%5 (%1)\nCommit %6\nLast updated %7")
                       .arg(_lumass_build_type)
                       .arg(_lumass_version_major)
                       .arg(_lumass_version_minor)
                       .arg(_lumass_version_revision)
+                      .arg(_lumass_version_suffix)
                       .arg(_lumass_commit_hash)
                       .arg(_lumass_commit_date);
 
@@ -2375,27 +2376,29 @@ void LUMASSMainWin::aboutLUMASS(void)
     QString title = tr("About LUMASS");
     stringstream textstr;
     textstr << "LUMASS - Spatial Modelling and Optimisation" << std::endl
-            << vinfo.toStdString() << std::endl
-            << "Developed by Alexander Herzig" << std::endl
-            << "Copyright 2010-" << year.toStdString() << " Landcare Research New Zealand Ltd" << std::endl
-            << "www.landcareresearch.co.nz" << std::endl << std::endl
-            << "LUMASS is free software and licenced under the GPL v3." << std::endl
-            << "Contact: herziga@landcareresearch.co.nz" << std::endl
-            << "Code: https://bitbucket.org/landcareresearch/lumass" << std::endl
-            << "User group: https://groups.google.com/forum/#!forum/lumass-users" << std::endl
-            << std::endl
-            << "LUMASS builds on the following open source libraries " << std::endl
-            << "Qt " << _lumass_qt_version << " - http://www.qt.io/" << std::endl
-            << "OTB " << _lumass_otb_version << " - https://www.orfeo-toolbox.org/" << std::endl
-            << "ITK " << _lumass_itk_version << " - http://www.itk.org/" << std::endl
-            << "VTK " << _lumass_vtk_version << " - http://www.vtk.org/ " << std::endl
-            << "lp_solve 5.5 - http://sourceforge.net/projects/lpsolve/ " << std::endl
-            << "GDAL " << _lumass_gdal_version << " - http://www.gdal.org/ " << std::endl
-            << _lumass_netcdf_version << " - https://www.unidata.ucar.edu/software/netcdf/" << std::endl
-            << _lumass_ncxx4_version << " - https://github.com/Unidata/netcdf-cxx4" << std::endl
-            << "SQLite " << _lumass_sqlite_version << " - http://www.sqlite.org" << std::endl
-            << "Spatialite 4.3 - https://www.gaia-gis.it/fossil/libspatialite/index" << std::endl
-            << "MuParser 2.2.5 - http://beltoforion.de/article.php?a=muparser" << std::endl
+        << vinfo.toStdString() << std::endl
+        << "Developed by Alexander Herzig" << std::endl
+        << "Copyright 2010-" << year.toStdString() << " Landcare Research New Zealand Ltd" << std::endl
+        << "www.landcareresearch.co.nz" << std::endl << std::endl
+        << "LUMASS is free software and licenced under the GPL v3." << std::endl
+        << "Contact: herziga@landcareresearch.co.nz" << std::endl
+        << "Code: https://bitbucket.org/landcareresearch/lumass" << std::endl
+        << "User group: https://groups.google.com/forum/#!forum/lumass-users" << std::endl
+        << std::endl
+        << "LUMASS builds on the following open source libraries " << std::endl
+        << "Qt " << _lumass_qt_version << " - http://www.qt.io/" << std::endl
+        << "OTB " << _lumass_otb_version << " - https://www.orfeo-toolbox.org/" << std::endl
+        << "ITK " << _lumass_itk_version << " - http://www.itk.org/" << std::endl
+        << "VTK " << _lumass_vtk_version << " - http://www.vtk.org/ " << std::endl
+        << "lp_solve 5.5 - http://sourceforge.net/projects/lpsolve/ " << std::endl
+        << "GDAL " << _lumass_gdal_version << " - http://www.gdal.org/ " << std::endl
+        << "NetCDF-C " << _lumass_netcdf_version << " - https://www.unidata.ucar.edu/software/netcdf/" << std::endl
+        << "NetCDF-CXX4 " << _lumass_ncxx4_version << " - https://github.com/Unidata/netcdf-cxx4" << std::endl
+        << "SQLite " << _lumass_sqlite_version << " - http://www.sqlite.org" << std::endl
+        << "Spatialite 4.3 - https://www.gaia-gis.it/fossil/libspatialite/index" << std::endl
+        << "MuParser 2.2.5 - http://beltoforion.de/article.php?a=muparser" << std::endl
+        << "pybind11 " << _lumass_pybind11_version << " - https://github.com/pybind/pybind11" << std::endl
+        << "yaml " << _lumass_yaml_version << " - https://github.com/jbeder/yaml-cpp" << std::endl
             //<< "MuParserX 4.0.7 - http://beltoforion.de/article.php?a=muparserx" << std::endl
 #ifdef BUILD_RASSUPPORT
   #ifdef PACKAGE_STRING

@@ -20,6 +20,7 @@
  #define LUMASS_VERSION_MAJOR "@LUMASS_VERSION_MAJOR@"
  #define LUMASS_VERSION_MINOR "@LUMASS_VERSION_MINOR@"
  #define LUMASS_VERSION_REVISION "@LUMASS_VERSION_REVISION@"
+ #define LUMASS_VERSION_SUFFIX "@LUMASS_VERSION_SUFFIX@"
  #define LUMASS_COMMIT_DATE "@LUMASS_COMMIT_DATE@"
  #define LUMASS_COMMIT_HASH "@GIT_SHA1@"
  #define LUMASS_BINARY_DIR "@lumass_BINARY_DIR@"
@@ -32,8 +33,10 @@
  #define LUMASS_GDAL_VERSION "@GDAL_VERSION@"
  #define LUMASS_VTK_VERSION "@VTK_VERSION_STRING@"
  #define LUMASS_SQLITE_VERSION "@NM_SQLite_VERSION@"
- #define LUMASS_NETCDF_VERSION "@NETCDF_VERSION@"
- #define LUMASS_NCXX4_VERSION "@NCXX4_VERSION@"
+ #define LUMASS_NETCDF_VERSION "@LUMASS_NETCDF_VERSION@"
+ #define LUMASS_NCXX4_VERSION "@LUMASS_NCXX4_VERSION@"
+ #define LUMASS_PYBIND11_VERSION "@LUMASS_pybind11_version@"
+ #define LUMASS_YAML_VERSION "@LUMASS_yaml_version@"
 
  
  const char _lumass_commit_hash[] = LUMASS_COMMIT_HASH;
@@ -41,6 +44,7 @@
  const char _lumass_version_major[] = LUMASS_VERSION_MAJOR;
  const char _lumass_version_minor[] = LUMASS_VERSION_MINOR;
  const char _lumass_version_revision[] = LUMASS_VERSION_REVISION;
+ const char _lumass_version_suffix[] = LUMASS_VERSION_SUFFIX;
  const char _lumass_binary_dir[] = LUMASS_BINARY_DIR;
  const char _lumass_build_type[] = LUMASS_BUILD_TYPE;
 
@@ -52,4 +56,5 @@
  const char _lumass_sqlite_version[] = LUMASS_SQLITE_VERSION;
  const char _lumass_netcdf_version[] = LUMASS_NETCDF_VERSION;
  const char _lumass_ncxx4_version[] = LUMASS_NCXX4_VERSION;
- 
+ const char _lumass_pybind11_version[] = LUMASS_PYBIND11_VERSION;
+ const char _lumass_yaml_version[] = LUMASS_YAML_VERSION;

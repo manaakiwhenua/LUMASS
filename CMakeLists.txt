@@ -99,12 +99,18 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 # credit to http://vtk.org/gitweb?p=VTK.git;a=blob;f=CMakeLists.txt;h=a57fd66ef333fc26bf74fe658c88c3c634f54c3a;hb=HEAD#l12
 #==================================================================
 
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  message(STATUS "Setting build type to 'Debug' as none was specified.")
-  set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Choose the type of build." FORCE)
-  # Set the possible values of build type for cmake-gui
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
-    "MinSizeRel" "RelWithDebInfo")
+if(NOT CMAKE_BUILD_TYPE)
+	if (NOT WIN32)
+		message(STATUS "Setting build type to 'Debug' as none was specified.")
+		set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
+	else ()
+		message(STATUS "Setting build type to 'RelWithDebInfo' as none was specified.")
+		set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Choose the type of build." FORCE)
+	endif()
+		
+	# Set the possible values of build type for cmake-gui
+	set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
+	"MinSizeRel" "RelWithDebInfo")
 endif()
 
 message(STATUS "LUMASS build type: ${CMAKE_BUILD_TYPE}")
@@ -124,7 +130,8 @@ endif (testvar_in STREQUAL testvar_target)
 find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
 SET(LUMASS_VERSION_MINOR 9)
-SET(LUMASS_VERSION_REVISION 64)
+SET(LUMASS_VERSION_REVISION 65)
+SET(LUMASS_VERSION_SUFFIX "-rc")
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
@@ -319,26 +326,39 @@ message(STATUS "Spatialite library: ${SPATIALITE_LIB}")
 #====================================================================
 
 if (WIN32)
-        if (NOT NETCDF_INCLUDE_DIR OR NOT NETCDF_LIB_DIR)
+        #if (NOT NETCDF_BIN_DIR)
+		#	set(NETCDF_BIN_DIR "c:/opt/netcdf-c-4.7.3" CACHE PATH "Please set the netcdf binary dir!")
+		#endif()
+		#
+		#include(${NETCDF_BIN_DIR}/netCDFConfig.cmake)
+		#
+		#message(STATUS "netCDF-c version: ${NetCDFVersion}")
+		
+		if (NOT NETCDF_INCLUDE_DIR OR NOT NETCDF_LIB_DIR)
                 set(NETCDF_INCLUDE_DIR "C:/src/netcdf-c-4.7.3/include" CACHE PATH "Please check the netCDF include DIR!")
                 set(NETCDF_LIB_DIR "C:/opt/netcdf-c-4.7.3/liblib/Release" CACHE PATH "Please check the netCDF lib DIR!")
                 set(NETCDF_LIBRARY "C:/opt/netcdf-c-4.7.3/liblib/Release/netcdf.lib" CACHE PATH "Please check the path to the netCDF library!")
-                SET(LUMASS_NETCDF_VERSION "4.7.3")
         endif()
+		
+		
 
         if (NOT NCXX4_INCLUDE_DIR OR NOT NCXX4_LIBRARY)
                 set(NCXX4_INCLUDE_DIR "C:/src/netcdf-cxx4-4.3.1/cxx4" CACHE PATH "Please check the netCDF include DIR!")
                 set(NCXX4_LIB_DIR "C:/opt/netcdf-cxx4-4.3.1/cxx4/Release" CACHE PATH "Please check the netCDF lib DIR!")
                 SET(NCXX4_LIBRARY "C:/opt/netcdf-cxx4-4.3.1/cxx4/Release/netcdf-cxx4.lib" CACHE PATH "Please check the path to the ncxx library!")
-                SET(LUMASS_NCXX4_VERSION "4.3.1")
         endif()
+		
+		SET(LUMASS_NETCDF_VERSION "4.7.3")
+		SET(LUMASS_NCXX4_VERSION "4.3.1")
+		
 else()
         find_package(LUMASSNetCDF)
-
-        SET(LUMASS_NETCDF_VERSION ${NETCDF_VERSION})
-        SET(LUMASS_NCXX4_VERSION ${NCXX4_VERSTION})
+		SET(LUMASS_NETCDF_VERSION ${NETCDF_VERSION})
+		SET(LUMASS_NCXX4_VERSION ${NCXX4_VERSTION})
 endif()
 
+message(STATUS "NetCDF-C version: ${LUMASS_NETCDF_VERSION}")
+message(STATUS "NetCDF-CXX4 version: ${LUMASS_NCXX4_VERSION}")
 message(STATUS "NETCDF_INCLUDE_DIR=${NETCDF_INCLUDE_DIR}")
 message(STATUS "NCXX4_INCLUDE_DIR=${NCXX4_INCLUDE_DIR}")
 
@@ -369,15 +389,16 @@ if (PYTHONSUPPORT)
     if (pybind11_DIR-NOTFOUND)
         set(pybind11_DIR "NOT_FOUND" CACHE PATH "Please specify the path to pybind11Config.cmake !")
         message(FATAL_ERROR "Please specify the path to pybind11Config.cmake")
-    else ()
-        include(${pybind11_DIR}/pybind11Config.cmake)
-        message(STATUS "pybind11_VERSION=${pybind11_VERSION}")
-        message(STATUS "pybind11_INCLUDE_DIR=${pybind11_INCLUDE_DIR}")
-        message(STATUS "pybind11_INCLUDE_DIRS=${pybind11_INCLUDE_DIRS}")
-        message(STATUS "pybind11_LIBRARIES=${pybind11_LIBRARIES}")
-        message(STATUS "pybind11_DEFINITIONS=${pybind11_DEFINITIONS}")
-    endif()
+    endif() #else ()
 
+	include(${pybind11_DIR}/pybind11Config.cmake)
+	include(${pybind11_DIR}/pybind11ConfigVersion.cmake)
+	SET(LUMASS_pybind11_version "${PACKAGE_VERSION}")
+	message(STATUS "pybind11_VERSION=${PACKAGE_VERSION}")
+	message(STATUS "pybind11_INCLUDE_DIR=${pybind11_INCLUDE_DIR}")
+	message(STATUS "pybind11_INCLUDE_DIRS=${pybind11_INCLUDE_DIRS}")
+	message(STATUS "pybind11_LIBRARIES=${pybind11_LIBRARIES}")
+	message(STATUS "pybind11_DEFINITIONS=${pybind11_DEFINITIONS}")
 endif(PYTHONSUPPORT)
 
 
@@ -400,25 +421,36 @@ endif(PYTHONSUPPORT)
 find_package(yaml-cpp
     HINTS
         /usr/lib/x86_64-linux-gnu/cmake/yaml-cpp/yaml-cpp-config.cmake
+		c:/opt/yaml-cpp/yaml-cpp-config.cmake
     PATHS
         /usr/lib/x86_64-linux-gnu/cmake
         /usr/lib/cmake
+		c:/opt/yaml-cpp
 )
+
+if (NOT YAML_CPP_CMAKE_DIR)
+    set(YAML_CPP_CMAKE_DIR "YAML_CPP_CMAKE_DIR-NOTFOUND" CACHE STRING "Please specify the path of yaml-cpp-config.cmake" )
+    message(FATAL_ERROR "Please specify the path of yaml-cpp-config.cmake!" )
+else()
+	include(${YAML_CPP_CMAKE_DIR}/yaml-cpp-config-version.cmake)
+	SET(LUMASS_yaml_version "${PACKAGE_VERSION}")
+	message(STATUS "yaml-cpp version: ${LUMASS_yaml_version}")
+endif()
 
 IF(NOT YAML_CPP_INCLUDE_DIR)
     set(YAML_CPP_INCLUDE_DIR "YAML_CPP_INCLUDE_DIR-NOTFOUND" CACHE STRING "Location of yaml-cpp include directory" )
     message(FATAL_ERROR "Please specify the YAML_CPP_INCLUDE_DIR!" )
 ENDIF()
 
-IF(NOT YAML_CPP_LIB_DIR)
-    set(YAML_CPP_LIB_DIR "YAML_CPP_LIB_DIR" CACHE STRING "Location of yaml-cpp library directory" )
-    message(FATAL_ERROR "Please specify the YAML_CPP_LIB_DIR!" )
-else()
-    FIND_LIBRARY(YAML_CPP_LIBRARIES libyaml-cpp.so ${YAML_CPP_LIB_DIR} NO_DEFAULT_PATH)
-    if (NOT YAML_CPP_LIBRARIES)
-        FIND_LIBRARY(YAML_CPP_LIBRARIES libyaml-cppd.so ${YAML_CPP_LIB_DIR} NO_DEFAULT_PATH)
-    endif()
-ENDIF()
+#IF(NOT YAML_CPP_LIB_DIR)
+#    set(YAML_CPP_LIB_DIR "YAML_CPP_LIB_DIR" CACHE STRING "Location of yaml-cpp library directory" )
+#    message(FATAL_ERROR "Please specify the YAML_CPP_LIB_DIR!" )
+#else()
+#    FIND_LIBRARY(YAML_CPP_LIBRARIES libyaml-cpp.so ${YAML_CPP_LIB_DIR} NO_DEFAULT_PATH)
+#    if (NOT YAML_CPP_LIBRARIES)
+#        FIND_LIBRARY(YAML_CPP_LIBRARIES libyaml-cppd.so ${YAML_CPP_LIB_DIR} NO_DEFAULT_PATH)
+#    endif()
+#ENDIF()
 
 
 #find_package(yaml-cpp PATHS ${yaml-cpp_DIR} NO_DEFAULT_PATH)

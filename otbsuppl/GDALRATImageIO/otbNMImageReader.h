@@ -177,6 +177,15 @@ protected:
   virtual ~NMImageReader();
   void PrintSelf(std::ostream& os, itk::Indent indent) const;
 
+#ifdef OTB_VERSION_SIX
+  /* need to 're-implement' the 'DoConvertBuffer' function
+   * under a slightly different name, since the base class
+   * function is not virtual and because of changes in OTB 6+
+   * we cannot use the base class implementation any more
+   */
+  void DoNMConvertBuffer(void* buffer, size_t numberOfPixels);
+#endif
+
   unsigned int m_DatasetNumber;
 
   AttributeTable::Pointer m_RAT;

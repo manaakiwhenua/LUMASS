@@ -100,17 +100,17 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 #==================================================================
 
 if(NOT CMAKE_BUILD_TYPE)
-	if (NOT WIN32)
-		message(STATUS "Setting build type to 'Debug' as none was specified.")
-		set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
-	else ()
-		message(STATUS "Setting build type to 'RelWithDebInfo' as none was specified.")
-		set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Choose the type of build." FORCE)
-	endif()
-		
-	# Set the possible values of build type for cmake-gui
-	set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
-	"MinSizeRel" "RelWithDebInfo")
+        if (NOT WIN32)
+                message(STATUS "Setting build type to 'Debug' as none was specified.")
+                set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
+        else ()
+                message(STATUS "Setting build type to 'RelWithDebInfo' as none was specified.")
+                set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Choose the type of build." FORCE)
+        endif()
+
+        # Set the possible values of build type for cmake-gui
+        set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
+        "MinSizeRel" "RelWithDebInfo")
 endif()
 
 message(STATUS "LUMASS build type: ${CMAKE_BUILD_TYPE}")
@@ -327,34 +327,34 @@ message(STATUS "Spatialite library: ${SPATIALITE_LIB}")
 
 if (WIN32)
         #if (NOT NETCDF_BIN_DIR)
-		#	set(NETCDF_BIN_DIR "c:/opt/netcdf-c-4.7.3" CACHE PATH "Please set the netcdf binary dir!")
-		#endif()
-		#
-		#include(${NETCDF_BIN_DIR}/netCDFConfig.cmake)
-		#
-		#message(STATUS "netCDF-c version: ${NetCDFVersion}")
-		
-		if (NOT NETCDF_INCLUDE_DIR OR NOT NETCDF_LIB_DIR)
+                #	set(NETCDF_BIN_DIR "c:/opt/netcdf-c-4.7.3" CACHE PATH "Please set the netcdf binary dir!")
+                #endif()
+                #
+                #include(${NETCDF_BIN_DIR}/netCDFConfig.cmake)
+                #
+                #message(STATUS "netCDF-c version: ${NetCDFVersion}")
+
+                if (NOT NETCDF_INCLUDE_DIR OR NOT NETCDF_LIB_DIR)
                 set(NETCDF_INCLUDE_DIR "C:/src/netcdf-c-4.7.3/include" CACHE PATH "Please check the netCDF include DIR!")
                 set(NETCDF_LIB_DIR "C:/opt/netcdf-c-4.7.3/liblib/Release" CACHE PATH "Please check the netCDF lib DIR!")
                 set(NETCDF_LIBRARY "C:/opt/netcdf-c-4.7.3/liblib/Release/netcdf.lib" CACHE PATH "Please check the path to the netCDF library!")
         endif()
-		
-		
+
+
 
         if (NOT NCXX4_INCLUDE_DIR OR NOT NCXX4_LIBRARY)
                 set(NCXX4_INCLUDE_DIR "C:/src/netcdf-cxx4-4.3.1/cxx4" CACHE PATH "Please check the netCDF include DIR!")
                 set(NCXX4_LIB_DIR "C:/opt/netcdf-cxx4-4.3.1/cxx4/Release" CACHE PATH "Please check the netCDF lib DIR!")
                 SET(NCXX4_LIBRARY "C:/opt/netcdf-cxx4-4.3.1/cxx4/Release/netcdf-cxx4.lib" CACHE PATH "Please check the path to the ncxx library!")
         endif()
-		
-		SET(LUMASS_NETCDF_VERSION "4.7.3")
-		SET(LUMASS_NCXX4_VERSION "4.3.1")
-		
+
+                SET(LUMASS_NETCDF_VERSION "4.7.3")
+                SET(LUMASS_NCXX4_VERSION "4.3.1")
+
 else()
         find_package(LUMASSNetCDF)
-		SET(LUMASS_NETCDF_VERSION ${NETCDF_VERSION})
-		SET(LUMASS_NCXX4_VERSION ${NCXX4_VERSTION})
+                SET(LUMASS_NETCDF_VERSION ${NETCDF_VERSION})
+                SET(LUMASS_NCXX4_VERSION ${NCXX4_VERSTION})
 endif()
 
 message(STATUS "NetCDF-C version: ${LUMASS_NETCDF_VERSION}")
@@ -391,14 +391,14 @@ if (PYTHONSUPPORT)
         message(FATAL_ERROR "Please specify the path to pybind11Config.cmake")
     endif() #else ()
 
-	include(${pybind11_DIR}/pybind11Config.cmake)
-	include(${pybind11_DIR}/pybind11ConfigVersion.cmake)
-	SET(LUMASS_pybind11_version "${PACKAGE_VERSION}")
-	message(STATUS "pybind11_VERSION=${PACKAGE_VERSION}")
-	message(STATUS "pybind11_INCLUDE_DIR=${pybind11_INCLUDE_DIR}")
-	message(STATUS "pybind11_INCLUDE_DIRS=${pybind11_INCLUDE_DIRS}")
-	message(STATUS "pybind11_LIBRARIES=${pybind11_LIBRARIES}")
-	message(STATUS "pybind11_DEFINITIONS=${pybind11_DEFINITIONS}")
+        include(${pybind11_DIR}/pybind11Config.cmake)
+        include(${pybind11_DIR}/pybind11ConfigVersion.cmake)
+        SET(LUMASS_pybind11_version "${PACKAGE_VERSION}")
+        message(STATUS "pybind11_VERSION=${PACKAGE_VERSION}")
+        message(STATUS "pybind11_INCLUDE_DIR=${pybind11_INCLUDE_DIR}")
+        message(STATUS "pybind11_INCLUDE_DIRS=${pybind11_INCLUDE_DIRS}")
+        message(STATUS "pybind11_LIBRARIES=${pybind11_LIBRARIES}")
+        message(STATUS "pybind11_DEFINITIONS=${pybind11_DEFINITIONS}")
 endif(PYTHONSUPPORT)
 
 
@@ -421,20 +421,20 @@ endif(PYTHONSUPPORT)
 find_package(yaml-cpp
     HINTS
         /usr/lib/x86_64-linux-gnu/cmake/yaml-cpp/yaml-cpp-config.cmake
-		c:/opt/yaml-cpp/yaml-cpp-config.cmake
+                c:/opt/yaml-cpp/yaml-cpp-config.cmake
     PATHS
         /usr/lib/x86_64-linux-gnu/cmake
         /usr/lib/cmake
-		c:/opt/yaml-cpp
+                c:/opt/yaml-cpp
 )
 
 if (NOT YAML_CPP_CMAKE_DIR)
     set(YAML_CPP_CMAKE_DIR "YAML_CPP_CMAKE_DIR-NOTFOUND" CACHE STRING "Please specify the path of yaml-cpp-config.cmake" )
     message(FATAL_ERROR "Please specify the path of yaml-cpp-config.cmake!" )
 else()
-	include(${YAML_CPP_CMAKE_DIR}/yaml-cpp-config-version.cmake)
-	SET(LUMASS_yaml_version "${PACKAGE_VERSION}")
-	message(STATUS "yaml-cpp version: ${LUMASS_yaml_version}")
+        include(${YAML_CPP_CMAKE_DIR}/yaml-cpp-config-version.cmake)
+        SET(LUMASS_yaml_version "${PACKAGE_VERSION}")
+        message(STATUS "yaml-cpp version: ${LUMASS_yaml_version}")
 endif()
 
 IF(NOT YAML_CPP_INCLUDE_DIR)
@@ -547,7 +547,6 @@ SET(MFW_WRAPPER_NAMES
     NMJSKernelFilterWrapper
     NMExternalExecWrapper
     NMSQLiteProcessorWrapper
-    NMSQLiteRouterWrapper
     NMUniqueCombinationFilterWrapper
     NMStreamingROIImageFilterWrapper
     NMImage2DToCubeSliceFilterWrapper

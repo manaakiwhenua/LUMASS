@@ -2382,7 +2382,7 @@ void LUMASSMainWin::aboutLUMASS(void)
         << "www.landcareresearch.co.nz" << std::endl << std::endl
         << "LUMASS is free software and licenced under the GPL v3." << std::endl
         << "Contact: herziga@landcareresearch.co.nz" << std::endl
-        << "Code: https://bitbucket.org/landcareresearch/lumass" << std::endl
+        << "Code: https://github.com/manaakiwhenua/LUMASS" << std::endl
         << "User group: https://groups.google.com/forum/#!forum/lumass-users" << std::endl
         << std::endl
         << "LUMASS builds on the following open source libraries " << std::endl

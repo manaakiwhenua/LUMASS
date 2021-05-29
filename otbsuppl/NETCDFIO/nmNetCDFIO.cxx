@@ -97,27 +97,34 @@ public:
             NMDebug(<< "Failed creating overviews!");
             return;
         }
+        const unsigned int numOvv = m_OvvSize.size();
         std::string containerName = nio->GetOverviewContainerName();
         std::string inputVarSpec = inImgSpec;
         std::stringstream ovvn;
-        for (int level=0; level < m_OvvSize.size(); ++level)
+        std::vector<std::string> ovvnames;
+
+        for (int level=1; level <= numOvv; ++level)
         {
-            // e.g. "/home/karl/myfiles/imgcontainer.nc:/region/district/OVERVIEWS_myImage/myImage_ovv_1
-            // containerName: /home/karl/myfiles/imgcontainer.nc
-            // imgVarGrpName: /region/district
-            // imgVarName:    myImage
-            ovvn.str("");
             ovvn << containerName << ":"
                  << imgVarGrpName << "/OVERVIEWS_"
                  << imgVarName << "/"
-                 << imgVarName << "_ovv_" << level+1;
+                 << imgVarName << "_ovv_" << level;
 
+            ovvnames.push_back(ovvn.str());
+            ovvn.str("");
+        }
+
+        for (unsigned int out=0; out < numOvv; ++out)
+        {
             ReaderTypePointer reader = ReaderType::New();
-            reader->SetFileName(inputVarSpec);
-            reader->UpdateOutputInformation();
-
-            // inputVarSpec for next round
-            inputVarSpec = ovvn.str();
+            if (out == 0)
+            {
+                reader->SetFileName(inputVarSpec);
+            }
+            else
+            {
+                reader->SetFileName(ovvnames.at(out-1));
+            }
 
             PointType outOrigin;
             SpacingType outSpacing;
@@ -131,7 +138,7 @@ public:
                 const unsigned int origSize = nio->GetDimensions(d);
                 const double lrc = ulc + origSpacing * (double)origSize * dirmult;
 
-                outSize[d] = m_OvvSize[level][d];
+                outSize[d] = m_OvvSize[out][d];
                 outSpacing[d] = ((lrc - ulc) / outSize[d]) * dirmult;
                 outOrigin[d] = ulc + 0.5 * outSpacing[d] * dirmult;
             }
@@ -144,13 +151,14 @@ public:
             pygen->SetOutputSize(outSize);
             pygen->SetDefaultPixelValue(0);
 
-            WriterTypePointer writer = WriterType::New();
-            writer->SetFileName(ovvn.str());
+            const int mxth = pygen->GetNumberOfThreads();
+            pygen->SetNumberOfThreads(std::max(mxth-2, 1));
 
-            const int mxth = writer->GetNumberOfThreads();
-            writer->SetNumberOfThreads(std::max(mxth-2, 1));
-            writer->SetAutomaticStrippedStreaming(512);
+            WriterTypePointer writer = WriterType::New();
             writer->SetInput(pygen->GetOutput());
+            writer->SetAutomaticTiledStreaming(512);
+            writer->SetResamplingType("NONE");
+            writer->SetFileName(ovvnames.at(out));
             writer->Update();
         }
     }
@@ -579,40 +587,6 @@ void NetCDFIO::ReadImageInformation()
 }
 
 
-/*
-std::string
-NetCDFIO::getDimVarName(size_t dimIdx)
-{
-    std::string dvname = "";
-
-    if (!m_bImageSpecParsed)
-    {
-        return dvname;
-    }
-
-    try
-    {
-        NcFile nc(this->m_FileContainerName, NcFile::read);
-        const int imgGrpId = m_GroupIDs.size() > 0 ? m_GroupIDs.back() : nc.getId();
-        NcGroup imgGrp(imgGrpId);
-
-        NcVar imgVar = imgGrp.getVar(m_NcVarName);
-        std::vector<NcDim> imgDims = imgVar.getDims();
-        int ncidx = (imgVar.getDimCount()-1) - dimIdx;
-
-        dvname = imgDims.at(ncidx).getName();
-    }
-    catch(const exceptions::NcException& nce)
-    {
-        NMProcErr(<< "Reading DimVar[" << dimIdx << "] failed: "
-                   << nce.what());
-        return dvname;
-    }
-
-    return dvname;
-}
-*/
-
 std::vector<size_t>
 NetCDFIO::getDimMap(std::string varName, std::string dimVarName)
 {
@@ -818,6 +792,13 @@ void NetCDFIO::Read(void* buffer)
             readImgName << m_NcVarName << "_ovv_" << m_OverviewIdx + 1;
             std::string ovvGrpName = "OVERVIEWS_" + m_NcVarName;
             readGrp = imgGrp.getGroup(ovvGrpName);
+
+            // clamp z-slice start index to available overview-z indices
+            if (m_NumberOfDimensions == 3 && m_ZSliceIdx >= 0)
+            {
+                start[0] = std::min(m_OvvSize[m_OverviewIdx][2]-1,
+                        static_cast<unsigned int>(m_ZSliceIdx));
+            }
         }
         else
         {
@@ -892,7 +873,7 @@ void NetCDFIO::BuildOverviews(const std::string &method)
     std::vector<unsigned int> lastsize;
     for (int d=0; d < this->GetNumberOfDimensions(); ++d)
     {
-        if (m_LPRDimensions[d] > 256)
+        if (m_LPRDimensions[d] > 256 || d >= 2)
         {
             dimdone.push_back(false);
         }
@@ -914,7 +895,7 @@ void NetCDFIO::BuildOverviews(const std::string &method)
         for (int d=0; d < this->GetNumberOfDimensions(); ++d)
         {
             unsigned int osize = m_LPRDimensions[d]/(int)factor;
-            if (dimdone[d] || osize < 256)
+            if (dimdone[d] || (d < 2 && osize < 256) || (d >= 2 && osize < 2) )
             {
                 osize = lastsize[d];
                 dimdone[d] = true;
@@ -1366,12 +1347,10 @@ void NetCDFIO::Write(const void* buffer)
 
         case NcType::nc_UINT64:
             valVar.putVar(vStart, vCount, (unsigned long long*)(buf));
-            //nc_put_vara_ulonglong(grpId, ncVarId, &vStart[0], &vCount[0], (unsigned long long*)buf);
             break;
 
         case NcType::nc_INT64:
             valVar.putVar(vStart, vCount, (long long*)(buf));
-            //nc_put_vara_longlong(grpId, ncVarId, &vStart[0], &vCount[0], (long long*)buf);
             break;
 
         case NcType::nc_DOUBLE:

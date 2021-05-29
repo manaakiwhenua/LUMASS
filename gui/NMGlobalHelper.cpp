@@ -545,6 +545,7 @@ NMGlobalHelper::getMultiItemSelection(const QString& title,
     dlg->setWindowTitle(title);
 
     QLabel* userPrompt = new QLabel(label, dlg);
+
     QListView* lstView = new QListView(dlg);
     lstView->setSelectionMode(QAbstractItemView::MultiSelection);
     lstView->setModel(new QStringListModel(items, lstView));
@@ -577,6 +578,53 @@ NMGlobalHelper::getMultiItemSelection(const QString& title,
 
     dlg->deleteLater();
     return retList;
+}
+
+QString
+NMGlobalHelper::getItemSelection(const QString& title,
+                                      const QString& label,
+                                      const QStringList& items,
+                                      QWidget* parent)
+{
+    if (items.size() == 0)
+    {
+        return QString();
+    }
+
+
+    QDialog* dlg = new QDialog(parent);
+    dlg->setWindowModality(Qt::WindowModal);
+    dlg->setWindowTitle(title);
+
+    QLabel* userPrompt = new QLabel(label, dlg);
+
+    QComboBox* selBox = new QComboBox(dlg);
+    selBox->setModel(new QStringListModel(items, selBox));
+
+    QPushButton* btnCancel = new QPushButton("Cancel", dlg);
+    dlg->connect(btnCancel, SIGNAL(pressed()), dlg, SLOT(reject()));
+    QPushButton* btnOk = new QPushButton("OK", dlg);
+    dlg->connect(btnOk, SIGNAL(pressed()), dlg, SLOT(accept()));
+
+    QHBoxLayout* hbox = new QHBoxLayout();
+    hbox->addWidget(btnOk);
+    hbox->addWidget(btnCancel);
+
+    QVBoxLayout* vbox = new QVBoxLayout(dlg);
+    vbox->addWidget(userPrompt);
+    vbox->addWidget(selBox);
+    vbox->addItem(hbox);
+
+    int ret = dlg->exec();
+
+    QString retItem;
+    if (ret)
+    {
+        retItem = selBox->currentText();
+    }
+
+    dlg->deleteLater();
+    return retItem;
 }
 
 

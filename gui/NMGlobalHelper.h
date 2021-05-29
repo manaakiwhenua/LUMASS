@@ -60,6 +60,11 @@ public:
                                          const QString& label,
                                          const QStringList& items,
                                          QWidget* parent=0);
+    static QString getItemSelection(const QString& title,
+                                          const QString& label,
+                                          const QStringList& items,
+                                          QWidget* parent=0);
+
     static QStringList searchPropertyValues(const QObject *obj, const QString& searchTerm);
     static QItemSelection selectRows(const QAbstractItemModel *model,
                               QList<int>& ids);

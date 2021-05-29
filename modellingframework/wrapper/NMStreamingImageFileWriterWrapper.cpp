@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -33,8 +33,8 @@
 #include "otbStreamingRATImageFileWriter.h"
 
 #ifdef BUILD_RASSUPPORT
-	#include "RasdamanConnector.hh"
-	#include "otbRasdamanImageIO.h"
+    #include "RasdamanConnector.hh"
+    #include "otbRasdamanImageIO.h"
 #endif
 
 
@@ -47,36 +47,36 @@ public:
     typedef itk::RGBPixel< PixelType >                  RGBPixelType;
     typedef otb::Image< RGBPixelType, Dimension >       RGBImgType;
 
-	typedef otb::Image<PixelType, Dimension> 			ImgType;
-	typedef otb::VectorImage<PixelType, Dimension> 		VecImgType;
+    typedef otb::Image<PixelType, Dimension> 			ImgType;
+    typedef otb::VectorImage<PixelType, Dimension> 		VecImgType;
 
     typedef otb::StreamingRATImageFileWriter<RGBImgType>    RGBFilterType;
     typedef otb::StreamingRATImageFileWriter<ImgType> 		FilterType;
-	typedef otb::StreamingRATImageFileWriter<VecImgType> 	VecFilterType;
+    typedef otb::StreamingRATImageFileWriter<VecImgType> 	VecFilterType;
 
     typedef typename RGBFilterType::Pointer             RGBFilterTypePointer;
     typedef typename FilterType::Pointer 				FilterTypePointer;
-	typedef typename VecFilterType::Pointer 			VecFilterTypePointer;
+    typedef typename VecFilterType::Pointer 			VecFilterTypePointer;
 
-	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
+    static void createInstance(itk::ProcessObject::Pointer& otbFilter,
             unsigned int numBands, bool rgbMode)
-		{
-			if (numBands == 1)
-			{
-				FilterTypePointer f = FilterType::New();
-				otbFilter = f;
-			}
+        {
+            if (numBands == 1)
+            {
+                FilterTypePointer f = FilterType::New();
+                otbFilter = f;
+            }
             else if (numBands == 3 && rgbMode)
             {
                 RGBFilterTypePointer r = RGBFilterType::New();
                 otbFilter = r;
             }
-			else
-			{
-				VecFilterTypePointer v = VecFilterType::New();
-				otbFilter = v;
-			}
-		}
+            else
+            {
+                VecFilterTypePointer v = VecFilterType::New();
+                otbFilter = v;
+            }
+        }
 
     static void setUpdateMode(itk::ProcessObject::Pointer& otbFilter,
                               unsigned int numBands, bool updateMode, bool rgbMode)
@@ -98,92 +98,92 @@ public:
             }
         }
 
-	static void setFileName(itk::ProcessObject::Pointer& otbFilter,
-            unsigned int numBands, QString& fileName,
+    static void setFileNames(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands, std::vector<std::string> vecFileNames,
 
 #ifdef BUILD_RASSUPPORT
 
             otb::RasdamanImageIO::Pointer& rio,
 #endif
             bool rgbMode)
-		{
-			if (numBands == 1)
-			{
-				FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-				filter->SetFileName(fileName.toStdString());
-
-#ifdef BUILD_RASSUPPORT
-				if (rio.IsNotNull())
-					filter->SetImageIO(rio);
-#endif
-			}
-            else if (numBands == 3 && rgbMode)
+        {
+            if (numBands == 1)
             {
-                RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
-                filter->SetFileName(fileName.toStdString());
+                FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+                filter->SetFileNames(vecFileNames);
 
 #ifdef BUILD_RASSUPPORT
                 if (rio.IsNotNull())
                     filter->SetImageIO(rio);
 #endif
             }
-			else
-			{
-				VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
-				filter->SetFileName(fileName.toStdString());
+            else if (numBands == 3 && rgbMode)
+            {
+                RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
+                filter->SetFileNames(vecFileNames);
 
 #ifdef BUILD_RASSUPPORT
-				if (rio.IsNotNull())
-					filter->SetImageIO(rio);
+                if (rio.IsNotNull())
+                    filter->SetImageIO(rio);
 #endif
-				}
-		}
+            }
+            else
+            {
+                VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
+                filter->SetFileNames(vecFileNames);
 
-	static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
+#ifdef BUILD_RASSUPPORT
+                if (rio.IsNotNull())
+                    filter->SetImageIO(rio);
+#endif
+                }
+        }
+
+    static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
             unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, bool rgbMode, bool writeImage)
-		{
-			if (numBands == 1)
-			{
-				FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-				ImgType* img = dynamic_cast<ImgType*>(dataObj);
-				filter->SetInput(img);
+        {
+            if (numBands == 1)
+            {
+                FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+                ImgType* img = dynamic_cast<ImgType*>(dataObj);
+                filter->SetInput(idx, img);
                 filter->SetWriteImage(writeImage);
-			}
+            }
             else if (numBands == 3 && rgbMode)
             {
                 RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
                 RGBImgType* img = dynamic_cast<RGBImgType*>(dataObj);
-                filter->SetInput(img);
+                filter->SetInput(idx, img);
                 filter->SetWriteImage(writeImage);
             }
-			else
-			{
-				VecImgType* img = dynamic_cast<VecImgType*>(dataObj);
-				VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
-				filter->SetInput(img);
+            else
+            {
+                VecImgType* img = dynamic_cast<VecImgType*>(dataObj);
+                VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
+                filter->SetInput(idx, img);
                 filter->SetWriteImage(writeImage);
-			}
-		}
+            }
+        }
 
-	static void setNthAttributeTable(itk::ProcessObject::Pointer& otbFilter,
+    static void setNthAttributeTable(itk::ProcessObject::Pointer& otbFilter,
             unsigned int numBands, unsigned int idx, otb::AttributeTable::Pointer& tab, bool rgbMode)
-		{
-			if (numBands == 1)
-			{
-				FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-				filter->SetInputRAT(tab);
-			}
+        {
+            if (numBands == 1)
+            {
+                FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+                filter->SetInputRAT(tab, idx);
+            }
             else if (numBands == 3 && rgbMode)
             {
                 RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
-                filter->SetInputRAT(tab);
+                filter->SetInputRAT(tab, idx);
             }
-			else
-			{
-				VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
-				filter->SetInputRAT(tab);
-			}
-		}
+            else
+            {
+                VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
+                filter->SetInputRAT(tab, idx);
+            }
+        }
 
     static void setResamplingType(itk::ProcessObject::Pointer& otbFilter,
                                   unsigned int numBands, const QString& resamplingType, bool rgbMode)
@@ -287,77 +287,77 @@ public:
 };
 
 #ifdef BUILD_RASSUPPORT
-	#define callSetFileName( PixelType, wrapName ) \
-		if (this->mOutputNumDimensions == 1)                                    \
-		{                                                                   \
-			wrapName<PixelType, PixelType, 1>::setFileName(this->mOtbProcess,   \
-                    this->mOutputNumBands, fileName, rio, mRGBMode);                  \
-		}                                                                   \
-		else if (this->mOutputNumDimensions == 2)                               \
-		{                                                                   \
-			wrapName<PixelType, PixelType, 2>::setFileName(this->mOtbProcess,   \
-                    this->mOutputNumBands, fileName, rio, mRGBMode);                  \
-		}                                                                   \
-		else if (this->mOutputNumDimensions == 3)                               \
-		{                                                                   \
-			wrapName<PixelType, PixelType, 3>::setFileName(this->mOtbProcess,   \
-                    this->mOutputNumBands, fileName, rio, mRGBMode);                  \
-		}
+    #define callSetFileName( PixelType, wrapName ) \
+        if (this->mOutputNumDimensions == 1)                                    \
+        {                                                                   \
+            wrapName<PixelType, PixelType, 1>::setFileNames(this->mOtbProcess,   \
+                    this->mOutputNumBands, vecFileNames,rio, mRGBMode);                  \
+        }                                                                   \
+        else if (this->mOutputNumDimensions == 2)                               \
+        {                                                                   \
+            wrapName<PixelType, PixelType, 2>::setFileNames(this->mOtbProcess,   \
+                    this->mOutputNumBands, vecFileNames,rio, mRGBMode);                  \
+        }                                                                   \
+        else if (this->mOutputNumDimensions == 3)                               \
+        {                                                                   \
+            wrapName<PixelType, PixelType, 3>::setFileNames(this->mOtbProcess,   \
+                    this->mOutputNumBands, vecFileNames,rio, mRGBMode);                  \
+        }
 #else
-	#define callSetFileName( PixelType, wrapName ) \
-		if (this->mOutputNumDimensions == 1)                                    \
-		{                                                                   \
-			wrapName<PixelType, PixelType, 1>::setFileName(this->mOtbProcess,   \
-                    this->mOutputNumBands, fileName, mRGBMode);                  \
-		}                                                                   \
-		else if (this->mOutputNumDimensions == 2)                               \
-		{                                                                   \
-			wrapName<PixelType, PixelType, 2>::setFileName(this->mOtbProcess,   \
-                    this->mOutputNumBands, fileName, mRGBMode);                  \
-		}                                                                   \
-		else if (this->mOutputNumDimensions == 3)                               \
-		{                                                                   \
-			wrapName<PixelType, PixelType, 3>::setFileName(this->mOtbProcess,   \
-                    this->mOutputNumBands, fileName, mRGBMode);                  \
-		}
+    #define callSetFileName( PixelType, wrapName ) \
+        if (this->mOutputNumDimensions == 1)                                    \
+        {                                                                   \
+            wrapName<PixelType, PixelType, 1>::setFileNames(this->mOtbProcess,   \
+                    this->mOutputNumBands, vecFileNames,mRGBMode);                  \
+        }                                                                   \
+        else if (this->mOutputNumDimensions == 2)                               \
+        {                                                                   \
+            wrapName<PixelType, PixelType, 2>::setFileNames(this->mOtbProcess,   \
+                    this->mOutputNumBands, vecFileNames,mRGBMode);                  \
+        }                                                                   \
+        else if (this->mOutputNumDimensions == 3)                               \
+        {                                                                   \
+            wrapName<PixelType, PixelType, 3>::setFileNames(this->mOtbProcess,   \
+                    this->mOutputNumBands, vecFileNames,mRGBMode);                  \
+        }
 #endif // BUILD_RASSUPPORT
 
 #define callOutputTypeSetTab( imgType, wrapName ) \
 { \
-	if (this->mOutputNumDimensions == 1) \
-	{ \
-		wrapName< imgType, imgType, 1 >::setNthAttributeTable( \
+    if (this->mOutputNumDimensions == 1) \
+    { \
+        wrapName< imgType, imgType, 1 >::setNthAttributeTable( \
                 this->mOtbProcess, this->mOutputNumBands, tabIdx, tab, mRGBMode); \
-	} \
-	else if (this->mOutputNumDimensions == 2) \
-	{ \
-		wrapName< imgType, imgType, 2 >::setNthAttributeTable( \
+    } \
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        wrapName< imgType, imgType, 2 >::setNthAttributeTable( \
                 this->mOtbProcess, this->mOutputNumBands, tabIdx, tab, mRGBMode); \
-	} \
-	else if (this->mOutputNumDimensions == 3) \
-	{ \
-		wrapName< imgType, imgType, 3 >::setNthAttributeTable( \
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        wrapName< imgType, imgType, 3 >::setNthAttributeTable( \
                 this->mOtbProcess, this->mOutputNumBands, tabIdx, tab, mRGBMode); \
-	}\
+    }\
 }
 
 #define callFilterSetInput( imgType, wrapName ) \
 { \
-	if (this->mOutputNumDimensions == 1) \
-	{ \
-		wrapName< imgType, imgType, 1 >::setNthInput( \
+    if (this->mOutputNumDimensions == 1) \
+    { \
+        wrapName< imgType, imgType, 1 >::setNthInput( \
                 this->mOtbProcess, this->mOutputNumBands, numInput, img, mRGBMode, mWriteImage); \
-	} \
-	else if (this->mOutputNumDimensions == 2) \
-	{ \
-		wrapName< imgType, imgType, 2 >::setNthInput( \
+    } \
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        wrapName< imgType, imgType, 2 >::setNthInput( \
                 this->mOtbProcess, this->mOutputNumBands, numInput, img, mRGBMode, mWriteImage); \
-	} \
-	else if (this->mOutputNumDimensions == 3) \
-	{ \
-		wrapName< imgType, imgType, 3 >::setNthInput( \
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        wrapName< imgType, imgType, 3 >::setNthInput( \
                 this->mOtbProcess, this->mOutputNumBands, numInput, img, mRGBMode, mWriteImage); \
-	}\
+    }\
 }
 
 #define callSetUpdateMode( imgType, wrapName ) \
@@ -499,15 +499,15 @@ public:
 NMStreamingImageFileWriterWrapper
 ::NMStreamingImageFileWriterWrapper(QObject* parent)
 {
-	this->setParent(parent);
-	this->setObjectName(tr("NMStreamingImageFileWriterWrapper"));
-	this->mbIsInitialised = false;
-	this->mInputComponentType = otb::ImageIOBase::FLOAT;
-	this->mOutputComponentType = otb::ImageIOBase::FLOAT;
-	this->mInputNumBands = 1;
-	this->mOutputNumBands = 1;
-	this->mInputNumDimensions = 2;
-	this->mOutputNumDimensions = 2;
+    this->setParent(parent);
+    this->setObjectName(tr("NMStreamingImageFileWriterWrapper"));
+    this->mbIsInitialised = false;
+    this->mInputComponentType = otb::ImageIOBase::FLOAT;
+    this->mOutputComponentType = otb::ImageIOBase::FLOAT;
+    this->mInputNumBands = 1;
+    this->mOutputNumBands = 1;
+    this->mInputNumDimensions = 2;
+    this->mOutputNumDimensions = 2;
     this->mWriteTable = true;
     this->mWriteImage = true;
     this->mUpdateMode = false;
@@ -532,26 +532,26 @@ NMStreamingImageFileWriterWrapper
     mUpdateRegion = {0,0,0,0,0,0};
 
 #ifdef BUILD_RASSUPPORT
-	this->mRasConnector = 0;
-	this->mParameterHandling = NMProcess::NM_USE_UP;
-	this->mParamPos = 0;
+    this->mRasConnector = 0;
+    this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->mParamPos = 0;
 #endif
 }
 
 NMStreamingImageFileWriterWrapper
 ::NMStreamingImageFileWriterWrapper(QObject* parent,
-			otb::ImageIOBase::IOComponentType componentType,
-			unsigned int numDims, unsigned int numBands)
+            otb::ImageIOBase::IOComponentType componentType,
+            unsigned int numDims, unsigned int numBands)
 {
-	this->setParent(parent);
-	this->setObjectName(tr("NMStreamingImageFileWriterWrapper"));
-	this->mbIsInitialised = false;
-	this->mInputComponentType = componentType;
-	this->mOutputComponentType = componentType;
-	this->mInputNumBands = numBands;
-	this->mOutputNumBands = numBands;
-	this->mInputNumDimensions = numDims;
-	this->mOutputNumDimensions = numDims;
+    this->setParent(parent);
+    this->setObjectName(tr("NMStreamingImageFileWriterWrapper"));
+    this->mbIsInitialised = false;
+    this->mInputComponentType = componentType;
+    this->mOutputComponentType = componentType;
+    this->mInputNumBands = numBands;
+    this->mOutputNumBands = numBands;
+    this->mInputNumDimensions = numDims;
+    this->mOutputNumDimensions = numDims;
     this->mWriteImage = true;
     this->mWriteTable = true;
     this->mUpdateMode = false;
@@ -576,7 +576,7 @@ NMStreamingImageFileWriterWrapper
     mUpdateRegion = {0,0,0,0,0,0};
 
 #ifdef BUILD_RASSUPPORT
-	this->mRasConnector = 0;
+    this->mRasConnector = 0;
     this->mParameterHandling = NMProcess::NM_USE_UP;
     this->mParamPos = 0;
 #endif
@@ -588,27 +588,33 @@ NMStreamingImageFileWriterWrapper::~NMStreamingImageFileWriterWrapper()
 
 void
 NMStreamingImageFileWriterWrapper
-::setInternalFileName(QString fileName)
+::setInternalFileNames(QStringList fileNames)
 {
-	if (!this->mbIsInitialised)
-		return;
+    if (!this->mbIsInitialised)
+        return;
 
 #ifdef BUILD_RASSUPPORT
-	otb::RasdamanImageIO::Pointer rio;
-	if (mRasConnector != 0 && this->mRasConnector->getConnector() != 0)
-	{
-		rio = otb::RasdamanImageIO::New();
-		rio->setRasdamanConnector(const_cast<RasdamanConnector*>(
-				this->mRasConnector->getConnector()));
-	}
+    otb::RasdamanImageIO::Pointer rio;
+    if (mRasConnector != 0 && this->mRasConnector->getConnector() != 0)
+    {
+        rio = otb::RasdamanImageIO::New();
+        rio->setRasdamanConnector(const_cast<RasdamanConnector*>(
+                this->mRasConnector->getConnector()));
+    }
 #endif
 
-	switch(this->mOutputComponentType)
-	{
-	MacroPerType( callSetFileName, NMStreamingImageFileWriterWrapper_Internal )
-	default:
-		break;
-	}
+    std::vector<std::string> vecFileNames;
+    foreach(const QString& fn, fileNames)
+    {
+        vecFileNames.push_back(fn.toStdString());
+    }
+
+    switch(this->mOutputComponentType)
+    {
+    MacroPerType( callSetFileName, NMStreamingImageFileWriterWrapper_Internal )
+    default:
+        break;
+    }
 }
 
 void
@@ -718,23 +724,49 @@ NMStreamingImageFileWriterWrapper
 //		this->setInternalFileName(this->mFileNames.at(step));
 //	}
 
-    QVariant param = this->getParameter("FileNames");
-    if (param.isValid())
+    QString fnProvNAttr;
+    QString tabProvNAttr;
+    QVariant inputsVar = this->getParameter("InputComponents");
+    int nbInputs = 1;
+    if (inputsVar.isValid())
     {
-        this->setInternalFileName(param.toString());
-        QString fnProvNAttr = QString("nm:FileNames=\"%1\"")
-                              .arg(param.toString());
-        this->addRunTimeParaProvN(fnProvNAttr);
+        if (inputsVar.type() == QVariant::StringList)
+        {
+            nbInputs = inputsVar.toStringList().size();
+        }
     }
 
-    QVariant param2 = this->getParameter("InputTables");
-    if (param2.isValid())
+    if (nbInputs == 1)
     {
-        this->setInternalInputTable(param2.toString(), repo);
-        QString tabProvNAttr = QString("nm:TableNames=\"%1\"")
-                              .arg(param2.toString());
-        this->addRunTimeParaProvN(tabProvNAttr);
+        QVariant param = this->getParameter("FileNames");
+        if (param.isValid())
+        {
+            this->setInternalFileNames(QStringList(param.toString()));
+            fnProvNAttr = QString("nm:FileNames=\"%1\"")
+                                  .arg(param.toString());
+        }
+
+        QVariant param2 = this->getParameter("InputTables");
+        if (param2.isValid())
+        {
+            this->setInternalInputTables(QStringList(param2.toString()), repo);
+            tabProvNAttr = QString("nm:TableNames=\"%1\"")
+                                  .arg(param2.toString());
+        }
     }
+    else
+    {
+        this->setInternalFileNames(this->mFileNames);
+        fnProvNAttr = QString("nm:FileNames=\"%1\"")
+                              .arg(this->mFileNames.join(" "));
+
+        this->setInternalInputTables(this->mInputTables, repo);
+        tabProvNAttr = QString("nm:TableNames=\"%1\"")
+                              .arg(this->mInputTables.join(" "));
+    }
+
+    this->addRunTimeParaProvN(fnProvNAttr);
+    this->addRunTimeParaProvN(tabProvNAttr);
 
     this->setInternalUpdateMode();
 
@@ -879,38 +911,40 @@ NMStreamingImageFileWriterWrapper
 
 void
 NMStreamingImageFileWriterWrapper
-::setInternalInputTable(const QString &tabelSpec,
+::setInternalInputTables(const QStringList tabelSpecList,
                         const QMap<QString, NMModelComponent*>& repo)
 {
     if (!this->mbIsInitialised)
         return;
 
-    QStringList speclst = tabelSpec.split(":");
-    QString compName = speclst.at(0);
-    if (repo.contains(compName))
+    for (unsigned int tabIdx=0; tabIdx < tabelSpecList.size(); ++tabIdx)
     {
-        int idx = 0;
-        if (speclst.size() == 2)
+        QString tabelSpec = tabelSpecList.at(tabIdx);
+        QStringList speclst = tabelSpec.split(":");
+        QString compName = speclst.at(0);
+        if (repo.contains(compName))
         {
-            bool bok;
-            idx = speclst.at(1).toInt(&bok);
-        }
-        NMModelComponent* comp = repo.value(compName);
-        QSharedPointer<NMItkDataObjectWrapper> dw = comp->getOutput(idx);
-
-        if (!dw.isNull())
-        {
-            otb::AttributeTable::Pointer tab = dw->getOTBTab();
-                    //comp->getOutput(idx)->getOTBTab();
-
-            unsigned int tabIdx = 1;
-            if (tab.IsNotNull())
+            int idx = 0;
+            if (speclst.size() == 2)
             {
-                switch(this->mOutputComponentType)
+                bool bok;
+                idx = speclst.at(1).toInt(&bok);
+            }
+            NMModelComponent* comp = repo.value(compName);
+            QSharedPointer<NMItkDataObjectWrapper> dw = comp->getOutput(idx);
+
+            if (!dw.isNull())
+            {
+                otb::AttributeTable::Pointer tab = dw->getOTBTab();
+
+                if (tab.IsNotNull())
                 {
-                MacroPerType( callOutputTypeSetTab, NMStreamingImageFileWriterWrapper_Internal )
-                default:
-                    break;
+                    switch(this->mOutputComponentType)
+                    {
+                    MacroPerType( callOutputTypeSetTab, NMStreamingImageFileWriterWrapper_Internal )
+                    default:
+                        break;
+                    }
                 }
             }
         }
@@ -962,15 +996,15 @@ NMStreamingImageFileWriterWrapper
         QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
 {
     if (!this->mbIsInitialised)
-		return;
+        return;
 
-	itk::DataObject* img = imgWrapper->getDataObject();
-	switch(this->mOutputComponentType)
-	{
-	MacroPerType( callFilterSetInput, NMStreamingImageFileWriterWrapper_Internal )
-	default:
-		break;
-	}
+    itk::DataObject* img = imgWrapper->getDataObject();
+    switch(this->mOutputComponentType)
+    {
+    MacroPerType( callFilterSetInput, NMStreamingImageFileWriterWrapper_Internal )
+    default:
+        break;
+    }
 }
 
 

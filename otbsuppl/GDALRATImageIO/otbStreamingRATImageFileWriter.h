@@ -197,20 +197,31 @@ public:
   /** ImageFileWriter Methods */
 
   /** Specify the name of the output file to write. */
-  itkGetStringMacro(FileName);
+  //itkGetStringMacro(FileName);
 
   /**
    * Set the filename and destroy the current driver.
    * \param filename the name of the file.
    */
-  virtual void SetFileName(std::string filename)
+  void SetFileNames(std::vector<std::string> filenames)
   {
-    m_FileName = filename;
-//#ifdef BUILD_RASSUPPORT
-//    if (this->mRasconn == 0)
-        m_ImageIO = NULL;
-//#endif
+    m_FileNames.clear();
+    m_FileNames = filenames;
+    m_ImageIOs.clear();
+
     this->Modified();
+  }
+
+  void SetFileName(std::string filename)
+  {
+      if (m_FileNames.size() > 0)
+      {
+          m_FileNames[0] = filename;
+      }
+      else
+      {
+          m_FileNames.push_back(filename);
+      }
   }
 
   /** Set the resampling type for building pyramids
@@ -247,9 +258,9 @@ public:
   itkGetConstReferenceMacro(UseInputMetaDataDictionary, bool);
   itkBooleanMacro(UseInputMetaDataDictionary);
 
-  itkSetObjectMacro(ImageIO, otb::ImageIOBase);
-  itkGetObjectMacro(ImageIO, otb::ImageIOBase);
-  itkGetConstObjectMacro(ImageIO, otb::ImageIOBase);
+  void SetImageIO(otb::ImageIOBase* imgIO);
+  otb::ImageIOBase* GetImageIO(void);
+  const otb::ImageIOBase* GetImageIO(void) const;
 
   /**
    * Enable/disable writing of a .geom file with the ossim keyword list along with the written image
@@ -259,7 +270,7 @@ public:
   itkBooleanMacro(WriteGeomFile);
 
   /** Sets the input raster attribute table */
-  itkSetObjectMacro(InputRAT, AttributeTable);
+  void SetInputRAT(AttributeTable* rat, unsigned int idx=0);
 
 
   /** Indicate whether the writer should be used in 'update' mode for
@@ -293,7 +304,6 @@ public:
    *  'streaming logic' which becomes necessary when certain algorithms
    *  have to work repetitively on large images)
    */
-   //itkSetObjectMacro(ForceLargestPossibleRegion, itk::Region);
   void SetForcedLargestPossibleRegion(const itk::ImageIORegion& forcedReg);
   itk::ImageIORegion GetForcedLargestPossibleRegion() {return m_ForcedLargestPossibleRegion;}
 
@@ -304,20 +314,17 @@ public:
    */
   void SetUpdateRegion(const itk::ImageIORegion& updateRegion);
 
-//  void EnlargeOutputRequestedRegion(itk::DataObject* output);
-
   void BuildOverviews();
-
 
 protected:
   StreamingRATImageFileWriter();
   virtual ~StreamingRATImageFileWriter();
   void PrintSelf(std::ostream& os, itk::Indent indent) const;
 
+  void VerifyInputInformation();
+
   /** Does the real work. */
   virtual void GenerateData(void);
-
-//  virtual void GenerateInputRequestedRegion();
 
 
 private:
@@ -345,17 +352,19 @@ private:
     this->UpdateProgress( (m_DivisionProgress + m_CurrentDivision) / m_NumberOfDivisions );
   }
 
+  unsigned int m_NumberOfInputs;
+  unsigned int m_CurrentWriteImage;
   unsigned int m_NumberOfDivisions;
   unsigned int m_CurrentDivision;
   float m_DivisionProgress;
 
   /** ImageFileWriter Parameters */
-  std::string m_FileName;
+  std::vector<std::string> m_FileNames;
   std::string m_ResamplingType;
   std::string m_StreamingMethod;  // TILED | STRIPPED
   int m_StreamingSize;          // MB streaming pieces
 
-  otb::ImageIOBase::Pointer m_ImageIO;
+  std::vector<otb::ImageIOBase::Pointer> m_ImageIOs;
 
   bool m_UserSpecifiedImageIO; //track whether the ImageIO is user specified
 
@@ -383,10 +392,9 @@ private:
   RasdamanConnector* mRasconn;
 #endif
 
-  AttributeTable::Pointer m_InputRAT;
+  std::vector<AttributeTable::Pointer> m_InputRATs;
   bool m_RATHaveBeenWritten;
 
-  //static const std::string ctx;
 };
 
 } // end namespace otb

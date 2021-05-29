@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -52,11 +52,11 @@
 
 class NMSTREAMINGIMAGEFILEWRITERWRAPPER_EXPORT NMStreamingImageFileWriterWrapper: public NMProcess
 {
-	Q_OBJECT
-#ifdef BUILD_RASSUPPORT	
-	Q_PROPERTY(NMRasdamanConnectorWrapper* RasConnector READ getRasConnector WRITE setRasConnector)
-#endif	
-	Q_PROPERTY(QStringList FileNames READ getFileNames WRITE setFileNames)
+    Q_OBJECT
+#ifdef BUILD_RASSUPPORT
+    Q_PROPERTY(NMRasdamanConnectorWrapper* RasConnector READ getRasConnector WRITE setRasConnector)
+#endif
+    Q_PROPERTY(QStringList FileNames READ getFileNames WRITE setFileNames)
     Q_PROPERTY(QStringList InputTables READ getInputTables WRITE setInputTables)
     Q_PROPERTY(bool WriteImage READ getWriteImage WRITE setWriteImage)
     Q_PROPERTY(bool WriteTable READ getWriteTable WRITE setWriteTable)
@@ -89,27 +89,27 @@ public:
     //NMPropertyGetSet( RasConnector, NMRasdamanConnectorWrapper* )
 #endif
 
-	
+
 signals:
-	void FileNamesChanged(QStringList );
-	
-#ifdef BUILD_RASSUPPORT	
-	void RasConnectorChanged(NMRasdamanConnectorWrapper* );
+    void FileNamesChanged(QStringList );
+
+#ifdef BUILD_RASSUPPORT
+    void RasConnectorChanged(NMRasdamanConnectorWrapper* );
 #endif
 
 public:
-	NMStreamingImageFileWriterWrapper(QObject* parent=0);
-	NMStreamingImageFileWriterWrapper(QObject* parent,
-			otb::ImageIOBase::IOComponentType componentType,
-			unsigned int numDims, unsigned int numBands);
-	virtual ~NMStreamingImageFileWriterWrapper();
+    NMStreamingImageFileWriterWrapper(QObject* parent=0);
+    NMStreamingImageFileWriterWrapper(QObject* parent,
+            otb::ImageIOBase::IOComponentType componentType,
+            unsigned int numDims, unsigned int numBands);
+    virtual ~NMStreamingImageFileWriterWrapper();
 
-	// NMModel relevant virtual methods
-	void instantiateObject(void);
+    // NMModel relevant virtual methods
+    void instantiateObject(void);
 
-	// NMProcess interface methods
-	void setNthInput(unsigned int numInput,
-			QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+    // NMProcess interface methods
+    void setNthInput(unsigned int numInput,
+            QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
     QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 
     void setRAT(unsigned idx, QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
@@ -126,7 +126,7 @@ protected:
     QString mStreamingMethodType;
     QStringList mStreamingMethodEnum;
 
-	QStringList mFileNames;
+    QStringList mFileNames;
     QStringList mInputTables;
     bool mWriteImage;
     bool mWriteTable;
@@ -140,21 +140,21 @@ protected:
     std::array<int, 6> mUpdateRegion;
 
 #ifdef BUILD_RASSUPPORT
-	NMRasdamanConnectorWrapper* mRasConnector;
-#endif	
-	QString mRasConnectFile;
+    NMRasdamanConnectorWrapper* mRasConnector;
+#endif
+    QString mRasConnectFile;
 
-	//typedef itk::MemberCommand<NMStreamingImageFileWriterWrapper> WriteObserverType;
+    //typedef itk::MemberCommand<NMStreamingImageFileWriterWrapper> WriteObserverType;
 
-	//void UpdateProgressInfo(itk::Object* obj, const itk::EventObject& event);
+    //void UpdateProgressInfo(itk::Object* obj, const itk::EventObject& event);
 
-	void setInternalFileName(QString fileName);
-	void linkParameters(unsigned int step,
-			const QMap<QString, NMModelComponent*>& repo);
+    void setInternalFileNames(QStringList fileNames);
+    void linkParameters(unsigned int step,
+            const QMap<QString, NMModelComponent*>& repo);
 
     void setInternalUpdateMode();
     void setInternalResamplingType();
-    void setInternalInputTable(const QString& tabelSpec,
+    void setInternalInputTables(const QStringList tabelSpec,
                                const QMap<QString, NMModelComponent*>& repo);
     void setInternalStreamingMethod();
     void setInternalStreamingSize();

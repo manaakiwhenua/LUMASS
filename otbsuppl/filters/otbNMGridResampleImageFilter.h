@@ -174,7 +174,7 @@ protected:
   NMGridResampleImageFilter();
 
   /** Destructor */
-  ~NMGridResampleImageFilter() ITK_OVERRIDE {};
+  ~NMGridResampleImageFilter() ITK_OVERRIDE {}
 
   void GenerateOutputInformation() ITK_OVERRIDE;
 

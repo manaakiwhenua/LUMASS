@@ -50,7 +50,6 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
       m_EdgePaddingValue(),
       m_CheckOutputBounds(true),
       m_Interpolator(),
-      //m_AverageFunc(),
       m_MeanOperator(),
       m_MedianOperator(),
       m_ReachableOutputRegion(),
@@ -150,7 +149,6 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
 
     outputPtr->SetLargestPossibleRegion(outputLargestPossibleRegion);
     outputPtr->SetSignedSpacing(m_OutputSpacing);
-    //outputPtr->SetSpacing(m_OutputSpacing);
     outputPtr->SetOrigin(m_OutputOrigin);
 
     // need to set this sometime, so why not now ...
@@ -175,7 +173,6 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
 
     SizeType outSize = outputRegion.GetSize();
     IndexType outIdxTL =  outputRegion.GetIndex();
-    //SpacingType outSpacing = outimg->GetSpacing();
     IndexType outIdxBR;
     for (int d=0; d < InputImageDimension; ++d)
     {
@@ -220,30 +217,7 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
     InputImageRegionType inImgLPR = img->GetLargestPossibleRegion();
     SizeType inLPRSize = img->GetLargestPossibleRegion().GetSize();
 
-    // if the output requested region is empty,
-    // so shall be the input requested region!
     InputImageRegionType inRegion;
-    //bool bAllZero = false;
-    //    for (int d=0; d < InputImageDimension; ++d)
-    //    {
-    //        if (outSize[d] == 0)
-    //        {
-    //            bAllZero = true;
-    //        }
-    //    }
-
-    //    if (bAllZero)
-    //    {
-    //        idxTL.Fill(0);
-    //        idxBR.Fill(0);
-
-    //        SizeType emptysize;
-    //        emptysize.Fill(0);
-    //        inRegion.SetSize(emptysize);
-    //        img->SetBufferedRegion(inRegion);
-    //        img->SetRequestedRegion(inRegion);
-    //        return;
-    //    }
 
     // push the index back into the LPR of the input image
     // for the 'dimensions' going over board
@@ -399,42 +373,42 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
             break;
         case 2: //"BSpline0":
         {
-            typename SplineType::Pointer spline = SplineType::New();//dynamic_cast<InterpolatorType*>(SplineType::New().GetPointer());
+            typename SplineType::Pointer spline = SplineType::New();
             spline->SetSplineOrder(0);
             m_Interpolator = spline;
         }
             break;
         case 3: //"BSpline1":
         {
-            typename SplineType::Pointer spline = SplineType::New();//dynamic_cast<InterpolatorType*>(SplineType::New().GetPointer());
+            typename SplineType::Pointer spline = SplineType::New();
             spline->SetSplineOrder(1);
             m_Interpolator = spline;
         }
             break;
         case 4: //"BSpline2":
         {
-            typename SplineType::Pointer spline = SplineType::New();//dynamic_cast<InterpolatorType*>(SplineType::New().GetPointer());
+            typename SplineType::Pointer spline = SplineType::New();
             spline->SetSplineOrder(2);
             m_Interpolator = spline;
         }
             break;
         case 5: //"BSpline3":
         {
-            typename SplineType::Pointer spline = SplineType::New();//dynamic_cast<InterpolatorType*>(SplineType::New().GetPointer());
+            typename SplineType::Pointer spline = SplineType::New();
             spline->SetSplineOrder(3);
             m_Interpolator = spline;
         }
             break;
         case 6: //"BSpline4":
         {
-            typename SplineType::Pointer spline = SplineType::New();//dynamic_cast<InterpolatorType*>(SplineType::New().GetPointer());
+            typename SplineType::Pointer spline = SplineType::New();
             spline->SetSplineOrder(4);
             m_Interpolator = spline;
         }
             break;
         case 7: //"BSpline5":
         {
-            typename SplineType::Pointer spline = SplineType::New();//dynamic_cast<InterpolatorType*>(SplineType::New().GetPointer());
+            typename SplineType::Pointer spline = SplineType::New();
             spline->SetSplineOrder(5);
             m_Interpolator = spline;
         }
@@ -512,11 +486,12 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
 
     // Compute the padding due to the interpolator
 
-
     IndexType inUL = this->GetInput()->GetBufferedRegion().GetIndex();
     IndexType inLR = this->GetInput()->GetBufferedRegion().GetIndex() + this->GetInput()->GetBufferedRegion().GetSize();
-    inLR[0]-=1;
-    inLR[1]-=1;
+    for (unsigned int d=0; d < ImageDimension; ++d)
+    {
+        inLR[d] -= 1;
+    }
 
     // We should take interpolation radius into account here, but this
     // does not match the IsInsideBuffer method
@@ -547,12 +522,6 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
         outputIndex[d] = vcl_ceil(std::min(outUL[d],outLR[d]));
         outputSize[d] = vcl_floor(std::max(outUL[d],outLR[d])) - outputIndex[d] + 1;
     }
-
-//    outputIndex[0] = vcl_ceil(std::min(outUL[0],outLR[0]));
-//    outputIndex[1] = vcl_ceil(std::min(outUL[1],outLR[1]));
-
-//    outputSize[0] = vcl_floor(std::max(outUL[0],outLR[0])) - outputIndex[0] + 1;
-//    outputSize[1] = vcl_floor(std::max(outUL[1],outLR[1])) - outputIndex[1] + 1;
 
     m_ReachableOutputRegion.SetIndex(outputIndex);
     m_ReachableOutputRegion.SetSize(outputSize);

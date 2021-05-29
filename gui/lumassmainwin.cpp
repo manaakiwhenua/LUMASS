@@ -4652,8 +4652,8 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
     wPt[2] = 0;
 
     // update label
-    QString s = QString("XY Location: %1, %2 "). // Z: %3").
-    arg(wPt[0], 0, 'f', 3).arg(wPt[1], 0, 'f', 3); //.arg(wPt[3],0,'f',2);
+    QString s = QString("XY Location: %1, %2").
+    arg(wPt[0], 0, 'f', 3).arg(wPt[1], 0, 'f', 3);
 
     this->m_coordLabel->setText(s);
 
@@ -4714,17 +4714,20 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
         // topmost visible layer!
         if (cnt == 1)
         {
+            pixStr << did[0] << ", " << did[1];
+            lprPixStr << lprpix[0] << ", " << lprpix[1];
+
             if (il->getNumDimensions() == 3)
             {
+                pixStr << ", " << did[2];
+                lprPixStr << ", " << lprpix[2];
+
                 nDim = 3;
                 double* lorig = img->GetOrigin();
                 double* lspac = img->GetSpacing();
                 int slidx = il->getZSliceIndex();
                 zcoord = lorig[2] + slidx * lspac[2];
             }
-
-            pixStr << did[0] << ", " << did[1] << ", " << did[2];
-            lprPixStr << lprpix[0] << ", " << lprpix[1] << ", " << lprpix[2];
         }
 
         stringstream cvs;
@@ -4818,7 +4821,7 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
     {
         if (nDim == 3)
         {
-            pixval = QString("%4 | Pixel: %1 | LPRPixel: %2 | Values: %3 ").
+            pixval = QString("Z: %4 | Pixel: %1 | LPRPixel: %2 | Values: %3 ").
                         arg(pixStr.str().c_str()).
                         arg(lprPixStr.str().c_str()).
                         arg(visvs.str().c_str()).

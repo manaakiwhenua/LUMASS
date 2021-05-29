@@ -721,9 +721,19 @@ double NMImageLayer::getDefaultNodata()
         case otb::ImageIOBase::ULONG:
             nodata = std::numeric_limits<unsigned long>::max();
             break;
+#if defined(_WIN32) && SIZEOF_LONGLONG >= 8
+        case otb::ImageIOBase::ULONGLONG:
+            nodata = std::numeric_limits<unsigned long long>::max();
+            break;
+#endif
         case otb::ImageIOBase::LONG:
             nodata = -std::numeric_limits<long>::max();
             break;
+#if defined(_WIN32) && SIZEOF_LONGLONG >= 8
+        case otb::ImageIOBase::LONGLONG:
+            nodata = -std::numeric_limits<long long>::max();
+            break;
+#endif
         case otb::ImageIOBase::DOUBLE:
             nodata = -std::numeric_limits<double>::max();
             break;
@@ -746,6 +756,7 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
         wcoord[i] = world[i];
     }
     double spacing[3];
+    double ovvspacing[3];
     double origin[3];
     double ulcorner[3];
     int dims[3] = {0,0,0};
@@ -761,6 +772,7 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
     // spacing is signed spacing
     // VTK origin is upper left pixel centre
     img->GetSpacing(spacing);
+    img->GetSpacing(ovvspacing);
     img->GetOrigin(origin);
 
     // calc bounds, size (dims), and error margin
@@ -787,7 +799,7 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
         return;
     }
 
-    for (d = 0; d < this->mNumDimensions; ++d)
+    for (d = 0; d < 2; ++d)
     {
         if (dims[d] > 0)
         {
@@ -811,13 +823,25 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
         }
     }
 
-    pixel[2] = this->mZSliceIdx;
-
-    // fill up until 3rd dimension with zeros, if applicable
-//    for (; d < 3; ++d)
-//    {
-//        pixel[d] = 0;
-//    }
+    if (bPtInBnds)
+    {
+        if (   this->mNumDimensions == 3
+            && this->mOverviewIdx >= 0
+            && bOnLPR
+            )
+        {
+            const double zc = origin[2] + ovvspacing[2] * mZSliceIdx;
+            pixel[2] = (zc - mBBox[4]) / ::fabs(spacing[2]);
+        }
+        else
+        {
+            pixel[2] = mZSliceIdx;
+        }
+    }
+    else
+    {
+        pixel[2] = -1;
+    }
 }
 
 void
@@ -1355,9 +1379,24 @@ NMImageLayer::setFileName(QString filename)
                 QMessageBox::question(0, QString::fromLatin1("No overviews found!"),
                                       QString::fromLatin1("Do you want to build image overviews?"));
         emit layerProcessingStart();
+
+        QStringList restypes;
+        restypes << QStringLiteral("NEAREST")
+                 << QStringLiteral("AVERAGE") << QStringLiteral("MODE");
+
         if (yesno == QMessageBox::Yes)
         {
-            mReader->buildOverviews("NEAREST");
+            QString resmethod = NMGlobalHelper::getItemSelection(QStringLiteral("Resampling Type"),
+                                                                 QStringLiteral("No overviews found! "
+                                                                 "Please select an overview resampling "
+                                                                 "type and OK or Cancel for skipping "
+                                                                 "overview generation."),
+                                                                 restypes, 0);
+
+            if (!resmethod.isEmpty())
+            {
+                mReader->buildOverviews(resmethod.toStdString());
+            }
         }
     }
 
@@ -1520,12 +1559,12 @@ NMImageLayer::mapExtentChanged(void)
 
     int fullcols = h_ext / mSignedSpacing[0];
     int fullrows = v_ext / ::fabs(mSignedSpacing[1]);
-    int fullslices = mNumDimensions == 3            ?
-                     t_ext / mSignedSpacing[2]   :
-                     0;
+    int fullslices = mNumDimensions == 3
+            ? t_ext / mSignedSpacing[2] :  0;
 
     double h_res;
     double v_res;
+    double t_res;
 
     qreal dpr = 1.0;
 #ifdef QT_HIGHDPI_SUPPORT
@@ -1599,11 +1638,13 @@ NMImageLayer::mapExtentChanged(void)
             {
                 h_res = wwidth / (double)size[0];
                 v_res = wheight / (double)size[1];
+                t_res = wdepth / (double)size[2];
             }
             else
             {
                 h_res = mSignedSpacing[0] ;
                 v_res = ::fabs(mSignedSpacing[1]) ;
+                t_res = mSignedSpacing[2];
             }
         }
     }
@@ -1651,17 +1692,20 @@ NMImageLayer::mapExtentChanged(void)
         // overview properties and visible extent
         int cols = ovidx >= 0 ? mOverviewSize[ovidx][0] : fullcols;
         int rows = ovidx >= 0 ? mOverviewSize[ovidx][1] : fullrows;
+        int slices = ovidx >= 0 ? mOverviewSize[ovidx][2] : fullslices;
 
         double uspacing[3];
         uspacing[0] = h_ext / cols;
         uspacing[1] = v_ext / rows;
-        uspacing[2] = 0;
+        uspacing[2] = t_ext / slices;
 
         int xo, yo, xe, ye, zo, ze;
         xo = ((wminx - mBBox[0]) / uspacing[0]);
         yo = ((mBBox[3] - wmaxy) / ::fabs(uspacing[1]));
+        zo = ((wminz - mBBox[4]) / uspacing[2]);
         xe = ((wmaxx - mBBox[0]) / uspacing[0]);
         ye = ((mBBox[3] - wminy) / ::fabs(uspacing[1]));
+        ze = ((wmaxz - mBBox[4]) / uspacing[2]);
 
 
         // calc vtk update extent
@@ -1788,12 +1832,22 @@ NMImageLayer::setZSliceIndex(int slindex)
     {
         if (mReader != nullptr)
         {
-            if (slindex < mReader->getImageIOBase()->GetDimensions(2))
+            int zsize = 0;
+            if (this->getOverviewIndex() < 0)
+            {
+                zsize = this->mReader->getImageIOBase()->GetDimensions(2);
+            }
+            else
+            {
+                zsize = this->mReader->getOverviewSize(this->getOverviewIndex())[2];
+            }
+
+            if (slindex < zsize)
             {
                 mZSliceIdx = slindex;
                 NMLogDebug(<< this->objectName().toStdString() << "'s ZSliceIndex = " << mZSliceIdx);
                 this->mReader->setZSliceIdx(mZSliceIdx);
-                this->mRenderer->Render();
+                this->mapExtentChanged();
             }
         }
     }

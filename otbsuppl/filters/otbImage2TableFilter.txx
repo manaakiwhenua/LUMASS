@@ -458,6 +458,13 @@ void Image2TableFilter<TInputImage>
         this->GraftOutput(const_cast<InputImageType*>(input));
     }
 
+    if (m_TableName.empty())
+    {
+        NMProcErr(<< "Please specify a non-empty TableName!");
+        this->AbortGenerateDataOn();
+        return;
+    }
+
     // ================================================================================
     //                              Prepare TABLE (if applicable)
     // ================================================================================

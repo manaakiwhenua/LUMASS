@@ -156,10 +156,11 @@ public:
             }
             else
             {
-                NMErr("NMImage2TableFilterWrapper_Internal", << "Invalid value for 'UpdateMode'!");
-                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                e.setDescription("Invalid value for 'UpdateMode'!");
-                throw e;
+                f->SetUpdateMode(0);
+                //NMErr("NMImage2TableFilterWrapper_Internal", << "Invalid value for 'UpdateMode'!");
+                //NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                //e.setDescription("Invalid value for 'UpdateMode'!");
+                //throw e;
             }
         }
 

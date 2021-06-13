@@ -1067,11 +1067,11 @@ StreamingRATImageFileWriter<TInputImage>
     // close the GDALDataset
     for (int num=0; num < m_NumberOfInputs; ++num)
     {
-        otb::GDALRATImageIO* agio = static_cast<otb::GDALRATImageIO*>(m_ImageIOs[num].GetPointer());
-        if (agio != nullptr)
-        {
-            agio->CloseDataset();
-        }
+        //otb::GDALRATImageIO* agio = static_cast<otb::GDALRATImageIO*>(m_ImageIOs[num].GetPointer());
+        //if (agio != nullptr)
+        //{
+        //    agio->CloseDataset();
+        //}
 
         // provenance information
         std::stringstream sstr;

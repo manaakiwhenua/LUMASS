@@ -112,7 +112,7 @@ public:
             QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
     QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 
-    void setRAT(unsigned idx, QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+    void setRAT(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
     void setForcedLargestPossibleRegion(std::array<int, 6> forcedLPR);
     void setUpdateRegion(std::array<int, 6> updateRegion);

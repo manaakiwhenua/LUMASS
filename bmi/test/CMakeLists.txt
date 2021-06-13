@@ -7,6 +7,7 @@ SET(EXECUTABLE_OUTPUT_PATH ${LumassBMITest_BINARY_DIR})
 INCLUDE_DIRECTORIES(
     ${LumassBMITest_SOURCE_DIR}
     ${LumassBMITest_BINARY_DIR}
+    ${Python3_INCLUDE_DIRS}
     ${pybind11_INCLUDE_DIRS}
 )
 
@@ -14,7 +15,7 @@ set(BMI_TEST_LINK_LIBS)
 
 if (PYTHONSUPPORT)
     ADD_DEFINITIONS(-DLUMASS_PYTHON)
-    list(APPEND BMI_TEST_LINK_LIBS pybind11::pybind11 pybind11::embed)
+    list(APPEND BMI_TEST_LINK_LIBS ${Python3_LIBRARIES} pybind11::pybind11 pybind11::embed)
 endif()
 message(STATUS "bmi link libs: ${BMI_TEST_LINK_LIBS}")
 

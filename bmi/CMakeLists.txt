@@ -57,6 +57,7 @@ INCLUDE_DIRECTORIES(
     ${bmi_SOURCE_DIR}
     ${bmi_SOURCE_DIR}/test
     ${YAML_CPP_INCLUDE_DIR}
+    ${Python3_INCLUDE_DIRS}
     ${pybind11_INCLUDE_DIRS}
     #${lumassengine_SOURCE_DIR}
     #${PostgreSQL_INCLUDE_DIRS}
@@ -76,6 +77,7 @@ LINK_DIRECTORIES(
     #${NCXX_LIB_DIR}
     #${NETCDF_LIB_DIR}
 	${YAML_CPP_LIB_DIR}
+    ${Python3_LIBRARIES_DIR}
 )
 
 # Qt5 requirement
@@ -114,7 +116,8 @@ SET(BMI_LINKLIBS
 
 SET(PYTHON_BMI_LINKLIBS
     Qt5Core
-    #NMModFrameCore
+	#NMModFrameCore
+    ${Python3_LIBRARIES}
     pybind11::pybind11
     pybind11::embed
     ${YAML_CPP_LIBRARIES}

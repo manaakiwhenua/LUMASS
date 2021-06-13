@@ -115,7 +115,8 @@ set(MFW_CORE_LINK_LIBS
 
 if(PYTHONSUPPORT)
     list(APPEND MFW_CORE_LINK_LIBS
-            pybind11::pybind11
+            ${Python3_LIBRARIES}
+			pybind11::pybind11
             pybind11::embed
         )
 

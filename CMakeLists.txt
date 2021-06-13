@@ -131,7 +131,7 @@ find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
 SET(LUMASS_VERSION_MINOR 9)
 SET(LUMASS_VERSION_REVISION 65)
-SET(LUMASS_VERSION_SUFFIX "-rc")
+SET(LUMASS_VERSION_SUFFIX "-rc3")
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
@@ -334,7 +334,7 @@ if (WIN32)
                 #
                 #message(STATUS "netCDF-c version: ${NetCDFVersion}")
 
-                if (NOT NETCDF_INCLUDE_DIR OR NOT NETCDF_LIB_DIR)
+        if (NOT NETCDF_INCLUDE_DIR OR NOT NETCDF_LIB_DIR)
                 set(NETCDF_INCLUDE_DIR "C:/src/netcdf-c-4.7.3/include" CACHE PATH "Please check the netCDF include DIR!")
                 set(NETCDF_LIB_DIR "C:/opt/netcdf-c-4.7.3/liblib/Release" CACHE PATH "Please check the netCDF lib DIR!")
                 set(NETCDF_LIBRARY "C:/opt/netcdf-c-4.7.3/liblib/Release/netcdf.lib" CACHE PATH "Please check the path to the netCDF library!")
@@ -370,35 +370,52 @@ OPTION(PYTHONSUPPORT "Build LUMASS with Python support?" OFF )
 
 if (PYTHONSUPPORT)
 
-    find_path(pybind11_DIR pybind11Config.cmake
-        HINTS
-            /opt/pybind11-bin/install/share/cmake/pybind11
-        PATHS
-            /opt/pybind11-bin/install
-            /usr/lib/x86_64-linux/cmake
-            /usr/local/lib
-            /usr
-            /usr/local
-        PATH_SUFFIXES
-            share/cmake/pybind11
-            cmake/pybind11
-            pybind11
-    )
-    message(STATUS "pybind11_DIR=${pybind11_DIR}")
+	find_package(Python3 COMPONENTS Interpreter Development NumPy REQUIRED)
+	
+	message(STATUS "Python3_FOUND: ${Python3_FOUND}")
+	message(STATUS "Python3_Interpreter_FOUND: ${Python3_Interpreter_FOUND}")
+	message(STATUS "Python3_Interpreter_ID: ${Python3_Interpreter_ID}")
+	message(STATUS "Python3_Executable: ${Python3_EXECUTABLE}")
+	message(STATUS "Python3_Compiler_FOUND: ${Python3_Compiler_FOUND}")
+	message(STATUS "Python3_Development_FOUND: ${Python3_Development_FOUND}")
+	message(STATUS "Python3_Development.Embed_FOUND: ${Python3_Development.Embed_FOUND}")
+	message(STATUS "Python3_INCLUDE_DIRS: ${Python3_INCLUDE_DIRS}")
+	message(STATUS "Python3_LIBRARY_DIRS: ${Python3_LIBRARY_DIRS}")
+	message(STATUS "Python3_LIBRARIES: ${Python3_LIBRARIES}")
+	message(STATUS "Python3 Version: ${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}.${Python3_VERSION_PATCH}")
+	message(STATUS "Python3 Numpy Version: ${Python3_NumPy_VERSION}")
 
-    if (pybind11_DIR-NOTFOUND)
-        set(pybind11_DIR "NOT_FOUND" CACHE PATH "Please specify the path to pybind11Config.cmake !")
-        message(FATAL_ERROR "Please specify the path to pybind11Config.cmake")
-    endif() #else ()
-
-        include(${pybind11_DIR}/pybind11Config.cmake)
-        include(${pybind11_DIR}/pybind11ConfigVersion.cmake)
-        SET(LUMASS_pybind11_version "${PACKAGE_VERSION}")
-        message(STATUS "pybind11_VERSION=${PACKAGE_VERSION}")
-        message(STATUS "pybind11_INCLUDE_DIR=${pybind11_INCLUDE_DIR}")
-        message(STATUS "pybind11_INCLUDE_DIRS=${pybind11_INCLUDE_DIRS}")
-        message(STATUS "pybind11_LIBRARIES=${pybind11_LIBRARIES}")
-        message(STATUS "pybind11_DEFINITIONS=${pybind11_DEFINITIONS}")
+    find_package(pybind11 CONFIG REQUIRED)
+	
+	##find_path(pybind11_DIR pybind11Config.cmake
+    ##    HINTS
+    ##        /opt/pybind11-bin/install/share/cmake/pybind11
+    ##    PATHS
+    ##        /opt/pybind11-bin/install
+    ##        /usr/lib/x86_64-linux/cmake
+    ##        /usr/local/lib
+    ##        /usr
+    ##        /usr/local
+    ##    PATH_SUFFIXES
+    ##        share/cmake/pybind11
+    ##        cmake/pybind11
+    ##        pybind11
+    ##)
+    ##message(STATUS "pybind11_DIR=${pybind11_DIR}")
+	##
+    ##if (pybind11_DIR-NOTFOUND)
+    ##    set(pybind11_DIR "NOT_FOUND" CACHE PATH "Please specify the path to pybind11Config.cmake !")
+    ##    message(FATAL_ERROR "Please specify the path to pybind11Config.cmake")
+    ##endif() #else ()
+	##
+    ##    include(${pybind11_DIR}/pybind11Config.cmake)
+    ##    include(${pybind11_DIR}/pybind11ConfigVersion.cmake)
+    ##    SET(LUMASS_pybind11_version "${PACKAGE_VERSION}")
+    ##    message(STATUS "pybind11_VERSION=${PACKAGE_VERSION}")
+    ##    message(STATUS "pybind11_INCLUDE_DIR=${pybind11_INCLUDE_DIR}")
+    ##    message(STATUS "pybind11_INCLUDE_DIRS=${pybind11_INCLUDE_DIRS}")
+    ##    message(STATUS "pybind11_LIBRARIES=${pybind11_LIBRARIES}")
+    ##    message(STATUS "pybind11_DEFINITIONS=${pybind11_DEFINITIONS}")
 endif(PYTHONSUPPORT)
 
 

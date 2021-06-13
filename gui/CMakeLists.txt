@@ -346,7 +346,7 @@ set(LUMASS_LINKLIBS
 
 if(PYTHONSUPPORT)
     add_definitions(-DLUMASS_PYTHON)
-    list(APPEND LUMASS_LINK_LIBS pybind11::embed)
+    list(APPEND LUMASS_LINK_LIBS ${Python3_LIBRARIES} pybind11::embed)
 endif()
 
 set(LUMASS_DEPLIBS

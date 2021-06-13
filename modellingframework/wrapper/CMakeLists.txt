@@ -119,7 +119,9 @@ foreach( wrapper ${MFW_WRAPPER_NAMES} )
             if (PYTHONSUPPORT)
                 add_definitions(-DLUMASS_PYTHON)
                 list(APPEND LINKLIBS
-                        pybind11::embed pybind11::pybind11
+                        ${Python3_LIBRARIES} 
+						pybind11::embed 
+						pybind11::pybind11
                         LumassPythonBMI
                      )
             endif()

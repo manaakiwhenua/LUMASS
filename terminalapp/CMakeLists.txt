@@ -105,7 +105,9 @@ set(ENGINE_LINKLIBS Qt5Core Qt5Sql Qt5Xml
 
 if(PYTHONSUPPORT)
     add_definitions(-DLUMASS_PYTHON)
-    list(APPEND ENGINE_LINKLIBS pybind11::embed pybind11::pybind11)
+    list(APPEND ENGINE_LINKLIBS ${Python3_LIBRARIES} 
+	pybind11::embed 
+	pybind11::pybind11)
 endif()
 
 

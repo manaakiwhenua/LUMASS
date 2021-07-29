@@ -865,6 +865,11 @@ void NetCDFIO::BuildOverviews(const std::string &method)
         return;
     }
 
+    if (!m_ImgInfoHasBeenRead)
+    {
+        this->ReadImageInformation();
+    }
+
     // =======================================================================
     //              DETERMINE PYRAMID SCHEDULE
     // ========================================================================
@@ -1170,31 +1175,57 @@ void NetCDFIO::InternalWriteImageInformation()
                     }
                 }
 
-                NcDim aDim;
-                if (dsize > 1)
+                NcDim aDim = grp.getDim(dname.str());
+                if (aDim.isNull())
                 {
-                    // add fixed dimension
-                    aDim = grp.addDim(dname.str(), dsize);
+                    if (dsize > 1)
+                    {
+                        // add fixed dimension
+                        aDim = grp.addDim(dname.str(), dsize);
+                    }
+                    else
+                    {
+                        // add unlimited dimension
+                        aDim = grp.addDim(dname.str());
+                    }
                 }
                 else
                 {
-                    // add unlimited dimension
-                    aDim = grp.addDim(dname.str());
-                }
+                    if (    !aDim.isUnlimited()
+                        &&  dsize != aDim.getSize()
+                       )
+                    {
+                        NMProcErr(<< m_NcVarName << ": " << dname.str()
+                                  << "-axis size incompatible with existing " << dname.str()
+                                  << "-axis!");
+                        return;
+                    }
+                 }
 
                 dims.push_back(aDim);
-                NcVar dimVar = grp.addVar(dname.str(), NcType::nc_DOUBLE, aDim);
-                dimVar.setCompression(true, true, m_CompressionLevel);
 
-                std::vector<double> dimVals(dsize, 0.0);
-                for (unsigned int dimIdx=0; dimIdx < dsize; ++dimIdx)
+
+                NcVar dimVar = grp.getVar(dname.str());
+                if (dimVar.isNull())
                 {
-                    dimVals[dimIdx] = this->m_Origin[d] + dimIdx * this->m_Spacing[d];
-                }
+                    dimVar = grp.addVar(dname.str(), NcType::nc_DOUBLE, aDim);
+                    dimVar.setCompression(true, true, m_CompressionLevel);
 
-                std::vector<size_t> startp = {0};
-                std::vector<size_t> countp = {dsize};
-                dimVar.putVar(startp, countp, &dimVals[0]);
+                    std::vector<double> dimVals(dsize, 0.0);
+                    for (unsigned int dimIdx=0; dimIdx < dsize; ++dimIdx)
+                    {
+                        dimVals[dimIdx] = this->m_Origin[d] + dimIdx * this->m_Spacing[d];
+                    }
+
+                    std::vector<size_t> startp = {0};
+                    std::vector<size_t> countp = {dsize};
+                    dimVar.putVar(startp, countp, &dimVals[0]);
+                }
+                else
+                {
+                    NMProcWarn(<< m_NcVarName << " is re-using dimension variable '"
+                               << dname.str() << "'!");
+                }
              }
 
             // now add the actual variable we want to write
@@ -1207,6 +1238,7 @@ void NetCDFIO::InternalWriteImageInformation()
         // ========================================================
         else
         {
+            itk::ImageIORegion ioReg = this->GetIORegion();
             std::vector<NcDim> dims = valVar.getDims();
             for (int d=0; d < dims.size(); ++d)
             {
@@ -1214,25 +1246,44 @@ void NetCDFIO::InternalWriteImageInformation()
                 {
                     // maps the netcdf dimension order : [..., [d4,]] z, y, x
                     // to the itk/otb dimension order:   x, y, z [, d4 [, ...]]
-                    const int otbDimIdx = ndims - d - 1;
+                    const size_t otbDimIdx = ndims - d - 1;
 
-                    // get last record's coordinate
-                    NcVar dvar = grp.getVar(dims[d].getName());
+                    // determine the number of new dimension ids (and
+                    // coordinate values) that need to be added for the
+                    // chunk of data to be added to this variable
+                    std::vector<size_t> ioidx = {ioReg.GetIndex(otbDimIdx)};
+                    std::vector<size_t> iolen = {ioReg.GetSize(otbDimIdx)};
                     std::vector<size_t> lastRecIdx = {dims[d].getSize()-1};
-                    std::vector<size_t> lastNumRec = {1};
-                    //ToDo: cater for any coordinated type!
-                    std::vector<double> lastRec    = {0};
-                    dvar.getVar(lastRecIdx, lastNumRec, &lastRec[0]);
 
-                    // add new records' coordinates
-                    std::vector<size_t> startp = {dims[d].getSize()};
-                    std::vector<size_t> cnt    = {this->GetDimensions(otbDimIdx)};
-                    std::vector<double> dvals(this->GetDimensions(otbDimIdx), 0.0);
-                    for (unsigned int dIdx=0; dIdx < this->GetDimensions(otbDimIdx); ++dIdx)
+                    size_t numNewIds = 0;
+                    if (ioidx[0]+iolen[0]-1 > lastRecIdx[0])
                     {
-                        dvals[dIdx] = lastRec[0] + (dIdx + 1) * this->m_Spacing[otbDimIdx];
+                        numNewIds = (ioidx[0]+iolen[0]-1) - lastRecIdx[0];
                     }
-                    dvar.putVar(startp, cnt, &dvals[0]);
+
+                    if (numNewIds > 0)
+                    {
+                        // fetch the coordinate value corresponsing with the
+                        // start point of the incoming chunk of data
+                        std::vector<size_t> lastNumRec = {1};
+                        std::vector<double> lastRec    = {0};
+
+                        NcVar dvar = grp.getVar(dims[d].getName());
+                        dvar.getVar(lastRecIdx, lastNumRec, &lastRec[0]);
+
+                        // add new records' coordinates
+                        //std::vector<size_t> startp = {ioReg.GetIndex(otbDimIdx)};
+                        //std::vector<size_t> cnt    = {ioReg.GetSize(otbDimIdx)};
+                        //std::vector<double> dvals(ioReg.GetSize(otbDimIdx), 0.0);
+                        //std::vector<size_t> startp = {dims[d].getSize()};
+                        //std::vector<size_t> cnt    = {this->GetDimensions(otbDimIdx)};
+                        std::vector<double> dvals(numNewIds, 0.0);
+                        for (unsigned int dIdx=0; dIdx < numNewIds; ++dIdx)
+                        {
+                            dvals[dIdx] = lastRec[0] + (dIdx + 1) * this->m_Spacing[otbDimIdx];
+                        }
+                        dvar.putVar(ioidx, iolen, &dvals[0]);
+                    }
                 }
             }
         }
@@ -1312,8 +1363,6 @@ void NetCDFIO::Write(const void* buffer)
                        << m_NcVarName << "'!");
             return;
         }
-
-        int ncVarId = valVar.getId();
 
         const NcType::ncType vtype = this->getNetCDFComponentType(
             this->GetComponentType());

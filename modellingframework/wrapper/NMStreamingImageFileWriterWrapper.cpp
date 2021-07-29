@@ -25,12 +25,19 @@
 
 #include "NMMacros.h"
 #include "NMStreamingImageFileWriterWrapper.h"
+
+#include <QFileInfo>
+#include <QDir>
+#include <QFile>
+
 #include "otbImage.h"
 #include "otbVectorImage.h"
 #include "itkSmartPointer.h"
 #include "itkProcessObject.h"
 #include "otbAttributeTable.h"
 #include "otbStreamingRATImageFileWriter.h"
+#include "NMModelController.h"
+#include "NMMfwException.h"
 
 #ifdef BUILD_RASSUPPORT
     #include "RasdamanConnector.hh"
@@ -711,6 +718,44 @@ NMStreamingImageFileWriterWrapper
     }
 }
 
+bool
+NMStreamingImageFileWriterWrapper
+::isOutputFileNameWriteable(const QString &fn)
+{
+    bool ret = false;
+
+    // need to 'cut off any special
+    // filename add-ons, e.g. as for
+    // netcdf variables;
+    //int didx = fn.lastIndexOf(QStringLiteral("."));
+    int cidx = fn.lastIndexOf(QStringLiteral(":"));
+
+    QString justFilePath = fn;
+    if (cidx > 5)// && cidx > didx)
+    {
+        const int len = fn.length();
+        justFilePath = fn.left(len-(len-cidx));
+    }
+
+    // create a test file
+    QFile file(justFilePath);
+    bool bexists = file.exists();
+
+    if (file.open(QIODevice::ReadWrite))
+    {
+        ret = true;
+
+        // clean up again if file did exist
+        if (!bexists)
+        {
+            file.remove();
+        }
+    }
+
+    return ret;
+}
+
+
 void
 NMStreamingImageFileWriterWrapper
 ::linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
@@ -723,6 +768,8 @@ NMStreamingImageFileWriterWrapper
 //	{
 //		this->setInternalFileName(this->mFileNames.at(step));
 //	}
+
+    std::stringstream errtxt;
 
     QString fnProvNAttr;
     QString tabProvNAttr;
@@ -741,6 +788,17 @@ NMStreamingImageFileWriterWrapper
         QVariant param = this->getParameter("FileNames");
         if (param.isValid())
         {
+            if (!this->isOutputFileNameWriteable(param.toString()))
+            {
+                errtxt.str("");
+                errtxt << "The filename '" << param.toString().toStdString()
+                       << "' is not writable!";
+                NMErr("NMStreamingImageFileWriterWrapper", << errtxt.str());
+                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                e.setDescription(errtxt.str());
+                throw e;
+            }
+
             this->setInternalFileNames(QStringList(param.toString()));
             fnProvNAttr = QString("nm:FileNames=\"%1\"")
                                   .arg(param.toString());
@@ -756,13 +814,38 @@ NMStreamingImageFileWriterWrapper
     }
     else
     {
-        this->setInternalFileNames(this->mFileNames);
-        fnProvNAttr = QString("nm:FileNames=\"%1\"")
-                              .arg(this->mFileNames.join(" "));
+        QStringList procFNs;
+        foreach(const QString& fn, this->mFileNames)
+        {
+            QString pstr = this->mController->processStringParameter(this, fn);
 
-        this->setInternalInputTables(this->mInputTables, repo);
+            if (!this->isOutputFileNameWriteable(pstr))
+            {
+                errtxt.str("");
+                errtxt << "The filename '" << pstr.toStdString()
+                           << "' is not writable!";
+                NMErr("NMStreamingImageFileWriterWrapper", << errtxt.str());
+                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                e.setDescription(errtxt.str());
+                throw e;
+            }
+
+
+            procFNs << pstr;
+        }
+        this->setInternalFileNames(procFNs);
+        fnProvNAttr = QString("nm:FileNames=\"%1\"")
+                              .arg(procFNs.join(" "));
+
+        QStringList procTabNs;
+        foreach (const QString& tn, this->mInputTables)
+        {
+            QString tstr = this->mController->processStringParameter(this, tn);
+            procTabNs << tstr;
+        }
+        this->setInternalInputTables(procTabNs, repo);
         tabProvNAttr = QString("nm:TableNames=\"%1\"")
-                              .arg(this->mInputTables.join(" "));
+                              .arg(procTabNs.join(" "));
     }
 
     this->addRunTimeParaProvN(fnProvNAttr);

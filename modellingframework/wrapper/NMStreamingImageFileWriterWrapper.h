@@ -148,6 +148,8 @@ protected:
 
     //void UpdateProgressInfo(itk::Object* obj, const itk::EventObject& event);
 
+    bool isOutputFileNameWriteable(const QString& fn);
+
     void setInternalFileNames(QStringList fileNames);
     void linkParameters(unsigned int step,
             const QMap<QString, NMModelComponent*>& repo);

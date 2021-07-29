@@ -106,8 +106,40 @@ BMIModelFilter<TInputImage, TOutputImage>
 {
     m_InputNames.clear();
     m_InputNames = inputNames;
+
     this->Modified();
 }
+
+template <class TInputImage, class TOutputImage>
+void
+BMIModelFilter<TInputImage, TOutputImage>
+::SetBMIModule(const std::shared_ptr<bmi::Bmi>& bmiModule)
+{
+    if (bmiModule.get() == nullptr)
+    {
+        NMProcErr(<< "bmi::Bmi module is NULL!");
+        return;
+    }
+
+    m_BMIModule = bmiModule;
+
+    // set the number of outputs produced by
+    // the configured BMI module
+    const int outitems = this->m_BMIModule->GetOutputItemCount();
+    if (outitems < 1 || outitems != this->m_BMIModule->GetOutputVarNames().size())
+    {
+        NMProcErr(<< "The number output items does not match the number of "
+                  << "output variables names!");
+    }
+
+    this->SetNumberOfIndexedOutputs(outitems);
+    for (int oid=1; oid < outitems; ++oid)
+    {
+        this->SetNthOutput(oid, this->MakeOutput(oid));
+    }
+    this->Modified();
+}
+
 
 template <class TInputImage, class TOutputImage>
 void
@@ -244,28 +276,51 @@ void BMIModelFilter<TInputImage, TOutputImage>
     std::vector<std::string> outNames = this->m_BMIModule->GetOutputVarNames();
     for (int out=0; out < outNames.size(); ++out)
     {
-        if (out < this->GetNumberOfOutputs())
+        // only set output buffers for those variables that are not inputs
+        // at the same time because have been set already in 'input loop' above
+        if (std::find(bmiInputNames.begin(), bmiInputNames.end(), outNames.at(out)) == bmiInputNames.end())
         {
-            OutputImageType* outImg = this->GetOutput(out);
-            OutputImageRegionType outReg = outImg->GetBufferedRegion();
-            const size_t outNumPixel = outReg.GetNumberOfPixels();
-            OutputImagePixelType* outbuf = outImg->GetBufferPointer();
-            const std::type_index outTypeInfo = typeid(OutputImagePixelType);
+            if (out < this->GetNumberOfOutputs())
+            {
+                OutputImageType* outImg = this->GetOutput(out);
+                OutputImageRegionType outReg = outImg->GetBufferedRegion();
+                const size_t outNumPixel = outReg.GetNumberOfPixels();
+                OutputImagePixelType* outbuf = outImg->GetBufferPointer();
+                const std::type_index outTypeInfo = typeid(OutputImagePixelType);
 
-            this->SetBMIValue(outNames.at(out), outTypeInfo, outNumPixel, static_cast<void*>(outbuf));
+                this->SetBMIValue(outNames.at(out), outTypeInfo, outNumPixel, static_cast<void*>(outbuf));
+            }
         }
     }
 }
 
+template <class TInputImage, class TOutputImage>
+void BMIModelFilter<TInputImage, TOutputImage>
+::AllocateOutputs()
+{
+    // double check whether variables are input and output at the same time,
+    // i.e. are going to be processed in-place (overwritten); those vars are
+    // don't have to be allocated again and are grafted onto  the output
+    // instead
+
+    std::vector<std::string> bmiInputNames = this->m_BMIModule->GetInputVarNames();
+    std::vector<std::string> outNames = this->m_BMIModule->GetOutputVarNames();
+    for (int i=0; i < outNames.size(); ++i)
+    {
+        auto it = std::find(bmiInputNames.begin(), bmiInputNames.end(), outNames.at(i));
+        if (it == bmiInputNames.end())
+        {
+            OutputImageType* outImg = this->GetOutput(i);
+            outImg->SetBufferedRegion(outImg->GetRequestedRegion());
+            outImg->Allocate();
+        }
+    }
+}
 
 template <class TInputImage, class TOutputImage>
 void BMIModelFilter<TInputImage, TOutputImage>
 ::GenerateData(void)
 {
-    // set the number of outputs produced by
-    // the configured BMI module
-    this->SetNumberOfIndexedOutputs(this->m_BMIModule->GetOutputItemCount());
-
     this->AllocateOutputs();
     if (this->m_IsThreadable)
     {
@@ -305,7 +360,6 @@ BMIModelFilter<TInputImage, TOutputImage>
 
     OutputImageType* out = this->GetOutput(0);
     OutputImageRegionType outputRegion = out->GetRequestedRegion();
-    OutputImageRegionType lpr = out->GetLargestPossibleRegion();
 
     // feed input data into the m_BMIModule
     this->ConnectData(outputRegion);
@@ -320,29 +374,18 @@ BMIModelFilter<TInputImage, TOutputImage>
     std::vector<std::string> outnames = this->m_BMIModule->GetOutputVarNames();
     for(int i=0; i < outnames.size(); ++i)
     {
+        out = this->GetOutput(i);
+        out->SetBufferedRegion(out->GetRequestedRegion());
+
         const int gid = this->m_BMIModule->GetVarGrid(outnames[i]);
         const int gsize = this->m_BMIModule->GetGridSize(gid);
-        OutputImagePixelType* bmibuf = static_cast<OutputImagePixelType*>(this->m_BMIModule->GetValuePtr(outnames[0]));
+        OutputImagePixelType* bmibuf = static_cast<OutputImagePixelType*>(this->m_BMIModule->GetValuePtr(outnames[i]));
 
         // graft the output data from the m_BMIModule onto the output image
         ImportContainerPointer pixCont = ImportContainerType::New();
         pixCont->SetImportPointer(bmibuf, static_cast<OutputImageSizeValueType>(gsize), false);
         out->SetPixelContainer(pixCont);
-
-        this->GraftNthOutput(i, out);
     }
-
-
-//    // update progress
-//    const unsigned long totalNumberOfPixel = lpr.GetNumberOfPixels();
-//    m_PixCount += outputRegion.GetNumberOfPixels();
-//    this->UpdateProgress(m_PixCount / (float) totalNumberOfPixel);
-
-//    if (m_PixCount >= totalNumberOfPixel)
-//    {
-//        m_PixCount = 0;
-//    }
-
 }
 
 template <class TInputImage, class TOutputImage>

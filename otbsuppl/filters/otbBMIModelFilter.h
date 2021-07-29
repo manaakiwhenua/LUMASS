@@ -83,10 +83,7 @@ public:
     itkSetMacro(IsThreadable, bool)
 
 
-    void SetBMIModule(const std::shared_ptr<bmi::Bmi>& bmiModule)
-    {m_BMIModule = bmiModule;}
-
-
+    void SetBMIModule(const std::shared_ptr<bmi::Bmi>& bmiModule);
     void SetInputNames(const std::vector<std::string>& inputNames);
 
     /*! In case the filter needs a larger input requested region than
@@ -112,6 +109,7 @@ protected:
 
     void ConnectData(const OutputImageRegionType & outputWorkRegion);
 
+    void AllocateOutputs();
     void ResetPipeline(void);
     void GenerateData(void);
     void BeforeThreadedGenerateData(void);

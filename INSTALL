@@ -1,184 +1,90 @@
-LUMASS COMPILATION GUIDE
-####################################################
+WINDOWS
+###################
 
-LUMASS is being developed and tested on (K)Ubuntu Linux. Therefore, the remainder
-of this installation guide refers to an Ubuntu 18.04.3 (LTS) 64 bit test system. 
-Please adjust the described steps accordingly to meet the requirements of your
-favourite Linux distribution. Feel free to share any adapted installation
-guides for other linux distributions or operating systems!
+1. Download the most recent LUMASS for Windows release
 
+   https://github.com/manaakiwhenua/LUMASS/releases
 
-Required Ubuntu packages to build LUMASS from source
-####################################################
+2. Extract the archive into an arbitrary folder on your
+   hard drive or usb stick.
 
-Enable the Ubuntu universe repository in you package manager. See 
-https://help.ubuntu.com/community/Repositories/Ubuntu for details. 
+3. To start the LUMASS desktop application, change into
+   the LUMASS folder (you've just extracted) and double
+   click the file `lumass.bat`.
 
-Install the below mentioned packages, including all its (automatically selected)
-dependencies, to prepare your system for building LUMASS from source.
+   To run the lumassengine on the conmmandline, use
+   `lumassengine.bat` and provide appropriate commandline
+   arguments:
 
-
-Build environment and packages
-====================================================
-
-	build-essential
-	cmake
-	cmake-curses-gui
+    Usage: lumassengine.bat --moso <settings file (*.los)> | --model
+    <LUMASS model file (*.lmx | *.yaml)> [--workspace <absolute
+    directory path for '$[LUMASS:Workspace]$'>] [--logfile <file
+    name>] [--logprov]
 
 
-Ubuntugis-unstable repository
-===================================================
-    
-    sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
-    sudo apt-get update    
-	
+LINUX
+###################
 
-LUMASS' dependencies
-====================================================
+LUMASS is provided as an AppImage (https://appimage.org/)
+based on Ubuntu 20.04. It ships with most of its
+dependencies. However, a number of low-level system
+libraries are not distributed. For Ubuntu 20.04 those
+libraries are:
 
-LUMASS relies on a number of other open source software libraries, which are
-required (except rasdaman/PostgreSQL) to successfully build LUMASS. 
+libc6 libcom-err2 libexpat1 libfontconfig libglib2.0-0
+libglx0 libgmp10 libgpg-error0 libopengl0 libp11-kit0
+libstdc++6 libx11-6 libxcb1 zlib1g
 
-Qt                  version >= 5.6; required modules: Qt5Widgets, Qt5Core, Qt5Gui,
-					Qt5Concurrent, Qt5Xml, Qt5Sql, Qt5Qml, Qt5X11Extras
-					
-					packages: 
-					libqt5widgets5, libqt5core5a, libqt5gui5, libqt5concurrent5,
-					libqt5xml5, libqt5sql5, libqt5sql5-sqlite, libqt5qml5, 
-					libqt5x11extras5, libqt5x11extras5-dev, qtbase5-private-dev,
-                    qtdeclarative5-dev, qttools5-dev-tools, qttools5-dev
-					
-					note: to install qttools5-dev do 
-					$ sudo apt-get install qttools5-dev-tools
-					$ sudo apt-get update
-					$ sudo apt-get install qttools5-dev
+If you encounter trouble running lumass, please make sure
+you've got the above mentioned libraries installed on your
+system. Note that the names of those libraries are likely
+to be different for other distributions.
 
-					
-GDAL                version >= 2; requires ubuntu-gis-unstable repository
-					
-					packages:
-                    libgdal20, libgdal-dev
-                    
-                    
-spatialite			packages:
-					libsqlite3-mod-spatialite
-                    
-                    
-Orfeo Toolbox (OTB) version >= 7; required modules: OTBCommon, OTBIOGDAL, 
-					OTBExtendedFilename, OTBCurlAdapters, OTBImageIO,
-					OTBImageBase, OTBStreaming 
+To 'install' LUMASS on your system, follow the steps below.
 
-					packages (<version>: e.g. 7.0-1):
-					libotb-dev (-> selects the *-<version> packages below and 
-					            more automatically)
+1. Install gdal and OpenGL using your package manager
 
-					libotbcommon-<version>, libotbextendedfilename-<version>,
-					libotbimagebase-<version>, libotbimageio-<version>, 
-					libotbstreaming-<version>, libotbcurladapters-<version>,
-					libotbiogdal-<version>					            
-					            
-					also need the following packages to satisfy all OTB
-					dependencies:
-					
-					otb-bin, otb-bin-qt, otb-bin-qgis, libtinyxml-dev
-				
-				
-YAML				packages: 
-                    libyaml-cpp-dev
-                
-                
-lp_solve			version >= 5.5; 
-                    
-					packages:
-					lp-solve
-					liblpsolve55-dev                    
-				
-				
-VTK dependencies    packages:
-                    libxt-dev
-				
-				
-VTK                 version >= 8.2; required modules: vtkCommonDataModel, 
-                    vtkCommonCore, vtkFiltersGeneral, vtkRenderingCore, 
-                    vtkRenderingAnnotation, vtkRenderingImage, vtkRenderingOpenGL2, vtkGUISupportQt, vtkImagingStatistics, vtkInteractionWidgets, vtkInteractionStyle, vtkRenderingFreeType, vtkIOCore, vtkIOInfovis, vtkIOSQL, vtkIOLegacy, vtkIOXML, vtkIOGDAL, vtkRenderingContextOpenGL2, vtkViewsCore, vtkViewsContext2D, vtkChartsCore
-                   
-                    
-                    $ cd /path/to/VTK-binary/dir
-                    $ cmake -DPREFIX_PATH:Path="%{Qt:QT_INSTALL_PREFIX}" -DModule_vtkCommonDataModel:BOOL=ON -DModule_vtkCommonCore:BOOL=ON -DModule_vtkFiltersGeneral:BOOL=ON -DModule_vtkRenderingCore:BOOL=ON -DModule_vtkRenderingAnnotation:BOOL=ON -DModule_vtkRenderingImage:BOOL=ON -DModule_vtkRenderingOpenGL2:BOOL=ON -DModule_vtkGUISupportQt:BOOL=ON -DModule_vtkImagingStatistics:BOOL=ON -DModule_vtkInteractionWidgets:BOOL=ON -DModule_vtkInteractionStyle:BOOL=ON -DModule_vtkRenderingFreeType:BOOL=ON -DModule_vtkIOCore:BOOL=ON -DModule_vtkIOInfovis:BOOL=ON -DModule_vtkIOSQL:BOOL=ON -DModule_vtkIOLegacy:BOOL=ON -DModule_vtkIOXML:BOOL=ON -DModule_vtkIOGDAL:BOOL=ON -DModule_vtkRenderingContextOpenGL2:BOOL=ON -DModule_vtkViewsCore:BOOL=ON -DModule_vtkViewsContext2D:BOOL=ON -DModule_vtkChartsCore:BOOL=ON -DX11_Xt_LIB:Path="/usr/lib/x86_64-linux-gnu/libXt.so.6" -DX11_Xt_INCLUDE_PATH:Path="/usr/include" /home/alex/src/VTK-8.2.0
-                      
-                    $ make -j 4
-                    
-                    note: -j 4 specifies the number of cores available on your machine to speed up the build 
-                    process
-                  
-                    
-rasdaman            note: this LUMASS version has not been tested with recent 
-                    rasdaman versions and is likely to not work;
-                    this package is optional and only useful, if you intend
-                    to use the LUMASS modelling framework; if you're only 
-                    interested in spatial optimisation, you don't need this 
-                    package; see rasdaman.org for download, compilation and
-                    installation details as well as for rasdaman features
-                    
-PostgreSQL          only required when rasdaman is going to be used with the
-                    modelling framework 
-                    
-		
+   Ubuntu 20.04
+   ============
+   $ sudo apt-get install libgdal26 libopengl0
 
-Building LUMASS from source
-====================================================
+2. Download the most recent lumass AppImage to a
+   directory you've got write permissions for.
 
-1. create a directory for the LUMASS binary files 
+   https://github.com/manaakiwhenua/LUMASS/releases
 
-   $ mkdir lumass-bin
-   $ cd lumass-bin
+3. To 'install' lumass, just make the AppImage executable
 
-2. run ccmake to configure the software and generate the Makefile
+   $ chmod +x ./lumass-0.9.65-rc4-x86_64.AppImage
 
-   $ ccmake /path/to/lumass/source/directory
+4. Run lumass by executing the AppImage. To run models
+   with the lumassengine, just provide appropriate
+   commandline arguments
 
-   (inside the ccmake UI)
+   lumass GUI
+   ============
 
-   - Press [c] to configure
-   - adjust any path entries if required
-   - set RASSUPPORT to OFF, if you don't want to build LUMASS with rasdaman 
-     support) 
-   - Press [c] to configure (again)
-   - Press [g] to generate the Makefile and exit ccmake
+   Just execute or double click the AppImage
+   to run the lumass GUI:
 
-3. call make (you may want to use multiple cores during the build by specifying  
-   the -j options)  
+     $ ./lumass-0.9.65-rc4-x86_64.AppImage
 
-   $ make -j 4 			# ← uses 4 cores
+   lumassengine
+   ==============
 
-4. you're good to go now!
+   To run lumass on the commandline, just provide appropriate
+   commandline paramters to the AppImage. Just pass '--model'
+   or '--moso' to get an overview of the commandline arguments
+   lumassengine accepts:
 
-   Assuming you're still in the lumass-bin directory created in step 1, you 
-   should now be able to start LUMASS with 
-   
-   $ ./bin/lumass
+     $ ./lumass-0.9.65-rc4-x86_64.AppImage --model
+     ERROR - LUMASS_engine::isFileAccessible, l. 762: No settings
+     file has been specified!
 
+     LUMASS (lumassengine) 0.9.65
 
-Further highly recommended packages 
-====================================================
+     Usage: lumassengine --moso <settings file (*.los)> | --model
+     <LUMASS model file (*.lmx | *.yaml)> [--workspace <absolute
+     directory path for '$[LUMASS:Workspace]$'>] [--logfile <file
+     name>] [--logprov]
 
-QGIS					powerful and user friendly open source GIS with many
-						extensions
-
-GDAL utility programs	very useful set of utility programs for managing 2D 
-						raster and vector files of many different formats
-
-						package: 
-						gdal-bin
-						
-KEALib					advanced raster file format, featuring raster attribute
-						tables, compression, pyramid layers, multi band support;
-						please consult http://kealib.org/ for more information
-
-						
-LUMASS Support  						
-====================================================
-
-Feel free to consult the lumass-users group (https://groups.google.com/forum/#!forum/lumass-users)
-for help if you encounter any issues with the installation process.
-   

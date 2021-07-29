@@ -20,6 +20,8 @@
  *
  *  Created on: 22/04/2012
  *      Author: alex
+ *
+ *  last updated: 2021-07-21
  */
 
 #include "NMItkDataObjectWrapper.h"
@@ -31,6 +33,7 @@
 #include "otbImage.h"
 #include "otbVectorImage.h"
 #include "itkRGBPixel.h"
+#include "nmDataBufferFilter.h"
 #include "NMMacros.h"
 #include "nmtypeinfo.h"
 
@@ -44,16 +47,93 @@ public:
     typedef typename RGBImgType::PointType              RGBImgPointType;
     typedef typename RGBImgType::SpacingType            RGBImgSpacingType;
 
+    using RGBImgBufferFilterType    = typename otb::DataBufferFilter<RGBImgType>;//, RGBImgType>;
+    using RGBImgBufferFilterPointer = typename RGBImgBufferFilterType::Pointer;
+
     typedef otb::Image<PixelType, ImageDimension> ImgType;
     typedef typename ImgType::RegionType ImgRegType;
     typedef typename ImgType::PointType ImgPointType;
     typedef typename ImgType::SpacingType ImgSpacingType;
+
+    using ImgBufferFilterType    = typename otb::DataBufferFilter<ImgType>;//, ImgType>;
+    using ImgBufferFilterPointer = typename ImgBufferFilterType::Pointer;
 
     typedef otb::VectorImage<PixelType, ImageDimension> VecType;
     typedef typename VecType::RegionType VecRegType;
     typedef typename VecType::PointType VecPointType;
     typedef typename VecType::SpacingType VecSpacingType;
 
+    using VecImgBufferFilterType    = typename otb::DataBufferFilter<VecType>;//, VecType>;
+    using VecImgBufferFilterPointer = typename VecImgBufferFilterType::Pointer;
+
+
+    static void createInstance(itk::ProcessObject::Pointer& otbFilter,
+                               unsigned int numBands, bool rgbMode)
+    {
+        if (numBands == 1)
+        {
+            ImgBufferFilterPointer f = ImgBufferFilterType::New();
+            otbFilter = f;
+        }
+        else if (numBands == 3 && rgbMode)
+        {
+            RGBImgBufferFilterPointer f = RGBImgBufferFilterType::New();
+            otbFilter = f;
+        }
+        else
+        {
+            VecImgBufferFilterPointer f = VecImgBufferFilterType::New();
+            otbFilter = f;
+        }
+    }
+
+    static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
+                    unsigned int numBands, unsigned int idx, bool rgbMode, itk::DataObject* dataObj)
+    {
+        if (numBands == 1)
+        {
+            ImgBufferFilterPointer f = dynamic_cast<ImgBufferFilterType*>(otbFilter.GetPointer());
+            f->SetNthInput(idx, dataObj);
+        }
+        else if (numBands == 3 && rgbMode)
+        {
+            RGBImgBufferFilterPointer f = dynamic_cast<RGBImgBufferFilterType*>(
+                                            otbFilter.GetPointer());
+            f->SetNthInput(idx, dataObj);
+        }
+        else
+        {
+            VecImgBufferFilterPointer f = dynamic_cast<VecImgBufferFilterType*>(
+                                            otbFilter.GetPointer());
+            f->SetNthInput(idx, dataObj);
+        }
+    }
+
+    static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
+                    unsigned int numBands, unsigned int idx, bool rgbMode)
+    {
+        itk::DataObject* dbj = nullptr;
+
+        if (numBands == 1)
+        {
+            ImgBufferFilterPointer f = dynamic_cast<ImgBufferFilterType*>(otbFilter.GetPointer());
+            return dynamic_cast<ImgType*>(f->GetOutput(idx));
+        }
+        else if (numBands == 3 && rgbMode)
+        {
+            RGBImgBufferFilterPointer f = dynamic_cast<RGBImgBufferFilterType*>(
+                                            otbFilter.GetPointer());
+            return dynamic_cast<RGBImgType*>(f->GetOutput(idx));
+        }
+        else
+        {
+            VecImgBufferFilterPointer f = dynamic_cast<VecImgBufferFilterType*>(
+                                            otbFilter.GetPointer());
+            return dynamic_cast<VecType*>(f->GetOutput(idx));
+        }
+
+        return dbj;
+    }
 
     static void getSignedSpacing(itk::DataObject::Pointer& dataObj,
                            unsigned int numBands, bool rgbMode, std::array<double, 3>& spacing)
@@ -195,6 +275,63 @@ public:
     }
 };
 
+#define DWCreateBufferFilterInstance( comptype ) \
+{ \
+    switch(mNumDimensions) \
+    { \
+    case 1: \
+        NMItkDataObjectWrapper_Internal<comptype, 1>::createInstance( \
+            mItkProcess, mNumBands, mIsRGBImage); \
+        break; \
+    case 2: \
+        NMItkDataObjectWrapper_Internal<comptype, 2>::createInstance( \
+            mItkProcess, mNumBands, mIsRGBImage); \
+        break; \
+    case 3: \
+        NMItkDataObjectWrapper_Internal<comptype, 3>::createInstance( \
+            mItkProcess, mNumBands, mIsRGBImage); \
+        break; \
+    }\
+}
+
+#define DWSetNthBufferFilterInput( comptype ) \
+{ \
+    switch(mNumDimensions) \
+    { \
+    case 1: \
+        NMItkDataObjectWrapper_Internal<comptype, 1>::setNthInput( \
+            mItkProcess, mNumBands, idx, mIsRGBImage, dataObj); \
+        break; \
+    case 2: \
+        NMItkDataObjectWrapper_Internal<comptype, 2>::setNthInput( \
+            mItkProcess, mNumBands, idx, mIsRGBImage, dataObj); \
+        break; \
+    case 3: \
+        NMItkDataObjectWrapper_Internal<comptype, 3>::setNthInput( \
+            mItkProcess, mNumBands, idx, mIsRGBImage, dataObj); \
+        break; \
+    }\
+}
+
+#define DWGetBufferFilterOutput( comptype ) \
+{ \
+    switch(mNumDimensions) \
+    { \
+    case 1: \
+        bufout = NMItkDataObjectWrapper_Internal<comptype, 1>::getOutput( \
+            mItkProcess, mNumBands, idx, mIsRGBImage); \
+        break; \
+    case 2: \
+        bufout = NMItkDataObjectWrapper_Internal<comptype, 2>::getOutput( \
+            mItkProcess, mNumBands, idx, mIsRGBImage); \
+        break; \
+    case 3: \
+        bufout = NMItkDataObjectWrapper_Internal<comptype, 3>::getOutput( \
+            mItkProcess, mNumBands, idx, mIsRGBImage); \
+        break; \
+    }\
+}
+
 #define DWGetSignedSpacing( comptype ) \
 { \
     switch(mNumDimensions) \
@@ -254,45 +391,54 @@ public:
 
 NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject* parent)//, itk::DataObject* obj)
 {
-    //this->setParent(parent);
-    this->mDataObject = 0;
+    this->mDataObject = nullptr;
     this->mNumBands = 0;
     this->mNumDimensions = 1;
     this->mIsRGBImage = false;
+    this->mbIsStreaming = false;
+    this->mItkProcess = nullptr;
 }
 
 NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject* parent, QString str)
 {
-    //this->setParent(parent);
-    this->mDataObject = 0;
+    this->mDataObject = nullptr;
     this->mStringObject = str;
     this->mNumBands = 0;
     this->mNumDimensions = 0;
     this->mIsRGBImage = false;
+    this->mbIsStreaming = false;
+    this->mItkProcess = nullptr;
 }
 
 NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject *parent, itk::DataObject* obj,
         otb::ImageIOBase::IOComponentType type, unsigned int numDims, unsigned int numBands)
 {
-    //this->setParent(parent);
     this->mDataObject = obj;
     this->setItkComponentType(type);
     this->setNumDimensions(numDims);
     this->setNumBands(numBands);
     this->mIsRGBImage = false;
+    this->mbIsStreaming = false;
+    this->mItkProcess = nullptr;
 }
 
 NMItkDataObjectWrapper::NMItkDataObjectWrapper(
         const NMItkDataObjectWrapper& dataObjectWrapper)
 {
     NMItkDataObjectWrapper* w = const_cast<NMItkDataObjectWrapper*>(&dataObjectWrapper);
-    //this->setParent(w->parent());
     this->mDataObject = w->getDataObject();
     this->mOTBTab = w->getOTBTab();
     this->mNMComponentType = w->getNMComponentType();
     this->mNumDimensions = w->getNumDimensions();
     this->mNumBands = w->getNumBands();
     this->mIsRGBImage = w->getIsRGBImage();
+    this->mbIsStreaming = w->getIsStreaming();
+    this->mItkProcess = nullptr;
+
+    if (mbIsStreaming)
+    {
+        this->setupBufferFilter();
+    }
 }
 
 NMItkDataObjectWrapper::~NMItkDataObjectWrapper()
@@ -301,7 +447,6 @@ NMItkDataObjectWrapper::~NMItkDataObjectWrapper()
 
 NMItkDataObjectWrapper& NMItkDataObjectWrapper::operator=(const NMItkDataObjectWrapper& dw)
 {
-    //this->setParent(dw.parent());
     NMItkDataObjectWrapper* w = const_cast<NMItkDataObjectWrapper*>(&dw);
     this->mDataObject = w->getDataObject();
     this->mOTBTab = w->getOTBTab();
@@ -309,8 +454,106 @@ NMItkDataObjectWrapper& NMItkDataObjectWrapper::operator=(const NMItkDataObjectW
     this->mNumDimensions = w->getNumDimensions();
     this->mNumBands = w->getNumBands();
     this->mIsRGBImage = w->getIsRGBImage();
+    this->mbIsStreaming = w->getIsStreaming();
+    this->setupBufferFilter();
+
+    if (mbIsStreaming)
+    {
+        this->setupBufferFilter();
+    }
 
     return *this;
+}
+
+void
+NMItkDataObjectWrapper::setIsStreaming(bool stream)
+{
+    this->mbIsStreaming = stream;
+    if (this->mbIsStreaming)
+    {
+        this->setupBufferFilter();
+    }
+}
+
+void
+NMItkDataObjectWrapper::setupBufferFilter()
+{
+    if (mDataObject.IsNotNull())
+    {
+        this->createBufferFilterInstance();
+        this->setBufferFilterInput();
+        this->mDataObject = this->getBufferFilterOutput();
+    }
+}
+
+void
+NMItkDataObjectWrapper::createBufferFilterInstance()
+{
+    if (mDataObject.IsNull())
+    {
+        NMErr("NMItkDataObjectWrapper::createBufferFilterInstance()",
+               << "itk::DataObject is NULL");
+        return;
+    }
+
+    switch(this->getItkComponentType())
+    {
+        LocalMacroPerSingleType( DWCreateBufferFilterInstance )
+        default:
+            break;
+    }
+}
+
+void
+NMItkDataObjectWrapper::setBufferFilterInput()
+{
+    if (mDataObject.IsNull())
+    {
+        NMErr("NMItkDataObjectWrapper::setBufferFilterInput()",
+               << "itk::DataObject is NULL");
+        return;
+    }
+
+    itk::DataObject* dataObj = mDataObject.GetPointer();
+    unsigned int idx = 0;
+
+    switch(this->getItkComponentType())
+    {
+        LocalMacroPerSingleType( DWSetNthBufferFilterInput )
+        default:
+            break;
+    }
+}
+
+itk::DataObject*
+NMItkDataObjectWrapper::getBufferFilterOutput()
+{
+    itk::DataObject* dbj = nullptr;
+
+    if (mDataObject.IsNull())
+    {
+        NMErr("NMItkDataObjectWrapper::getBufferFilterOutput()",
+               << "itk::DataObject is NULL");
+        return dbj;
+    }
+
+    itk::DataObject* bufout = nullptr;
+    unsigned int idx = 0;
+
+    switch(this->getItkComponentType())
+    {
+        LocalMacroPerSingleType( DWGetBufferFilterOutput )
+        default:
+            break;
+    }
+
+    return bufout;
+}
+
+itk::DataObject*
+NMItkDataObjectWrapper::getDataObject()
+{
+    return mDataObject;
 }
 
 void
@@ -323,7 +566,7 @@ NMItkDataObjectWrapper::setImageRegion(NMRegionType regType, void *regObj)
         return;
     }
 
-    switch (this->mNMComponentType)
+    switch (this->getItkComponentType())
     {
         LocalMacroPerSingleType( DWSetRegion )
         default:
@@ -341,7 +584,7 @@ NMItkDataObjectWrapper::setImageOrigin(const double* origin)
         return;
     }
 
-    switch (this->mNMComponentType)
+    switch (this->getItkComponentType())
     {
         LocalMacroPerSingleType( DWSetOrigin )
         default:

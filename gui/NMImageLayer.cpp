@@ -1380,23 +1380,24 @@ NMImageLayer::setFileName(QString filename)
                                       QString::fromLatin1("Do you want to build image overviews?"));
         emit layerProcessingStart();
 
-        QStringList restypes;
-        restypes << QStringLiteral("NEAREST")
-                 << QStringLiteral("AVERAGE") << QStringLiteral("MODE");
+        //QStringList restypes;
+        //restypes << QStringLiteral("NEAREST")
+        //         << QStringLiteral("AVERAGE") << QStringLiteral("MODE");
 
         if (yesno == QMessageBox::Yes)
         {
-            QString resmethod = NMGlobalHelper::getItemSelection(QStringLiteral("Resampling Type"),
-                                                                 QStringLiteral("No overviews found! "
-                                                                 "Please select an overview resampling "
-                                                                 "type and OK or Cancel for skipping "
-                                                                 "overview generation."),
-                                                                 restypes, 0);
+            mReader->buildOverviews("NEAREST");
+            //QString resmethod = NMGlobalHelper::getItemSelection(QStringLiteral("Resampling Type"),
+            //                                                     QStringLiteral("No overviews found! "
+            //                                                     "Please select an overview resampling "
+            //                                                     "type and OK or Cancel for skipping "
+            //                                                     "overview generation."),
+            //                                                     restypes, 0);
 
-            if (!resmethod.isEmpty())
-            {
-                mReader->buildOverviews(resmethod.toStdString());
-            }
+            //if (!resmethod.isEmpty())
+            //{
+            //    mReader->buildOverviews(resmethod.toStdString());
+            //}
         }
     }
 
@@ -1848,6 +1849,7 @@ NMImageLayer::setZSliceIndex(int slindex)
                 NMLogDebug(<< this->objectName().toStdString() << "'s ZSliceIndex = " << mZSliceIdx);
                 this->mReader->setZSliceIdx(mZSliceIdx);
                 this->mapExtentChanged();
+                this->mRenderer->Render();
             }
         }
     }
@@ -2533,6 +2535,8 @@ NMImageLayer::updateSourceBuffer(void)
             tabSize = this->mTableView->size();
             tabPos = this->mTableView->pos();
 
+            bOpenRAMTable = this->mTableView->isVisible();
+
             this->mTableView->clearSelection();
             this->mTableView->close();
             delete this->mTableView;
@@ -2545,13 +2549,14 @@ NMImageLayer::updateSourceBuffer(void)
             delete this->mTableModel;
             mTableModel = 0;
 
-            bOpenRAMTable = true;
         }
 
         if (this->mSqlTableView)
         {
             tabSize = mSqlTableView->size();
             tabPos = mSqlTableView->pos();
+
+            bOpenSQLTable = this->mSqlTableView->isVisible();
 
             mSqlTableView->clearSelection();
             mSqlTableView->close();
@@ -2581,8 +2586,6 @@ NMImageLayer::updateSourceBuffer(void)
             //spatialite_cleanup_ex(mSpatialiteCache);
             mSpatialiteCache = 0;
             mSqlViewConn = 0;
-
-            bOpenSQLTable = true;
         }
 
         this->mOtbRAT = dc->getOutput(0)->getOTBTab();

@@ -664,7 +664,7 @@ namespace bmi
         PythonBMI::GetStartTime()
     {
         py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
-        py::object res = pymod.attr("get_start_time");
+        py::object res = pymod.attr("get_start_time")();
         return res.cast<double>();
     }
 
@@ -673,7 +673,7 @@ namespace bmi
         PythonBMI::GetEndTime()
     {
         py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
-        py::object res = pymod.attr("get_end_time");
+        py::object res = pymod.attr("get_end_time")();
         return res.cast<double>();
     }
 
@@ -682,7 +682,7 @@ namespace bmi
         PythonBMI::GetCurrentTime()
     {
         py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
-        py::object res = pymod.attr("get_current_time");
+        py::object res = pymod.attr("get_current_time")();
         return res.cast<double>();
     }
 
@@ -691,7 +691,7 @@ namespace bmi
         PythonBMI::GetTimeUnits()
     {
         py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
-        py::object res = pymod.attr("get_time_units");
+        py::object res = pymod.attr("get_time_units")();
         return res.cast<std::string>();
     }
 
@@ -700,7 +700,7 @@ namespace bmi
         PythonBMI::GetTimeStep()
     {
         py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
-        py::object res = pymod.attr("get_time_step");
+        py::object res = pymod.attr("get_time_step")();
         return res.cast<double>();
     }
 

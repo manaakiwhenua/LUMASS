@@ -85,7 +85,7 @@ add_dependencies(OTBSupplFilters OTBGDALRATImageIO)
 
 
 
-install(FILES ${OTBSUPPL_HEADER} DESTINATION include)
+#install(FILES ${OTBSUPPL_HEADER} DESTINATION include)
 if(WIN32)
         install(TARGETS OTBSupplFilters
                 #LIBRARY DESTINATION lib
@@ -93,5 +93,5 @@ if(WIN32)
                 RUNTIME DESTINATION lib
         )
 else()
-        install(TARGETS OTBSupplFilters LIBRARY DESTINATION lib)
+        install(TARGETS OTBSupplFilters LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 endif()

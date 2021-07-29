@@ -1,86 +1,9 @@
 PROJECT(gui)
 
-#if (${VTK_VERSION_STRING} VERSION_LESS "7.1.1")
-#    find_package(VTK COMPONENTS
-#            vtkCommonDataModel
-#            vtkCommonCore
-#            vtkFiltersGeneric
-#            vtkRenderingCore
-#            vtkRenderingAnnotation
-#            vtkRenderingImage
-#            vtkRenderingOpenGL
-#            vtkGUISupportQt
-#            vtkImagingStatistics
-#            vtkInteractionWidgets
-#            vtkInteractionStyle
-#            #vtkRenderingFreeTypeOpenGL
-#            vtkRenderingFreeType
-#            vtkIOCore
-#            vtkIOInfovis
-#            vtkIOSQL
-#            vtkIOLegacy
-#            vtkIOXML
-#            vtkRenderingContextOpenGL
-#            vtkViewsCore
-#            vtkViewsContext2D
-#            vtkChartsCore
-#    )
-#    SET(VTK_LIBRARIES
-#        vtkCommonDataModel
-#        vtkCommonCore
-#        vtkFiltersGeneric
-#        vtkRenderingCore
-#        vtkRenderingAnnotation
-#        vtkRenderingImage
-#        vtkRenderingOpenGL
-#        vtkGUISupportQt
-#        vtkImagingStatistics
-#        vtkInteractionWidgets
-#        vtkInteractionStyle
-#        vtkRenderingFreeType
-#        vtkIOCore
-#        vtkIOInfovis
-#        vtkIOSQL
-#        vtkIOLegacy
-#        vtkIOXML
-#        vtkRenderingContextOpenGL
-#        vtkViewsCore
-#        vtkViewsContext2D
-#        vtkChartsCore
-#    )
-#    include(${VTK_USE_FILE})
-
 if (${VTK_VERSION_STRING} VERSION_LESS "8.9.0")
 
     add_definitions(-DVTK_OPENGL2)
     set(DVTKOGL2 "yes")
-#    find_package(VTK COMPONENTS
-#        vtkCommonDataModel
-#        vtkCommonCore
-#        vtkFiltersGeneral
-#        vtkRenderingCore
-#        vtkRenderingAnnotation
-#        vtkRenderingImage
-#        vtkRenderingOpenGL2
-#        #vtkRenderingLOD
-#        vtkGUISupportQt
-#        vtkImagingStatistics
-#        vtkInteractionWidgets
-#        vtkInteractionStyle
-#        vtkRenderingFreeType
-#        vtkIOCore
-#        vtkIOExport
-#        vtkIOInfovis
-#        vtkIOSQL
-#        vtkIOLegacy
-#        vtkIOXML
-#        vtkIOGDAL
-#        vtkRenderingContextOpenGL2
-#        vtkViewsCore
-#        vtkViewsContext2D
-#        vtkChartsCore
-#        NO_MODULE
-#    )
     set(LUMASS_GUI_VTK_LIBRARIES
         vtkCommonDataModel
         vtkCommonCore
@@ -204,36 +127,37 @@ INCLUDE_DIRECTORIES(
     ${bmi_SOURCE_DIR}
     ${bmi_BINARY_DIR}
     ${YAML_CPP_INCLUDE_DIR}
+    ${MPI_CXX_INCLUDE_DIRS}
 )
 
 #find_package(Qt5Sql REQUIRED)
 #find_package(Qt5Sqlite REQUIRED)
 
 LINK_DIRECTORIES(
-	${QT5_SQLDRIVERS_DIR}
-	${QT5_PREFIX_PATH}/../plugins/sqldrivers
-	${QT5_LINK_DIRS}
-	${OTB_LIBRARY_DIRS}
-	${LIBRARY_OUTPUT_PATH}
-	${mfw_BINARY_DIR}
-	${mfw_BINRAY_DIR}/lib
-	${gui_BINARY_DIR}/lib
-	${SQLite_BINARY_DIR}/lib
-	${muparser_BINARY_DIR}
-	${muParserX_BINARY_DIR}
-	${RASDAMAN_LIBRARIES_DIR}
-	${PostgreSQL_LIBRARY_DIRS}
-	${SPATIALITE_LIB_DIR}
-	${SPATIALITE_LIBLIB_DIR}
-	#${QT5SQL_PLUGINS_DIR}/plugins/sqldrivers
-	${OSGEO4W_ROOT}/lib
-	${OSGEO4W_ROOT}/bin
-	#${TCADB_LIB_DIR}
-	${VisIt_BINARY_DIR}
-	${NMVtk_BINARY_DIR}
-	${NETCDF_LIB_DIR}
-	${NCXX_LIB_DIR}
-	${NETCDFIO_BINARY_DIR}
+        ${QT5_SQLDRIVERS_DIR}
+        ${QT5_PREFIX_PATH}/../plugins/sqldrivers
+        ${QT5_LINK_DIRS}
+        ${OTB_LIBRARY_DIRS}
+        ${LIBRARY_OUTPUT_PATH}
+        ${mfw_BINARY_DIR}
+        ${mfw_BINRAY_DIR}/lib
+        ${gui_BINARY_DIR}/lib
+        ${SQLite_BINARY_DIR}/lib
+        ${muparser_BINARY_DIR}
+        ${muParserX_BINARY_DIR}
+        ${RASDAMAN_LIBRARIES_DIR}
+        ${PostgreSQL_LIBRARY_DIRS}
+        ${SPATIALITE_LIB_DIR}
+        ${SPATIALITE_LIBLIB_DIR}
+        #${QT5SQL_PLUGINS_DIR}/plugins/sqldrivers
+        ${OSGEO4W_ROOT}/lib
+        ${OSGEO4W_ROOT}/bin
+        #${TCADB_LIB_DIR}
+        ${VisIt_BINARY_DIR}
+        ${NMVtk_BINARY_DIR}
+        ${NETCDF_LIB_DIR}
+        ${NCXX_LIB_DIR}
+        ${NETCDFIO_BINARY_DIR}
 )
 
 
@@ -241,54 +165,6 @@ LINK_DIRECTORIES(
 QT5_ADD_RESOURCES(NM_RES nmresources.qrc)
 
 SET(CMAKE_AUTOMOC YES)
-#QT5_WRAP_CPP(MOC_CPP
-#        ${NMVtk_SOURCE_DIR}/vtkQtEditableTableModelAdapter.h
-#        ${NMVtk_SOURCE_DIR}/NMQVTKOpenglWidget.h
-#        ${opt_SOURCE_DIR}/NMMosra.h
-
-#        ${gui_SOURCE_DIR}/lumassmainwin.h
-#        ${gui_SOURCE_DIR}/modelcomponentlist.h
-#        ${gui_SOURCE_DIR}/NMLayer.h
-#        ${gui_SOURCE_DIR}/NMVectorLayer.h
-#        ${gui_SOURCE_DIR}/NMImageLayer.h
-#        ${gui_SOURCE_DIR}/NMLayerModel.h
-#        ${gui_SOURCE_DIR}/NMQtOtbAttributeTableModel.h
-#        ${gui_SOURCE_DIR}/NMTableView.h
-#        ${gui_SOURCE_DIR}/NMSqlTableView.h
-#        ${gui_SOURCE_DIR}/NMSqlTableModel.h
- #        ${gui_SOURCE_DIR}/NMChartWidget.h
-#        ${gui_SOURCE_DIR}/NMAddColumnDialog.h
-#        ${gui_SOURCE_DIR}/NMTableCalculator.h
-#        ${gui_SOURCE_DIR}/NMSelectableSortFilterProxyModel.h
-#        ${gui_SOURCE_DIR}/NMSelSortSqlTableProxyModel.h
-#        ${gui_SOURCE_DIR}/NMItk2VtkConnector.h
-#        ${gui_SOURCE_DIR}/NMProcCompList.h
-#        ${gui_SOURCE_DIR}/NMEditModelComponentDialog.h
-#        ${gui_SOURCE_DIR}/NMModelViewWidget.h
-#        ${gui_SOURCE_DIR}/NMModelScene.h
-#        ${gui_SOURCE_DIR}/NMProcessComponentItem.h
-#        ${gui_SOURCE_DIR}/NMAggregateComponentItem.h
-#        ${gui_SOURCE_DIR}/NMComponentLinkItem.h
-#        ${gui_SOURCE_DIR}/NMFastTrackSelectionModel.h
-#        ${gui_SOURCE_DIR}/NMComponentListItemDelegate.h
-#        ${gui_SOURCE_DIR}/NMComponentEditor.h
-#        ${gui_SOURCE_DIR}/NMWidgetListView.h
-#        ${gui_SOURCE_DIR}/NMLogWidget.h
-#        ${gui_SOURCE_DIR}/NMListWidget.h
-#        ${gui_SOURCE_DIR}/NMHoverEdit.h
-#        ${gui_SOURCE_DIR}/NMHoverEditTree.h
-#        ${gui_SOURCE_DIR}/NMParamHighlighter.h
-#        ${gui_SOURCE_DIR}/NMParamEdit.h
-#        ${gui_SOURCE_DIR}/NMFindReplaceDialog.h
-#        ${gui_SOURCE_DIR}/NMToolBar.h
-#        ${gui_SOURCE_DIR}/NMAbstractAction.h
-#        ${gui_SOURCE_DIR}/NMModelAction.h
-#        ${gui_SOURCE_DIR}/NMChartView.h
-
-#        ${NMQSQLite_SRC_DIR}/nmqsqlcachedresult_p.h
-#        ${NMQSQLite_SRC_DIR}/nmqsql_sqlite_p.h
-#        ${shared_SOURCE_DIR}/NMLogger.h
-#)
 
 file(GLOB QT_UI ${gui_SOURCE_DIR}/*.ui)
 QT5_WRAP_UI(UI_CPP ${QT_UI})
@@ -335,6 +211,7 @@ set(LUMASS_LINKLIBS
     ${NETCDF_LIBRARY} ${NCXX4_LIBRARY}
     NetCDFIO
     ${YAML_CPP_LIBRARIES}
+    ${MPI_CXX_LIBRARIES}
 )
 
 #if (${CMAKE_VERSION} VERSION_LESS_EQUAL "3.11.0")
@@ -391,6 +268,35 @@ endif()
 #                   VERBATIM
 #)
 
+#====================================================================
+# INSTALL
+#====================================================================
+
 # install rules for lumass executable
 install(TARGETS lumass RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
 
+# install for linux AppImage
+if (UNIX AND NOT APPLE)
+
+    install(FILES ${lumass_SOURCE_DIR}/gui/resources/LUMASS_icon_64.png
+            RENAME lumass.png
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/64x64/apps
+    )
+    install(FILES ${lumass_SOURCE_DIR}/gui/resources/LUMASS_icon_256.png
+            RENAME lumass.png
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/256x256/apps
+    )
+
+    install(FILES ${lumass_SOURCE_DIR}/utils/lumass.desktop
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications
+    )
+
+    file(GLOB LUMASS_LINUX_UTILS
+        ${lumass_SOURCE_DIR}/utils/*.bat
+    )
+
+
+
+    install(FILES ${LUMASS_LINUX_UTILS} DESTINATION ${CMAKE_INSTALL_PREFIX}/utils)
+
+endif()

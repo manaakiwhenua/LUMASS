@@ -22,7 +22,7 @@ else()
 endif()
 
 
-install(FILES sqlite3.h sqlite3ext.h DESTINATION include)
+#install(FILES sqlite3.h sqlite3ext.h DESTINATION include)
 if(WIN32)
 #        install(TARGETS SQLiteExtFunc
 #                LIBRARY DESTINATION lib
@@ -41,5 +41,5 @@ if(WIN32)
         )
 else()
         #install(TARGETS SQLiteExtFunc ARCHIVE DESTINATION lib)
-        install(TARGETS SQLite LIBRARY DESTINATION lib)
+        install(TARGETS SQLite LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 endif()

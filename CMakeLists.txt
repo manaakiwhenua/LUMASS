@@ -2,7 +2,7 @@
 # author: Alexander Herzig
 # copyright: Landcare Research New Zealand Ltd
 
-cmake_minimum_required(VERSION 3.5.1)
+cmake_minimum_required(VERSION 3.14)
 PROJECT(lumass)
 
 INCLUDE_REGULAR_EXPRESSION("^.*$")
@@ -131,7 +131,7 @@ find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
 SET(LUMASS_VERSION_MINOR 9)
 SET(LUMASS_VERSION_REVISION 65)
-SET(LUMASS_VERSION_SUFFIX "-rc3")
+SET(LUMASS_VERSION_SUFFIX "-rc4")
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
@@ -370,24 +370,24 @@ OPTION(PYTHONSUPPORT "Build LUMASS with Python support?" OFF )
 
 if (PYTHONSUPPORT)
 
-	find_package(Python3 COMPONENTS Interpreter Development NumPy REQUIRED)
-	
-	message(STATUS "Python3_FOUND: ${Python3_FOUND}")
-	message(STATUS "Python3_Interpreter_FOUND: ${Python3_Interpreter_FOUND}")
-	message(STATUS "Python3_Interpreter_ID: ${Python3_Interpreter_ID}")
-	message(STATUS "Python3_Executable: ${Python3_EXECUTABLE}")
-	message(STATUS "Python3_Compiler_FOUND: ${Python3_Compiler_FOUND}")
-	message(STATUS "Python3_Development_FOUND: ${Python3_Development_FOUND}")
-	message(STATUS "Python3_Development.Embed_FOUND: ${Python3_Development.Embed_FOUND}")
-	message(STATUS "Python3_INCLUDE_DIRS: ${Python3_INCLUDE_DIRS}")
-	message(STATUS "Python3_LIBRARY_DIRS: ${Python3_LIBRARY_DIRS}")
-	message(STATUS "Python3_LIBRARIES: ${Python3_LIBRARIES}")
-	message(STATUS "Python3 Version: ${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}.${Python3_VERSION_PATCH}")
-	message(STATUS "Python3 Numpy Version: ${Python3_NumPy_VERSION}")
+        find_package(Python3 COMPONENTS Interpreter Development NumPy REQUIRED)
+
+        message(STATUS "Python3_FOUND: ${Python3_FOUND}")
+        message(STATUS "Python3_Interpreter_FOUND: ${Python3_Interpreter_FOUND}")
+        message(STATUS "Python3_Interpreter_ID: ${Python3_Interpreter_ID}")
+        message(STATUS "Python3_Executable: ${Python3_EXECUTABLE}")
+        message(STATUS "Python3_Compiler_FOUND: ${Python3_Compiler_FOUND}")
+        message(STATUS "Python3_Development_FOUND: ${Python3_Development_FOUND}")
+        message(STATUS "Python3_Development.Embed_FOUND: ${Python3_Development.Embed_FOUND}")
+        message(STATUS "Python3_INCLUDE_DIRS: ${Python3_INCLUDE_DIRS}")
+        message(STATUS "Python3_LIBRARY_DIRS: ${Python3_LIBRARY_DIRS}")
+        message(STATUS "Python3_LIBRARIES: ${Python3_LIBRARIES}")
+        message(STATUS "Python3 Version: ${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}.${Python3_VERSION_PATCH}")
+        message(STATUS "Python3 Numpy Version: ${Python3_NumPy_VERSION}")
 
     find_package(pybind11 CONFIG REQUIRED)
-	
-	##find_path(pybind11_DIR pybind11Config.cmake
+
+        ##find_path(pybind11_DIR pybind11Config.cmake
     ##    HINTS
     ##        /opt/pybind11-bin/install/share/cmake/pybind11
     ##    PATHS
@@ -402,12 +402,12 @@ if (PYTHONSUPPORT)
     ##        pybind11
     ##)
     ##message(STATUS "pybind11_DIR=${pybind11_DIR}")
-	##
+        ##
     ##if (pybind11_DIR-NOTFOUND)
     ##    set(pybind11_DIR "NOT_FOUND" CACHE PATH "Please specify the path to pybind11Config.cmake !")
     ##    message(FATAL_ERROR "Please specify the path to pybind11Config.cmake")
     ##endif() #else ()
-	##
+        ##
     ##    include(${pybind11_DIR}/pybind11Config.cmake)
     ##    include(${pybind11_DIR}/pybind11ConfigVersion.cmake)
     ##    SET(LUMASS_pybind11_version "${PACKAGE_VERSION}")
@@ -484,15 +484,26 @@ message(STATUS "YAML_CPP_LIBRARIES=${YAML_CPP_LIBRARIES}")
 #    message(FATAL_ERROR "Please specify the yaml header dir!")
 #ENDIF()
 
+#====================================================================
+# OpenMPI
+#====================================================================
 
-
+find_package(MPI)
+if (MPI_CXX_FOUND)
+    message(STATUS "MPI_CXX: found version: ${MPI_CXX_VERSION}")
+    message(STATUS "MPI_CXX_INCLUDE_DIRS=${MPI_CXX_INCLUDE_DIRS}")
+    message(STATUS "MPI_CXX_LIBRARIES=${MPI_CXX_LIBRARIES}")
+else ()
+    set(MPI_CXX_INCLUDE_DIRS "MPI_CXX_INCLUDE_DIRS-NOTFOUND" CACHE STRING "Please specify the MPI-CXX include directories!")
+    set(MPI_CXX_LIBRARIES "MPI_CXX_LIBRARIES-NOTFOUND" CACHE STRING "Please specify the MPI-CXX libraries!")
+endif()
 
 #====================================================================
 # RASDAMAN SUPPORT - optional (requires PostgreSQL support)
 #====================================================================
 
 # rasdaman is only available on linux
-IF(UNIX)
+IF(UNIX AND NOT APPLE)
     OPTION(RASSUPPORT "Build lumass with rasdaman support?" OFF )
     IF(RASSUPPORT)
       FIND_PACKAGE(Rasdaman)
@@ -527,10 +538,10 @@ IF(UNIX)
     message(STATUS "rasdaman source dir: ${RASDAMAN_SOURCE_DIR}")
     message(STATUS "rasdaman include dir: ${RASDAMAN_INCLUDE_DIR}")
     message(STATUS "rasdaman libraries dir: ${RASDAMAN_LIBRARIES_DIR}")
-ENDIF(UNIX)
+ENDIF()
 
 #====================================================================
-# THE RIGHT TIME TO POPULATE THE LUMASSConfig.h FILE
+# THE RIGHT TIME TO POPULATE THE LUMASSConfig.h FILE AND others
 #====================================================================
 
 configure_file("${CMAKE_SOURCE_DIR}/LUMASSConfig.h.in"
@@ -597,3 +608,27 @@ ADD_SUBDIRECTORY(terminalapp ${lumass_BINARY_DIR}/terminalapp)
 ADD_SUBDIRECTORY(bmi ${lumass_BINARY_DIR}/bmi)
 
 
+#====================================================================
+# Packaging
+#====================================================================
+
+IF (UNIX AND NOT APPLE)
+
+    #set(CPACK_PACKAGE_NAME "lumass")
+    set(CPACK_PACKAGE_NAME "lumass")
+    set(CPACK_PACKAGE_VERSION "${LUMASS_VERSION_MAJOR}.${LUMASS_VERSION_MINOR}.${LUMASS_VERSION_REVISION}-0ubuntu1")
+    set(CPACK_PACKAGE_VENDOR "Manaaki Whenua - Landcare Research")
+    set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
+    set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
+    #set(CPACK_DEBIAN_PACKAGE_DEPENDS "")
+
+    set(CPACK_RESOURCE_FILE_LICENSE "${lumass_SOURCE_DIR}/LICENCE")
+    set(CPACK_RESOURCE_FILE_README "${lumass_SOURCE_DIR}/README.md")
+    set(CPACK_DEBIAN_DESCRIPTION "LUMASS - spatial modelling & optimisation framework")
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Alex Herzig")
+    set(CPACK_DEBIAN_PACKAGE_CONTACT "herziga@landcareresearch.co.nz")
+
+    set(CPACK_GENERATOR "DEB")
+    include(CPack)
+
+ENDIF()

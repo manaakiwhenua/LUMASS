@@ -53,11 +53,11 @@ endif()
 include(GenerateExportHeader)
 generate_export_header(VisItTesselator)
 
-install(FILES ${VisItTesselator_HEADER} DESTINATION include)
+#install(FILES ${VisItTesselator_HEADER} DESTINATION include)
 if(WIN32)
         install(TARGETS VisItTesselator
                 ARCHIVE DESTINATION lib
         )
 else()
-        install(TARGETS VisItTesselator LIBRARY DESTINATION lib)
+        install(TARGETS VisItTesselator LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 endif()

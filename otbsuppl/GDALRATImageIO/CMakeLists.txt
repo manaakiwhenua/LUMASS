@@ -126,7 +126,7 @@ endif()
 ADD_DEPENDENCIES(OTBGDALRATImageIO SQLite)
 
 # define where to install what
-install(FILES ${GDALRATIO_HEADER} DESTINATION include)
+#install(FILES ${GDALRATIO_HEADER} DESTINATION include)
 if(WIN32)
         install(
                 TARGETS OTBGDALRATImageIO
@@ -134,7 +134,7 @@ if(WIN32)
                 RUNTIME DESTINATION lib
         )
 else()
-        install(TARGETS OTBGDALRATImageIO LIBRARY DESTINATION lib)
+        install(TARGETS OTBGDALRATImageIO LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 endif()
 
 

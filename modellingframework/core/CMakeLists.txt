@@ -116,7 +116,7 @@ set(MFW_CORE_LINK_LIBS
 if(PYTHONSUPPORT)
     list(APPEND MFW_CORE_LINK_LIBS
             ${Python3_LIBRARIES}
-			pybind11::pybind11
+                        pybind11::pybind11
             pybind11::embed
         )
 
@@ -150,12 +150,12 @@ generate_export_header(NMModFrameCore)
 target_link_libraries(NMModFrameCore ${MFW_CORE_LINK_LIBS})
 ADD_DEPENDENCIES(NMModFrameCore ${MFW_CORE_DEP_LIBS})
 
-install(FILES ${MFW_CORE_H} DESTINATION include)
+#install(FILES ${MFW_CORE_H} DESTINATION include)
 if(WIN32)
         install(TARGETS NMModFrameCore
                 LIBRARY DESTINATION lib
                 RUNTIME DESTINATION lib
         )
 else()
-        install(TARGETS NMModFrameCore LIBRARY DESTINATION lib)
+        install(TARGETS NMModFrameCore LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 endif()

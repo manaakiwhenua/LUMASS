@@ -119,9 +119,9 @@ foreach( wrapper ${MFW_WRAPPER_NAMES} )
             if (PYTHONSUPPORT)
                 add_definitions(-DLUMASS_PYTHON)
                 list(APPEND LINKLIBS
-                        ${Python3_LIBRARIES} 
-						pybind11::embed 
-						pybind11::pybind11
+                        ${Python3_LIBRARIES}
+                                                pybind11::embed
+                                                pybind11::pybind11
                         LumassPythonBMI
                      )
             endif()
@@ -142,14 +142,14 @@ foreach( wrapper ${MFW_WRAPPER_NAMES} )
             vtk_module_autoinit(TARGETS ${wrapper} MODULES ${LUMASS_WRAPPER_VTK_LIBRARIES})
         endif()
 
-        install(FILES ${MFW_WRAPPER_HEADER_FILES} DESTINATION include)
+        #install(FILES ${MFW_WRAPPER_HEADER_FILES} DESTINATION include)
         if(WIN32)
                 install(TARGETS ${wrapper}
                         LIBRARY DESTINATION lib
                         RUNTIME DESTINATION lib
                 )
         else()
-                install(TARGETS ${wrapper} LIBRARY DESTINATION lib)
+                install(TARGETS ${wrapper} LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
         endif()
 
 endforeach()

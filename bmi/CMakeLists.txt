@@ -76,7 +76,7 @@ LINK_DIRECTORIES(
     ${SPATIALITE_LIBLIB_DIR}
     #${NCXX_LIB_DIR}
     #${NETCDF_LIB_DIR}
-	${YAML_CPP_LIB_DIR}
+        ${YAML_CPP_LIB_DIR}
     ${Python3_LIBRARIES_DIR}
 )
 
@@ -116,7 +116,7 @@ SET(BMI_LINKLIBS
 
 SET(PYTHON_BMI_LINKLIBS
     Qt5Core
-	#NMModFrameCore
+        #NMModFrameCore
     ${Python3_LIBRARIES}
     pybind11::pybind11
     pybind11::embed
@@ -182,19 +182,19 @@ SET(LUMASS_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
 
 # -------------------------------------------
 # INSTALL LIBRARY
-SET(BMI_INSTALL_TARGETS LumassBMI)
+SET(BMI_INSTALL_TARGETS LumassPythonBMI)
 if (PYTHONSUPPORT)
     list(APPEND LumassPythonBMI)
 endif()
 
-install(FILES ${BMI_HEADER} DESTINATION include)
+#install(FILES ${BMI_HEADER} DESTINATION include)
 if (WIN32)
     install (TARGETS ${BMI_INSTALL_TARGETS}
              LIBRARY DESTINATION lib
              RUNTIME DESTINATION lib
      )
 else()
-    install(TARGETS ${BMI_INSTALL_TARGETS} LIBRARY DESTINATION lib)
+    install(TARGETS ${BMI_INSTALL_TARGETS} LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 endif()
 
 

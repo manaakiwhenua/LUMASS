@@ -1475,46 +1475,51 @@ QSharedPointer<NMItkDataObjectWrapper> ClassName::getOutput(unsigned int idx)			
                                                                                 \
         dw->setOTBTab(this->mAuxTab);                                           \
         return dw;                                                              \
-    }                                                                           \
+    } \
     else if (this->mbIsInitialised)                                                   \
     {                                                                           \
-    itk::DataObject* img = 0;                                                   \
-                                                                                \
-    switch (this->mInputComponentType)                                         \
-    {                                                                           \
-    case otb::ImageIOBase::UCHAR:                                               \
-        outputTypeSwitch( unsigned char, callGetOutput, InternalWrapper );                                         \
-        break;                                                                  \
-    case otb::ImageIOBase::CHAR:                                                \
-        outputTypeSwitch( char, callGetOutput, InternalWrapper );                                                  \
-        break;                                                                  \
-    case otb::ImageIOBase::USHORT:                                              \
-        outputTypeSwitch( unsigned short, callGetOutput, InternalWrapper );                                        \
-        break;                                                                  \
-    case otb::ImageIOBase::SHORT:                                               \
-        outputTypeSwitch( short, callGetOutput, InternalWrapper );                                                 \
-        break;                                                                  \
-    case otb::ImageIOBase::UINT:                                                \
-        outputTypeSwitch( unsigned int, callGetOutput, InternalWrapper );                                          \
-        break;                                                                  \
-    case otb::ImageIOBase::INT:                                                 \
-        outputTypeSwitch( int, callGetOutput, InternalWrapper );                                                   \
-        break;                                                                  \
-    case otb::ImageIOBase::ULONG:                                               \
-        outputTypeSwitch( unsigned long, callGetOutput, InternalWrapper );                                         \
-        break;                                                                  \
-    case otb::ImageIOBase::LONG:                                                \
-        outputTypeSwitch( long, callGetOutput, InternalWrapper );                                                  \
-        break;                                                                  \
-    case otb::ImageIOBase::FLOAT:                                               \
-        outputTypeSwitch( float, callGetOutput, InternalWrapper );                                                 \
-        break;                                                                  \
-    case otb::ImageIOBase::DOUBLE:                                              \
-        outputTypeSwitch( double, callGetOutput, InternalWrapper );                                                \
-        break;																	\
-    default:                                                                    \
-        break;                                                                  \
-    }                                                                           \
+        if (this->mOtbProcess.IsNotNull() && idx >= this->mOtbProcess->GetNumberOfIndexedOutputs())\
+        {\
+            return ret;\
+        }\
+        \
+        itk::DataObject* img = 0;                                                   \
+                                                                                    \
+        switch (this->mInputComponentType)                                         \
+        {                                                                           \
+        case otb::ImageIOBase::UCHAR:                                               \
+            outputTypeSwitch( unsigned char, callGetOutput, InternalWrapper );                                         \
+            break;                                                                  \
+        case otb::ImageIOBase::CHAR:                                                \
+            outputTypeSwitch( char, callGetOutput, InternalWrapper );                                                  \
+            break;                                                                  \
+        case otb::ImageIOBase::USHORT:                                              \
+            outputTypeSwitch( unsigned short, callGetOutput, InternalWrapper );                                        \
+            break;                                                                  \
+        case otb::ImageIOBase::SHORT:                                               \
+            outputTypeSwitch( short, callGetOutput, InternalWrapper );                                                 \
+            break;                                                                  \
+        case otb::ImageIOBase::UINT:                                                \
+            outputTypeSwitch( unsigned int, callGetOutput, InternalWrapper );                                          \
+            break;                                                                  \
+        case otb::ImageIOBase::INT:                                                 \
+            outputTypeSwitch( int, callGetOutput, InternalWrapper );                                                   \
+            break;                                                                  \
+        case otb::ImageIOBase::ULONG:                                               \
+            outputTypeSwitch( unsigned long, callGetOutput, InternalWrapper );                                         \
+            break;                                                                  \
+        case otb::ImageIOBase::LONG:                                                \
+            outputTypeSwitch( long, callGetOutput, InternalWrapper );                                                  \
+            break;                                                                  \
+        case otb::ImageIOBase::FLOAT:                                               \
+            outputTypeSwitch( float, callGetOutput, InternalWrapper );                                                 \
+            break;                                                                  \
+        case otb::ImageIOBase::DOUBLE:                                              \
+            outputTypeSwitch( double, callGetOutput, InternalWrapper );                                                \
+            break;																	\
+        default:                                                                    \
+            break;                                                                  \
+        }                                                                           \
                                                                                     \
         QSharedPointer<NMItkDataObjectWrapper> dw(                                      \
             new NMItkDataObjectWrapper(this, img, this->mOutputComponentType,   \

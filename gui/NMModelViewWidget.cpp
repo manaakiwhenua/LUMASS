@@ -4817,12 +4817,21 @@ NMModelViewWidget::resetModel(void)
     }
 
     NMModelComponent* comp = 0;
+    bool bClearAll = false;
     if (QString("QAction").compare(this->sender()->metaObject()->className()) == 0)
+    {
         comp = this->mModelController->getComponent("root");
+        bClearAll =  true;
+    }
     else if (this->mLastItem != 0)
+    {
         comp = this->componentFromItem(this->mLastItem);
+    }
     else
+    {
         comp = this->mModelController->getComponent("root");
+        bClearAll =  true;
+    }
 
     if (comp == 0)
     {
@@ -4830,12 +4839,47 @@ NMModelViewWidget::resetModel(void)
         return;
     }
 
-    //QString msg = QString(tr("Do you want to reset model component '%1'?")).arg(comp->objectName());
-    //if (QMessageBox::Ok == QMessageBox::question(this, "Reset Model Component",
-    //		msg, QMessageBox::No | QMessageBox::Yes, QMessageBox::No))
+    QGraphicsItem* gi = nullptr;
+    NMProcessComponentItem* pi = nullptr;
+    NMAggregateComponentItem* ai = nullptr;
+    if (bClearAll)
     {
-        emit requestModelReset(comp->objectName());
+        QList<QGraphicsItem*> allItems = this->mModelScene->items();
+        QList<QGraphicsItem*>::iterator iit = allItems.begin();
+        while (iit != allItems.end())
+        {
+            pi = qgraphicsitem_cast<NMProcessComponentItem*>(*iit);
+            ai = qgraphicsitem_cast<NMAggregateComponentItem*>(*iit);
+
+            if (pi != nullptr)
+            {
+                pi->reportExecutionStopped(pi->getTitle());
+            }
+            else if (ai != nullptr)
+            {
+                ai->slotExecutionStopped();
+            }
+
+            ++iit;
+        }
     }
+    else
+    {
+        gi = this->getScene()->getComponentItem(comp->objectName());
+        pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
+        ai = qgraphicsitem_cast<NMAggregateComponentItem*>(gi);
+
+        if (pi != nullptr)
+        {
+            pi->reportExecutionStopped(pi->getTitle());
+        }
+        else if (ai != nullptr)
+        {
+            ai->slotExecutionStopped();
+        }
+    }
+
+    emit requestModelReset(comp->objectName());
 }
 
 void NMModelViewWidget::zoom(int delta)

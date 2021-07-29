@@ -1,0 +1,11 @@
+[Desktop Entry]
+Exec=lumass
+GenericName=Land-Use Management Support System
+Icon=lumass
+Name=lumass
+NoDisplay=false
+StartupNotify=true
+Terminal=0
+TerminalOptions=
+Type=Application
+Categories=Science;DataVisualization;ImageProcessing;Geoscience;Geography

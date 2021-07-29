@@ -27,6 +27,7 @@
 #include <array>
 #include <map>
 #include "math.h"
+#include <mpi.h>
 
 // GDAL support
 #include "gdal.h"
@@ -333,19 +334,6 @@
 // i.e. all itk-derived classes would throw-up errors/warnings
 #include "NMMosra.h"
 
-
-//#include <sqlite3.h>
-//#include "sqlite3extfunc.h"
-
-//#include <yaml-cpp/yaml.h>
-//#include <sys/stat.h>
-
-//#include <regex>
-
-//#include "nmNetCDFIO.h"
-
-
-//#include "valgrind/callgrind.h"
 
 LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::LUMASSMainWin)//, mServer(nullptr)
@@ -4001,63 +3989,26 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
-    /*
-    QString fn1 = QFileDialog::getOpenFileName(this,
-                 tr("Load Model #1"), "~", tr("LUMASS Model Component Files (*.lmx *.lmv)"));
-    if (fn1.isNull()) return;
+//    MPI_Init(nullptr, nullptr);
 
-    QString fn2 = QFileDialog::getOpenFileName(this,
-                 tr("Load Model #2"), "~", tr("LUMASS Model Component Files (*.lmx *.lmv)"));
-    if (fn2.isNull()) return;
+//    int nproc;
+//    int err = MPI_Comm_size(MPI_COMM_WORLD, &nproc);
+//    NMLogInfo(<< "err-code: " << err);
 
-    QScopedPointer<NMModelController> ctrl = QScopedPointer<NMModelController>(new NMModelController());
-    ctrl->setLogger(this->getLogger());
-    ctrl->updateSettings("TimeFormat", "yyyy-MM-ddThh:mm:ss.zzz");
+//    NMLogInfo(<< "we've got " << nproc << " processors available!");
 
-    NMSequentialIterComponent* root = new NMSequentialIterComponent();
-    root->setObjectName("root");
-    root->setDescription("Top level model component managed by the ModelController");
-    ctrl->addComponent(root);
+//    int rank;
+//    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    NMSequentialIterComponent* first_comp = new NMSequentialIterComponent();
-    first_comp->setObjectName("first_comp");
+//    NMLogInfo(<< "LUMASS's main rank: " << rank);
 
-    NMSequentialIterComponent* second_comp = new NMSequentialIterComponent();
-    first_comp->setObjectName("second_comp");
+//    char procname[MPI_MAX_PROCESSOR_NAME];
+//    int nameLen;
+//    MPI_Get_processor_name(procname, &nameLen);
 
-    QString nameFirst = ctrl->addComponent(first_comp);
-    QString nameSecond = ctrl->addComponent(second_comp);
+//    NMLogInfo(<< "XHive's processor name: " << procname);
 
-    if (   !nameFirst.endsWith(QStringLiteral("lmx"))
-        || !nameSecond.endsWith(QStringLiteral("lmx"))
-       )
-    {
-        NMLogError(<< "TEST: You need to specify a *.lmx file!!");
-        return;
-    }
-
-
-    // read the data model
-    QMap<QString, QString> nameRegister;
-    NMModelSerialiser xmlS;
-    xmlS.setModelController(ctrl.data());
-    xmlS.setLogger(this->getLogger());
-
-    nameRegister = xmlS.parseComponent(nameFirst, first_comp, ctrl);
-    nameRegister = xmlS.parseComponent(nameSecond, second_comp, ctrl);
-
-
-//    NMModelComponentIterator fstIt = first_comp->getComponentIterator();
-//    while (!fstIt.isAtEnd())
-//    {
-//        *fstIt->obj
-
-
-
-//        ++fstIt;
-//    }
-
-    */
+//    MPI_Finalize();
 }
 
 

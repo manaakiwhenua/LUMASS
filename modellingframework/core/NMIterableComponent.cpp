@@ -559,6 +559,12 @@ NMIterableComponent::findUpstreamComponentByUserId(const QString& userId)
     NMIterableComponent* host = this;
     NMModelComponent* mc = nullptr;
 
+    // ... are we the one ?
+    if (this->getUserID().compare(userId, Qt::CaseInsensitive) == 0)
+    {
+        return  this;
+    }
+
     // ... look around ...
     if (this->mProcess != nullptr)
     {

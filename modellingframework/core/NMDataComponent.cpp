@@ -44,29 +44,30 @@ const std::string NMDataComponent::ctx = "NMDataComponent";
 NMDataComponent::NMDataComponent(QObject* parent)
     : NMModelComponent(parent)
 {
-	this->setParent(parent);
-	this->initAttributes();
+    this->setParent(parent);
+    this->initAttributes();
 }
 
 NMDataComponent::~NMDataComponent()
 {
-	reset();
+    reset();
 }
 
 void
 NMDataComponent::initAttributes(void)
 {
-	NMModelComponent::initAttributes();
-	mInputCompName.clear();
-	mLastInputCompName.clear();
-	mSourceMTime.setMSecsSinceEpoch(0);
+    NMModelComponent::initAttributes();
+    mInputCompName.clear();
+    mLastInputCompName.clear();
+    mSourceMTime.setMSecsSinceEpoch(0);
     mDataWrapper.clear();
-	mInputOutputIdx = 0;
-	mLastInputOutputIdx = 0;
-	mParamPos = 0;
-	mbLinked = false;
+    mInputOutputIdx = 0;
+    mLastInputOutputIdx = 0;
+    mParamPos = 0;
+    mbLinked = false;
     mTabMinPK = itk::NumericTraits<long long>::max();
     mTabMaxPK = itk::NumericTraits<long long>::NonpositiveMin();
+    mIsStreamable = false;
 }
 
 void
@@ -77,8 +78,15 @@ NMDataComponent::setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWra
     // we'd get crash with double free error
 
     if (!mDataWrapper.isNull())
-        mDataWrapper.clear();
-	mDataWrapper = inputImg;
+    {
+        this->reset();
+    }
+    mDataWrapper = inputImg;
+
+    if (mIsStreamable)
+    {
+        mDataWrapper->setIsStreaming(true);
+    }
 
     if (!mDataWrapper.isNull())
     {
@@ -101,29 +109,29 @@ NMDataComponent::setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWra
         }
     }
 
-	emit NMDataComponentChanged();
+    emit NMDataComponentChanged();
 }
 
 void
 NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 {
-	NMDebugCtx(ctx, << "...");
-	NMMfwException e(NMMfwException::NMDataComponent_InvalidParameter);
+    NMDebugCtx(ctx, << "...");
+    NMMfwException e(NMMfwException::NMDataComponent_InvalidParameter);
     e.setSource(this->objectName().toStdString());
-	std::stringstream msg;
+    std::stringstream msg;
 
     this->processUserID();
-	this->mParamPos = step;
-	if (mbLinked)
-	{
-		NMDebugAI(<< "seems as if we've been linked in already!" << endl);
-		NMDebugCtx(ctx, << "done!");
-		return;
-	}
+    this->mParamPos = step;
+    if (mbLinked)
+    {
+        NMDebugAI(<< "seems as if we've been linked in already!" << endl);
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
 
 
     if (mInputs.size() == 0)
-	{
+    {
         // if we haven't got an input component set-up,
         // we're also happy with data which was set from
         // outside the pipeline
@@ -139,76 +147,76 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
             NMDebugCtx(ctx, << "done!");
             throw e;
         }
-	}
+    }
 
-	// we apply the NM_USE_UP parameter handling
-	// policy and store the input step as mParamPos
-	// for use in the fetch data method
-	if (step > mInputs.size()-1)
-		step = mInputs.size()-1;
+    // we apply the NM_USE_UP parameter handling
+    // policy and store the input step as mParamPos
+    // for use in the fetch data method
+    if (step > mInputs.size()-1)
+        step = mInputs.size()-1;
 
-	QStringList listOfSpecs = mInputs.at(step);
-	if (listOfSpecs.size() == 0)
-	{
+    QStringList listOfSpecs = mInputs.at(step);
+    if (listOfSpecs.size() == 0)
+    {
         e.setDescription("No input component defined!");
-		NMDebugCtx(ctx, << "done!");
-		throw e;
-	}
+        NMDebugCtx(ctx, << "done!");
+        throw e;
+    }
 
-	// since the data component only accepts one input
-	// we just grab the first
-	QString inputSpec;
-	inputSpec = listOfSpecs.at(0);
+    // since the data component only accepts one input
+    // we just grab the first
+    QString inputSpec;
+    inputSpec = listOfSpecs.at(0);
 
-	if (inputSpec.isEmpty())
-	{
+    if (inputSpec.isEmpty())
+    {
         e.setDescription("No input component defined!");
-		NMDebugCtx(ctx, << "done!");
-		throw e;
-	}
+        NMDebugCtx(ctx, << "done!");
+        throw e;
+    }
 
-	this->mLastInputCompName = this->mInputCompName;
-	this->mLastInputOutputIdx = this->mInputOutputIdx;
-	if (inputSpec.contains(":"))
-	{
-		QStringList inputSrcParams = inputSpec.split(":", QString::SkipEmptyParts);
-		mInputCompName = inputSrcParams.at(0);
+    this->mLastInputCompName = this->mInputCompName;
+    this->mLastInputOutputIdx = this->mInputOutputIdx;
+    if (inputSpec.contains(":"))
+    {
+        QStringList inputSrcParams = inputSpec.split(":", QString::SkipEmptyParts);
+        mInputCompName = inputSrcParams.at(0);
 
-		bool bOK = false;
-		if (inputSrcParams.size() == 2)
-		{
-			mInputOutputIdx = inputSrcParams.at(1).toInt(&bOK);
-			if (!bOK)
-			{
-				msg << "Failed to interpret input source parameter '"
-					<< inputSpec.toStdString() << "'";
+        bool bOK = false;
+        if (inputSrcParams.size() == 2)
+        {
+            mInputOutputIdx = inputSrcParams.at(1).toInt(&bOK);
+            if (!bOK)
+            {
+                msg << "Failed to interpret input source parameter '"
+                    << inputSpec.toStdString() << "'";
                 e.setDescription(msg.str());
-				NMDebugCtx(ctx, << "done!");
-				throw e;
-			}
-		}
-	}
-	else
-	{
-		mInputCompName = inputSpec;
-		mInputOutputIdx = 0;
-	}
+                NMDebugCtx(ctx, << "done!");
+                throw e;
+            }
+        }
+    }
+    else
+    {
+        mInputCompName = inputSpec;
+        mInputOutputIdx = 0;
+    }
 
-	// fetch the data from the source object
+    // fetch the data from the source object
     NMModelComponent* inComp = this->getModelController()->getComponent(mInputCompName);
 
     if (inComp == 0)
     {
-		msg << "The specified input component '"
-		    << mInputCompName.toStdString() << "' couldn't be found!";
+        msg << "The specified input component '"
+            << mInputCompName.toStdString() << "' couldn't be found!";
         e.setDescription(msg.str());
-		NMDebugCtx(ctx, << "done!");
-		throw e;
-	}
+        NMDebugCtx(ctx, << "done!");
+        throw e;
+    }
 
-	this->mbLinked = true;
+    this->mbLinked = true;
 
-	NMDebugCtx(ctx, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 QVariant
@@ -244,8 +252,8 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
             ||  this->mDataWrapper->getOTBTab().IsNull()
            )
         {
-            QString dmesg = "no parameter table found!";
-            return QVariant::fromValue(dmesg);
+            demsg = "ERROR - no parameter table found!";
+            //return QVariant::fromValue(dmesg);
         }
         else
         {
@@ -259,7 +267,7 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
 
     // go and fetch the table value
     long long row = -1;
-    long long recnum = tab->GetNumRows();
+    long long recnum = tab.IsNotNull() ? tab->GetNumRows() : 0;
 
     // enable table attribute queries:
     // <obj>:rowcount       --> number of rows
@@ -289,7 +297,7 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
     if (colidx < 0)
     {
         param = NMModelComponent::getModelParameter(paramSpec);
-        if (param.isValid())
+        if (param.isValid() && !param.toString().startsWith("ERROR"))
         {
             return param;
         }
@@ -401,69 +409,69 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
 void
 NMDataComponent::fetchData(NMModelComponent* comp)
 {
-	NMDebugCtx(ctx, << "...");
-	NMMfwException e(NMMfwException::NMDataComponent_InvalidParameter);
+    NMDebugCtx(ctx, << "...");
+    NMMfwException e(NMMfwException::NMDataComponent_InvalidParameter);
     e.setSource(this->objectName().toStdString());
-	std::stringstream msg;
+    std::stringstream msg;
 
-	if (comp == 0)
-	{
-		msg << "Retrieved input component '"
-			<< mInputCompName.toStdString() << "' is NULL!";
+    if (comp == 0)
+    {
+        msg << "Retrieved input component '"
+            << mInputCompName.toStdString() << "' is NULL!";
         e.setDescription(msg.str());
-		NMDebugCtx(ctx, << "done!");
-		throw e;
-	}
+        NMDebugCtx(ctx, << "done!");
+        throw e;
+    }
 
 
-	NMDebugAI(<< "previous modified source time: "
-			<< mSourceMTime.toString("dd.MM.yyyy hh:mm:ss.zzz").toStdString()
-			<< std::endl);
+    NMDebugAI(<< "previous modified source time: "
+            << mSourceMTime.toString("dd.MM.yyyy hh:mm:ss.zzz").toStdString()
+            << std::endl);
 
-	// check, whether we've got to fetch the data again
-	// or whether it is still up-to-date
-	NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
+    // check, whether we've got to fetch the data again
+    // or whether it is still up-to-date
+    NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
     if (ic != 0 && ic->getProcess() != 0 && mInputOutputIdx != ic->getProcess()->getAuxDataIdx())
-	{
+    {
         ic->update(this->getModelController()->getRepository());
-		NMDebugAI(<< "current modified source time: "
-				  << ic->getProcess()->getModifiedTime().toString("dd.MM.yyyy hh:mm:ss.zzz").toStdString()
-				  << std::endl);
-		this->mSourceMTime = ic->getProcess()->getModifiedTime();
-	}
+        NMDebugAI(<< "current modified source time: "
+                  << ic->getProcess()->getModifiedTime().toString("dd.MM.yyyy hh:mm:ss.zzz").toStdString()
+                  << std::endl);
+        this->mSourceMTime = ic->getProcess()->getModifiedTime();
+    }
 
     QSharedPointer<NMItkDataObjectWrapper> to = comp->getOutput(mInputOutputIdx);
     if (to.isNull())
-	{
+    {
         //NMLogError(<< ctx << ": input object is NULL!");
-		NMMfwException de(NMMfwException::NMProcess_UninitialisedDataObject);
+        NMMfwException de(NMMfwException::NMProcess_UninitialisedDataObject);
         de.setSource(this->objectName().toStdString());
         de.setDescription("Input NMItkDataObjectWrapper is NULL!");
-		throw de;
-	}
+        throw de;
+    }
 
-	// we always disconnect the data from the pipeline
-	// when we've got pipeline data object
-	if (to->getDataObject() != 0)
-	{
-		to->getDataObject()->DisconnectPipeline();
-	}
+    // we always disconnect the data from the pipeline
+    // when we've got pipeline data object
+    if (to->getDataObject() != 0)
+    {
+        to->getDataObject()->DisconnectPipeline();
+    }
 
     this->setInput(to);
 
-	NMDebugCtx(ctx, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 QSharedPointer<NMItkDataObjectWrapper>
 NMDataComponent::getOutput(unsigned int idx)
 {
-	return mDataWrapper;
+    return mDataWrapper;
 }
 
 void
 NMDataComponent::update(const QMap<QString, NMModelComponent*>& repo)
 {
-	NMDebugCtx(ctx, << "...");
+    NMDebugCtx(ctx, << "...");
 
     // prevent chasing our own tail
     if (mIsUpdating)
@@ -490,7 +498,7 @@ NMDataComponent::update(const QMap<QString, NMModelComponent*>& repo)
 
     NMModelComponent* inComp = this->getModelController()->getComponent(mInputCompName);
     if (inComp)
-	{
+    {
         // provenance information
         NMIterableComponent* host = this->getHostComponent();
         unsigned int hStep = 1;
@@ -525,18 +533,18 @@ NMDataComponent::update(const QMap<QString, NMModelComponent*>& repo)
         args << endTime.toString(getModelController()->getSetting("TimeFormat").toString());
 
         this->getModelController()->getLogger()->logProvN(NMLogger::NM_PROV_END, args, attrs);
-	}
+    }
 
     mIsUpdating = false;
 
-	NMDebugCtx(ctx, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 void
 NMDataComponent::reset(void)
 {
     if (!mDataWrapper.isNull())
-	{
+    {
         if (    mDataWrapper->getOTBTab().IsNotNull()
             &&  mDataWrapper->getOTBTab()->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE
            )
@@ -545,14 +553,14 @@ NMDataComponent::reset(void)
             sqltab->CloseTable();
         }
         mDataWrapper.clear();
-	}
-	this->mbLinked = false;
+    }
+    this->mbLinked = false;
     this->mIsUpdating = false;
-	this->mInputCompName.clear();
-	this->mLastInputCompName.clear();
-	this->mSourceMTime.setMSecsSinceEpoch(0);
-	this->mInputOutputIdx = 0;
-	this->mLastInputOutputIdx = 0;
+    this->mInputCompName.clear();
+    this->mLastInputCompName.clear();
+    this->mSourceMTime.setMSecsSinceEpoch(0);
+    this->mInputOutputIdx = 0;
+    this->mLastInputOutputIdx = 0;
 
-	emit NMDataComponentChanged();
+    emit NMDataComponentChanged();
 }

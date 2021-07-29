@@ -40,17 +40,20 @@ class NMDataRefComponent;
 
 class NMMODFRAMECORE_EXPORT NMDataComponent: public NMModelComponent
 {
-	Q_OBJECT
+    Q_OBJECT
+    Q_PROPERTY(bool IsStreamable READ getIsStreamable WRITE setIsStreamable)
 
     friend class NMDataRefComponent;
 public:
 
-	signals:
+    NMPropertyGetSet( IsStreamable, bool )
+
+    signals:
     void NMDataComponentChanged();
 
 public:
-	NMDataComponent(QObject* parent=0);
-	virtual ~NMDataComponent(void);
+    NMDataComponent(QObject* parent=0);
+    virtual ~NMDataComponent(void);
 
     virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg);
     virtual void linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
@@ -61,26 +64,28 @@ public:
 protected:
 
     QSharedPointer<NMItkDataObjectWrapper> mDataWrapper;
-	//QStringList mInputSpec;
+    //QStringList mInputSpec;
+
+    bool mIsStreamable;
 
     long long mTabMinPK;
     long long mTabMaxPK;
     unsigned int mParamPos;
-	bool mbLinked;
+    bool mbLinked;
 
     QDateTime mSourceMTime;
     QString mLastInputCompName;
-	QString mInputCompName;
-	unsigned int mInputOutputIdx;
-	unsigned int mLastInputOutputIdx;
+    QString mInputCompName;
+    unsigned int mInputOutputIdx;
+    unsigned int mLastInputOutputIdx;
 
     virtual QVariant getModelParameter(const QString &paramSpec);
 
-	virtual void initAttributes(void);
-	void fetchData(NMModelComponent* comp);
+    virtual void initAttributes(void);
+    void fetchData(NMModelComponent* comp);
 
 private:
-	static const std::string ctx;
+    static const std::string ctx;
 
 };
 

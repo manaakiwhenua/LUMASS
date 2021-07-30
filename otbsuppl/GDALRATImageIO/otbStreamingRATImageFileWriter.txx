@@ -1004,8 +1004,8 @@ StreamingRATImageFileWriter<TInputImage>
     {
         if (!m_WriteImage && m_InputRATs[inimg].IsNotNull())
         {
-            otb::GDALRATImageIO* gio = static_cast<otb::GDALRATImageIO*>(m_ImageIOs[inimg].GetPointer());
-            otb::NetCDFIO* nio = static_cast<otb::NetCDFIO*>(m_ImageIOs[inimg].GetPointer());
+            otb::GDALRATImageIO* gio = dynamic_cast<otb::GDALRATImageIO*>(m_ImageIOs[inimg].GetPointer());
+            otb::NetCDFIO* nio = dynamic_cast<otb::NetCDFIO*>(m_ImageIOs[inimg].GetPointer());
             if (nio != nullptr)
             {
                 nio->WriteRAT(m_InputRATs[inimg]);

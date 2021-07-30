@@ -46,7 +46,7 @@ To 'install' LUMASS on your system, follow the steps below.
 
    Ubuntu 20.04
    ============
-   $ sudo apt-get install libgdal26 libopengl0
+   $ sudo apt-get install libgdal26 gdal-bin libopengl0
 
 2. Download the most recent lumass AppImage to a
    directory you've got write permissions for.

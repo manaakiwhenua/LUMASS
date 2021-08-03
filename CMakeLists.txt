@@ -487,15 +487,22 @@ message(STATUS "YAML_CPP_LIBRARIES=${YAML_CPP_LIBRARIES}")
 #====================================================================
 # OpenMPI
 #====================================================================
+# this is still under development (like most of this file anyway)
+# so won't bother with MPI on win for now ... 
 
-find_package(MPI)
-if (MPI_CXX_FOUND)
-    message(STATUS "MPI_CXX: found version: ${MPI_CXX_VERSION}")
-    message(STATUS "MPI_CXX_INCLUDE_DIRS=${MPI_CXX_INCLUDE_DIRS}")
-    message(STATUS "MPI_CXX_LIBRARIES=${MPI_CXX_LIBRARIES}")
-else ()
-    set(MPI_CXX_INCLUDE_DIRS "MPI_CXX_INCLUDE_DIRS-NOTFOUND" CACHE STRING "Please specify the MPI-CXX include directories!")
-    set(MPI_CXX_LIBRARIES "MPI_CXX_LIBRARIES-NOTFOUND" CACHE STRING "Please specify the MPI-CXX libraries!")
+if (NOT WIN32)
+    find_package(MPI)
+    if (MPI_CXX_FOUND)
+        message(STATUS "MPI_CXX: found version: ${MPI_CXX_VERSION}")
+        message(STATUS "MPI_CXX_INCLUDE_DIRS=${MPI_CXX_INCLUDE_DIRS}")
+        message(STATUS "MPI_CXX_LIBRARIES=${MPI_CXX_LIBRARIES}")
+    else ()
+        set(MPI_CXX_INCLUDE_DIRS "MPI_CXX_INCLUDE_DIRS-NOTFOUND" CACHE STRING "Please specify the MPI-CXX include directories!")
+        set(MPI_CXX_LIBRARIES "MPI_CXX_LIBRARIES-NOTFOUND" CACHE STRING "Please specify the MPI-CXX libraries!")
+    endif()
+else()
+    set(MPI_CXX_INCLUDE_DIRS="")
+    set(MPI_CXX_LIBRARIES="")
 endif()
 
 #====================================================================

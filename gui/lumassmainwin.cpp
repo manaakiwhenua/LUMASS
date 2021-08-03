@@ -27,7 +27,10 @@
 #include <array>
 #include <map>
 #include "math.h"
-#include <mpi.h>
+
+#ifndef _WIN32
+#   include <mpi.h>
+#endif
 
 // GDAL support
 #include "gdal.h"

@@ -995,7 +995,8 @@ NetCDFIO::GetOverviewSize(int ovv)
 
 void NetCDFIO::SetZSliceIdx(int slindex)
 {
-    if (slindex >= 0 && slindex < this->m_Dimensions.at(2))
+    const int dim = static_cast<int>(this->GetDimensions(2));
+    if (slindex >= 0 && slindex < dim)
     {
         this->m_ZSliceIdx = slindex;
     }
@@ -1246,12 +1247,12 @@ void NetCDFIO::InternalWriteImageInformation()
                 {
                     // maps the netcdf dimension order : [..., [d4,]] z, y, x
                     // to the itk/otb dimension order:   x, y, z [, d4 [, ...]]
-                    const size_t otbDimIdx = ndims - d - 1;
+                    const unsigned int otbDimIdx = ndims - d - 1;
 
                     // determine the number of new dimension ids (and
                     // coordinate values) that need to be added for the
                     // chunk of data to be added to this variable
-                    std::vector<size_t> ioidx = {ioReg.GetIndex(otbDimIdx)};
+                    std::vector<size_t> ioidx = {static_cast<size_t>(ioReg.GetIndex(otbDimIdx))};
                     std::vector<size_t> iolen = {ioReg.GetSize(otbDimIdx)};
                     std::vector<size_t> lastRecIdx = {dims[d].getSize()-1};
 

@@ -6,6 +6,9 @@ set -e
 
 this_dir="$(readlink -f "$(dirname "$0")")"
 
+export LD_LIBRARY_PATH=$APPDIR/usr/lib:$LD_LIBRARY_PATH
+export GDAL_DRIVER_PATH=$APPDIR/usr/lib:$GDAL_DRIVER_PATH
+
 if [ $# -ge 1 ]; then                                                                                                                                                                                                                               
     exec "$this_dir"/usr/bin/lumassengine "$@"
 else

@@ -153,3 +153,15 @@ foreach( wrapper ${MFW_WRAPPER_NAMES} )
         endif()
 
 endforeach()
+
+
+#if(UNIX AND NOT APPLE)
+#
+#    file(GLOB LUMASS_LINUX_ALLLIBS
+#        ${lumass_BINARY_DIR}/lib/*so*
+#    )
+#
+#    install(FILES ${LUMASS_LINUX_ALLLIBS} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+#
+#endif()
+

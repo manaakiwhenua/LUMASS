@@ -22,11 +22,9 @@ namespace py = pybind11;
 // defines the process-wide (global) python
 // object store for class-based access
 namespace lumass_python {
+    static std::map<std::string, py::module_> ctrlPyModules;
     static std::map<std::string, py::object> ctrlPyObjects;
     static std::map<std::string, bool> ctrlPyObjectSinkMap;
-
-    static std::map<std::string, py::object>* pyObjects = &ctrlPyObjects;
-    static std::map<std::string, bool>* pyObjectSinkMap = &ctrlPyObjectSinkMap;
 }
 
 

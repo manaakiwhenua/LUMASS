@@ -97,9 +97,11 @@ protected:
     std::shared_ptr<bmi::Bmi> mPtrBMILib;
     QString mComponentName;
     QString mComponentPath;
+    QStringList mComponentPathList;
     QString mBMIClassName;
 
     QString mYamlConfigFileName;
+    QString mParsedYamlConfigFileName;
 
 };
 

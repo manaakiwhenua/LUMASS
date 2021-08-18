@@ -36,8 +36,8 @@
     #include <windows.h>
     #include <strsafe.h>
     #include <libloaderapi.h>
-    
-    #pragma push_macro("GetCurrentTime") 
+
+    #pragma push_macro("GetCurrentTime")
         #undef GetCurrentTime
 
         #ifdef LUMASS_PYTHON
@@ -49,7 +49,7 @@
 #else
     #define WINCALL
     #include <dlfcn.h>
-    
+
     #ifdef LUMASS_PYTHON
     #include "pythonbmi.h"
     #endif
@@ -155,87 +155,14 @@ public:
         bool bok;
         int givenStep = step;
 
-        // initialize the BMILibrary
-        std::map<std::string, py::object>::iterator pyIt = lumass_python::ctrlPyObjects.find(p->objectName().toStdString());
-        if (pyIt != lumass_python::ctrlPyObjects.end())
-        {
-            bmi::PythonBMI* pybmi = static_cast<bmi::PythonBMI*>(p->mPtrBMILib.get());
-            if (pybmi == nullptr)
-            {
-                std::stringstream sse;
-                sse << "PythonBMI - reloading python module for '" << p->objectName().toStdString() << "' failed! "
-                    << "I couldn't even get the PythonBMI object!";
-                NMMfwException be(NMMfwException::NMProcess_UninitialisedProcessObject);
-                be.setDescription(sse.str().c_str());
-                throw be;
-            }
-
-            std::string pyModuleName = pybmi->getPyModuleName();
-            try
-            {
-                py::module pymod = py::module::import(pyModuleName.c_str());
-                if (!pymod.is_none())
-                {
-                    pymod.reload();
-                }
-
-                pyIt->second.dec_ref();
-                lumass_python::ctrlPyObjects.erase(pyIt);
-
-                std::string bmiclass = pybmi->getBMIClassName();
-                py::object model = pymod.attr(bmiclass.c_str())();
-                if (!model.is_none())
-                {
-                    model.inc_ref();
-                    lumass_python::ctrlPyObjects.insert(std::pair<std::string, py::object>(p->objectName().toStdString(), model));
-                }
-            }
-            catch(py::error_already_set& eas)
-            {
-                std::stringstream sse;
-                sse << "PythonBMI - reloading module '" << pyModuleName << "' failed! "
-                      << eas.what();
-                NMMfwException be(NMMfwException::NMProcess_UninitialisedProcessObject);
-                be.setDescription(sse.str().c_str());
-                throw be;
-            }
-            catch(std::exception& se)
-            {
-                std::stringstream ssestr;
-                ssestr << "PythonBMI - reloading module '" << pyModuleName << "' failed! "
-                      << se.what();
-                NMMfwException see(NMMfwException::NMProcess_UninitialisedProcessObject);
-                see.setDescription(ssestr.str().c_str());
-                throw see;
-            }
-        }
-        else
-        {
-            p->initialiseBMILibrary();
-        }
-
-        if (p->mPtrBMILib.get() == nullptr)
-        {
-            NMErr("NMBMIWrapper", << "BMI library initialisation failed!");
-            NMMfwException be(NMMfwException::NMProcess_UninitialisedProcessObject);
-            be.setDescription("BMI library initialisation failed!");
-            throw be;
-        }
-        f->SetBMIModule(p->mPtrBMILib);
-
-        // pass on the wrapper object name, so the filter can fetch
-        // associated python modules from the global module map
-        f->SetWrapperName(p->objectName().toStdString());
-
-        f->SetIsStreamable(p->mbIsStreamable);
-        f->SetIsThreadable(p->mbIsThreadable);
-
         QVariant curYamlConfigFileNameVar = p->getParameter("YamlConfigFileName");
         std::string curYamlConfigFileName;
         if (curYamlConfigFileNameVar.isValid())
         {
             curYamlConfigFileName = curYamlConfigFileNameVar.toString().toStdString();
             f->SetYamlConfigFileName(curYamlConfigFileName);
+            p->mParsedYamlConfigFileName = curYamlConfigFileNameVar.toString();
+
             QString YamlConfigFileNameProvN = QString("nm:YamlConfigFileName=\"%1\"").arg(curYamlConfigFileName.c_str());
             p->addRunTimeParaProvN(YamlConfigFileNameProvN);
         }
@@ -276,6 +203,104 @@ public:
         f->SetInputNames(userIDs);
         QString inputNamesProvN = QString("nm:InputNames=\"%1\"").arg(inputNamesProvVal.join(' '));
         p->addRunTimeParaProvN(inputNamesProvN);
+        p->initialiseBMILibrary();
+
+        // pass on the wrapper object name, so the filter can fetch
+        // associated python modules from the global module map
+        f->SetWrapperName(p->objectName().toStdString());
+
+        // need to do this after initialisation, i.e.
+        // after the yaml config for the BMI model has
+        // been parsed
+        f->SetIsStreamable(p->mbIsStreamable);
+        f->SetIsThreadable(p->mbIsThreadable);
+
+        if (p->mPtrBMILib.get() == nullptr)
+        {
+            NMErr("NMBMIWrapper", << "BMI library initialisation failed!");
+            NMMfwException be(NMMfwException::NMProcess_UninitialisedProcessObject);
+            be.setDescription("BMI library initialisation failed!");
+            throw be;
+        }
+        f->SetBMIModule(p->mPtrBMILib);
+
+        // initialize the BMILibrary
+        //std::map<std::string, py::object>::iterator pyIt = lumass_python::ctrlPyObjects.find(p->objectName().toStdString());
+        //if (pyIt != lumass_python::ctrlPyObjects.end())
+        //{
+        //    bmi::PythonBMI* pybmi = static_cast<bmi::PythonBMI*>(p->mPtrBMILib.get());
+        //    if (pybmi == nullptr)
+        //    {
+        //        std::stringstream sse;
+        //        sse << "PythonBMI - reloading python module for '" << p->objectName().toStdString() << "' failed! "
+        //            << "I couldn't even get the PythonBMI object!";
+        //        NMMfwException be(NMMfwException::NMProcess_UninitialisedProcessObject);
+        //        be.setDescription(sse.str().c_str());
+        //        throw be;
+        //    }
+        //
+        //    std::string pyModuleName = pybmi->getPyModuleName();
+        //    try
+        //    {
+        //        py::module pymod = py::module::import(pyModuleName.c_str());
+        //        if (!pymod.is_none())
+        //        {
+        //            pymod.reload();
+        //        }
+        //
+        //        pyIt->second.dec_ref();
+        //        lumass_python::ctrlPyObjects.erase(pyIt);
+        //
+        //        std::string bmiclass = pybmi->getBMIClassName();
+        //        py::object model = pymod.attr(bmiclass.c_str())();
+        //        if (!model.is_none())
+        //        {
+        //            model.inc_ref();
+        //            lumass_python::ctrlPyObjects.insert(std::pair<std::string, py::object>(p->objectName().toStdString(), model));
+        //        }
+        //    }
+        //    catch(py::error_already_set& eas)
+        //    {
+        //        std::stringstream sse;
+        //        sse << "PythonBMI - reloading module '" << pyModuleName << "' failed! "
+        //              << eas.what();
+        //        NMMfwException be(NMMfwException::NMProcess_UninitialisedProcessObject);
+        //        be.setDescription(sse.str().c_str());
+        //        throw be;
+        //    }
+        //    catch(std::exception& se)
+        //    {
+        //        std::stringstream ssestr;
+        //        ssestr << "PythonBMI - reloading module '" << pyModuleName << "' failed! "
+        //              << se.what();
+        //        NMMfwException see(NMMfwException::NMProcess_UninitialisedProcessObject);
+        //        see.setDescription(ssestr.str().c_str());
+        //        throw see;
+        //    }
+        //}
+        //else
+        {
+            p->initialiseBMILibrary();
+        }
+
+        // pass on the wrapper object name, so the filter can fetch
+        // associated python modules from the global module map
+        f->SetWrapperName(p->objectName().toStdString());
+
+        // need to do this after initialisation, i.e.
+        // after the yaml config for the BMI model has
+        // been parsed
+        f->SetIsStreamable(p->mbIsStreamable);
+        f->SetIsThreadable(p->mbIsThreadable);
+
+        if (p->mPtrBMILib.get() == nullptr)
+        {
+            NMErr("NMBMIWrapper", << "BMI library initialisation failed!");
+            NMMfwException be(NMMfwException::NMProcess_UninitialisedProcessObject);
+            be.setDescription("BMI library initialisation failed!");
+            throw be;
+        }
+        f->SetBMIModule(p->mPtrBMILib);
 
 
         NMDebugCtx("NMBMIWrapper_Internal", << "done!");
@@ -336,31 +361,22 @@ NMBMIWrapper::initialiseBMILibrary()
             this->getModelController()->registerPythonRequest(this->parent()->objectName());
         }
     }
-#endif
 
-
-    // ======================================================
-
-    QFileInfo pathInfo(mComponentPath);
-    if (!pathInfo.isReadable())
-    {
-        NMLogError(<< "Couldn't read the BMI model at '"
-                   << mComponentPath.toStdString() << "'!");
-        return;
-    }
-
-    QString baseName = pathInfo.baseName();
-    QString path = pathInfo.absolutePath();
-    mComponentName = baseName;
-    mComponentPath = path;
-
-#ifdef LUMASS_PYTHON
     if (mBMIComponentType == NM_BMI_COMPONENT_TYPE_PYTHON)
     {
         std::string compName = this->parent() != nullptr ? this->parent()->objectName().toStdString()
                                                      : this->objectName().toStdString();
-        mPtrBMILib = std::make_shared<bmi::PythonBMI>(bmi::PythonBMI(mComponentName.toStdString(),
-                                   mComponentPath.toStdString(),
+        std::vector<std::string> pypath;
+        foreach(const QString & pp, mComponentPathList)
+        {
+            pypath.push_back(pp.toStdString());
+        }
+
+        // strip the '.py' suffix from the component name (if any was provided)
+        QFileInfo modinfo(mComponentName);
+        std::string modulename = modinfo.baseName().toStdString();
+        mPtrBMILib = std::make_shared<bmi::PythonBMI>(bmi::PythonBMI(modulename,
+                                   pypath,
                                    mBMIClassName.toStdString(),
                                    compName));
 
@@ -375,23 +391,10 @@ NMBMIWrapper::initialiseBMILibrary()
 
         try
         {
-            // remove previous python object, if exists
-            {
-                std::map<std::string, py::object>::iterator mit = lumass_python::pyObjects->find(compName);
-                if (mit != lumass_python::ctrlPyObjects.end())
-                {
-                    py::object po = mit->second;
-                    lumass_python::ctrlPyObjects.erase(mit);
-                    po.dec_ref();
-
-                    NMLogInfo(<< "Deleted old module '" << mPtrBMILib->GetComponentName() << "'!");
-                }
-            }
-
             mPtrBMILib->Initialize(mYamlConfigFileName.toStdString());
             if (!lumass_python::ctrlPyObjects[compName].is_none())
             {
-                lumass_python::pyObjectSinkMap->insert(std::pair<std::string, bool>(compName, mIsSink));
+                lumass_python::ctrlPyObjectSinkMap[compName] = mIsSink;
                 NMLogInfo(<< "Successfully initialised '" << mPtrBMILib->GetComponentName() << "'!");
             }
             else
@@ -422,16 +425,12 @@ NMBMIWrapper::initialiseBMILibrary()
 NMBMIWrapper
 ::~NMBMIWrapper()
 {
-//    if (mPtrBMILib != nullptr)
-//    {
-//        delete mPtrBMILib;
-//    }
 }
 
 void
 NMBMIWrapper::parseYamlConfig()
 {
-    QFileInfo fifo(this->mYamlConfigFileName);
+    QFileInfo fifo(this->mParsedYamlConfigFileName);
     if (!fifo.isReadable())
     {
         NMLogError(<< "Failed reading BMI model configuration from '"
@@ -442,7 +441,7 @@ NMBMIWrapper::parseYamlConfig()
 
     try
     {
-        YAML::Node configFile = YAML::LoadFile(mYamlConfigFileName.toStdString());
+        YAML::Node configFile = YAML::LoadFile(mParsedYamlConfigFileName.toStdString());
         YAML::Node config;
 
         if (configFile.IsMap() && configFile["LumassBMIConfig"])
@@ -467,11 +466,18 @@ NMBMIWrapper::parseYamlConfig()
               NMLogDebug(<< "type = " << bmitype);
 
               this->mBMIClassName.clear();
-              if (config["name"])
+              if (config["class_name"])
               {
-                  mBMIClassName = config["name"].as<std::string>().c_str();
+                  mBMIClassName = config["class_name"].as<std::string>().c_str();
               }
-              NMLogDebug(<< "name = " << mBMIClassName.toStdString());
+              NMLogDebug(<< "class_name = " << mBMIClassName.toStdString());
+
+              this->mComponentName.clear();
+              if (config["library_name"])
+              {
+                  mComponentName = config["library_name"].as <std::string>().c_str();
+              }
+              NMLogDebug(<< "library_name = " << mComponentName.toStdString());
 
               this->mComponentPath.clear();
               if (config["path"])
@@ -479,6 +485,24 @@ NMBMIWrapper::parseYamlConfig()
                   mComponentPath = config["path"].as<std::string>().c_str();
               }
               NMLogDebug(<< "path = " << mComponentPath.toStdString());
+
+              mComponentPathList.clear();
+
+              QStringList tmpList = mComponentPath.split(QDir::listSeparator(), QString::SkipEmptyParts);
+
+              foreach(const QString & pathItem, tmpList)
+              {
+                  QDir aDir(pathItem);
+                  if (aDir.isReadable())
+                  {
+                      mComponentPathList << pathItem;
+                  }
+                  else
+                  {
+                      NMLogError(<< "path: '" << pathItem.toStdString() << "' is not a readable path!");
+                      return;
+                  }
+              }
 
               if (config["issink"])
               {
@@ -524,6 +548,4 @@ NMBMIWrapper::setYamlConfigFileName(const QString &YamlConfigFileName)
     this->mYamlConfigFileName = YamlConfigFileName;
 
     emit nmChanged();
-
-    //this->initialiseBMILibrary(YamlConfigFileName);
 }

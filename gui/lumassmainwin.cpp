@@ -308,7 +308,7 @@
 #include "QVTKInteractorAdapter.h"
 
 #include "NMSqlTableModel.h"
-#include "vtkOpenGLRenderWindow.h"
+//#include "vtkOpenGLRenderWindow.h"
 #include "NMVtkInteractorStyleImage.h"
 #include "NMVtkMapScale.h"
 #include "NMVtkLookupTable.h"
@@ -998,12 +998,52 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 
     this->ui->modelViewWidget->updateToolContextBox();
 
-
     // =================================================
     // init WebServer
     //initWebSocketServer();
     mServer = nullptr;
     mClientList.clear();
+
+    // ==================================================
+    //      DARK MODE
+    // ==================================================
+#if defined _WIN32
+    //
+    // below code sourced from
+    // https://successfulsoftware.net/2021/03/31/how-to-add-a-dark-theme-to-your-qt-application/
+    // https://stackoverflow.com/questions/15035767/is-the-qt-5-dark-fusion-theme-available-for-windows
+    // THANKS FOR SHARING!
+    //
+    // check for dark mode
+
+    // do we support dark mode?
+    // dark mode supported Windows 10 1809 10.0.17763 onward
+    // https://stackoverflow.com/questions/53501268/win10-dark-theme-how-to-use-in-winapi
+
+
+    bool bDarkSupported = false;
+    if (QOperatingSystemVersion::current().majorVersion() == 10)
+    {
+        bDarkSupported = QOperatingSystemVersion::current().microVersion() >= 17763;
+    }
+    else if (QOperatingSystemVersion::current().majorVersion() > 10)
+    {
+        bDarkSupported = true;
+    }
+
+
+    //-----------------------------------
+    // setdark mode, if windows is in dark mode
+    // and if dark mode is supported at al
+
+    if (bDarkSupported)
+    {
+        if (this->isInDarkMode())
+        {
+            this->setDarkMode(true);
+        }
+    }
+#endif
 }
 
 LUMASSMainWin::~LUMASSMainWin()
@@ -1544,6 +1584,7 @@ LUMASSMainWin::setImageLayerZSliceIdx(int delta)
     int slindex = il->getZSliceIndex();
     int newslindex = std::max(0, slindex + (delta/120));
     il->setZSliceIndex(newslindex);
+    this->updateCoords(this->ui->qvtkWidget->GetRenderWindow()->GetInteractor());
 }
 
 void
@@ -1751,6 +1792,63 @@ LUMASSMainWin::clearSelection()
     {
         l->selectCell(-1, NMLayer::NM_SEL_CLEAR);
         this->processUserPickAction(-1, true);
+    }
+}
+
+bool LUMASSMainWin::isInDarkMode(void)
+{
+#if defined _WIN32
+    QSettings sysSettings("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", QSettings::NativeFormat);
+    return sysSettings.value("AppsUseLightTheme", 1).toInt() == 0;
+#else
+    return false;
+
+#endif
+}
+
+void LUMASSMainWin::setDarkMode(bool bdark)
+{
+    // credit to
+    // https://stackoverflow.com/questions/15035767/is-the-qt-5-dark-fusion-theme-available-for-windows
+    // https://github.com/Jorgen-VikingGod/Qt-Frameless-Window-DarkStyle
+    if (bdark)
+    {
+        qApp->setStyle(QStyleFactory::create("Fusion"));
+        // increase font size for better reading
+        QFont defaultFont = QApplication::font();
+        defaultFont.setPointSize(defaultFont.pointSize() + 2);
+        qApp->setFont(defaultFont);
+        // modify palette to dark
+        QPalette darkPalette;
+        darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
+        darkPalette.setColor(QPalette::WindowText, Qt::white);
+        darkPalette.setColor(QPalette::Disabled, QPalette::WindowText, QColor(127, 127, 127));
+        darkPalette.setColor(QPalette::Base, QColor(42, 42, 42));
+        darkPalette.setColor(QPalette::AlternateBase, QColor(66, 66, 66));
+        darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
+        darkPalette.setColor(QPalette::ToolTipText, Qt::white);
+        darkPalette.setColor(QPalette::Text, Qt::white);
+        darkPalette.setColor(QPalette::Disabled, QPalette::Text, QColor(127, 127, 127));
+        darkPalette.setColor(QPalette::Dark, QColor(35, 35, 35));
+        darkPalette.setColor(QPalette::Shadow, QColor(20, 20, 20));
+        darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
+        darkPalette.setColor(QPalette::ButtonText, Qt::white);
+        darkPalette.setColor(QPalette::Disabled, QPalette::ButtonText, QColor(127, 127, 127));
+        darkPalette.setColor(QPalette::BrightText, Qt::red);
+        darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
+        darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
+        darkPalette.setColor(QPalette::Disabled, QPalette::Highlight, QColor(80, 80, 80));
+        darkPalette.setColor(QPalette::HighlightedText, Qt::white);
+        darkPalette.setColor(QPalette::Disabled, QPalette::HighlightedText, QColor(127, 127, 127));
+
+        qApp->setPalette(darkPalette);
+
+    }
+    else
+    {
+        qApp->setPalette(this->style()->standardPalette());
+        qApp->setStyle(QStyleFactory::create("Fusion"));
+        qApp->setStyleSheet("");
     }
 }
 
@@ -3992,6 +4090,70 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
+    // TEST pybind11 on Windows
+
+    if (!Py_IsInitialized())
+    {
+        py::initialize_interpreter();
+
+    }
+
+    try
+    {
+        NMLogInfo(<< "get sys module_ ... ");
+
+        py::module_ sys = py::module_::import("sys");
+
+        std::string bmipy = "c:/src/python/bmi-python";
+        std::string appendstr = "c:/src/python/watyield/bmi";
+        std::string another = "c:/src/python/watyield";
+        sys.attr("path").attr("append")(py::cast(appendstr));
+        sys.attr("path").attr("append")(py::cast(another));
+        sys.attr("path").attr("append")(py::cast(bmipy));
+
+
+        //py::object pstr = sys.attr("path").attr("pop")();
+        //
+        //std::string cstr = pstr.cast<std::string>();
+        //
+        //NMLogInfo(<< "cstr='" << cstr << "'!");
+
+        //py::print(1, 2.0, "three");
+        //py::object atup = py::make_tuple("unpacked", true);
+
+        //NMLogInfo(<< "tuple=" << atup.cast<std::string>());
+
+        py::module mod = py::module::import("watyieldbmi");
+        if (!mod.is_none())
+        {
+            NMLogInfo(<< "Teilerfolg!");
+        }
+
+        py::object model = mod.attr("WatYieldBMI")();
+        if (!model.is_none())
+        {
+            NMLogInfo(<< "did it!");
+        }
+
+
+    }
+    catch (py::cast_error& ce)
+    {
+        NMLogError(<< ce.what());
+    }
+    catch (py::error_already_set& eas)
+    {
+        NMLogError(<< eas.what());
+    }
+    catch (std::exception& se)
+    {
+        NMLogError(<< se.what());
+    }
+
+
+    // ::~LUMASSMainWin() finalizes it
+
+// -----------------------------------------------------
 //    MPI_Init(nullptr, nullptr);
 
 //    int nproc;

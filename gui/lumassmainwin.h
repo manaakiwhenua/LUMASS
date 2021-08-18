@@ -246,6 +246,8 @@ public slots:
     void swapWindowLayout(QAction *act);
     void modelViewActivated(QObject *);
     void clearSelection(void);
+    bool isInDarkMode(void);
+    void setDarkMode(bool bdark);
 
     void pan(bool toggled);
     void zoomIn(bool toggled);

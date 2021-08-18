@@ -1433,6 +1433,7 @@ bool NMImageReader::initialise()
     if (this->mFileName.isEmpty())
     {
         NMDebugCtx(ctxNMImageReader, << "done!");
+        this->mbIsInitialised = false;
         return false;
     }
 
@@ -1493,6 +1494,7 @@ bool NMImageReader::initialise()
     {
         NMLogError(<<  ctxNMImageReader << ": NO IMAGEIO WAS FOUND!");
         NMDebugCtx(ctxNMImageReader, << "done!");
+        this->mbIsInitialised = false;
         return false;
     }
 
@@ -1503,6 +1505,7 @@ bool NMImageReader::initialise()
     {
         NMLogError(<<  ctxNMImageReader << ": Failed reading '" << this->mFileName.toStdString() << "'!");
         NMDebugCtx(ctxNMImageReader, << "done!");
+        this->mbIsInitialised = false;
         return false;
     }
 

@@ -690,8 +690,7 @@ void
 NMImageReader<TOutputImage>
 ::TestFileExistanceAndReadability()
 {
-  // check first and foremost for a
-  // netcdf file
+  // check first and foremost for a netcdf file
   std::string tmpFN = this->GetFileName();
   if (tmpFN.find(".nc") != std::string::npos)
   {
@@ -705,70 +704,98 @@ NMImageReader<TOutputImage>
       }
   }
 
-  // Test if the file a server name
-  if  (tmpFN.find("http") == 0)
-        //      [0] == 'h'
-        //       && this->GetFileName()[1] == 't'
-        //       && this->GetFileName()[2] == 't'
-        //       && this->GetFileName()[3] == 'p')
-    {
-    // If the url is not available
-    if (!m_Curl->TestUrlAvailability(this->GetFileName()))
-      {
-      otb::ImageFileReaderException e(__FILE__, __LINE__);
-      std::ostringstream msg;
-      msg << "File name is an http address, but curl fails to connect to it "
-          << std::endl << "Filename = " << this->GetFileName()
-          << std::endl;
-      e.SetDescription(msg.str().c_str());
-      throw e;
-      }
-    return;
-    }
-
-  // Test if we have an hdf file with dataset spec
-  std::string realfile(this->GetFileName());
-  unsigned int datasetNum;
-  if (System::ParseHdfFileName(this->GetFileName(), realfile, datasetNum))
+  if (tmpFN.find(".kea") != std::string::npos)
   {
-      otbMsgDevMacro(<< "HDF name with dataset specification detected"); otbMsgDevMacro(<< " - " << realfile); otbMsgDevMacro(<< " - " << datasetNum);
-      this->SetFileName(realfile);
-      m_DatasetNumber = datasetNum;
+      otb::GDALRATImageIO::Pointer gio = dynamic_cast<otb::GDALRATImageIO*>(this->GetImageIO());
+      if (gio.IsNotNull())
+      {
+          if (gio->CanReadFile(tmpFN.c_str()))
+          {
+              return;
+          }
+
+          otb::ImageFileReaderException e(__FILE__, __LINE__);
+          std::ostringstream msg;
+          msg << "otbNMImageReader: ERROR - LUMASS failed to read the KEA image file "
+              << "'" << tmpFN << "'! Please make sure the KEA GDAL plugin is installed, "
+              << " and the filename points to valid and readable file!";
+          e.SetDescription(msg.str().c_str());
+          throw e;
+      }
   }
 
-  // Test if the file exists.
-  if (!itksys::SystemTools::FileExists(this->GetFileName()))
-    {
-    otb::ImageFileReaderException e(__FILE__, __LINE__);
-    std::ostringstream msg;
-    msg << "The file doesn't exist. "
-        << std::endl << "Filename = " << this->GetFileName()
-        << std::endl;
-    e.SetDescription(msg.str().c_str());
-    throw e;
-    return;
-    }
+  otb::ImageFileReaderException e(__FILE__, __LINE__);
+  std::ostringstream msg;
+  msg << "otbNMImageReader: ERROR - LUMASS failed to read the image file "
+      << "'" << tmpFN << "'! Please make sure the filetype is supported, "
+      << " and the filename points to valid and readable file!";
+  e.SetDescription(msg.str().c_str());
+  throw e;
 
-  // Test if the file can be open for reading access.
-  //Only if m_FileName specify a filename (not a dirname)
-  if (itksys::SystemTools::FileExists(this->GetFileName(), true) == true)
-    {
-    std::ifstream readTester;
-    readTester.open(this->GetFileName());
-    if (readTester.fail())
-      {
-      readTester.close();
-      std::ostringstream msg;
-      msg << "The file couldn't be opened for reading. "
-          << std::endl << "Filename: " << this->GetFileName()
-          << std::endl;
-      otb::ImageFileReaderException e(__FILE__, __LINE__, msg.str().c_str(), ITK_LOCATION);
-      throw e;
-      return;
+  //// Test if the file a server name
+  //if  (tmpFN.find("http") == 0)
+  //      //      [0] == 'h'
+  //      //       && this->GetFileName()[1] == 't'
+  //      //       && this->GetFileName()[2] == 't'
+  //      //       && this->GetFileName()[3] == 'p')
+  //  {
+  //  // If the url is not available
+  //  if (!m_Curl->TestUrlAvailability(this->GetFileName()))
+  //    {
+  //    otb::ImageFileReaderException e(__FILE__, __LINE__);
+  //    std::ostringstream msg;
+  //    msg << "File name is an http address, but curl fails to connect to it "
+  //        << std::endl << "Filename = " << this->GetFileName()
+  //        << std::endl;
+  //    e.SetDescription(msg.str().c_str());
+  //    throw e;
+  //    }
+  //  return;
+  //  }
 
-      }
-    readTester.close();
-    }
+  //// Test if we have an hdf file with dataset spec
+  //std::string realfile(this->GetFileName());
+  //unsigned int datasetNum;
+  //if (System::ParseHdfFileName(this->GetFileName(), realfile, datasetNum))
+  //{
+  //    otbMsgDevMacro(<< "HDF name with dataset specification detected"); otbMsgDevMacro(<< " - " << realfile); otbMsgDevMacro(<< " - " << datasetNum);
+  //    this->SetFileName(realfile);
+  //    m_DatasetNumber = datasetNum;
+  //}
+
+  //// Test if the file exists.
+  //if (!itksys::SystemTools::FileExists(this->GetFileName()))
+  //  {
+  //  otb::ImageFileReaderException e(__FILE__, __LINE__);
+  //  std::ostringstream msg;
+  //  msg << "The file doesn't exist. "
+  //      << std::endl << "Filename = " << this->GetFileName()
+  //      << std::endl;
+  //  e.SetDescription(msg.str().c_str());
+  //  throw e;
+  //  return;
+  //  }
+  //
+  //// Test if the file can be open for reading access.
+  ////Only if m_FileName specify a filename (not a dirname)
+  //if (itksys::SystemTools::FileExists(this->GetFileName(), true) == true)
+  //  {
+  //  std::ifstream readTester;
+  //  readTester.open(this->GetFileName());
+  //  if (readTester.fail())
+  //    {
+  //    readTester.close();
+  //    std::ostringstream msg;
+  //    msg << "The file couldn't be opened for reading. "
+  //        << std::endl << "Filename: " << this->GetFileName()
+  //        << std::endl;
+  //    otb::ImageFileReaderException e(__FILE__, __LINE__, msg.str().c_str(), ITK_LOCATION);
+  //    throw e;
+  //    return;
+  //
+  //    }
+  //  readTester.close();
+  //  }
 }
 
 template<class TOutputImage>

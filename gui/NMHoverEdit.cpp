@@ -88,7 +88,9 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     // adapt highlighter colours for dark mode, if applicable
     QColor bkg = this->mEdit->palette().background().color();
     bool bdark = false;
-    if (bkg.red() < 80 && bkg.green() < 80 && bkg.blue() < 80)
+    if (    NMGlobalHelper::getMainWindow()->isInDarkMode() 
+         || (bkg.red() < 80 && bkg.green() < 80 && bkg.blue() < 80)
+       )
     {
         bdark = true;
     }

@@ -1366,7 +1366,9 @@ NMImageLayer::setFileName(QString filename)
     if (!this->mReader->isInitialised())
     {
         emit layerProcessingEnd();
-        NMLogError(<< ctxNMImageLayer << ": couldn't read the image!");
+        NMLogError(<< ctxNMImageLayer << ": LUMASS couldn't read the image! "
+                   << "Please double check the filename and whether "
+                   << " the driver for the given image type is installed!");
         NMDebugCtx(ctxNMImageLayer, << "done!");
         return false;
     }
@@ -1522,6 +1524,10 @@ NMImageLayer::getOverviewSizes()
             std::vector<int> os;
             os.push_back(this->mReader->getOverviewSize(i)[0]);
             os.push_back(this->mReader->getOverviewSize(i)[1]);
+            if (this->mReader->getOverviewSize(i).size() == 3)
+            {
+                os.push_back(this->mReader->getOverviewSize(i)[2]);
+            }
             sizes.push_back(os);
         }
     }
@@ -1849,7 +1855,7 @@ NMImageLayer::setZSliceIndex(int slindex)
                 NMLogDebug(<< this->objectName().toStdString() << "'s ZSliceIndex = " << mZSliceIdx);
                 this->mReader->setZSliceIdx(mZSliceIdx);
                 this->mapExtentChanged();
-                this->mRenderer->Render();
+                this->mRenderWindow->Render();
             }
         }
     }

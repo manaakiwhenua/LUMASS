@@ -684,6 +684,17 @@ StreamingRATImageFileWriter<TInputImage>
 
                 gioPtr->SetFileName(this->m_FileNames[io]);
 
+                if (!gioPtr->CanWriteFile(this->m_FileNames[io].c_str()))
+                {
+                    itkExceptionMacro(<< "GDAL cannot write the specified file "
+                                      << "'" << this->m_FileNames[io] << "!"
+                                      << "Make sure you've got write access to the "
+                                      << "specified location and have installed "
+                                      << "any potentially required GDAL plugins, e.g. "
+                                      << " KEA!");
+                }
+
+
                 if (!gioPtr->CanStreamWrite())
                 {
                     bCanStreamWriteAll = false;

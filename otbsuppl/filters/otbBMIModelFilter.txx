@@ -210,7 +210,7 @@ void BMIModelFilter<TInputImage, TOutputImage>
     }
     else if (typeInfo.hash_code() == typeid(double).hash_code())
     {
-        tn = "float";
+        tn = "double";
         this->m_BMIModule->SetValue(bmiTypeName, static_cast<void*>(const_cast<char*>(tn.c_str())));
 
         size_t dsize = sizeof(double);
@@ -226,7 +226,7 @@ void BMIModelFilter<TInputImage, TOutputImage>
     }
     else if (typeInfo.hash_code() == typeid(long).hash_code())
     {
-        tn = "int";
+        tn = "long";
         this->m_BMIModule->SetValue(bmiTypeName, static_cast<void*>(const_cast<char*>(tn.c_str())));
 
         size_t lsize = sizeof(long);
@@ -234,7 +234,7 @@ void BMIModelFilter<TInputImage, TOutputImage>
     }
     else if (typeInfo.hash_code() == typeid(long long).hash_code())
     {
-        tn = "int";
+        tn = "long long";
         this->m_BMIModule->SetValue(bmiTypeName, static_cast<void*>(const_cast<char*>(tn.c_str())));
 
         size_t llsize = sizeof(long long);
@@ -322,6 +322,9 @@ void BMIModelFilter<TInputImage, TOutputImage>
 ::GenerateData(void)
 {
     this->AllocateOutputs();
+    
+    ///TOOD: multi-threaded implementation
+    /*
     if (this->m_IsThreadable)
     {
         this->BeforeThreadedGenerateData();
@@ -345,6 +348,7 @@ void BMIModelFilter<TInputImage, TOutputImage>
         this->AfterThreadedGenerateData();
     }
     else
+    */
     {
         this->SingleThreadedGenerateData();
     }

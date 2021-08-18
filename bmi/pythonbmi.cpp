@@ -52,13 +52,15 @@ namespace bmi
 {
 
     PythonBMI::PythonBMI(std::string pymodulename,
-        std::string pymodulepath,
+        std::vector<std::string> pythonpath,
         std::string bmiclass,
         std::string wrappername)
         : mPyModuleName(pymodulename),
-        mPyModulePath(pymodulepath),
+        mPythonPath(pythonpath),
         mBMIClass(bmiclass),
-        mBMIWrapperName(wrappername)
+        mBMIWrapperName(wrappername),
+        mBMIWrap(nullptr),
+        mWrapLogFunc(nullptr)
     {}
 
     void
@@ -92,23 +94,84 @@ namespace bmi
         {
             std::stringstream msg;
 
-            // add the module's path to the system's python path
-            //std::string path = "/home/alex/garage/python/watyield/bmi";
-            py::module::import("sys").attr("path").attr("append")(mPyModulePath.c_str());
+            // =================================================================
+            // always add the python path to avoid closing and re-openeing LUMASS
+            // to reflect code-changes including the use of additional modules.
+            // it would be a pain to always have to close and re-open LUMASS
 
-            msg << "PythonBMI::initialize - added '" << this->mPyModulePath << "' to system path!";
+            // add the module(s)'(s) path(s) to the system's python path
+            //std::string path = "/home/alex/garage/python/watyield/bmi";
+#if defined _WIN32
+            std::string sep = ";";
+#else
+            std::string sep = ":";
+#endif
+
+            std::string ppath = mPythonPath.size() > 0 ? mPythonPath.at(0) : "";
+            py::module_ pysys = py::module_::import("sys");
+            for (int p = 0; p < mPythonPath.size(); ++p)
+            {
+                pysys.attr("path").attr("append")(py::cast(mPythonPath.at(p)));
+
+                if (p > 0)
+                {
+                    ppath = ppath + sep + mPythonPath.at(p);
+                }
+            }
+
+            msg << "PythonBMI::initialize - added '" << ppath << "' to system path!";
             bmilog(LEVEL_INFO, msg.str().c_str());
             msg.str("");
 
+
+            // ================================================================
+            // double check, whether we just have to 'reload' the module and class ...
+
+            std::map<std::string, py::object>::iterator objIt = lupy::ctrlPyObjects.find(mBMIWrapperName);
+            if (objIt != lupy::ctrlPyObjects.end())
+            {
+                std::map<std::string, py::module_>::iterator modIt = lupy::ctrlPyModules.find(mBMIWrapperName);
+                if (modIt != lupy::ctrlPyModules.end())
+                {
+                    msg << "Re-loading module '" << mPyModuleName << "' ...";
+                    bmilog(LEVEL_INFO, msg.str().c_str());
+                    msg.str("");
+                    modIt->second.reload();
+
+
+
+                    msg << "Instantiate model class '" << mBMIClass << "' ...";
+                    bmilog(LEVEL_INFO, msg.str().c_str());
+                    msg.str("");
+                    objIt->second = modIt->second.attr(mBMIClass.c_str())();
+                    objIt->second.attr("initialize")(config_file);
+
+                    msg << "'" << mBMIClass << "' successfully re-initialised!";
+                    bmilog(LEVEL_INFO, msg.str().c_str());
+                    msg.str("");
+                    return;
+                }
+                else // mmmmmh - this is not good and should have not happend :-( ???
+                {
+                    objIt->second = py::none();
+                    lupy::ctrlPyObjects.erase(mBMIWrapperName);
+                    lupy::ctrlPyObjectSinkMap.erase(mBMIWrapperName);
+                }
+            }
+
+            // ================================================================
+            // ... nope, nothing there. We'll do a first time init ...
+
+
             // import the module
-            py::object mod = py::module::import(this->mPyModuleName.c_str());
+            py::module_ mod = py::module_::import(this->mPyModuleName.c_str());
             if (mod.is_none())
             {
                 msg << "Module '" << this->mPyModuleName << "' import failed!";
                 bmilog(LEVEL_ERROR, msg.str().c_str());
                 return;
             }
-            py::print(mod);
+
             msg << "Module '" << this->mPyModuleName << "' imported";
             bmilog(LEVEL_INFO, msg.str().c_str());
             msg.str("");
@@ -121,7 +184,7 @@ namespace bmi
                 bmilog(LEVEL_ERROR, msg.str().c_str());
                 return;
             }
-            py::print(model);
+
             msg << "Python BMI model '" << this->mBMIClass << "' instantiated";
             bmilog(LEVEL_INFO, msg.str().c_str());
             msg.str("");
@@ -135,8 +198,10 @@ namespace bmi
 
             bmilog(LEVEL_INFO, "PythonBMI: intitialisation complete!");
 
+            mod.inc_ref();
             model.inc_ref();
-            lupy::pyObjects->insert(std::pair<std::string, py::object>(mBMIWrapperName, model));
+            lupy::ctrlPyModules.insert(std::pair<std::string, py::module_>(mBMIWrapperName, mod));
+            lupy::ctrlPyObjects.insert(std::pair<std::string, py::object>(mBMIWrapperName, model));
         }
         catch (py::cast_error& ce)
         {
@@ -155,7 +220,7 @@ namespace bmi
     void PythonBMI::
         Update()
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         if (pymod.is_none())
         {
             bmilog(LEVEL_ERROR, "PythonBMI::Update() - Python module object invalid!");
@@ -180,7 +245,7 @@ namespace bmi
     void PythonBMI::
         UpdateUntil(double t)
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         pymod.attr("update_until")(t);
     }
 
@@ -188,7 +253,7 @@ namespace bmi
     void PythonBMI::
         Finalize()
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         pymod.attr("finalize")();
     }
 
@@ -196,7 +261,7 @@ namespace bmi
     int PythonBMI::
         GetVarGrid(std::string name)
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::object res = pymod.attr("get_var_grid")(name);
         return res.cast<int>();
     }
@@ -205,7 +270,7 @@ namespace bmi
     std::string PythonBMI::
         GetVarType(std::string name)
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::object res = pymod.attr("get_var_type")(name);
         return res.cast<std::string>();
     }
@@ -214,7 +279,7 @@ namespace bmi
     int PythonBMI::
         GetVarItemsize(std::string name)
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::object res = pymod.attr("get_var_itemsize")(name);
         return res.cast<int>();
     }
@@ -223,7 +288,7 @@ namespace bmi
     std::string PythonBMI::
         GetVarUnits(std::string name)
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::object res = pymod.attr("get_var_units")(name);
         return res.cast<std::string>();
     }
@@ -245,7 +310,7 @@ namespace bmi
     std::string
         PythonBMI::GetVarLocation(std::string name)
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::object res = pymod.attr("get_var_location")(name);
         return res.cast<std::string>();
     }
@@ -255,7 +320,7 @@ namespace bmi
         GetGridShape(const int grid, int* shape)
     {
         int rank = this->GetGridRank(grid);
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::array_t<int, py::array::c_style> res(
             py::buffer_info(
                 shape,
@@ -274,7 +339,7 @@ namespace bmi
         GetGridSpacing(const int grid, double* spacing)
     {
         int rank = this->GetGridRank(grid);
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::array_t<double, py::array::c_style> res(
             py::buffer_info(
                 spacing,
@@ -298,7 +363,7 @@ namespace bmi
     int PythonBMI::
         GetGridRank(const int grid)
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::object res = pymod.attr("get_grid_rank")(py::cast(grid));
         return res.cast<int>();
     }
@@ -307,7 +372,7 @@ namespace bmi
     int PythonBMI::
         GetGridSize(const int grid)
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::object res = pymod.attr("get_grid_size")(py::cast(grid));
         return res.cast<int>();
     }
@@ -316,7 +381,7 @@ namespace bmi
     std::string PythonBMI::
         GetGridType(const int grid)
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::object res = pymod.attr("get_grid_type")(py::cast(grid));
         return res.cast<std::string>();
     }
@@ -394,7 +459,7 @@ namespace bmi
     void* PythonBMI::
         GetValuePtr(std::string name)
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         if (pymod.is_none())
         {
             bmilog(LEVEL_ERROR, "PythonBMI::GetValuePtr(): Python object not initialised!");
@@ -434,7 +499,7 @@ namespace bmi
     void PythonBMI::
         SetValue(std::string name, void* src)
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         if (pymod.is_none())
         {
             bmilog(LEVEL_ERROR, "PythonBMI::SetValue(): Python object not initialised!");
@@ -460,7 +525,9 @@ namespace bmi
                 std::string vtype = this->GetVarType(namepart);
                 int vsize = this->GetVarItemsize(namepart);
                 int vgsize = this->GetGridSize(GetVarGrid(namepart));
-                if (vtype.find("float") != std::string::npos)
+                if (    vtype.find("float") != std::string::npos
+                     || vtype.find("double") != std::string::npos
+                   )
                 {
                     if (vsize == 4)
                     {
@@ -491,7 +558,10 @@ namespace bmi
                         pymod.attr("set_value")(namepart, dar);
                     }
                 }
-                else if (vtype.find("int") != std::string::npos)
+                else if (    vtype.find("int") != std::string::npos
+                          || vtype.find("long") != std::string::npos
+                          || vtype.find("long long") != std::string::npos
+                        )
                 {
                     if (vsize == 4)
                     {
@@ -576,7 +646,7 @@ namespace bmi
     std::string PythonBMI::
         GetComponentName()
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::object res = pymod.attr("get_component_name")();
         return res.cast<std::string>();
     }
@@ -585,7 +655,7 @@ namespace bmi
     int PythonBMI::
         GetInputItemCount()
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::object res = pymod.attr("get_input_item_count")();
         return res.cast<int>();
     }
@@ -594,7 +664,7 @@ namespace bmi
     int PythonBMI::
         GetOutputItemCount()
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::object res = pymod.attr("get_output_item_count")();
         return res.cast<int>();
     }
@@ -604,7 +674,7 @@ namespace bmi
         GetInputVarNames()
     {
         std::vector<std::string> names;
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::tuple res = pymod.attr("get_input_var_names")();
 
         py::detail::tuple_iterator it = res.begin();
@@ -626,7 +696,7 @@ namespace bmi
 
         try
         {
-            py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+            py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
             py::tuple res = pymod.attr("get_output_var_names")();
 
             py::detail::tuple_iterator it = res.begin();
@@ -663,7 +733,7 @@ namespace bmi
     double
         PythonBMI::GetStartTime()
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::object res = pymod.attr("get_start_time")();
         return res.cast<double>();
     }
@@ -672,7 +742,7 @@ namespace bmi
     double
         PythonBMI::GetEndTime()
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::object res = pymod.attr("get_end_time")();
         return res.cast<double>();
     }
@@ -681,7 +751,7 @@ namespace bmi
     double
         PythonBMI::GetCurrentTime()
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::object res = pymod.attr("get_current_time")();
         return res.cast<double>();
     }
@@ -690,7 +760,7 @@ namespace bmi
     std::string
         PythonBMI::GetTimeUnits()
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::object res = pymod.attr("get_time_units")();
         return res.cast<std::string>();
     }
@@ -699,7 +769,7 @@ namespace bmi
     double
         PythonBMI::GetTimeStep()
     {
-        py::object pymod = lupy::pyObjects->at(mBMIWrapperName);
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
         py::object res = pymod.attr("get_time_step")();
         return res.cast<double>();
     }
@@ -708,224 +778,5 @@ namespace bmi
 #ifdef _WIN32
     void main() {}
 #endif
-
-
-    //Logger _bmilog = nullptr;
-
-    //py::module* currentPyModule;
-    //std::map<std::string, py::module>* pyModules = nullptr;
-    //std::map<std::string, bool>* pyModuleSinkMap = nullptr;
-
-    //void bmilog(int ilevel, const char* msg)
-    //{
-    //    const int alevel = ilevel;
-    //    Level level;
-    //    switch (alevel)
-    //    {
-    //    case 0: level = LEVEL_ALL; break;
-    //    case 1: level = LEVEL_DEBUG; break;
-    //    case 2: level = LEVEL_INFO; break;
-    //    case 3: level = LEVEL_WARNING; break;
-    //    case 4: level = LEVEL_ERROR; break;
-    //    case 5: level = LEVEL_FATAL; break;
-    //    default: level = LEVEL_NONE;
-    //    }
-
-    //    if (_bmilog != nullptr)
-    //    {
-    //        _bmilog(level, msg);
-    //    }
-    //}
-
-
-    //void PythonBMI::setPyObjects(std::map<std::string, py::object>* pyobjects)
-    //{
-    //    if (pyobjects != nullptr && pyobjects->size())
-    //    {
-    //        lupy::pyObjects = pyobjects;
-    //    }
-    //}
-
-    //std::map<std::string, py::object>*
-    //PythonBMI::getPyObjects()
-    //{
-    //    return lupy::pyObjects;
-    //}
-
-
-    //void PythonBMI::setPyObjectSinkMap(std::map<std::string, bool>* sinkmap)
-    //{
-    //    if (sinkmap != nullptr && sinkmap->size())
-    //    {
-    //        lupy::pyObjectSinkMap = sinkmap;
-    //    }
-    //    else
-    //    {
-    //        lupy::pyObjectSinkMap = nullptr;
-    //    }
-    //}
-
-    //bool PythonBMI::isPyObjectSink(std::string objname)
-    //{
-    //    if (lupy::pyObjectSinkMap != nullptr && lupy::pyObjectSinkMap->count(objname) > 0)
-    //    {
-    //        return lupy::pyObjectSinkMap->at(objname);
-    //    }
-
-    //    return false;
-    //}
-
-
-    /*
-    // control functions. These return an error code.
-    BMI_API int initialize(const char *config_file)
-    {
-        // check for python interpreter
-        if (!Py_IsInitialized())
-        {
-            bmilog(LEVEL_ERROR, "No python interpreter available!"
-                                " PythonBMI initialisation failed!");
-            return 1;
-        }
-
-        bmilog(LEVEL_INFO, "PythonBMI: initialising...");
-
-        YAML::Node configFile;
-        YAML::Node config;
-
-        // read yaml configuration file
-        try
-        {
-            configFile = YAML::LoadFile(config_file);
-            config = configFile["LumassBMIConfig"];
-        }
-        catch (std::exception& e)
-        {
-            std::stringstream msg;
-            msg << "ERROR: " << e.what();
-            bmilog(LEVEL_ERROR, msg.str().c_str());
-            return 1;
-        }
-
-        if (config.IsNull() || !config.IsDefined())
-        {
-            std::stringstream msg;
-            msg << "ERROR: LUMASSConfig not found in yaml!";
-            bmilog(LEVEL_ERROR, msg.str().c_str());
-            //std::cout << "cout: " << msg.str() << std::endl;
-            return 1;
-        }
-
-        std::string pymodule = config["pythonmodule"].IsDefined() ? config["pythonmodule"].as<std::string>() : "";
-        if (!pymodule.empty())
-        {
-            py::module amod = py::module::import(pymodule.c_str());
-            pyModules->insert(std::pair<std::string, py::module>(pymodule, amod));
-            currentPyModule = &amod;
-        }
-        else
-        {
-            bmilog(LEVEL_ERROR, "No python module specified!");
-            return 1;
-        }
-
-        bool issink = config["issink"].IsDefined() ? config["issink"].as<bool>() : false;
-        if (issink)
-        {
-            pyModuleSinkMap->insert(std::pair<std::string, bool>(pymodule, issink));
-        }
-
-        bmilog(LEVEL_INFO, "LumassBMI: intitialisation complete!");
-        return 0;
-    }
-
-    BMI_API int update(double dt)
-    {
-        bmilog(LEVEL_INFO, "LumassMBI: update(" << dt << ") called!");
-
-        return 0;
-    }
-
-    BMI_API int finalize()
-    {
-
-        bmilog(LEVEL_INFO, "LumassBMI successfully finalised!");
-
-        return 0;
-    }
-
-    //time control functions
-    void PythonBMI:: get_start_time(double *t)
-    {
-
-    }
-
-    void PythonBMI:: get_end_time(double *t)
-    {
-
-    }
-
-    void PythonBMI:: get_current_time(double *t)
-    {
-
-    }
-
-    void PythonBMI:: get_time_step(double *dt)
-    {
-
-    }
-
-    // variable info
-    void PythonBMI:: get_var_shape(const char *name, int shape[MAXDIMS])
-    {
-
-    }
-
-    void PythonBMI:: get_var_rank(const char *name, int *rank)
-    {
-
-    }
-
-    void PythonBMI:: get_var_type(const char *name, char *type)
-    {
-
-    }
-
-    void PythonBMI:: get_var_count(int *count)
-    {
-
-    }
-
-    void PythonBMI:: get_var_name(int index, char *name)
-    {
-
-    }
-
-    // get a pointer pointer - a reference to a multidimensional array
-    void PythonBMI:: get_var(const char *name, void **ptr)
-    {
-
-    }
-
-    // Set the variable from contiguous memory referenced to by ptr
-    void PythonBMI:: set_var(const char *name, const void *ptr)
-    {
-
-    }
-
-    // Set a slice of the variable from contiguous memory using start / count multi-dimensional indices
-    void PythonBMI:: set_var_slice(const char *name, const int *start, const int *count, const void *ptr)
-    {
-
-    }
-
-    /// this Logger is not supported by LUMASS
-    void PythonBMI:: set_logger(Logger logger)
-    {
-        _bmilog = logger;
-
-        bmilog(LEVEL_INFO, "LumassBMI is now connected to BMI log function!");
-    }
-    */
 
 } // end of namespace bmi

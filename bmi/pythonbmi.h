@@ -56,8 +56,9 @@ namespace bmi
             LEVEL_NONE
         } Level;
 
+        virtual ~PythonBMI() = default;
         PythonBMI(std::string pymodulename,
-            std::string pymodulepath,
+            std::vector<std::string> pythonpath,
             std::string bmiclass,
             std::string wrappername);
 
@@ -126,6 +127,8 @@ namespace bmi
 
         std::string getBMIClassName(void) { return mBMIClass; }
 
+        std::string getBMIWrapperName(void) { return mBMIWrapperName; }
+
         //void setPyObjects(std::map<std::string, pybind11::object> *pyobjects);
         //std::map<std::string, py::object>* getPyObjects();
         //void setPyObjectSinkMap(std::map<std::string, bool>* sinkmap);
@@ -133,13 +136,12 @@ namespace bmi
 
     private:
         std::string mPyModuleName;
-        std::string mPyModulePath;
+        std::vector<std::string> mPythonPath;
         std::string mBMIClass;
         std::string mBMIWrapperName;
         std::string mLastMsg;
         NMBMIWrapper* mBMIWrap;
         WrapLogFunc mWrapLogFunc;
-
 
     };
 

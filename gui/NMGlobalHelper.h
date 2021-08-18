@@ -54,8 +54,8 @@ public:
     static QStringList getModelSettingsList(void);
     static QString getMultiLineInput(const QString& title,
                               const QString& suggestion, QWidget* parent=0);
-    static QString getNetCDFVarPathInput(const QString& ncFilename);
-    static void parseNcGroup(const netCDF::NcGroup& grp, QStringList& varPaths);
+    static QString getNetCDFVarPathInput(const QString& ncFilename, const QString& exclude);
+    static void parseNcGroup(const netCDF::NcGroup& grp, QStringList& varPaths, const QString& exclude);
     static QStringList getMultiItemSelection(const QString& title,
                                          const QString& label,
                                          const QStringList& items,

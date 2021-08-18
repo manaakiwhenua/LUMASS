@@ -103,7 +103,7 @@ NMGlobalHelper::getMultiLineInput(const QString& title,
 }
 
 QString
-NMGlobalHelper::getNetCDFVarPathInput(const QString& ncFilename)
+NMGlobalHelper::getNetCDFVarPathInput(const QString& ncFilename, const QString &exclude)
 {
     QString ret;
     using namespace netCDF;
@@ -119,7 +119,7 @@ NMGlobalHelper::getNetCDFVarPathInput(const QString& ncFilename)
         }
 
         NcGroup grp(nc.getId());
-        NMGlobalHelper::parseNcGroup(grp, varPaths);
+        NMGlobalHelper::parseNcGroup(grp, varPaths, exclude);
 
     }
     catch(exceptions::NcException& e)
@@ -140,7 +140,7 @@ NMGlobalHelper::getNetCDFVarPathInput(const QString& ncFilename)
 }
 
 void
-NMGlobalHelper::parseNcGroup(const netCDF::NcGroup& grp, QStringList& varPaths)
+NMGlobalHelper::parseNcGroup(const netCDF::NcGroup& grp, QStringList& varPaths, const QString &exclude)
 {
     using namespace netCDF;
 
@@ -157,6 +157,15 @@ NMGlobalHelper::parseNcGroup(const netCDF::NcGroup& grp, QStringList& varPaths)
         std::stringstream dimstr;
         while (varIt != vars.cend())
         {
+            // if the variable name contains the filter term 'exclude'
+            // we skip it
+            QString vname = varIt->first.c_str();
+            if (vname.contains(exclude, Qt::CaseInsensitive))
+            {
+                ++varIt;
+                continue;
+            }
+
             std::vector<NcDim> dims = varIt->second.getDims();
             for (int d=dims.size()-1; d >=0; --d)
             {
@@ -165,6 +174,16 @@ NMGlobalHelper::parseNcGroup(const netCDF::NcGroup& grp, QStringList& varPaths)
                 {
                     dimstr << ", ";
                 }
+            }
+
+            // if this var is a 'dimension variable' don't add it
+            // to the list of 'image' variables
+            if (    dims.size() == 1
+                 && dims.at(0).getName().compare(varIt->first) == 0
+               )
+            {
+                ++varIt;
+                continue;
             }
 
             QString ventry = QString("%1/%2 (%3)").arg(gpath.c_str()).arg(varIt->first.c_str()).arg(dimstr.str().c_str());
@@ -178,7 +197,16 @@ NMGlobalHelper::parseNcGroup(const netCDF::NcGroup& grp, QStringList& varPaths)
         std::multimap<std::string, NcGroup>::const_iterator groupsIt = groups.cbegin();
         while (groupsIt != groups.cend())
         {
-            NMGlobalHelper::parseNcGroup(groupsIt->second, varPaths);
+            // if the name of the sub-group contains the filter term 'exclude'
+            // we don't add its content the list of 'image' variables
+            QString grpname = groupsIt->first.c_str();
+            if (grpname.contains(exclude, Qt::CaseInsensitive))
+            {
+                ++groupsIt;
+                continue;
+            }
+
+            NMGlobalHelper::parseNcGroup(groupsIt->second, varPaths, exclude);
             ++groupsIt;
         }
     }

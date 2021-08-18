@@ -132,27 +132,42 @@ GDALRATImageIO::~GDALRATImageIO()
 // Tell only if the file can be read with GDAL.
 bool GDALRATImageIO::CanReadFile(const char* file)
 {
-  // First check the extension
-  if (file == NULL)
+    // First check the extension
+    if (file == NULL)
     {
-    NMLogDebug(<< "No filename specified.");
-    return false;
+        NMLogDebug(<< "No filename specified.");
+        return false;
     }
 
-  // open data set and close right away, otherwise this
-  // causes hawock in conjunction with the lumass pipeline
-  // mechanics
+    std::string driverName = this->FilenameToGdalDriverShortName(file);
+    if (driverName.compare("NOT-FOUND") == 0)
+    {
+        return false;
+    }
+    else
+    {
+        GDALDriverManager* drvMan = GetGDALDriverManager();
+        GDALDriver* drv = drvMan->GetDriverByName(driverName.c_str());
+        if (drv == nullptr)
+        {
+            return false;
+        }
+    }
 
-  m_Dataset = (GDALDataset*)GDALOpen(file, GA_ReadOnly);
+    // open data set and close right away, otherwise this
+    // causes hawock in conjunction with the lumass pipeline
+    // mechanics
 
-  bool bret = false;
-  if (m_Dataset != 0)
-  {
-      bret = true;
-      this->CloseDataset();
-  }
+    m_Dataset = (GDALDataset*)GDALOpen(file, GA_ReadOnly);
 
-  return bret;
+    bool bret = false;
+    if (m_Dataset != 0)
+    {
+        bret = true;
+        this->CloseDataset();
+    }
+
+    return bret;
 }
 
 // Used to print information about this object
@@ -1949,7 +1964,7 @@ std::string GDALRATImageIO::FilenameToGdalDriverShortName(const std::string& nam
   extension = itksys::SystemTools::LowerCase( itksys::SystemTools::GetFilenameLastExtension(name) );
   extension = extension.substr(1, extension.size()-1);
 
-  if      ( extension == "tif" || extension == "tiff" )
+  if ( extension == "tif" || extension == "tiff" )
     gdalDriverShortName = "GTiff";
   else if ( extension == "hdr" )
     gdalDriverShortName = "ENVI";

@@ -686,12 +686,18 @@ bool NMModelController::removeComponent(const QString& name)
         ic->destroySubComponents(this->mComponentMap);
     this->mComponentMap.remove(name);
 
-    std::map<std::string, py::object>::iterator pyit = lupy::pyObjects->find(name.toStdString());
+    std::map<std::string, py::object>::iterator pyit = lupy::ctrlPyObjects.find(name.toStdString());
     if (pyit != lupy::ctrlPyObjects.end())
     {
-        py::object po = pyit->second;
-        lupy::pyObjects->erase(pyit);
-        po.dec_ref();
+        pyit->second = py::none();
+        lupy::ctrlPyObjects.erase(name.toStdString());
+    }
+
+    std::map<std::string, py::module_>::iterator pymodIt = lupy::ctrlPyModules.find(name.toStdString());
+    if (pymodIt != lupy::ctrlPyModules.end())
+    {
+        pymodIt->second = py::none();
+        lupy::ctrlPyModules.erase(name.toStdString());
     }
 
     this->mPythonComponents.removeOne(name);
@@ -871,13 +877,10 @@ NMModelController::registerPythonRequest(const QString &compName)
     }
 
 #ifdef LUMASS_PYTHON
-//    if (lupy::pyObjects->size() == 0)
-//    {
         if (!Py_IsInitialized())
         {
             py::initialize_interpreter();
         }
-//    }
 #endif
 
 }

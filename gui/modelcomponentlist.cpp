@@ -111,25 +111,25 @@ const std::string ModelComponentList::ctx = "ModelComponentList";
 ModelComponentList::ModelComponentList(QWidget *parent)
        :QTreeView(parent), mLastLayer(nullptr)
 {
-	this->mLayerModel = new NMLayerModel(this);
-	this->setModel(this->mLayerModel);
+    this->mLayerModel = new NMLayerModel(this);
+    this->setModel(this->mLayerModel);
 
     this->mVTKConn = vtkSmartPointer<vtkEventQtSlotConnect>::New();
 
     mbWholeImgStats = false;
 
-	// set the general column count for this control
-	this->setHeaderHidden(true);
-	this->setRootIsDecorated(false);
-	this->setExpandsOnDoubleClick(true);
-	this->setUniformRowHeights(false);
+    // set the general column count for this control
+    this->setHeaderHidden(true);
+    this->setRootIsDecorated(false);
+    this->setExpandsOnDoubleClick(true);
+    this->setUniformRowHeights(false);
 
-	this->setSelectionBehavior(QAbstractItemView::SelectRows);
+    this->setSelectionBehavior(QAbstractItemView::SelectRows);
 
-	this->viewport()->setAcceptDrops(true);
-	this->viewport()->installEventFilter(this);
+    this->viewport()->setAcceptDrops(true);
+    this->viewport()->installEventFilter(this);
 
-	this->reset();
+    this->reset();
 
     // do some stuff we can't do here
     mDelegate = new NMComponentListItemDelegate(this);
@@ -145,20 +145,20 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     /* =============================================================
                         GENERAL LAYER CONTEXT MENU
     ================================================================ */
-	this->mMenu = new QMenu(this);
+    this->mMenu = new QMenu(this);
 
-	QAction* actZoom = new QAction(this->mMenu);
-	actZoom->setText(tr("Zoom To Layer"));
+    QAction* actZoom = new QAction(this->mMenu);
+    actZoom->setText(tr("Zoom To Layer"));
 
     mActZoomSel = new QAction(this->mMenu);
     mActZoomSel->setText(tr("Zoom To Selection"));
 
     QAction* actTable = new QAction(this->mMenu);
-	actTable->setText(tr("Open Attribute Table"));
-	QAction* actSaveChanges = new QAction(this->mMenu);
-	actSaveChanges->setText(tr("Save Changes"));
-	QAction* actRemove = new QAction(this->mMenu);
-	actRemove->setText(tr("Remove Layer"));
+    actTable->setText(tr("Open Attribute Table"));
+    QAction* actSaveChanges = new QAction(this->mMenu);
+    actSaveChanges->setText(tr("Save Changes"));
+    QAction* actRemove = new QAction(this->mMenu);
+    actRemove->setText(tr("Remove Layer"));
 
     mActValueStats = new QAction(this->mMenu);
     mActValueStats->setText(tr("Value Field Statistics"));
@@ -199,18 +199,18 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     this->mActExportColourRamp = new QAction(this->mMenu);
     mActExportColourRamp->setText(tr("Save Colour Ramp ..."));
 
-	this->mMenu->addAction(actTable);
-	this->mMenu->addSeparator();
+    this->mMenu->addAction(actTable);
+    this->mMenu->addSeparator();
 
     this->mMenu->addAction(actZoom);
     this->mMenu->addAction(mActZoomSel);
-	this->mMenu->addSeparator();
+    this->mMenu->addSeparator();
 
     this->mMenu->addAction(mActImageInfo);
     this->mMenu->addAction(mActValueStats);
     this->mMenu->addAction(mActImageHistogram);
     this->mMenu->addAction(mActImageStats);
-	this->mMenu->addSeparator();
+    this->mMenu->addSeparator();
 
     this->mMenu->addAction(mActSingleSymbol);
     this->mMenu->addAction(mActUniqueValues);
@@ -222,27 +222,27 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
     this->mMenu->addAction(mActOpacity);
     this->mMenu->addAction(actSelColor);
-	this->mMenu->addSeparator();
+    this->mMenu->addSeparator();
 
     this->mMenu->addAction(actLoadLegend);
     this->mMenu->addAction(actSaveLegend);
     this->mMenu->addAction(mActExportColourRamp);
     this->mMenu->addSeparator();
     this->mMenu->addAction(actSaveChanges);
-	this->mMenu->addAction(actRemove);
+    this->mMenu->addAction(actRemove);
 
     this->connect(actLoadLegend, SIGNAL(triggered()), this, SLOT(loadLegend()));
     this->connect(actSaveLegend, SIGNAL(triggered()), this, SLOT(saveLegend()));
-	this->connect(actZoom, SIGNAL(triggered()), this, SLOT(zoomToLayer()));
+    this->connect(actZoom, SIGNAL(triggered()), this, SLOT(zoomToLayer()));
     this->connect(mActZoomSel, SIGNAL(triggered()), this, SLOT(zoomToSelection()));
-	this->connect(actTable, SIGNAL(triggered()), this, SLOT(openAttributeTable()));
-	this->connect(actRemove, SIGNAL(triggered()), this, SLOT(removeCurrentLayer()));
+    this->connect(actTable, SIGNAL(triggered()), this, SLOT(openAttributeTable()));
+    this->connect(actRemove, SIGNAL(triggered()), this, SLOT(removeCurrentLayer()));
     this->connect(mActSingleSymbol, SIGNAL(triggered()), this, SLOT(mapSingleSymbol()));
     this->connect(mActUniqueValues, SIGNAL(triggered()), this, SLOT(mapUniqueValues()));
     this->connect(mActClrTab, SIGNAL(triggered()), this, SLOT(mapColourTable()));
     this->connect(mActClrRamp, SIGNAL(triggered()), this, SLOT(mapColourRamp()));
     this->connect(mActRGBImg, SIGNAL(triggered()), this, SLOT(mapRGBImage()));
-	this->connect(actSaveChanges, SIGNAL(triggered()), this, SLOT(saveLayerChanges()));
+    this->connect(actSaveChanges, SIGNAL(triggered()), this, SLOT(saveLayerChanges()));
     this->connect(mActValueStats, SIGNAL(triggered()), this, SLOT(showValueStats()));
     this->connect(mActImageStats, SIGNAL(triggered()), this, SLOT(wholeImgStats()));
     this->connect(mActImageHistogram, SIGNAL(triggered()), this, SLOT(showImageHistogram()));
@@ -255,12 +255,12 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
 #ifdef LUMASS_DEBUG
 
-	QAction* testing = new QAction(this->mMenu);
-	testing->setText(tr("Test ..."));
-	this->mMenu->addSeparator();
-	this->mMenu->addAction(testing);
+    QAction* testing = new QAction(this->mMenu);
+    testing->setText(tr("Test ..."));
+    this->mMenu->addSeparator();
+    this->mMenu->addAction(testing);
 
-	this->connect(testing, SIGNAL(triggered()), this, SLOT(test()));
+    this->connect(testing, SIGNAL(triggered()), this, SLOT(test()));
 
 #endif
 
@@ -297,26 +297,26 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
 ModelComponentList::~ModelComponentList()
 {
-	delete this->mMenu;
-	delete this->mLayerModel;
+    delete this->mMenu;
+    delete this->mLayerModel;
 }
 
 void
 ModelComponentList::initView(void)
 {
-	// we do some init work here we can't do in the constructor
-	this->setIconSize(QSize(35,16));
+    // we do some init work here we can't do in the constructor
+    this->setIconSize(QSize(35,16));
 }
 
 void ModelComponentList::openAttributeTable()
 {
 //	NMDebugCtx(ctx, << "...");
 
-	const int toplevelrow = (this->currentIndex().internalId() / 100) - 1;
-	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
-	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
-	if (l != 0)
-		l->showAttributeTable();
+    const int toplevelrow = (this->currentIndex().internalId() / 100) - 1;
+    const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+    NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+    if (l != 0)
+        l->showAttributeTable();
 
 //	NMDebugCtx(ctx, << "done!");
 }
@@ -392,15 +392,15 @@ void ModelComponentList::exportColourRamp()
 
 void ModelComponentList::saveLayerChanges()
 {
-	const int toplevelrow = (this->currentIndex().internalId() / 100) - 1;
-	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
-	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
-	this->setCurrentIndex(QModelIndex());
-	if (l != 0)
-	{
-		NMDebugAI(<< "going to save changes to the data set..." << endl);
-		l->writeDataSet();
-	}
+    const int toplevelrow = (this->currentIndex().internalId() / 100) - 1;
+    const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+    NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+    this->setCurrentIndex(QModelIndex());
+    if (l != 0)
+    {
+        NMDebugAI(<< "going to save changes to the data set..." << endl);
+        l->writeDataSet();
+    }
 }
 
 void
@@ -455,6 +455,11 @@ ModelComponentList::showImageInfo()
         for (int s=0; s < oss.size(); ++s)
         {
             ovv << oss.at(s).at(0) << "x" << oss.at(s).at(1);
+            if (oss.at(s).size() == 3)
+            {
+                ovv << "x" << oss.at(s).at(2);
+            }
+
             if (s < oss.size()-1)
             {
                 ovv << " ";
@@ -496,6 +501,7 @@ ModelComponentList::showImageInfo()
     pixsizestr << std::endl;
 
     std::string typeStr = il->getImage()->getComponentTypeString(il->getImage()->getNMComponentType()).toStdString();
+    int ndim = il->getNumDimensions();
 
     std::stringstream ii;
     ii << setprecision(0) << fixed;
@@ -504,16 +510,42 @@ ModelComponentList::showImageInfo()
        << setprecision(2)
        << pixsizestr.str()
        << "Pixel Component Type: " << typeStr << std::endl
-       << "Origin: " << orig[0] << ", " << orig[1] << std::endl
-       << "Top Left Corner: " << bbox[0] << ", " << bbox[3]  << std::endl
-       << "Bottom Right Corner: " << bbox[1] << ", " << bbox[2] << std::endl
-       << setprecision(0)
+       << "Origin: " << orig[0] << ", " << orig[1];
+    if (ndim == 3)
+    {
+        ii << ", " << orig[2] << std::endl;
+    }
+    else
+    {
+        ii << std::endl;
+    }
+
+    ii << "Top Left Corner: " << bbox[0] << ", " << bbox[3];
+    if (ndim == 3)
+    {
+        ii << ", " << bbox[4] << std::endl;
+    }
+    else
+    {
+        ii << std::endl;
+    }
+
+    ii << "Bottom Right Corner: " << bbox[1] << ", " << bbox[2];
+    if (ndim == 3)
+    {
+        ii << ", " << bbox[4] << std::endl;
+    }
+    else
+    {
+        ii << std::endl;
+    }
+
+    ii << setprecision(0)
        << "Total Number of Bands: " << il->getTotalNumBands() << std::endl
        << "Bands Displayed: " << bandorder.str() << std::endl
        << "Current Overview: " << ovidx.str() << std::endl
        << "Available Overviews: " << ovv.str() << std::endl
        << "File Name: " << il->getFileName().toStdString() << std::endl;
-
 
    QMessageBox::information(this, il->objectName(),
                             QString(ii.str().c_str()));
@@ -522,30 +554,30 @@ ModelComponentList::showImageInfo()
 
 void ModelComponentList::removeCurrentLayer()
 {
-	const int toplevelrow = (this->currentIndex().internalId() / 100) - 1;
-	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
-	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
-	this->setCurrentIndex(QModelIndex());
-	if (l == 0)
-		return;
+    const int toplevelrow = (this->currentIndex().internalId() / 100) - 1;
+    const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+    NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+    this->setCurrentIndex(QModelIndex());
+    if (l == 0)
+        return;
 
-	if (l->hasChanged())
-	{
-		QMessageBox msgBox;
-		QString text = QString(tr("Remove Layer '%1'")).arg(l->objectName());
-		msgBox.setText(text);
-		msgBox.setInformativeText("Do you want to save your changes before?");
-		msgBox.setStandardButtons(QMessageBox::No | QMessageBox::Yes);
-		msgBox.setDefaultButton(QMessageBox::Yes);
-		int ret = msgBox.exec();
+    if (l->hasChanged())
+    {
+        QMessageBox msgBox;
+        QString text = QString(tr("Remove Layer '%1'")).arg(l->objectName());
+        msgBox.setText(text);
+        msgBox.setInformativeText("Do you want to save your changes before?");
+        msgBox.setStandardButtons(QMessageBox::No | QMessageBox::Yes);
+        msgBox.setDefaultButton(QMessageBox::Yes);
+        int ret = msgBox.exec();
 
-		if (ret == QMessageBox::Yes)
-		{
-			l->writeDataSet();
-		}
-	}
+        if (ret == QMessageBox::Yes)
+        {
+            l->writeDataSet();
+        }
+    }
 
-	this->removeLayer(l);
+    this->removeLayer(l);
 }
 
 void ModelComponentList::loadLegend()
@@ -589,19 +621,19 @@ void ModelComponentList::saveLegend()
 
 void ModelComponentList::updateLegend(const NMLayer* layer)
 {
-	//NMDebugAI( << "going to update the legend for " << layer->objectName().toStdString()
-		//	<< endl);
+    //NMDebugAI( << "going to update the legend for " << layer->objectName().toStdString()
+        //	<< endl);
 
-	QModelIndex idx = this->mLayerModel->getItemLayerModelIndex(layer->objectName());
-	if (this->isExpanded(idx))
-	{
-		this->collapse(idx);
-		this->expand(idx);
-	}
+    QModelIndex idx = this->mLayerModel->getItemLayerModelIndex(layer->objectName());
+    if (this->isExpanded(idx))
+    {
+        this->collapse(idx);
+        this->expand(idx);
+    }
 
 
 
-	this->update(idx);
+    this->update(idx);
 }
 
 //void
@@ -614,77 +646,77 @@ void ModelComponentList::updateLegend(const NMLayer* layer)
 NMLayer*
 ModelComponentList::getSelectedLayer()
 {
-	NMLayer* l = 0;
+    NMLayer* l = 0;
 
-	QModelIndexList il = this->selectedIndexes();
-	if (il.size() == 0)
-		return l;
+    QModelIndexList il = this->selectedIndexes();
+    if (il.size() == 0)
+        return l;
 
-	const QModelIndex idx = il.at(0);
-	const int stackpos = this->mLayerModel->toLayerStackIndex(idx.row());
-	l = this->mLayerModel->getItemLayer(stackpos);
+    const QModelIndex idx = il.at(0);
+    const int stackpos = this->mLayerModel->toLayerStackIndex(idx.row());
+    l = this->mLayerModel->getItemLayer(stackpos);
 
-	return l;
+    return l;
 }
 
 int ModelComponentList::changeLayerPos(int oldpos, int newpos)
 {
-	// save the collapsed state of all layers
-	QList<bool> collapsed;
-	for (unsigned int r=0; r < this->mLayerModel->rowCount(QModelIndex()); ++r)
-	{
-		if (this->isExpanded(this->mLayerModel->index(r, 0, QModelIndex())))
-			collapsed.push_back(false);
-		else
-			collapsed.push_back(true);
-	}
+    // save the collapsed state of all layers
+    QList<bool> collapsed;
+    for (unsigned int r=0; r < this->mLayerModel->rowCount(QModelIndex()); ++r)
+    {
+        if (this->isExpanded(this->mLayerModel->index(r, 0, QModelIndex())))
+            collapsed.push_back(false);
+        else
+            collapsed.push_back(true);
+    }
 
-	// swap places in collapsed list
-	int oldtree = this->mLayerModel->toTreeModelRow(oldpos);
-	int newtree = this->mLayerModel->toTreeModelRow(newpos);
-	bool tc = collapsed.takeAt(oldtree);
-	collapsed.insert(newtree, tc);
+    // swap places in collapsed list
+    int oldtree = this->mLayerModel->toTreeModelRow(oldpos);
+    int newtree = this->mLayerModel->toTreeModelRow(newpos);
+    bool tc = collapsed.takeAt(oldtree);
+    collapsed.insert(newtree, tc);
 
-	// now swap layer places
-	this->mLayerModel->changeItemLayerPos(oldpos, newpos);
+    // now swap layer places
+    this->mLayerModel->changeItemLayerPos(oldpos, newpos);
 
-	// reinstate layer's expansion setting
-	for (unsigned int r=0; r < this->mLayerModel->rowCount(QModelIndex()); ++r)
-	{
-		QModelIndex id = this->mLayerModel->index(r, 0, QModelIndex());
-		if (collapsed.at(r))
-			this->collapse(id);
-		else
-			this->expand(id);
-	}
+    // reinstate layer's expansion setting
+    for (unsigned int r=0; r < this->mLayerModel->rowCount(QModelIndex()); ++r)
+    {
+        QModelIndex id = this->mLayerModel->index(r, 0, QModelIndex());
+        if (collapsed.at(r))
+            this->collapse(id);
+        else
+            this->expand(id);
+    }
 
-	// update the map display window
+    // update the map display window
     //this->topLevelWidget()->findChild<QVTKOpenGLWidget*>(tr("qvtkWidget"))->update();
     NMGlobalHelper::getRenderWindow()->Render();
-	return oldpos;
+    return oldpos;
 }
 
 
 bool ModelComponentList::removeLayer(QString layerName)
 {
-	NMLayer* l = this->mLayerModel->getItemLayer(layerName);
-	if (l == 0)
-		return false;
+    NMLayer* l = this->mLayerModel->getItemLayer(layerName);
+    if (l == 0)
+        return false;
 
-	this->removeLayer(l);
-	return  true;
+    this->removeLayer(l);
+    return  true;
 }
 
 void ModelComponentList::removeLayer(NMLayer* layer)
 {
-	NMDebugCtx(ctx, << "...");
+    NMDebugCtx(ctx, << "...");
 
-	disconnect(layer, SIGNAL(visibilityChanged(const NMLayer*)),
-				this, SLOT(updateMapWin(const NMLayer*)));
-	disconnect(layer, SIGNAL(legendChanged(const NMLayer*)),
-			this, SLOT(updateLegend(const NMLayer*)));
-	disconnect(this, SIGNAL(selectedLayerChanged(const NMLayer *)),
-			layer, SLOT(selectedLayerChanged(const NMLayer *)));
+    disconnect(layer, SIGNAL(visibilityChanged(const NMLayer*)),
+                this, SLOT(updateMapWin(const NMLayer*)));
+    disconnect(layer, SIGNAL(legendChanged(const NMLayer*)),
+            this, SLOT(updateLegend(const NMLayer*)));
+    disconnect(this, SIGNAL(selectedLayerChanged(const NMLayer *)),
+            layer, SLOT(selectedLayerChanged(const NMLayer *)));
 
 
     // double check whether we need to clear any currently displayed
@@ -695,8 +727,8 @@ void ModelComponentList::removeLayer(NMLayer* layer)
 
     // remove layer from the model (which updates as well the layer position
     // held by each layer in the layer stack)
-	this->mLayerModel->removeLayer(layer);
-	this->reset();
+    this->mLayerModel->removeLayer(layer);
+    this->reset();
 
     // update the map display window
     //this->topLevelWidget()->findChild<QVTKOpenGLWidget*>(tr("qvtkWidget"))->update();
@@ -706,18 +738,18 @@ void ModelComponentList::removeLayer(NMLayer* layer)
     vtkRenderer* scaleRenderer = const_cast<vtkRenderer*>(mwin->getScaleRenderer());
     scaleRenderer->SetLayer(this->mLayerModel->getItemLayerCount()+1);
 
-	NMDebugCtx(ctx, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 
 void ModelComponentList::updateMapWin(const NMLayer* layer)
 {
-	// just do the whole window for now
+    // just do the whole window for now
 
-	// TODO: later we have to get the layer's bbox, transform into the window
-	// coordinates and then just update this very region of the renderwidget window
+    // TODO: later we have to get the layer's bbox, transform into the window
+    // coordinates and then just update this very region of the renderwidget window
 
-	//NMDebugAI( << "updating map window for " << layer->objectName().toStdString() << endl);
+    //NMDebugAI( << "updating map window for " << layer->objectName().toStdString() << endl);
 
     NMGlobalHelper::getRenderWindow()->Render();
 }
@@ -725,58 +757,58 @@ void ModelComponentList::updateMapWin(const NMLayer* layer)
 
 void ModelComponentList::addLayer(NMLayer* layer)
 {
-	NMDebugCtx(ctx, << "...");
+    NMDebugCtx(ctx, << "...");
 
-	// TODO: check this
-	if (layer == 0 || layer->getRenderer() == 0)
-	{
-		NMDebugAI(<< "invalid layer!" << endl);
-		NMDebugCtx(ctx, << "done!");
-		return;
-	}
+    // TODO: check this
+    if (layer == 0 || layer->getRenderer() == 0)
+    {
+        NMDebugAI(<< "invalid layer!" << endl);
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
 
-	// connect layer with updateMap routine
-	// (i.e. whenever the visibility of the layer has changed it emits
-	// the signal "visibilityChanged(const NMLayer*)" which is then being processed
-	// by the slot "updateMapWin(const NMLayer*)"
-	connect(layer, SIGNAL(visibilityChanged(const NMLayer*)),
-				this, SLOT(updateMapWin(const NMLayer*)));
-	connect(layer, SIGNAL(legendChanged(const NMLayer*)),
-			this, SLOT(updateLegend(const NMLayer*)));
-	connect(this, SIGNAL(selectedLayerChanged(const NMLayer *)),
-			layer, SLOT(selectedLayerChanged(const NMLayer *)));
+    // connect layer with updateMap routine
+    // (i.e. whenever the visibility of the layer has changed it emits
+    // the signal "visibilityChanged(const NMLayer*)" which is then being processed
+    // by the slot "updateMapWin(const NMLayer*)"
+    connect(layer, SIGNAL(visibilityChanged(const NMLayer*)),
+                this, SLOT(updateMapWin(const NMLayer*)));
+    connect(layer, SIGNAL(legendChanged(const NMLayer*)),
+            this, SLOT(updateLegend(const NMLayer*)));
+    connect(this, SIGNAL(selectedLayerChanged(const NMLayer *)),
+            layer, SLOT(selectedLayerChanged(const NMLayer *)));
 
-	LUMASSMainWin* mwin = qobject_cast<LUMASSMainWin*>(this->topLevelWidget());
+    LUMASSMainWin* mwin = qobject_cast<LUMASSMainWin*>(this->topLevelWidget());
     connect(layer, SIGNAL(notifyLastClickedRow(NMLayer *, long long)),
             mwin, SLOT(updateLayerInfo(NMLayer *, long long)));
     connect(mwin, SIGNAL(signalIsIn3DMode(bool)),
             layer, SLOT(setIsIn3DMode(bool)));
 
-	// add the layer to the NMLayerModel
-	this->mLayerModel->pileItemLayer(layer);
-	int nlayers = this->mLayerModel->getItemLayerCount();
-	this->recalcMapBBox();
+    // add the layer to the NMLayerModel
+    this->mLayerModel->pileItemLayer(layer);
+    int nlayers = this->mLayerModel->getItemLayerCount();
+    this->recalcMapBBox();
 
-	// get the camera of the background renderer
+    // get the camera of the background renderer
     //LUMASSMainWin* win = qobject_cast<LUMASSMainWin*>(this->topLevelWidget());
     vtkRenderer* bkgRen = const_cast<vtkRenderer*>(mwin->getBkgRenderer());
 
-	// adjust the camera to the map bounding box if it is the first layer we're adding
-	if (nlayers == 1)
-		bkgRen->ResetCamera(this->mFullMapExt);
+    // adjust the camera to the map bounding box if it is the first layer we're adding
+    if (nlayers == 1)
+        bkgRen->ResetCamera(this->mFullMapExt);
 
-	// use the same camera for the newly added layer as for the initial layer
-	vtkCamera* cam0 = bkgRen->GetActiveCamera();
-	vtkRenderer* ren = const_cast<vtkRenderer*>(layer->getRenderer());
-	ren->SetActiveCamera(cam0);
+    // use the same camera for the newly added layer as for the initial layer
+    vtkCamera* cam0 = bkgRen->GetActiveCamera();
+    vtkRenderer* ren = const_cast<vtkRenderer*>(layer->getRenderer());
+    ren->SetActiveCamera(cam0);
 
-	// adjust the number of layers per this render window and add the renderer
-	// to the render window
-	// add the renderer to the render window and update the widget
+    // adjust the number of layers per this render window and add the renderer
+    // to the render window
+    // add the renderer to the render window and update the widget
     QVTKOpenGLNativeWidget* qvtk = this->topLevelWidget()->findChild<QVTKOpenGLNativeWidget*>(tr("qvtkWidget"));
 
-	// we keep one layer more than required (and keep in mind that we've got the
-	// the background layer as well
+    // we keep one layer more than required (and keep in mind that we've got the
+    // the background layer as well
     qvtk->renderWindow()->SetNumberOfLayers(nlayers+2);
 
     //layer->setLayerPos(nlayers-1);
@@ -786,124 +818,124 @@ void ModelComponentList::addLayer(NMLayer* layer)
     qvtk->GetRenderWindow()->AddRenderer(ren);
     qvtk->GetRenderWindow()->Render();
 
-	this->reset();
-	NMDebugCtx(ctx, << "done!");
+    this->reset();
+    NMDebugCtx(ctx, << "done!");
 }
 
 void ModelComponentList::recalcMapBBox(void)
 {
-	NMDebugCtx(ctx, << "...");
+    NMDebugCtx(ctx, << "...");
 
-	int i;
-	double* mb = this->mFullMapExt;
+    int i;
+    double* mb = this->mFullMapExt;
 
-	// reset the actual full map bounding box
-	for (i=0; i < 4; i +=2)
-		mb[i] = std::numeric_limits<double>::max();
+    // reset the actual full map bounding box
+    for (i=0; i < 4; i +=2)
+        mb[i] = std::numeric_limits<double>::max();
 
-	for (i=1; i < 4; i +=2)
-		mb[i] = std::numeric_limits<double>::max() * -1;
+    for (i=1; i < 4; i +=2)
+        mb[i] = std::numeric_limits<double>::max() * -1;
 
-	mb[4] = 0; mb[5] = 0;
+    mb[4] = 0; mb[5] = 0;
 
-	int nlayers = this->mLayerModel->getItemLayerCount();
-	NMLayer* l;
-	for (i=0; i < nlayers; i++)
-	{
-		l = this->mLayerModel->getItemLayer(i);
-		const double* box = l->getBBox();
-		this->unionMapBBox(box);
-		NMDebugAI( << "processing " << l->objectName().toStdString() <<
-						"'s box ..." << endl);
-	}
+    int nlayers = this->mLayerModel->getItemLayerCount();
+    NMLayer* l;
+    for (i=0; i < nlayers; i++)
+    {
+        l = this->mLayerModel->getItemLayer(i);
+        const double* box = l->getBBox();
+        this->unionMapBBox(box);
+        NMDebugAI( << "processing " << l->objectName().toStdString() <<
+                        "'s box ..." << endl);
+    }
 
-	NMDebugCtx(ctx, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 
 void ModelComponentList::unionMapBBox(const double* box)
 {
-	double* mb = this->mFullMapExt;
-	int i;
-	for (i=0; i < 6; i += 2)
-	{
-		if (box[i] < mb[i])
-			mb[i] = box[i];
-	}
+    double* mb = this->mFullMapExt;
+    int i;
+    for (i=0; i < 6; i += 2)
+    {
+        if (box[i] < mb[i])
+            mb[i] = box[i];
+    }
 
-	for (i=1; i < 6; i += 2)
-	{
-		if (box[i] > mb[i])
-			mb[i] = box[i];
-	}
+    for (i=1; i < 6; i += 2)
+    {
+        if (box[i] > mb[i])
+            mb[i] = box[i];
+    }
 }
 
 const double* ModelComponentList::getMapBBox(void)
 {
-	return this->mFullMapExt;
+    return this->mFullMapExt;
 }
 
 void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 {
-	//NMDebugCtx(ctx, << "...")
+    //NMDebugCtx(ctx, << "...")
 
-	QModelIndex idx = this->indexAt(event->pos());
-	if (!idx.isValid())
-	{
-		//NMDebugCtx(ctx, << "done!")
-		return;
-	}
+    QModelIndex idx = this->indexAt(event->pos());
+    if (!idx.isValid())
+    {
+        //NMDebugCtx(ctx, << "done!")
+        return;
+    }
 
-	// ---------------------------------------------------------------
-	// COLLAPSE AND EXPAND CHILD NODES
+    // ---------------------------------------------------------------
+    // COLLAPSE AND EXPAND CHILD NODES
 
-	if (this->mLayerModel->rowCount(idx) > 0)
-	{
-		if (this->isExpanded(idx))
-			this->collapse(idx);
-		else
-			this->expand(idx);
-	}
-	// ----------------------------------------------------------------
-	// EDIT CHILD NODES
-	else
-	{
-		const int toplevelrow = (idx.internalId() / 100) - 1;
-		const int level = idx.internalId() % 100;
-		const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
-		NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+    if (this->mLayerModel->rowCount(idx) > 0)
+    {
+        if (this->isExpanded(idx))
+            this->collapse(idx);
+        else
+            this->expand(idx);
+    }
+    // ----------------------------------------------------------------
+    // EDIT CHILD NODES
+    else
+    {
+        const int toplevelrow = (idx.internalId() / 100) - 1;
+        const int level = idx.internalId() % 100;
+        const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+        NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
 
-		if (level == 1 && idx.row() > 0)
-		{
+        if (level == 1 && idx.row() > 0)
+        {
             if (      !(	l->getLegendType() == NMLayer::NM_LEGEND_RAMP
                         &&  idx.row() == NM_LEGEND_RAMP_ROW
                        )
                  &&   l->getLegendType() != NMLayer::NM_LEGEND_RGB
-			   )
-			{
-				double rgba[4];
-				l->getLegendColour(idx.row(), rgba);
+               )
+            {
+                double rgba[4];
+                l->getLegendColour(idx.row(), rgba);
 
-				QString title = QString("Colour for '%1' of %2")
-						.arg(l->getLegendName(idx.row()))
-						.arg(l->objectName());
+                QString title = QString("Colour for '%1' of %2")
+                        .arg(l->getLegendName(idx.row()))
+                        .arg(l->objectName());
 
-				QColor curclr;
-				curclr.setRgbF(rgba[0], rgba[1], rgba[2], rgba[3]);
+                QColor curclr;
+                curclr.setRgbF(rgba[0], rgba[1], rgba[2], rgba[3]);
                 QColor clr = curclr;
 
                 // ToDo: improve! alpha should work with all layers and
                 //       legned options!
                 if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
-				{
+                {
                     clr = QColorDialog::getColor(curclr, this, title,
                             QColorDialog::ShowAlphaChannel);
-				}
-				else
-				{
-					clr = QColorDialog::getColor(curclr, this, title,
-							QColorDialog::ShowAlphaChannel);
-				}
+                }
+                else
+                {
+                    clr = QColorDialog::getColor(curclr, this, title,
+                            QColorDialog::ShowAlphaChannel);
+                }
 
                 if (clr.isValid())
                 {
@@ -913,26 +945,26 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
                     rgba[3] = clr.alphaF();
                     l->setLegendColour(idx.row(), rgba);
                 }
-			}
-			else
-			{
-				mDelegate->setLastMousePos(event->pos());
+            }
+            else
+            {
+                mDelegate->setLastMousePos(event->pos());
                 this->setState(QAbstractItemView::NoState);
-				this->edit(idx);
-			}
-		}
-		else if (level == 2)
-		{
-			NMLayer* l = static_cast<NMLayer*>(idx.data(Qt::UserRole+100).value<void*>());
-			QString itemstr = idx.data(Qt::DisplayRole).toString();
-			NMDebugAI(<< "trying to edit '" << itemstr.toStdString() << "' of "
-					<< l->objectName().toStdString() << std::endl);
+                this->edit(idx);
+            }
+        }
+        else if (level == 2)
+        {
+            NMLayer* l = static_cast<NMLayer*>(idx.data(Qt::UserRole+100).value<void*>());
+            QString itemstr = idx.data(Qt::DisplayRole).toString();
+            NMDebugAI(<< "trying to edit '" << itemstr.toStdString() << "' of "
+                    << l->objectName().toStdString() << std::endl);
             this->setState(QAbstractItemView::NoState);
-			this->edit(idx);
-		}
-	}
+            this->edit(idx);
+        }
+    }
 
-	//NMDebugCtx(ctx, << "done!")
+    //NMDebugCtx(ctx, << "done!")
 }
 
 //bool ModelComponentList::eventFilter(QObject* obj, QEvent* event)
@@ -946,15 +978,15 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 {
     //NMDebugCtx(ctx, << "...");
 
-	int x = event->pos().x();
-	int y = event->pos().y();
+    int x = event->pos().x();
+    int y = event->pos().y();
 
-	QModelIndex idx = this->indexAt(event->pos());
-	if (!idx.isValid())
-	{
+    QModelIndex idx = this->indexAt(event->pos());
+    if (!idx.isValid())
+    {
         //NMDebugCtx(ctx, << "done!")
-		return;
-	}
+        return;
+    }
     const int toplevelrow = (idx.internalId() / 100) - 1;
     const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
     NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
@@ -962,37 +994,37 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 
     const int level = idx.internalId() % 100;
     if (!idx.parent().isValid())
-	{
+    {
         this->setCurrentIndex(idx);
-		if (event->button() == Qt::LeftButton)
-		{
-			QRect vrect = visualRect(idx);
-			int itemIndentation = vrect.x() - visualRect(rootIndex()).x();
-			QRect rect1 = QRect(
-					header()->sectionViewportPosition(0) + itemIndentation,
-					vrect.y(), 16, vrect.height());
-			QRect rect2 = QRect(
-					header()->sectionViewportPosition(0) + itemIndentation + 17,
-					vrect.y(), 16, vrect.height());
-			if (rect1.contains(event->pos()))
-			{
-				this->mLayerModel->setData(idx, QVariant("VIS"), Qt::CheckStateRole);
-				this->processSelection(false);
-			}
-			else if  (rect2.contains(event->pos()))
-			{
-				this->mLayerModel->setData(idx, QVariant("SEL"), Qt::CheckStateRole);
+        if (event->button() == Qt::LeftButton)
+        {
+            QRect vrect = visualRect(idx);
+            int itemIndentation = vrect.x() - visualRect(rootIndex()).x();
+            QRect rect1 = QRect(
+                    header()->sectionViewportPosition(0) + itemIndentation,
+                    vrect.y(), 16, vrect.height());
+            QRect rect2 = QRect(
+                    header()->sectionViewportPosition(0) + itemIndentation + 17,
+                    vrect.y(), 16, vrect.height());
+            if (rect1.contains(event->pos()))
+            {
+                this->mLayerModel->setData(idx, QVariant("VIS"), Qt::CheckStateRole);
                 this->processSelection(false);
-			}
-			else
-			{
-				this->processSelection(true);
-			}
-			this->dragStartPosition = event->pos();
+            }
+            else if  (rect2.contains(event->pos()))
+            {
+                this->mLayerModel->setData(idx, QVariant("SEL"), Qt::CheckStateRole);
+                this->processSelection(false);
+            }
+            else
+            {
+                this->processSelection(true);
+            }
+            this->dragStartPosition = event->pos();
 
-		}
-		else if (event->button() == Qt::RightButton)
-		{
+        }
+        else if (event->button() == Qt::RightButton)
+        {
             this->processSelection(false);
             if (l == 0)
             {
@@ -1104,9 +1136,9 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
                 mActExportColourRamp->setVisible(false);
             }
 
-			this->mMenu->move(event->globalPos());
-			this->mMenu->exec();
-		}
+            this->mMenu->move(event->globalPos());
+            this->mMenu->exec();
+        }
 
     }
     else if (   event->button() == Qt::RightButton
@@ -1328,7 +1360,7 @@ void ModelComponentList::mapRGBImage()
 
 void ModelComponentList::processSelection(bool toggle)
 {
-	QModelIndex idx = this->currentIndex();
+    QModelIndex idx = this->currentIndex();
 
     const int toplevelrow = (idx.internalId() / 100) - 1;
     const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
@@ -1336,27 +1368,27 @@ void ModelComponentList::processSelection(bool toggle)
 
     bool bselect = toggle ? !l->getIsSelected() : l->getIsSelected();
     if (bselect)
-	{
-		this->selectionModel()->clearSelection();
-		this->selectionModel()->select(idx, QItemSelectionModel::Select |
-			QItemSelectionModel::Rows);
+    {
+        this->selectionModel()->clearSelection();
+        this->selectionModel()->select(idx, QItemSelectionModel::Select |
+            QItemSelectionModel::Rows);
 
         l->setIsSelected(true);
-		emit selectedLayerChanged(l);
-	}
+        emit selectedLayerChanged(l);
+    }
     else
-	{
+    {
         l->setIsSelected(false);
-		this->selectionModel()->select(idx, QItemSelectionModel::Deselect |
-			QItemSelectionModel::Rows);
-	}
-	this->update();
+        this->selectionModel()->select(idx, QItemSelectionModel::Deselect |
+            QItemSelectionModel::Rows);
+    }
+    this->update();
     NMGlobalHelper::getMainWindow()->checkInteractiveLayer();
 }
 
 void ModelComponentList::mouseMoveEvent(QMouseEvent *event)
 {
-	//NMDebugCtx(ctx, << "...");
+    //NMDebugCtx(ctx, << "...");
 
     if (!(event->buttons() & Qt::LeftButton))
         return;
@@ -1366,13 +1398,13 @@ void ModelComponentList::mouseMoveEvent(QMouseEvent *event)
 
     QModelIndex idx = this->indexAt(dragStartPosition);
     if (!idx.isValid())
-    	return;
+        return;
 
     const int tlr = (idx.internalId() / 100) - 1;
     const int sp = this->mLayerModel->toLayerStackIndex(tlr);
     NMLayer* l = this->mLayerModel->getItemLayer(sp);
     if (l == 0)
-    	return;
+        return;
 
     QString layerName = l->objectName();//idx.data(Qt::DisplayRole).toString();
     //NMLayer* l = (NMLayer*)idx.internalPointer();
@@ -1395,7 +1427,7 @@ void ModelComponentList::mouseMoveEvent(QMouseEvent *event)
     drag->setDragCursor(QPixmap(":move-icon.png"), Qt::CopyAction);
 
 
-	QMimeData *mimeData = new QMimeData;
+    QMimeData *mimeData = new QMimeData;
     mimeData->setText(QString::fromLatin1("_ModelComponentList_:%1").arg(layerName).toStdString().c_str());
     drag->setMimeData(mimeData);
     drag->exec(Qt::CopyAction, Qt::CopyAction);
@@ -1597,7 +1629,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
 
 void ModelComponentList::importMultiDataSet(const QString &fn)
 {
-    QString extNcPath = NMGlobalHelper::getNetCDFVarPathInput(fn);
+    QString extNcPath = NMGlobalHelper::getNetCDFVarPathInput(fn, QStringLiteral("OVERVIEWS_"));
     if (extNcPath.startsWith("ERROR"))
     {
         NMLogError(<< extNcPath.toStdString());
@@ -1730,62 +1762,62 @@ void ModelComponentList::mouseReleaseEvent(QMouseEvent* event)
 
 void ModelComponentList::paintEvent(QPaintEvent* event)
 {
-	// do all normal painting first
-	QTreeView::paintEvent(event);
+    // do all normal painting first
+    QTreeView::paintEvent(event);
 
-	// add an indicator rectangle, if applicable
-	if (this->mIndicatorIdx.isValid())
-	{
-		QPainter painter(this->viewport());
+    // add an indicator rectangle, if applicable
+    if (this->mIndicatorIdx.isValid())
+    {
+        QPainter painter(this->viewport());
 
-		QString text = this->mLayerModel->data(this->mIndicatorIdx, Qt::DisplayRole).toString();
-		QFont font = this->mLayerModel->data(this->mIndicatorIdx, Qt::FontRole).value<QFont>();
+        QString text = this->mLayerModel->data(this->mIndicatorIdx, Qt::DisplayRole).toString();
+        QFont font = this->mLayerModel->data(this->mIndicatorIdx, Qt::FontRole).value<QFont>();
 
-		QRect vrect = visualRect(this->mIndicatorIdx);
-		int itemIndentation = vrect.x() - visualRect(rootIndex()).x();
-		int checkboxwidth = style()->pixelMetric(QStyle::PM_IndicatorWidth);
+        QRect vrect = visualRect(this->mIndicatorIdx);
+        int itemIndentation = vrect.x() - visualRect(rootIndex()).x();
+        int checkboxwidth = style()->pixelMetric(QStyle::PM_IndicatorWidth);
 
-		painter.setFont(font);
-		QFontMetrics fm = painter.fontMetrics();
-		int textwidth = fm.width(text);
-		int iconwidth = vrect.width() - itemIndentation - textwidth - checkboxwidth;
+        painter.setFont(font);
+        QFontMetrics fm = painter.fontMetrics();
+        int textwidth = fm.width(text);
+        int iconwidth = vrect.width() - itemIndentation - textwidth - checkboxwidth;
 
-		QRect rect = QRect(
-				header()->sectionViewportPosition(0) + itemIndentation,
-				vrect.y(),
-				vrect.width(),// - itemIndentation,
-				//checkboxwidth + iconwidth + textwidth,
-				vrect.height());
+        QRect rect = QRect(
+                header()->sectionViewportPosition(0) + itemIndentation,
+                vrect.y(),
+                vrect.width(),// - itemIndentation,
+                //checkboxwidth + iconwidth + textwidth,
+                vrect.height());
 
-		QImage img(rect.size(), QImage::Format_ARGB32_Premultiplied);
-		img.fill(0);
-	    QPainter dragPainter(&img);
+        QImage img(rect.size(), QImage::Format_ARGB32_Premultiplied);
+        img.fill(0);
+        QPainter dragPainter(&img);
 
-	    QLinearGradient bw(0,0,0,img.rect().height()*0.5);
-	    bw.setSpread(QGradient::ReflectSpread);
-	    bw.setColorAt(0, QColor(0,0,200));
-	    bw.setColorAt(0.8, QColor(255,255,255));
-	    bw.setColorAt(1, QColor(255,255,255));
-	    dragPainter.fillRect(img.rect(), bw);
-	    dragPainter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+        QLinearGradient bw(0,0,0,img.rect().height()*0.5);
+        bw.setSpread(QGradient::ReflectSpread);
+        bw.setColorAt(0, QColor(0,0,200));
+        bw.setColorAt(0.8, QColor(255,255,255));
+        bw.setColorAt(1, QColor(255,255,255));
+        dragPainter.fillRect(img.rect(), bw);
+        dragPainter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
 
-	    QLinearGradient fade(0,0,0,img.rect().height()*0.5);
-	    fade.setSpread(QGradient::ReflectSpread);
-	    fade.setColorAt(0, QColor(0,0,0,127));
-	    fade.setColorAt(1, QColor(0,0,0,0));
-	    dragPainter.fillRect(img.rect(), fade);
+        QLinearGradient fade(0,0,0,img.rect().height()*0.5);
+        fade.setSpread(QGradient::ReflectSpread);
+        fade.setColorAt(0, QColor(0,0,0,127));
+        fade.setColorAt(1, QColor(0,0,0,0));
+        dragPainter.fillRect(img.rect(), fade);
 
-		//painter.setPen(Qt::red);
-		//painter.drawRect(rect);
-		//painter.setCompositionMode(QPainter::CompositionMode_Overlay);
-		//painter.fillRect(rect, QBrush(QColor(255,0,0,80)));
-		//painter.setOpacity(0.2);
+        //painter.setPen(Qt::red);
+        //painter.drawRect(rect);
+        //painter.setCompositionMode(QPainter::CompositionMode_Overlay);
+        //painter.fillRect(rect, QBrush(QColor(255,0,0,80)));
+        //painter.setOpacity(0.2);
 
-	    painter.setRenderHint(QPainter::Antialiasing, true);
-		painter.setPen(QPen(QBrush(QColor(0,0,200,127)), 3));
-		painter.drawImage(rect, img);
-		painter.drawRoundedRect(rect, 5,5);
-	}
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        painter.setPen(QPen(QBrush(QColor(0,0,200,127)), 3));
+        painter.drawImage(rect, img);
+        painter.drawRoundedRect(rect, 5,5);
+    }
 }
 
 void ModelComponentList::zoomToLayer()
@@ -1829,7 +1861,7 @@ void ModelComponentList::zoom(int mode)
 
 void ModelComponentList::mapSingleSymbol()
 {
-	// get the current layer
+    // get the current layer
     //	QModelIndex idx = this->currentIndex();
     //	const int toplevelrow = (idx.internalId() / 100) - 1;
     //	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
@@ -1837,8 +1869,8 @@ void ModelComponentList::mapSingleSymbol()
     if (l == 0)
         return;
 
-	l->setLegendType(NMLayer::NM_LEGEND_SINGLESYMBOL);
-	l->updateMapping();
+    l->setLegendType(NMLayer::NM_LEGEND_SINGLESYMBOL);
+    l->updateMapping();
 }
 
 void ModelComponentList::mapColourTable()
@@ -1851,20 +1883,20 @@ void ModelComponentList::mapColourTable()
     if (l == 0)
         return;
 
-	if (l->getTable() == 0)
-	{
-		NMDebugAI(<< "cannot map the colour table, since we don't even have an attribute table!" << std::endl);
-		return;
-	}
+    if (l->getTable() == 0)
+    {
+        NMDebugAI(<< "cannot map the colour table, since we don't even have an attribute table!" << std::endl);
+        return;
+    }
 
-	if (!l->hasColourTable())
-	{
-		NMDebugAI(<< "cannot map the colour table, since we didn't find any colour attributes!" << std::endl);
-		return;
-	}
+    if (!l->hasColourTable())
+    {
+        NMDebugAI(<< "cannot map the colour table, since we didn't find any colour attributes!" << std::endl);
+        return;
+    }
 
-	l->setLegendType(NMLayer::NM_LEGEND_CLRTAB);
-	l->updateMapping();
+    l->setLegendType(NMLayer::NM_LEGEND_CLRTAB);
+    l->updateMapping();
 
 
 }
@@ -1885,14 +1917,14 @@ NMLayer* ModelComponentList::getCurrentLayer()
 
 void ModelComponentList::mapColourRamp()
 {
-	// get the current layer
+    // get the current layer
     NMLayer* l = this->getCurrentLayer();
     if (l == 0)
     {
         return;
     }
 
-	l->setLegendType(NMLayer::NM_LEGEND_RAMP);
+    l->setLegendType(NMLayer::NM_LEGEND_RAMP);
 
     NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
     if (il && il->getNumBands() == 3)
@@ -1916,7 +1948,7 @@ void ModelComponentList::mapColourRamp()
 
 void ModelComponentList::mapUniqueValues()
 {
-	// get the current layer
+    // get the current layer
     //	QModelIndex idx = this->currentIndex();
     //	const int toplevelrow = (idx.internalId() / 100) - 1;
     //	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
@@ -1924,44 +1956,44 @@ void ModelComponentList::mapUniqueValues()
     if (l == 0)
         return;
 
-	NMVectorLayer* vL = 0;
-	NMImageLayer* iL = 0;
-	vtkDataSet* ds = 0;
+    NMVectorLayer* vL = 0;
+    NMImageLayer* iL = 0;
+    vtkDataSet* ds = 0;
 
 
-	QStringList sFields;
-	if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
-	{
-		vL = qobject_cast<NMVectorLayer*>(l);
-		// ToDo:: this probably works for any feature type -> check!
-		if (vL->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
-			ds = const_cast<vtkDataSet*>(vL->getDataSet());
+    QStringList sFields;
+    if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
+    {
+        vL = qobject_cast<NMVectorLayer*>(l);
+        // ToDo:: this probably works for any feature type -> check!
+        if (vL->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
+            ds = const_cast<vtkDataSet*>(vL->getDataSet());
 
-		vtkDataSetAttributes* dsAttr = 0;
-		if (ds != 0)
-			dsAttr = ds->GetAttributes(vtkDataSet::CELL);
-		else
-			return;
+        vtkDataSetAttributes* dsAttr = 0;
+        if (ds != 0)
+            dsAttr = ds->GetAttributes(vtkDataSet::CELL);
+        else
+            return;
 
-		int numFields = dsAttr->GetNumberOfArrays();
+        int numFields = dsAttr->GetNumberOfArrays();
 
-		for (int f=0; f < numFields; f++)
-		{
-			vtkAbstractArray* aa = dsAttr->GetAbstractArray(f);
-			if (strcmp(aa->GetName(), "nm_hole") == 0 ||
-				strcmp(aa->GetName(), "nm_sel") == 0)
-				continue;
+        for (int f=0; f < numFields; f++)
+        {
+            vtkAbstractArray* aa = dsAttr->GetAbstractArray(f);
+            if (strcmp(aa->GetName(), "nm_hole") == 0 ||
+                strcmp(aa->GetName(), "nm_sel") == 0)
+                continue;
 
-			if (aa->GetDataType() == VTK_DOUBLE ||
-				aa->GetDataType() == VTK_FLOAT)
-				continue;
+            if (aa->GetDataType() == VTK_DOUBLE ||
+                aa->GetDataType() == VTK_FLOAT)
+                continue;
 
-			sFields.append(QString(dsAttr->GetArrayName(f)));
-		}
-	}
-	else if (l->getLayerType() == NMLayer::NM_IMAGE_LAYER)
-	{
-		iL = qobject_cast<NMImageLayer*>(l);
+            sFields.append(QString(dsAttr->GetArrayName(f)));
+        }
+    }
+    else if (l->getLayerType() == NMLayer::NM_IMAGE_LAYER)
+    {
+        iL = qobject_cast<NMImageLayer*>(l);
 
         if (iL->getTable() == 0)
         {
@@ -1985,28 +2017,28 @@ void ModelComponentList::mapUniqueValues()
 
         sFields.append(iL->getNumericColumns(true));
         sFields.append(iL->getStringColumns());
-	}
-	else
-	{
-		return;
-	}
+    }
+    else
+    {
+        return;
+    }
 
-	bool bOk = false;
-	QString theField = QInputDialog::getItem(this,
-			tr("Map Unique Values"), tr("Choose an attribute to map"),
-			sFields, 0, false, &bOk, 0);
-	// if the user pressed cancel
-	if (!bOk)
-		return;
+    bool bOk = false;
+    QString theField = QInputDialog::getItem(this,
+            tr("Map Unique Values"), tr("Choose an attribute to map"),
+            sFields, 0, false, &bOk, 0);
+    // if the user pressed cancel
+    if (!bOk)
+        return;
 
-	l->setLegendType(NMLayer::NM_LEGEND_INDEXED);
-	l->setLegendClassType(NMLayer::NM_CLASS_UNIQUE);
-	l->setLegendValueField(theField);
+    l->setLegendType(NMLayer::NM_LEGEND_INDEXED);
+    l->setLegendClassType(NMLayer::NM_CLASS_UNIQUE);
+    l->setLegendValueField(theField);
 }
 
 void ModelComponentList::test()
 {
-	NMDebugCtx(ctx, << "...");
+    NMDebugCtx(ctx, << "...");
 
     bool bok;
     QString fn = QInputDialog::getText(this,"Image Spec", "", QLineEdit::Normal,
@@ -2068,7 +2100,7 @@ void ModelComponentList::test()
 //    std::vector<netCDF::NcDim> ndims = nVar.getDims();
 
 
-	NMDebugCtx(ctx, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 void ModelComponentList::stretchColourRampToVisMinMax()
@@ -2169,8 +2201,8 @@ void ModelComponentList::showValueStats()
     //NMDebugCtx(ctx, << "...");
 
     NMLayer* l = this->getCurrentLayer();
-	if (l == 0)
-		return;
+    if (l == 0)
+        return;
 
     if (mbWholeImgStats)
     {
@@ -2191,12 +2223,12 @@ void ModelComponentList::showValueStats()
 
 
     std::vector<double> stats = l->getValueFieldStatistics();
-	if (stats.size() == 0)
-	{
+    if (stats.size() == 0)
+    {
         NMLogError(<< ctx << ": failed retrieving value field statistics!");
-		NMDebugCtx(ctx, << "done!");
-		return;
-	}
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
 
     //	NMDebugAI(<< "what we've got: ..." << std::endl);
     //	for (int r=0; r < stats.size(); ++r)
@@ -2208,7 +2240,7 @@ void ModelComponentList::showValueStats()
     QString title = QString(tr("%1::%2")).arg(l->objectName())
             .arg(l->getLegendValueField());
 
-	QMessageBox::information(this, title, res);
+    QMessageBox::information(this, title, res);
 
     //NMDebugCtx(ctx, << "done!");
 }

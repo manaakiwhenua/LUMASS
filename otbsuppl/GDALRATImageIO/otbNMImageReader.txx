@@ -690,6 +690,7 @@ void
 NMImageReader<TOutputImage>
 ::TestFileExistanceAndReadability()
 {
+
   // check first and foremost for a netcdf file
   std::string tmpFN = this->GetFileName();
   if (tmpFN.find(".nc") != std::string::npos)
@@ -704,31 +705,35 @@ NMImageReader<TOutputImage>
       }
   }
 
-  if (tmpFN.find(".kea") != std::string::npos)
+  otb::GDALRATImageIO::Pointer gio = dynamic_cast<otb::GDALRATImageIO*>(this->GetImageIO());
+  if (gio.IsNotNull())
   {
-      otb::GDALRATImageIO::Pointer gio = dynamic_cast<otb::GDALRATImageIO*>(this->GetImageIO());
-      if (gio.IsNotNull())
+      if (gio->CanReadFile(tmpFN.c_str()))
       {
-          if (gio->CanReadFile(tmpFN.c_str()))
-          {
-              return;
-          }
-
-          otb::ImageFileReaderException e(__FILE__, __LINE__);
-          std::ostringstream msg;
-          msg << "otbNMImageReader: ERROR - LUMASS failed to read the KEA image file "
-              << "'" << tmpFN << "'! Please make sure the KEA GDAL plugin is installed, "
-              << " and the filename points to valid and readable file!";
-          e.SetDescription(msg.str().c_str());
-          throw e;
+          return;
       }
   }
 
   otb::ImageFileReaderException e(__FILE__, __LINE__);
   std::ostringstream msg;
-  msg << "otbNMImageReader: ERROR - LUMASS failed to read the image file "
-      << "'" << tmpFN << "'! Please make sure the filetype is supported, "
-      << " and the filename points to valid and readable file!";
+  if (tmpFN.find(".nc") != std::string::npos)
+  {
+      msg << "otbNMImageReader: ERROR - LUMASS failed to read the NetCDF image file "
+          << "'" << tmpFN << "'! Please make sure "
+          << "the filename points to valid and readable NetCDF variable within the given file!";
+  }
+  else if (tmpFN.find(".kea") != std::string::npos)
+  {
+      msg << "otbNMImageReader: ERROR - LUMASS failed to read the KEA image file "
+          << "'" << tmpFN << "'! Please make sure the KEA GDAL plugin is installed, "
+          << " and the filename points to valid and readable file!";
+  }
+  else
+  {
+      msg << "otbNMImageReader: ERROR - LUMASS failed to read the image file "
+          << "'" << tmpFN << "'! Please make sure the filename points to valid, "
+          << "readable, and supported image file!";
+  }
   e.SetDescription(msg.str().c_str());
   throw e;
 

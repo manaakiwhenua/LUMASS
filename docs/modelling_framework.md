@@ -1,8 +1,6 @@
 ---
-layout: single
-author_profile: true
-sidebar: 
-    nav: "docs"
+title: "Modelling Framework"
+permalink: "/docs/modelling_framework"
 ---
 
 OK. Let's go modelling!

@@ -1,10 +1,7 @@
 ---
-layout: single
-author_profile: true
-sidebar: 
-    nav: "docs"
+title: "Installation"
+permalink: "/docs/installation"
 ---
 
-**Installation**
-[Windows](/docs/install_windows)
-[Linux](/docs/install/linux)
+- [Windows]({{ "/docs/install_windows" | relative_url }})
+- [Linux]({{ "/docs/install_linux" | relative_url }})

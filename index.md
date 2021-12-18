@@ -7,7 +7,7 @@ author_profile: true
 
 # LUMASS - Land-Use Management Support System
 
-![lumass.gif](https://bitbucket.org/repo/B4qdnE/images/2943368646-lumass.gif)
+![lumass_overview.gif]({{ "/assets/images/lumass_overview.gif" | relative_url }})
 
 LUMASS is designed to provide support for two high level aspects of land management: i) land use impact assessment and ii) spatial planning. The former aspect is supported by its [**spatial system dynamics modelling framework**](https://youtu.be/aN2H-izUyCE) and the latter by its [**spatial optimisation framework**]({{ "/assets/material/OptimisationHowTo_1.2.zip" | relative_url }}). 
 

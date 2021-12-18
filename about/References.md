@@ -1,8 +1,3 @@
----
-title: "References"
-permalink: "/about/References"
----
-
 Herzig A, Manderson A, Jolly B, Barnes M, Baish L 2020. **Opportunitues and constraints on intensive land-use expansion in the Horizons Region – Land-Use Mapping.** Manaaki Whenua – Landcare Research Contract Report LC3838, Palmerston North, New Zealand.
 
 Elliot S, Evans T, Cichota R, Djanibekov U, Herzig A, Jackson B, Lagrava Sandoval D, McDonald S, Monge J, Semadeni-Davies A, Taves M, Thiange C, Vibart R, Wakelin S, Yalden S, Yang J, Yoswara H 2020. **Land-Water Interoperable Models - Project Summary**. Prepared for Our land and Water, NIWA Client Report 2020182HN, Hamilton, New Zealand. [Report](https://datastore.landcareresearch.co.nz/dataset/de3767f9-b79d-42f2-92cf-6cb89e07adac/resource/f74a9d60-841d-4d95-b305-5799ec74bc4e/download/elliot-etal-2020_land-water-interoperablemodels_summary.pdf)

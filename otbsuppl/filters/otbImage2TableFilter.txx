@@ -116,30 +116,30 @@ void Image2TableFilter<TInputImage>
 {
     Superclass::GenerateInputRequestedRegion();
 
-    InputImageType* input = const_cast<InputImageType*>(this->GetInput());
+//    InputImageType* input = const_cast<InputImageType*>(this->GetInput());
 
-    if (input != nullptr)
-    {
-        InputImageRegionType reqReg = input->GetRequestedRegion();
+//    if (input != nullptr)
+//    {
+//        InputImageRegionType reqReg = input->GetRequestedRegion();
 
-        if (m_StartIndex.size() == InputImageDimension)
-        {
-            for (int d=0; d < InputImageDimension; ++d)
-            {
-                reqReg.SetIndex(d, m_StartIndex[d]);
-            }
-        }
+//        if (m_StartIndex.size() == InputImageDimension)
+//        {
+//            for (int d=0; d < InputImageDimension; ++d)
+//            {
+//                reqReg.SetIndex(d, m_StartIndex[d]);
+//            }
+//        }
 
-        if (m_Size.size() == InputImageDimension)
-        {
-            for (int d=0; d < InputImageDimension; ++d)
-            {
-                reqReg.SetSize(d, m_Size[d]);
-            }
-        }
+//        if (m_Size.size() == InputImageDimension)
+//        {
+//            for (int d=0; d < InputImageDimension; ++d)
+//            {
+//                reqReg.SetSize(d, m_Size[d]);
+//            }
+//        }
 
-        input->SetRequestedRegion(reqReg);
-    }
+//        input->SetRequestedRegion(reqReg);
+//    }
 
     // in case we've got just a table reader (as instead of an image
     // reader - this is an image to image filter after all) as 'proper' input,
@@ -498,6 +498,8 @@ void Image2TableFilter<TInputImage>
 
     // READ AUX VARIABLES FROM NETCDF
     InputImageRegionType inregion = input->GetRequestedRegion();
+    InputImageSizeType inputSize = inregion.GetSize();
+    InputImageIndexType inputIndex = inregion.GetIndex();
 
     // ================================================================================
     //                              READ AUX BUFFERS FROM NETCDF
@@ -541,9 +543,11 @@ void Image2TableFilter<TInputImage>
             std::vector<size_t> vlen;
             for (int k=0; k < m_AuxVarDimMap[au].size(); ++k)
             {
-                const size_t sz = static_cast<size_t>(m_Size[m_AuxVarDimMap[au][k]]);
+                const size_t sz = static_cast<size_t>(inputSize[m_AuxVarDimMap[au][k]]);
+                //const size_t sz = static_cast<size_t>(m_Size[m_AuxVarDimMap[au][k]]);
                 vlen.push_back(sz);
-                vidx.push_back(static_cast<size_t>(m_StartIndex[m_AuxVarDimMap[au][k]]));
+                vidx.push_back(static_cast<size_t>(inputIndex[m_AuxVarDimMap[au][k]]));
+                //vidx.push_back(static_cast<size_t>(m_StartIndex[m_AuxVarDimMap[au][k]]));
                 buflen *= sz;
             }
             if (m_AuxIsInteger[au])
@@ -631,10 +635,12 @@ void Image2TableFilter<TInputImage>
             const int idoff = m_UpdateMode ? 1 : m_DimColDimId.size() + 1;
             for (int v=0; v < m_AuxVarNames.size(); ++v)
             {
-                size_t boff = iterIndex[m_AuxVarDimMap[v][0]] - m_StartIndex[m_AuxVarDimMap[v][0]];
+                //size_t boff = iterIndex[m_AuxVarDimMap[v][0]] - m_StartIndex[m_AuxVarDimMap[v][0]];
+                size_t boff = iterIndex[m_AuxVarDimMap[v][0]] - inputIndex[m_AuxVarDimMap[v][0]];
                 for (int bd=1; bd < m_AuxVarDimMap[v].size(); ++bd)
                 {
-                    boff += (iterIndex[m_AuxVarDimMap[v][bd]] - m_StartIndex[m_AuxVarDimMap[v][bd]]) * m_Size[m_AuxVarDimMap[v][bd-1]];
+                    //boff += (iterIndex[m_AuxVarDimMap[v][bd]] - m_StartIndex[m_AuxVarDimMap[v][bd]]) * m_Size[m_AuxVarDimMap[v][bd-1]];
+                    boff += (iterIndex[m_AuxVarDimMap[v][bd]] - inputIndex[m_AuxVarDimMap[v][bd]]) * inputSize[m_AuxVarDimMap[v][bd-1]];
                 }
 
                 if (m_ColValues[v+idoff].type == otb::AttributeTable::ATTYPE_DOUBLE)

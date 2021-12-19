@@ -48,6 +48,8 @@ public:
     using InputImageRegionType          = typename InputImageType::RegionType;
     using InputImagePixelType           = typename InputImageType::PixelType;
     using InputImageIOPixelType         = typename InputImageType::IOPixelType;
+    using InputImageSizeType            = typename InputImageType::SizeType;
+    using InputImageIndexType           = typename InputImageType::IndexType;
     using SizeValueType                 = typename InputImageRegionType::SizeValueType;
     using OffsetTableType               = typename InputImageRegionType::OffsetTableType;
 

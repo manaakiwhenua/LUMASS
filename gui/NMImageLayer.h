@@ -156,6 +156,8 @@ public slots:
     void showHistogram(void);
     void updateHistogram(vtkObject*);
 
+    void loadLegend(const QString &filename);
+
 protected:
 
     void createTableView(void);

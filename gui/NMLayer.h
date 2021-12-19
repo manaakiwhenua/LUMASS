@@ -110,81 +110,82 @@ public:
 //class QVTK_EXPORT NMLayer : public QObject//public NMModelComponent //public QObject
 class NMLayer : public QObject
 {
-	Q_OBJECT
-	Q_ENUMS(NMLegendClassType NMLayerType NMLayerSelectionType NMLegendType)
-	Q_PROPERTY(NMLayer::NMLegendType LegendType READ getLegendType WRITE setLegendType NOTIFY LegendTypeChanged)
-	Q_PROPERTY(NMLayer::NMLayerType LayerType READ getLayerType)
-	Q_PROPERTY(NMLayer::NMLegendClassType LegendClassType READ getLegendClassType WRITE setLegendClassType NOTIFY LegendClassTypeChanged)
-	Q_PROPERTY(NMLayer::NMColourRamp ColourRamp READ getColourRamp WRITE setColourRamp NOTIFY ColourRampChanged)
-	Q_PROPERTY(QString LegendValueField READ getLegendValueField WRITE setLegendValueField NOTIFY LegendValueFieldChanged)
-	Q_PROPERTY(QString LegendDescrField READ getLegendDescrField WRITE setLegendDescrField NOTIFY LegendDescrFieldChanged)
-	Q_PROPERTY(double Lower READ getLower WRITE setLower NOTIFY LowerChanged)
-	Q_PROPERTY(double Upper READ getUpper WRITE setUpper NOTIFY UpperChanged)
-	Q_PROPERTY(double Nodata READ getNodata WRITE setNodata NOTIFY NodataChanged)
+    Q_OBJECT
+    Q_ENUMS(NMLegendClassType NMLayerType NMLayerSelectionType NMLegendType)
+    Q_PROPERTY(NMLayer::NMLegendType LegendType READ getLegendType WRITE setLegendType NOTIFY LegendTypeChanged)
+    Q_PROPERTY(NMLayer::NMLayerType LayerType READ getLayerType)
+    Q_PROPERTY(NMLayer::NMLegendClassType LegendClassType READ getLegendClassType WRITE setLegendClassType NOTIFY LegendClassTypeChanged)
+    Q_PROPERTY(NMLayer::NMColourRamp ColourRamp READ getColourRamp WRITE setColourRamp NOTIFY ColourRampChanged)
+    Q_PROPERTY(QString LegendValueField READ getLegendValueField WRITE setLegendValueField NOTIFY LegendValueFieldChanged)
+    Q_PROPERTY(QString LegendDescrField READ getLegendDescrField WRITE setLegendDescrField NOTIFY LegendDescrFieldChanged)
+    Q_PROPERTY(double Lower READ getLower WRITE setLower NOTIFY LowerChanged)
+    Q_PROPERTY(double Upper READ getUpper WRITE setUpper NOTIFY UpperChanged)
+    Q_PROPERTY(double Nodata READ getNodata WRITE setNodata NOTIFY NodataChanged)
     Q_PROPERTY(bool IsSelected READ getIsSelected WRITE setIsSelected)
 
 
 public:
-	enum NMLayerType
-		{
-			NM_VECTOR_LAYER,
-			NM_IMAGE_LAYER,
-			NM_UNKNOWN_LAYER
-		};
-	enum NMLayerSelectionType
-		{
-			NM_SEL_NEW,
-			NM_SEL_ADD,
-			NM_SEL_REMOVE,
-			NM_SEL_CLEAR
-		};
-	enum NMLegendType
-		{
-			NM_LEGEND_SINGLESYMBOL,
-			NM_LEGEND_RAMP,
-			NM_LEGEND_INDEXED,
+    enum NMLayerType
+        {
+            NM_VECTOR_LAYER,
+            NM_IMAGE_LAYER,
+            NM_UNKNOWN_LAYER
+        };
+    enum NMLayerSelectionType
+        {
+            NM_SEL_NEW,
+            NM_SEL_ADD,
+            NM_SEL_REMOVE,
+            NM_SEL_CLEAR
+        };
+    enum NMLegendType
+        {
+            NM_LEGEND_SINGLESYMBOL,
+            NM_LEGEND_RAMP,
+            NM_LEGEND_INDEXED,
             NM_LEGEND_CLRTAB,
             NM_LEGEND_RGB
-		};
-	enum NMLegendClassType
-		{
-			NM_CLASS_UNIQUE,
-			NM_CLASS_EQINT,
-			NM_CLASS_JENKS,
-			NM_CLASS_MANUAL,
-			NM_CLASS_SDEV
-		};
-	enum NMColourRamp
-		{
-			NM_RAMP_RAINBOW,
-			NM_RAMP_GREY,
-			NM_RAMP_RED,
-			NM_RAMP_BLUE,
-			NM_RAMP_GREEN,
-			NM_RAMP_RED2BLUE,
-			NM_RAMP_BLUE2RED,
-			NM_RAMP_ALTITUDE,
-			NM_RAMP_BLUE2RED_DIV,
-			NM_RAMP_GREEN2RED_DIV,
-			NM_RAMP_MANUAL
-		};
+        };
+    enum NMLegendClassType
+        {
+            NM_CLASS_UNIQUE,
+            NM_CLASS_EQINT,
+            NM_CLASS_JENKS,
+            NM_CLASS_MANUAL,
+            NM_CLASS_SDEV
+        };
+    enum NMColourRamp
+        {
+            NM_RAMP_RAINBOW,
+            NM_RAMP_GREY,
+            NM_RAMP_RED,
+            NM_RAMP_BLUE,
+            NM_RAMP_GREEN,
+            NM_RAMP_RED2BLUE,
+            NM_RAMP_BLUE2RED,
+            NM_RAMP_ALTITUDE,
+            NM_RAMP_BLUE2RED_DIV,
+            NM_RAMP_GREEN2RED_DIV,
+            NM_RAMP_MANUAL,
+            NM_RAMP_CURRENT
+        };
 
-	NMPropertyGetSet(LegendType, NMLayer::NMLegendType);
-	NMPropertyGetSet(LegendClassType, NMLayer::NMLegendClassType);
-	NMPropertyGetSet(ColourRamp, NMLayer::NMColourRamp);
-	//NMPropertyGetSet(LegendValueField, QString);
-	NMPropertyGetSet(LegendDescrField, QString);
-	//NMPropertyGetSet(Nodata, double);
-	//NMPropertyGetSet(Lower, double);
-	//NMPropertyGetSet(Upper, double);
-	QString getLegendValueField(void) {return mLegendValueField;}
-	double getNodata(void) {return mNodata;}
-	double getUpper(void) {return mUpper;}
-	double getLower(void) {return mLower;}
-	virtual void setLegendValueField(QString field);
-	virtual void setNodata(double val);
-	virtual void setUpper(double val);
-	virtual void setLower(double val);
+    NMPropertyGetSet(LegendType, NMLayer::NMLegendType);
+    NMPropertyGetSet(LegendClassType, NMLayer::NMLegendClassType);
+    NMPropertyGetSet(ColourRamp, NMLayer::NMColourRamp);
+    //NMPropertyGetSet(LegendValueField, QString);
+    NMPropertyGetSet(LegendDescrField, QString);
+    //NMPropertyGetSet(Nodata, double);
+    //NMPropertyGetSet(Lower, double);
+    //NMPropertyGetSet(Upper, double);
+    QString getLegendValueField(void) {return mLegendValueField;}
+    double getNodata(void) {return mNodata;}
+    double getUpper(void) {return mUpper;}
+    double getLower(void) {return mLower;}
+    virtual void setLegendValueField(QString field);
+    virtual void setNodata(double val);
+    virtual void setUpper(double val);
+    virtual void setLower(double val);
 
     void setIsSelected(bool sel);
     bool getIsSelected(void) {return this->mIsSelected;}
@@ -193,81 +194,81 @@ public:
 
 signals:
     void nmChanged();
-	void LegendTypeChanged();
-	void LegendClassTypeChanged();
-	void LegendDescrFieldChanged();
-	void LegendValueFieldChanged();
-	void ColourRampChanged();
-	void LowerChanged();
-	void UpperChanged();
-	void NodataChanged();
+    void LegendTypeChanged();
+    void LegendClassTypeChanged();
+    void LegendDescrFieldChanged();
+    void LegendValueFieldChanged();
+    void ColourRampChanged();
+    void LowerChanged();
+    void UpperChanged();
+    void NodataChanged();
     void IsSelectedChanged(bool);
 
 
 public:
-	NMLayer(vtkRenderWindow* renWin,
-			vtkRenderer* renderer=0,
-			QObject* parent=0);
-	virtual ~NMLayer();
+    NMLayer(vtkRenderWindow* renWin,
+            vtkRenderer* renderer=0,
+            QObject* parent=0);
+    virtual ~NMLayer();
 
     void setLogger(NMLogger* logger){mLogger = logger;}
 
-	virtual void setDataSet(vtkDataSet* dataset);
-	virtual bool setFileName(QString filename)
+    virtual void setDataSet(vtkDataSet* dataset);
+    virtual bool setFileName(QString filename)
         {this->mFileName = filename; return true;}
     QString getFileName() {return this->mFileName;}
-	virtual const vtkDataSet* getDataSet(void)=0;
+    virtual const vtkDataSet* getDataSet(void)=0;
 
-	const vtkAbstractMapper* getMapper(void);
+    const vtkAbstractMapper* getMapper(void);
     const vtkProp3D* getActor(void);
-	const vtkRenderer* getRenderer(void);
+    const vtkRenderer* getRenderer(void);
 
-	virtual void showAttributeTable(void);
-	//virtual const vtkTable* getTable(void);
-	virtual const QAbstractItemModel* getTable(void);
+    virtual void showAttributeTable(void);
+    //virtual const vtkTable* getTable(void);
+    virtual const QAbstractItemModel* getTable(void);
     QString getSqlTableConnectionName(void){return mQSqlConnectionName;}
-	int getColumnIndex(const QString& fieldname);
-	QVariant::Type getColumnType(int colidx);
-	QString getColumnName(const int idx);
-	QStringList getNumericColumns(bool onlyints);
-	QStringList getStringColumns(void);
+    int getColumnIndex(const QString& fieldname);
+    QVariant::Type getColumnType(int colidx);
+    QString getColumnName(const int idx);
+    QStringList getNumericColumns(bool onlyints);
+    QStringList getStringColumns(void);
 
     virtual long long getNumTableRecords();
 
-	const QItemSelection getSelection(void);
+    const QItemSelection getSelection(void);
     void setSelection(const QItemSelection& sel);
 
 
-    void loadLegend(const QString& filename);
+    virtual void loadLegend(const QString& filename);
     void saveLegend(const QString& filename);
 
-	virtual void setBBox(double bbox[6]);
+    virtual void setBBox(double bbox[6]);
     const double* getBBox(void);
-	virtual void getBBox(double bbox[6]);
+    virtual void getBBox(double bbox[6]);
     const double* getSelectionBBox(void);
 
-	// gets sum of covered feature area for
-	// polygon cells; and bounding box
-	// area for polyline cells
-	// and image layers which equals the
-	// covered pixel area
-	virtual double getArea(void);
+    // gets sum of covered feature area for
+    // polygon cells; and bounding box
+    // area for polyline cells
+    // and image layers which equals the
+    // covered pixel area
+    virtual double getArea(void);
 
     /*! get/set the whole layer's opacity [0,1] */
     double getLayerOpacity();
     void setLayerOpacity(const double& opacity);
 
 
-	int setLayerPos(int pos);
-	int getLayerPos(void);
+    int setLayerPos(int pos);
+    int getLayerPos(void);
 
-	NMLayer::NMLayerType getLayerType(void);
-	void setLayerType(NMLayerType type);
-	bool isVectorLayer(void);
-	bool isImageLayer(void);
+    NMLayer::NMLayerType getLayerType(void);
+    void setLayerType(NMLayerType type);
+    bool isVectorLayer(void);
+    bool isImageLayer(void);
 
-	QIcon getLayerIcon(void);
-	QImage getLayerIconAsImage(void);
+    QIcon getLayerIcon(void);
+    QImage getLayerIconAsImage(void);
 
     QColor getSelectionColor(void)
         {return mClrSelection;}
@@ -275,123 +276,135 @@ public:
         {mClrSelection = clr;
          updateSelectionColor();}
 
-	bool isVisible(void);
-	virtual void setVisible(bool visible);
-	bool isSelectable(void);
-	virtual void setSelectable(bool selectable);
+    bool isVisible(void);
+    virtual void setVisible(bool visible);
+    bool isSelectable(void);
+    virtual void setSelectable(bool selectable);
     bool isInteractive(void);
 
     bool hasSelBox(void)
         {return mHasSelBox;}
 
+    bool getIsInvertClrRamp()
+        {return mInvertClrRamp;}
+    bool getIsLogClrRamp()
+        {return mLogClrRamp;}
+    void setIsInvertClrRamp(bool bInvert)
+        {mInvertClrRamp = bInvert;}
+    void setIsLogClrRamp(bool bLog)
+        {mLogClrRamp = bLog;}
 
-	//-----------------------------------------------
-	//--GET LEGEND INFO---------------------------------
+    //-----------------------------------------------
+    //--GET LEGEND INFO---------------------------------
 
-	// get the colour of the legend item in row
-	// legendRow; requires provision of a double[4]
-	bool getLegendColour(const int legendRow, double* rgba);
-	QIcon getLegendIcon(const int legendRow);
-	QIcon getColourRampIcon(void);
-    QPixmap getColourRampPix(int width, int height);
-	QString getLegendName(const int legendRow);
-	int getLegendItemCount(void);
-	double getLegendItemUpperValue(const int legendRow);
-	double getLegendItemLowerValue(const int legendRow);
-	bool getLegendItemRange(const int legendRow, double* range);
+    // get the colour of the legend item in row
+    // legendRow; requires provision of a double[4]
+    QList<NMLayer::NMColourRamp> getColourRampEnums(void);
+
+    bool getLegendColour(const int legendRow, double* rgba);
+    QIcon getLegendIcon(const int legendRow);
+    QIcon getColourRampIcon(void);
+    QPixmap getColourRampPix(int width, int height,
+                             bool bTopDown=true,
+                             NMLayer::NMColourRamp clrRamp=NMLayer::NM_RAMP_CURRENT);
+    QString getLegendName(const int legendRow);
+    int getLegendItemCount(void);
+    double getLegendItemUpperValue(const int legendRow);
+    double getLegendItemLowerValue(const int legendRow);
+    bool getLegendItemRange(const int legendRow, double* range);
     bool useIdxMap(void){return mUseIdxMap;}
 
-	bool hasColourTable(void);
+    bool hasColourTable(void);
     bool getValueColour(double value, double *&rgba);
-	/* get the statistics of the current legend value field;
-	 * in case of an image layer without attribute table,
-	 * the pixel value statistics are returned for the current
-	 * band.
-	 *
-	 * 0:	min
-	 * 1:	max
-	 * 2:
-	 */
-	std::vector<double> getValueFieldStatistics(void);
+    /* get the statistics of the current legend value field;
+     * in case of an image layer without attribute table,
+     * the pixel value statistics are returned for the current
+     * band.
+     *
+     * 0:	min
+     * 1:	max
+     * 2:
+     */
+    std::vector<double> getValueFieldStatistics(void);
 
-	QString getLegendTypeStr(NMLayer::NMLegendType type)
-		{return mLegendTypeStr.at((int)type);}
-	QString getLegendClassTypeStr(NMLayer::NMLegendClassType type)
-		{return mLegendClassTypeStr.at((int)type);}
-	QString getColourRampStr(NMLayer::NMColourRamp ramptype)
-		{return mColourRampStr.at((int)ramptype);}
+    QString getLegendTypeStr(NMLayer::NMLegendType type)
+        {return mLegendTypeStr.at((int)type);}
+    QString getLegendClassTypeStr(NMLayer::NMLegendClassType type)
+        {return mLegendClassTypeStr.at((int)type);}
+    QString getColourRampStr(NMLayer::NMColourRamp ramptype)
+        {return mColourRampStr.at((int)ramptype);}
 
-	const QStringList getLegendTypeStrings(void)
-		{return mLegendTypeStr;}
-	const QStringList getLegendClassTypeStrings(void)
-		{return mLegendClassTypeStr;}
-	const QStringList getColourRampStrings(void)
-		{return mColourRampStr;}
+    const QStringList getLegendTypeStrings(void)
+        {return mLegendTypeStr;}
+    const QStringList getLegendClassTypeStrings(void)
+        {return mLegendClassTypeStr;}
+    const QStringList getColourRampStrings(void)
+        {return mColourRampStr;}
 
-	NMLayer::NMColourRamp getColourRampFromStr(const QString rampStr);
+    NMLayer::NMColourRamp getColourRampFromStr(const QString rampStr);
 
     NMSqlTableView* getSqlTableView(void);
     NMTableView* getTableView(void);
 
 
-	// -------------------------------------------------------
-	// --SET LEGEND INFO ------------------------------------
-	void setLegendColour(const int legendRow, double* rgba);
+    // -------------------------------------------------------
+    // --SET LEGEND INFO ------------------------------------
+    void setLegendColour(const int legendRow, double* rgba);
 
 
-	//virtual int mapUniqueValues(QString fieldName)=0;
+    //virtual int mapUniqueValues(QString fieldName)=0;
     bool hasChanged(void) {return this->mHasChanged;}
 
 public slots:
-	// call this function whenever you've changed the
-	// layer's data set and wish other objects get
-	// to know about it
-	virtual void selectionChanged(const QItemSelection& newSel, const QItemSelection& oldSel);
-	virtual void tableDataChanged(const QModelIndex& tl, const QModelIndex& br);
-	virtual void tableColumnsInserted(const QModelIndex& parent,
-			int startsection, int endsection);
-	virtual void tableColumnsRemoved(const QModelIndex& parent,
-			int startsection, int endsection);
-	virtual void selectedLayerChanged(const NMLayer* layer);
-	virtual void writeDataSet(void);
+    // call this function whenever you've changed the
+    // layer's data set and wish other objects get
+    // to know about it
+    virtual void selectionChanged(const QItemSelection& newSel, const QItemSelection& oldSel);
+    virtual void tableDataChanged(const QModelIndex& tl, const QModelIndex& br);
+    virtual void tableColumnsInserted(const QModelIndex& parent,
+            int startsection, int endsection);
+    virtual void tableColumnsRemoved(const QModelIndex& parent,
+            int startsection, int endsection);
+    virtual void selectedLayerChanged(const NMLayer* layer);
+    virtual void writeDataSet(void);
     virtual void selectCell(long long cellID, NMLayerSelectionType seltype);
-	//void emitDataSetChanged();
-	//void emitAttributeTableChanged(
-	//		QStringList& slAlteredColumns,
-	//		QStringList& slDeletedColumns);
+    //void emitDataSetChanged();
+    //void emitAttributeTableChanged(
+    //		QStringList& slAlteredColumns,
+    //		QStringList& slDeletedColumns);
     void forwardLastClickedRowSignal(long long cellID);
     virtual void updateLayerSelection(QList<long long> lstCellId,
         QList<long long> lstNMId, NMLayerSelectionType seltype);
 
     /*! Create a legend according to user choices */
-	virtual void updateLegend(void);
-	virtual void updateMapping(void);
+    virtual void updateLegend(void);
+    virtual void updateMapping(void);
 
     virtual void mapExtentChanged(void);
 
     void setIsIn3DMode(bool in3d) {this->mIsIn3DMode = in3d;}
 
 signals:
-	void visibilityChanged(const NMLayer* layer);
-	void selectabilityChanged(bool bselectable);
-	void legendChanged(const NMLayer* layer);
-	void dataSetChanged(const NMLayer* layer);
-	void attributeTableChanged(vtkTable* table);
-	void layerSelectionChanged(const NMLayer* layer);
-	void layerProcessingStart();
-	void layerProcessingEnd();
-	void layerLoaded();
+    void visibilityChanged(const NMLayer* layer);
+    void selectabilityChanged(bool bselectable);
+    void legendChanged(const NMLayer* layer);
+    void dataSetChanged(const NMLayer* layer);
+    void attributeTableChanged(vtkTable* table);
+    void layerSelectionChanged(const NMLayer* layer);
+    void layerProcessingStart();
+    void layerProcessingEnd();
+    void layerLoaded();
     void notifyLastClickedRow(NMLayer* l, long long cellID);
 
 protected:
-	vtkSmartPointer<vtkRenderWindow> mRenderWindow;
-	vtkSmartPointer<vtkRenderer> mRenderer;
-	vtkSmartPointer<vtkDataSet> mDataSet;
-	vtkSmartPointer<vtkAbstractMapper> mMapper;
+    vtkSmartPointer<vtkRenderWindow> mRenderWindow;
+    vtkSmartPointer<vtkRenderer> mRenderer;
+    vtkSmartPointer<vtkDataSet> mDataSet;
+    vtkSmartPointer<vtkAbstractMapper> mMapper;
     vtkSmartPointer<vtkProp3D> mActor;
 
 
-	vtkSmartPointer<vtkPolyData> mCellSelection;
+    vtkSmartPointer<vtkPolyData> mCellSelection;
 #ifdef VTK_OPENGL2
     vtkSmartPointer<vtkPolyDataMapper> mSelectionMapper;
 #else
@@ -399,85 +412,87 @@ protected:
 #endif
     vtkSmartPointer<vtkProp3D>	mSelectionActor;
 
-	void* mSpatialiteCache;
-	sqlite3* mSqlViewConn;
-	NMTableView* mTableView;
+    void* mSpatialiteCache;
+    sqlite3* mSqlViewConn;
+    NMTableView* mTableView;
     NMSqlTableView* mSqlTableView;
     QString mQSqlConnectionName;
-	NMFastTrackSelectionModel* mSelectionModel;
-	QAbstractItemModel* mTableModel;
+    NMFastTrackSelectionModel* mSelectionModel;
+    QAbstractItemModel* mTableModel;
 
     NMLogger* mLogger;
 
-	vtkSmartPointer<vtkEventQtSlotConnect> mVtkConn;
+    vtkSmartPointer<vtkEventQtSlotConnect> mVtkConn;
 
-	// ToDo:: deprecated: move into VectorLayer; use
-	//        solely the tabel model here
-	//vtkSmartPointer<vtkTable> mAttributeTable;
+    // ToDo:: deprecated: move into VectorLayer; use
+    //        solely the tabel model here
+    //vtkSmartPointer<vtkTable> mAttributeTable;
 
 
-	// hash map linking category values with
-	// table info index and lookup table index
-	// key = category name (equals the value for unique value classifications)
-	// value = the index into the LegendInfo or LookupTable or ClrFunc nodes respectively
-	//QHash<QString, int> mHashValueIndices;
+    // hash map linking category values with
+    // table info index and lookup table index
+    // key = category name (equals the value for unique value classifications)
+    // value = the index into the LegendInfo or LookupTable or ClrFunc nodes respectively
+    //QHash<QString, int> mHashValueIndices;
     std::map<QString, QVector<int>, CompNumStrings > mMapValueIndices;
-	QMap<double, QColor> mUserClrNodes;
+    QMap<double, QColor> mUserClrNodes;
 
     /*! DEPRECATED - not in actual use at the moment
      *
      *  Auxiliary legend category information used in conjunction
-	 *  with the layer's lookup table for NMLegendType == NM_LEGEND_INDEXED
-	 *  and NMLegendClassType != NM_CLASS_UNIQUE. The table holds
-	 *  three vtkAbstractArrays:
-	 *
-	 *  \c <i>DEPRECATED</i>
-	 *  \b rgba (vtkDoubleArray) : double [4]: 0: red; 1: green; 2: blue; 3: alpha \n
-	 *
-	 *  \b range (vtkDoubleArray) : double [2]: 0: lower value; 1: upper value; \n
-	 *  			range domain: [\<lower value\>, \<upper value\>[ \n
-	 *
-	 *  \b name (vtkStringArray) : vtkString: name of legend category \n
-	 *
-	 */
-	vtkSmartPointer<vtkTable> mLegendInfo;
+     *  with the layer's lookup table for NMLegendType == NM_LEGEND_INDEXED
+     *  and NMLegendClassType != NM_CLASS_UNIQUE. The table holds
+     *  three vtkAbstractArrays:
+     *
+     *  \c <i>DEPRECATED</i>
+     *  \b rgba (vtkDoubleArray) : double [4]: 0: red; 1: green; 2: blue; 3: alpha \n
+     *
+     *  \b range (vtkDoubleArray) : double [2]: 0: lower value; 1: upper value; \n
+     *  			range domain: [\<lower value\>, \<upper value\>[ \n
+     *
+     *  \b name (vtkStringArray) : vtkString: name of legend category \n
+     *
+     */
+    vtkSmartPointer<vtkTable> mLegendInfo;
 
-	bool mHasClrTab;
+    bool mHasClrTab;
 
-	// Field indices containing RGBA components
-	int mClrTabIdx[4];
+    // Field indices containing RGBA components
+    int mClrTabIdx[4];
 
-	long mNumClasses;
-	long mNumLegendRows;
+    long mNumClasses;
+    long mNumLegendRows;
     long mNumSelRows;
     bool mUseIdxMap;
     bool mHasSelBox;
+    bool mInvertClrRamp;
+    bool mLogClrRamp;
 
-	// legend stats
-	// 0: min
-	// 1: max
-	// 2: mean
-	// 3: median
-	// 4: sdev
-	// 5: sample size
-	// 6: sum
-	double mStats[7];
-	double mLower;
-	double mUpper;
-	double mNodata;
+    // legend stats
+    // 0: min
+    // 1: max
+    // 2: mean
+    // 3: median
+    // 4: sdev
+    // 5: sample size
+    // 6: sum
+    double mStats[7];
+    double mLower;
+    double mUpper;
+    double mNodata;
 
     QString mLegendFileName;
     NMLayer::NMLegendType mLegendFileLegendType;
     NMLayer::NMLegendClassType mLegendFileLegendClassType;
 
     QString mLegendIndexField;
-	QString mLegendValueField;
-	QString mLegendDescrField;
+    QString mLegendValueField;
+    QString mLegendDescrField;
 
-	NMLayer::NMLayerType mLayerType;
-	NMLayer::NMLegendType mLegendType;
-	NMLayer::NMLegendClassType mLegendClassType;
-	NMLayer::NMColourRamp mColourRamp;
+    NMLayer::NMLayerType mLayerType;
+    NMLayer::NMLegendType mLegendType;
+    NMLayer::NMLegendClassType mLegendClassType;
+    NMLayer::NMColourRamp mColourRamp;
 
     //vtkSmartPointer<vtkColorTransferFunctionSpecialNodes> mClrFunc;
     vtkSmartPointer<vtkColorTransferFunction> mClrFunc;
@@ -485,44 +500,44 @@ protected:
     //vtkSmartPointer<NMVtkLookupTable> mLookupTable;
 
     QColor mClrSelection;
-	QColor mClrNodata;
-	QColor mClrLowerMar;
-	QColor mClrUpperMar;
+    QColor mClrNodata;
+    QColor mClrLowerMar;
+    QColor mClrUpperMar;
 
-	QIcon mLayerIcon;
-	QString mFileName;
+    QIcon mLayerIcon;
+    QString mFileName;
 
-	QStringList mLegendTypeStr;
-	QStringList mLegendClassTypeStr;
-	QStringList mColourRampStr;
+    QStringList mLegendTypeStr;
+    QStringList mLegendClassTypeStr;
+    QStringList mColourRampStr;
 
-	bool mIsVisible;
-	bool mIsSelectable;
+    bool mIsVisible;
+    bool mIsSelectable;
     bool mIsSelected;
     bool mIsIn3DMode;
-	int mLayerPos;
-	bool mHasChanged;
-	double mBBox[6];
+    int mLayerPos;
+    bool mHasChanged;
+    double mBBox[6];
     double mSelBBox[6];
-	double mTotalArea;
+    double mTotalArea;
 
-	virtual void createTableView(void);
-	/*! gather information to build a legend
-	 *  without asking the user for anything */
-	virtual void initiateLegend(void);
-	virtual void resetLegendInfo(void);
-	virtual void removeFromMap(void);
-	virtual void connectTableSel(void);
-	virtual void disconnectTableSel(void);
-	void printSelRanges(const QItemSelection& sel, const QString& msg);
-	//int getColumnIndex(const QString& fieldname);
-	//QVariant::Type getColumnType(int colidx);
+    virtual void createTableView(void);
+    /*! gather information to build a legend
+     *  without asking the user for anything */
+    virtual void initiateLegend(void);
+    virtual void resetLegendInfo(void);
+    virtual void removeFromMap(void);
+    virtual void connectTableSel(void);
+    virtual void disconnectTableSel(void);
+    void printSelRanges(const QItemSelection& sel, const QString& msg);
+    //int getColumnIndex(const QString& fieldname);
+    //QVariant::Type getColumnType(int colidx);
 
-	virtual void mapSingleSymbol(void);
-	virtual void mapUniqueValues(void);
-	virtual void mapColourTable(void);
-	virtual void mapValueClasses(void);
-	virtual void mapValueRamp(void);
+    virtual void mapSingleSymbol(void);
+    virtual void mapUniqueValues(void);
+    virtual void mapColourTable(void);
+    virtual void mapValueClasses(void);
+    virtual void mapValueRamp(void);
     virtual void mapRGBImage(void){}
 
     //	vtkSmartPointer<vtkColorTransferFunctionSpecialNodes> getColorTransferFunc(
@@ -538,10 +553,10 @@ protected:
             bool invertRamp=false);
 
 protected slots:
-	virtual int updateAttributeTable(void);
-	//virtual void updateDataSet(QStringList& slAlteredColumns,
-	//		QStringList& slDeletedColumns);
-	virtual void updateSelectionData();
+    virtual int updateAttributeTable(void);
+    //virtual void updateDataSet(QStringList& slAlteredColumns,
+    //		QStringList& slDeletedColumns);
+    virtual void updateSelectionData();
     virtual void updateSelectionColor(void)=0;
 
 

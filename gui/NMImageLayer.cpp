@@ -89,6 +89,7 @@
 #include "vtkUnstructuredGrid.h"
 #include "vtkMath.h"
 #include "vtkDoubleArray.h"
+#include "vtkDelimitedTextReader.h"
 #include "vtkStringArray.h"
 #include "vtkPointData.h"
 #include "vtkRenderWindowInteractor.h"
@@ -1334,6 +1335,10 @@ NMImageLayer::setFileName(QString filename)
         // the reader
         this->mReader->setRATType("ATTABLE_TYPE_SQLITE");
 
+        // we always set the RGBMode here, 'cause we never
+        // display more than 3 bands at a time
+        this->mReader->setRGBMode(true);
+
         // if the table already exists, we open it readonly,
         // otherwise, we need the table to be created, hence
         // need write access!
@@ -1408,10 +1413,6 @@ NMImageLayer::setFileName(QString filename)
 
     if (mNumBands > 1)
     {
-        // we always set the RGBMode here, 'cause we never
-        // display more than 3 bands at a time
-        this->mReader->setRGBMode(true);
-
         if (mNumBands == 3)
         {
             mBandMap.clear();
@@ -1534,6 +1535,217 @@ NMImageLayer::getOverviewSizes()
 
 
     return sizes;
+}
+
+void
+NMImageLayer::loadLegend(const QString &filename)
+{
+    if (this->mTableModel == 0)
+    {
+        //NMLogError(<< ctxNMLayer << ":Need an attribute table for mapping!");
+        return;
+    }
+
+    if (    this->mLegendType != NMLayer::NM_LEGEND_INDEXED
+        ||  this->mLegendClassType != NMLayer::NM_CLASS_UNIQUE
+        )
+    {
+        return;
+    }
+
+    if (this->mLookupTable.GetPointer() == 0)
+        return;
+
+    // load the table
+    vtkSmartPointer<vtkDelimitedTextReader> tabReader =
+                        vtkSmartPointer<vtkDelimitedTextReader>::New();
+
+    tabReader->SetFileName(filename.toStdString().c_str());
+    tabReader->SetHaveHeaders(true);
+    tabReader->DetectNumericColumnsOn();
+    tabReader->SetTrimWhitespacePriorToNumericConversion(1);
+    tabReader->SetFieldDelimiterCharacters(",\t");
+    tabReader->SetUseStringDelimiter(1);
+    tabReader->Update();
+
+    vtkSmartPointer<vtkTable> clrTab = tabReader->GetOutput();
+
+    //    for (int c=0; c < clrTab->GetNumberOfColumns(); ++c)
+    //    {
+    //        NMDebugAI(<< clrTab->GetColumn(c)->GetName() << ": "
+    //                  << clrTab->GetColumn(c)->GetDataTypeAsString()
+    //                  << std::endl);
+    //    }
+
+    //    vtkStringArray* cat = vtkStringArray::SafeDownCast(
+    //                clrTab->GetColumnByName("Category"));
+    vtkAbstractArray* cat = clrTab->GetColumnByName("Category");
+    vtkDataArray* red = vtkDataArray::SafeDownCast(
+                clrTab->GetColumnByName("red"));
+    vtkDataArray* green = vtkDataArray::SafeDownCast(
+                clrTab->GetColumnByName("green"));
+    vtkDataArray* blue = vtkDataArray::SafeDownCast(
+                clrTab->GetColumnByName("blue"));
+    vtkDataArray* alpha = vtkDataArray::SafeDownCast(
+                clrTab->GetColumnByName("alpha"));
+
+    if (cat == 0 || red == 0 || green == 0 || blue == 0)
+        return;
+
+    int valIdx = this->getColumnIndex(mLegendValueField);
+    vtkDataSetAttributes* dsa = 0;
+    vtkUnsignedCharArray* hole = 0;
+    vtkAbstractArray* valar = 0;
+    long ncells = 0;
+    int numComp = 3;
+    QList<vtkDataArray*> arList;
+    arList << red << green << blue;
+    if (alpha)
+    {
+        numComp = 4;
+        arList << alpha;
+    }
+
+    bool bIsNumeric = true;
+    ncells = this->getNumTableRecords();
+    if (    this->getColumnType(valIdx) != QVariant::Int
+         && this->getColumnType(valIdx) != QVariant::LongLong
+         && this->getColumnType(valIdx) != QVariant::Double
+       )
+    {
+        bIsNumeric = false;
+    }
+
+
+    // ###################################################################################
+    // init the QSql
+    NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
+    QString conname = QString("NMImageLayer_%1").arg(NMGlobalHelper::getRandomString(4));
+
+    // db scope
+    // without db and q going out of scope, we cannot remove
+    // db without Qt complaining
+    {
+        NMQSQLiteDriver* drv = new NMQSQLiteDriver();
+        QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
+        db.setConnectOptions(   "QSQLITE_OPEN_URI;"
+                                "QSQLITE_OPEN_READONLY");
+        db.setDatabaseName(sqlModel->getDatabaseName());
+        if (!db.open())
+        {
+            NMLogError(<< ctxNMImageLayer << "::" << __FUNCTION__ << "() - Access to '"
+                       << sqlModel->getDatabaseName().toStdString() << "' failed: "
+                       << db.lastError().text().toStdString());
+        }
+
+        QString prepStr = QString("SELECT %1 from %2")
+                            .arg(drv->escapeIdentifier(mLegendValueField, QSqlDriver::FieldName))
+                            .arg(drv->escapeIdentifier(sqlModel->tableName(), QSqlDriver::TableName));
+                            //.arg(drv->escapeIdentifier(sqlModel->getNMPrimaryKey(), QSqlDriver::FieldName));
+        QSqlQuery q(db);
+        if (!q.exec(prepStr))
+        {
+            NMLogError(<< ctxNMImageLayer << "::" << __FUNCTION__ << "() - Value query failed: "
+                       << db.lastError().text().toStdString());
+            db.close();
+            return;
+        }
+
+
+        // ========================================================================================
+        // build hash structure
+        QHash<QString, int> clridx;
+        for (int r=0; r < clrTab->GetNumberOfRows(); ++r)
+        {
+            QString valCat(cat->GetVariantValue(r).ToString().c_str());//cat->GetValue(r).c_str();
+            clridx.insert(valCat, r);
+        }
+
+        QHash<QString, int>::const_iterator it;
+        QString sVal;
+        qlonglong val;
+        double rgba[] = {0.0,0.0,0.0,1.0};
+        QModelIndex vi;
+        for (int t=0; t < ncells && q.next(); ++t)
+        {
+            //if (!bIsNumeric)
+            //{
+            //    //if (valar)
+            //    //{
+            //    //    sVal = valar->GetVariantValue(t).ToString().c_str();
+            //    //}
+            //    //else
+            //    //{
+            //    //    vi = mTableModel->index(t, valIdx);
+            //    //    while (!vi.isValid() && mTableModel->canFetchMore(QModelIndex()))
+            //    //    {
+            //    //        mTableModel->fetchMore(QModelIndex());
+            //    //        vi = mTableModel->index(t, valIdx);
+            //    //    }
+            //    //    sVal = vi.data().toString();
+            //    //}
+            //    sVal = q.value(0).toString();
+            //
+            //}
+            //else
+            //{
+            //    //if (valar)
+            //    //{
+            //    //    val = valar->GetVariantValue(t).ToLongLong();
+            //    //    sVal = QString("%1").arg(val);
+            //    //}
+            //    //else
+            //    //{
+            //    //    vi = mTableModel->index(t, valIdx);
+            //    //    while (!vi.isValid() && mTableModel->canFetchMore(QModelIndex()))
+            //    //    {
+            //    //        mTableModel->fetchMore(QModelIndex());
+            //    //        vi = mTableModel->index(t, valIdx);
+            //    //    }
+            //    //    val = vi.data().toLongLong();
+            //    //    sVal = QString("%1").arg(val);
+            //    //}
+            //    sVal = q.value(0).toString();
+            //
+            //
+            //}
+
+            sVal = q.value(0).toString();
+
+            it = clridx.find(sVal);
+            if (it != clridx.cend())
+            {
+                int id = clridx.value(sVal);
+
+                for (int i=0; i < numComp; ++i)
+                {
+                    rgba[i] = arList.at(i)->GetTuple1(id) / 255.0;
+                }
+            }
+            else
+            {
+                for (int i=0; i < numComp; ++i)
+                {
+                    rgba[i] = arList.at(i)->GetTuple1(0) / 255.0;
+                }
+            }
+            this->mLookupTable->SetTableValue(t,
+                              rgba[0], rgba[1], rgba[2], rgba[3]);
+        }
+
+        q.finish();
+        db.close();
+    }
+
+
+
+    mLegendFileName = filename;
+    mLegendFileLegendType = this->mLegendType;
+    mLegendFileLegendClassType = this->mLegendClassType;
+
+
+    emit legendChanged(this);
+    emit visibilityChanged(this);
 }
 
 void
@@ -2035,7 +2247,7 @@ NMImageLayer::setScalars(vtkImageData* img)
     if (colidx != mScalarColIdx)
     {
         mScalarColIdx = colidx;
-        if (mNumRecords <= 1e6)
+        if (1)//mNumRecords <= 1e6)
         {
             mScalarDoubleMap.clear();
             mScalarLongLongMap.clear();
@@ -2248,7 +2460,7 @@ NMImageLayer::setLongScalars(T* buf, long long *out,
                                      long long nodata)
 {
     //CALLGRIND_START_INSTRUMENTATION;
-    if (mNumRecords > 1e6)
+    if (0)//mNumRecords > 1e6)
     {
         int nthreads = QThread::idealThreadCount();
         long long threadpix = numPix / nthreads;
@@ -2377,7 +2589,7 @@ void
 NMImageLayer::setDoubleScalars(T* buf, double* out,
                                long long numPix, double nodata)
 {
-    if (mNumRecords > 1e6)
+    if (0)//mNumRecords > 1e6)
     {
         int nthreads = QThread::idealThreadCount();
         long long threadpix = numPix / nthreads;

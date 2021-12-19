@@ -51,7 +51,7 @@ class NMLogger;
 
 class ModelComponentList : public QTreeView
 {
-	Q_OBJECT
+    Q_OBJECT
 
 friend class LUMASSMainWin;
 
@@ -84,20 +84,20 @@ public:
     int changeLayerPos(int oldpos, int newpos);
 
 public: signals:
-	void selectedLayerChanged(const NMLayer* layer);
+    void selectedLayerChanged(const NMLayer* layer);
 
 public slots:
-	void zoomToLayer();
+    void zoomToLayer();
     void zoomToSelection();
-	void updateMapWin(const NMLayer* layer);
-	void updateLegend(const NMLayer* layer);
-	void mapUniqueValues();
-	void mapSingleSymbol();
-	void saveLayerChanges();
-	void mapColourTable();
-	void mapColourRamp();
+    void updateMapWin(const NMLayer* layer);
+    void updateLegend(const NMLayer* layer);
+    void mapUniqueValues();
+    void mapSingleSymbol();
+    void saveLayerChanges();
+    void mapColourTable();
+    void mapColourRamp();
     void mapRGBImage();
-	void showValueStats();
+    void showValueStats();
     void mapVectorContoursOnly();
     void editContourColour();
     void editContourWidth();
@@ -108,15 +108,17 @@ public slots:
     void loadLegend();
     void showImageInfo();
     void exportColourRamp();
+    void toggleClrRampInversion(bool tog);
+    void toggleClrRampScale(bool tog);
 
-	void test();
+    void test();
 
 private slots:
-	void openAttributeTable();
-	void removeCurrentLayer();
+    void openAttributeTable();
+    void removeCurrentLayer();
 
 protected:
-	void drawBranches(QPainter* painter, const QRect& rect, const QModelIndex& index) const {}
+    void drawBranches(QPainter* painter, const QRect& rect, const QModelIndex& index) const {}
 
 protected slots:
     void showWholeImgStats();
@@ -133,7 +135,7 @@ protected slots:
 
 private:
 
-	double mFullMapExt[6];
+    double mFullMapExt[6];
 
     NMLogger* mLogger;
 
@@ -143,8 +145,9 @@ private:
     QPoint dragStartPosition;
     QMenu* mMenu;
     QMenu* mContourMenu;
+    QMenu* mRampMenu;
     QModelIndex mIndicatorIdx;
-	static const std::string ctx;
+    static const std::string ctx;
 
 
     QAction* mActUniqueValues;
@@ -165,22 +168,26 @@ private:
     QAction* mActZoomSel;
     bool mbWholeImgStats;
 
+    QAction* mActRampInvert;
+    QAction* mActRampLogScale;
+
+
     // keeps track of future watchers being created for stats creation survaillance
     // and keeps them thereby in scope
     QMap<QFutureWatcher<std::vector<double> >*, QString> mStatsWatcherMap;
 
     vtkSmartPointer<vtkEventQtSlotConnect> mVTKConn;
 
-	void initView(void);
-	void processSelection(bool toggle);
+    void initView(void);
+    void processSelection(bool toggle);
     void removeLayer(NMLayer* layer);
- 	void unionMapBBox(const double* box);
-   	void recalcMapBBox();
+    void unionMapBBox(const double* box);
+    void recalcMapBBox();
     NMLayer* getCurrentLayer(void);
 
     QString formatStats(const std::vector<double>& stats);
 
-   	// event handlers
+    // event handlers
     void mousePressEvent(QMouseEvent *event);
     void mouseMoveEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent* event);

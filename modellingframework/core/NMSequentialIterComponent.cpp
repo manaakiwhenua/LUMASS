@@ -132,7 +132,7 @@ NMSequentialIterComponent::linkComponents(unsigned int step, const QMap<QString,
     NMDebugCtx(this->objectName().toStdString(), << "...");
 
     this->processUserID();
-    mOldIterations = mNumIterations;
+    //mOldIterations = mNumIterations;
     mNumIterations = this->evalNumIterationsExpression(mIterationStep);
     //NMDebugAI(<< getUserID().toStdString() << ": pre-loop: IterStep=" << getIterationStep() << " niter=" << mNumIterations;)
     //NMLogDebug(<< getUserID().toStdString() << ": pre-loop: IterStep=" << getIterationStep() << " niter=" << mNumIterations);
@@ -176,7 +176,7 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
         ++mIterationStepRun;
     }
     mIterationStepRun = mIterationStep;
-    this->setNumIterations(mOldIterations);
+    //this->setNumIterations(mOldIterations);
     emit signalProgress(mIterationStep);
 }
 

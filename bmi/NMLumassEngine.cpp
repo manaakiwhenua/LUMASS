@@ -99,6 +99,13 @@ NMLumassEngine::setLogProvenance(bool logProv)
     }
 }
 
+std::string NMLumassEngine::processStringParameter(const QString& param)
+{
+    std::string ret = param.toStdString();
+    ret = this->mController->processStringParameter(nullptr, ret.c_str()).toStdString();
+    return ret;
+}
+
 int
 NMLumassEngine::loadModel(const QString &modelfile)
 {

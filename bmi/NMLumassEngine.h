@@ -71,6 +71,11 @@ public slots:
     /*! writes a message to the log file */
     void writeLogMsg(const QString& msg);
     
+	/*! passes a !global! string parameter to the controller for processing
+	    of LUMASS expressions
+	*/
+	std::string processStringParameter(const QString& param);
+
 	/*! loads the LUMASS model (*.lmx) given by the pathname modelfile */
 	int loadModel(const QString& modelfile);
 

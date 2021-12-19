@@ -87,6 +87,12 @@ void main() {}
 		{
 			configFile = YAML::LoadFile(config_file);
 			config = configFile["EngineConfig"];
+
+			std::string cfilename = config_file;
+			size_t last_sep = cfilename.find_last_of("/\\");
+			std::string cfilepath = cfilename.substr(0, last_sep);
+
+			nmengine->setSetting("ConfigPath", cfilepath.c_str());
 		}
 		catch (std::exception& e)
 		{
@@ -116,6 +122,11 @@ void main() {}
 		//std::cout << "mode=" << mode << std::endl
 			//<< "modelfile=" << modelfile << std::endl
 			//<< "enginepath=" << enginepath << std::endl;
+
+		modelfile = nmengine->processStringParameter(modelfile.c_str());
+		enginepath = nmengine->processStringParameter(enginepath.c_str());
+		workspace = nmengine->processStringParameter(workspace.c_str());
+		logfile = nmengine->processStringParameter(logfile.c_str());
 
 
 		if (!logfile.empty())

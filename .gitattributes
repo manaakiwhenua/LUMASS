@@ -1,0 +1,2 @@
+# mark *.txx files as C++
+*.txx linguist-language=C++

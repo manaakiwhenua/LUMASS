@@ -1402,24 +1402,12 @@ NMModelController::parseQuotedArguments(const QString& args, const QChar &sep)
 QString
 NMModelController::processStringParameter(const QObject* obj, const QString& str)
 {
-    int maxcount = 0;
     QString nested = str;
 
     // count the number of ParameterExpressions to be evaluated
     // to avoid endless loops
-    QStringList innerExp = this->getNextParamExpr(nested);
-    while (innerExp.size() > 0)
-    {
-        foreach(const QString& s, innerExp)
-        {
-            nested = nested.replace(s, QString(""));
-            ++maxcount;
-        }
-        innerExp = this->getNextParamExpr(nested);
-    }
-    /// ToDo: testing!
-    //maxcount *= 21;
-    maxcount = 150;
+    QStringList innerExp;
+    const int maxcount = 15000;
 
     nested = str;
     innerExp = this->getNextParamExpr(nested);
@@ -1460,7 +1448,7 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                                             "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
                                             "(?<sep1>(?(<open>):|(?>__)))*"
                                             "(?<arith>(?(<sep1>)|([ ]*(?<opr>[+\\-])?[ ]*(?<sum>[\\d]+))))*"
-                                            "(?<prop>(?(?<!math:|func:)(?(<sep1>)\\g<comp>)|([a-zA-Z0-9_ \\/\\(\\)&%\\|\\>\\!\\=\\<\\-\\+\\*\\^\\?:;.,'\"])*))*"
+                                            "(?<prop>(?(?<!math:|func:)(?(<sep1>)\\g<comp>)|([a-zA-Z0-9_ \\\\\\/\\(\\)&%\\|\\>\\!\\=\\<\\-\\+\\*\\^\\?:;.,'\"])*))*"
                                             "(?<sep2>(?(<prop>)(?(<open>):)))*"
                                             "(?(<sep2>)((?<numidx>[0-9]+)(?:\\]\\$|\\$\\[)|(?<stridx>[^\\r\\n\\$\\[\\]]*))|([ ]*(?<opr2>[+\\\\-]+)[ ]*(?<sum2>[\\d]+))*))(?>\\]\\$)*");
 
@@ -1513,13 +1501,13 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                 // retrieve model component
 
                 NMProcess* procObj = qobject_cast<NMProcess*>(const_cast<QObject*>(obj));
-                NMIterableComponent* host = 0;
+                NMIterableComponent* host = nullptr;
 
                 if (procObj == 0)
                 {
                     host = qobject_cast<NMIterableComponent*>(const_cast<QObject*>(obj));
                 }
-                else
+                else if (obj != nullptr)
                 {
                     host = qobject_cast<NMIterableComponent*>(obj->parent());
                 }
@@ -2389,9 +2377,9 @@ NMModelController::startProv(const QString &fn, const QString& compName)
 
     QTextStream provF(&mProvFile);
     provF << "document\n";
-    provF << "\tprefix nm <https://bitbucket.org/landcareresearch/lumass/nm>\n";
-    provF << "\tprefix img <https://bitbucket.org/landcareresearch/lumass/img>\n";
-    provF << "\tprefix db <https://bitbucket.org/landcareresearch/lumass/db>\n";
+    provF << "\tprefix nm <https://manaakiwhenua.github.io/LUMASS/docs/mod_structure#general-model-and-aggregate-component-properties>\n";
+    provF << "\tprefix img <https://manaakiwhenua.github.io/LUMASS/docs/cref_image_reader>\n";
+    provF << "\tprefix db <https://manaakiwhenua.github.io/LUMASS/docs/cref_table_reader>\n";
 }
 
 void

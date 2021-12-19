@@ -1,17 +1,21 @@
 # LUMASS - Spatial Modelling & Optimisation
 
-## About LUMASS
+## About
 
 ![LUMASS_icon_256.png](https://manaakiwhenua.github.io/LUMASS/assets/images/LUMASS_icon_128.png)
 
 [https://manaakiwhenua.github.io/LUMASS/](https://manaakiwhenua.github.io/LUMASS/)
 
-## INSTALLATION
+## Documentation
 
-Please consult the INSTALL document for instructions for Linux and Windows.
+[https://manaakiwhenua.github.io/LUMASS/docs/Documentation](https://manaakiwhenua.github.io/LUMASS/docs/Documentation)
 
+## Installation
 
-## LUMASS SUPPORT
+[Linux](https://manaakiwhenua.github.io/LUMASS/docs/install_linux)
+[Windows](https://manaakiwhenua.github.io/LUMASS/docs/install_windows)
+
+## Support
 
 ### Forum
 [https://github.com/manaakiwhenua/LUMASS/discussions](https://github.com/manaakiwhenua/LUMASS/discussions)
@@ -20,7 +24,7 @@ Please consult the INSTALL document for instructions for Linux and Windows.
 [https://groups.google.com/forum/#!forum/lumass-users](https://groups.google.com/forum/#!forum/lumass-users)
 
 
-## ACKNOWLEDGEMENT
+## Acknowledgement
 
 The development of the open source version of LUMASS was enabled and massively supported by research projects led by Daniel Rutledge (Manaaki Whenua - Landcare Research New Zealand Ltd).
 

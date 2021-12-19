@@ -242,7 +242,7 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
 	// create bezier curve
 	QPointF ep(shortBase.p2());
 	QPainterPath path(sip);
-	path.lineTo(ep);
+    path.lineTo(ep);
 
 	// check, whether any component item is colliding with
 	// the direct line
@@ -260,8 +260,10 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
 	//	}
 	//}
 
-	//path.cubicTo(QPointF(shortBase.p2().x(), sip.y()),
-	//		QPointF(sip.x(), shortBase.p2().y()), shortBase.p2());
+
+    //QPointF cp1(ep.x(), (ep.y() - sip.y()) * 0.33 + sip.y());
+    //QPointF cp2(sip.x(), (ep.y() - sip.y()) * 0.67 + sip.y());
+    //path.cubicTo(cp1, cp2, ep);
 
 	// draw elements
 	QPen pen;

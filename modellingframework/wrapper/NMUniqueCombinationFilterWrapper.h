@@ -41,17 +41,17 @@ class NMUniqueCombinationFilterWrapper_Internal;
 
 class NMUNIQUECOMBINATIONFILTERWRAPPER_EXPORT
 NMUniqueCombinationFilterWrapper
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
-    
+
     Q_PROPERTY(QStringList OutputImageFileName READ getOutputImageFileName WRITE setOutputImageFileName)
     Q_PROPERTY(QList<QStringList> InputNodata READ getInputNodata WRITE setInputNodata)
 
 public:
 
-    
+
     NMPropertyGetSet( OutputImageFileName, QStringList )
     NMPropertyGetSet( InputNodata, QList<QStringList> )
 
@@ -66,20 +66,20 @@ public:
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     QSharedPointer<NMItkDataObjectWrapper> getRAT(unsigned int idx);
 
 
-    void setRAT(unsigned int idx, 
+    void setRAT(unsigned int idx,
         QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
-    
+
     QStringList mOutputImageFileName;
     QList<QStringList> mInputNodata;
 

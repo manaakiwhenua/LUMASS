@@ -39,8 +39,21 @@
 NMTableReader
 ::NMTableReader(QObject* parent)
 {
-	this->setParent(parent);	this->setObjectName("NMTableReader");
-	this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->setParent(parent);	this->setObjectName("NMTableReader");
+    this->mParameterHandling = NMProcess::NM_USE_UP;
+
+    this->mInputNumBands = 1;
+    this->mOutputNumBands = 1;
+    this->mInputNumDimensions = 2;
+    this->mOutputNumDimensions = 2;
+    this->mInputComponentType = otb::ImageIOBase::INT;
+
+    mUserProperties.clear();
+    //mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("PixelType"));
+    //mUserProperties.insert(QStringLiteral("InputNumDimensions"), QStringLiteral("NumDimensions"));
+    mUserProperties.insert(QStringLiteral("FileName"), QStringLiteral("FileName"));
+    mUserProperties.insert(QStringLiteral("TableName"), QStringLiteral("TableName"));
+    mUserProperties.insert(QStringLiteral("CreateTable"), QStringLiteral("CreateTable"));
 }
 
 NMTableReader

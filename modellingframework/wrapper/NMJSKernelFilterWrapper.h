@@ -41,11 +41,11 @@ class NMJSKernelFilterWrapper_Internal;
 
 class NMJSKERNELFILTERWRAPPER_EXPORT
 NMJSKernelFilterWrapper
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
-    
+
     Q_PROPERTY(QList<QStringList> Radius READ getRadius WRITE setRadius)
     Q_PROPERTY(QStringList KernelScript READ getKernelScript WRITE setKernelScript)
     Q_PROPERTY(QStringList InitScript READ getInitScript WRITE setInitScript)
@@ -56,7 +56,7 @@ NMJSKernelFilterWrapper
 
 public:
 
-    
+
     NMPropertyGetSet( Radius, QList<QStringList> )
     NMPropertyGetSet( KernelScript, QStringList )
     NMPropertyGetSet( InitScript, QStringList )
@@ -77,17 +77,17 @@ public:
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     /*$<RATGetSupportDecl>$*/
 
-    void setRAT(unsigned int idx, 
+    void setRAT(unsigned int idx,
         QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
     unsigned int mNumThreads;
 

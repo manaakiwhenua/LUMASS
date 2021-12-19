@@ -41,15 +41,15 @@ template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class NMItkCastImageFilterWrapper_Internal;
 
 class NMITKCASTIMAGEFILTERWRAPPER_EXPORT NMItkCastImageFilterWrapper
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
-    
+
 
 public:
 
-    
+
 
 public:
     NMItkCastImageFilterWrapper(QObject* parent=0);
@@ -58,11 +58,11 @@ public:
     template<class TInputImage, class TOutputImage, unsigned int Dimension>
     friend class NMItkCastImageFilterWrapper_Internal;
 
-	QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
-	void instantiateObject(void);
+    QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
+    void instantiateObject(void);
 
-	void setNthInput(unsigned int numInput,
-			QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+    void setNthInput(unsigned int numInput,
+            QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     /*$<RATGetSupportDecl>$*/
 
@@ -70,9 +70,9 @@ public:
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
-    
+
 
 };
 

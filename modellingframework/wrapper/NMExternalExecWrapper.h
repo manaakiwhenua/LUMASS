@@ -63,7 +63,7 @@ public:
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString &name);
 
     void linkParameters(unsigned int step,
                         const QMap<QString, NMModelComponent*>& repo);

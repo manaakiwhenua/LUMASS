@@ -45,7 +45,7 @@ public:
     virtual ~NMSQLProcessor();
 
     virtual void setNthInput(unsigned int numInput,
-            QSharedPointer<NMItkDataObjectWrapper> img);
+            QSharedPointer<NMItkDataObjectWrapper> img, const QString& name);
     virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 
     virtual void instantiateObject(void){}

@@ -65,7 +65,7 @@ public:
     }
 
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
+                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
         InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
@@ -86,30 +86,30 @@ public:
 
 
     static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, NMProcess* proc,
-			unsigned int step, const QMap<QString, NMModelComponent*>& repo)
-	{
-		NMDebugCtx("NMVectorImageToImageFilterWrapper_Internal", << "...");
+            unsigned int numBands, NMProcess* proc,
+            unsigned int step, const QMap<QString, NMModelComponent*>& repo)
+    {
+        NMDebugCtx("NMVectorImageToImageFilterWrapper_Internal", << "...");
 
-		FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		NMVectorImageToImageFilterWrapper* p =
-				dynamic_cast<NMVectorImageToImageFilterWrapper*>(proc);
+        FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        NMVectorImageToImageFilterWrapper* p =
+                dynamic_cast<NMVectorImageToImageFilterWrapper*>(proc);
 
-		// make sure we've got a valid filter object
-		if (f == 0)
-		{
-			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        // make sure we've got a valid filter object
+        if (f == 0)
+        {
+            NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
             e.setSource(p->parent()->objectName().toStdString());
-			e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
-			throw e;
-			return;
-		}
+            e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
+            throw e;
+            return;
+        }
 
-		/* do something reasonable here */
-		bool bok;
-		int givenStep = step;
+        /* do something reasonable here */
+        bool bok;
+        int givenStep = step;
 
-		
+
         QVariant curBandVar = p->getParameter("Band");
         unsigned int curBand;
         QString bandProvVal;
@@ -136,8 +136,8 @@ public:
         /*$<ForwardInputUserIDs_Body>$*/
 
 
-		NMDebugCtx("NMVectorImageToImageFilterWrapper_Internal", << "done!");
-	}
+        NMDebugCtx("NMVectorImageToImageFilterWrapper_Internal", << "done!");
+    }
 };
 
 template class NMVectorImageToImageFilterWrapper_Internal<unsigned char, unsigned char, 1>;
@@ -452,9 +452,19 @@ LinkInternalParametersWrap( NMVectorImageToImageFilterWrapper, NMVectorImageToIm
 NMVectorImageToImageFilterWrapper
 ::NMVectorImageToImageFilterWrapper(QObject* parent)
 {
-	this->setParent(parent);
-	this->setObjectName("NMVectorImageToImageFilterWrapper");
-	this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->setParent(parent);
+    this->setObjectName("NMVectorImageToImageFilterWrapper");
+    this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->mOutputNumBands = 1;
+    this->mOutputNumDimensions = 2;
+    this->mInputComponentType = otb::ImageIOBase::USHORT;
+    this->mOutputComponentType = otb::ImageIOBase::USHORT;
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("InputPixelType"));
+    mUserProperties.insert(QStringLiteral("NMOutputComponentType"), QStringLiteral("OutputPixelType"));
+    mUserProperties.insert(QStringLiteral("OutputNumDimensions"), QStringLiteral("NumDimensions"));
+    mUserProperties.insert(QStringLiteral("Band"), QStringLiteral("Band"));
 }
 
 NMVectorImageToImageFilterWrapper

@@ -50,9 +50,12 @@ class
 NMBMIWrapper : public NMProcess
 {
     Q_OBJECT
+    //Q_PROPERTY(QList<QStringList> OutputNames READ getOutputNames WRITE setOutputNames)
     Q_PROPERTY(QString YamlConfigFileName READ getYamlConfigFileName WRITE setYamlConfigFileName)
 
 public:
+
+    //NMPropertyGetSet( OutputNames, QList<QStringList> )
 
     enum NMBMIComponetType
     {
@@ -67,10 +70,11 @@ public:
     friend class NMBMIWrapper_Internal;
 
     QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
+    QSharedPointer<NMItkDataObjectWrapper> getOutput(const QString& name);
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     QString getYamlConfigFileName(){return mYamlConfigFileName;}
     void setYamlConfigFileName(const QString& YamlConfigFileName);
@@ -79,6 +83,7 @@ public:
 
 signals:
     void needPythonInterpreter(const QString& compName);
+    void OutputNamesChanged(QList<QStringList> );
 
 protected:
     void linkParameters(unsigned int step,
@@ -102,6 +107,7 @@ protected:
 
     QString mYamlConfigFileName;
     QString mParsedYamlConfigFileName;
+    //QList<QStringList>  mOutputNames;
 
 };
 

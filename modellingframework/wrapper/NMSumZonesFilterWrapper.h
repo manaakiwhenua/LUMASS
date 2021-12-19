@@ -41,11 +41,11 @@ class NMSumZonesFilterWrapper_Internal;
 
 class NMSUMZONESFILTERWRAPPER_EXPORT
 NMSumZonesFilterWrapper
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
-    
+
     Q_PROPERTY(QStringList IgnoreNodataValue READ getIgnoreNodataValue WRITE setIgnoreNodataValue)
     Q_PROPERTY(QStringList NodataValue READ getNodataValue WRITE setNodataValue)
     Q_PROPERTY(QStringList HaveMaxKeyRows READ getHaveMaxKeyRows WRITE setHaveMaxKeyRows)
@@ -53,7 +53,7 @@ NMSumZonesFilterWrapper
 
 public:
 
-    
+
     NMPropertyGetSet( IgnoreNodataValue, QStringList )
     NMPropertyGetSet( NodataValue, QStringList )
     NMPropertyGetSet( HaveMaxKeyRows, QStringList )
@@ -70,7 +70,7 @@ public:
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     QSharedPointer<NMItkDataObjectWrapper> getRAT(unsigned int idx);
 
@@ -79,9 +79,9 @@ public:
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
-    
+
     QStringList mIgnoreNodataValue;
     QStringList mNodataValue;
     QStringList mHaveMaxKeyRows;

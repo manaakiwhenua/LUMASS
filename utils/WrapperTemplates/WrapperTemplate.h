@@ -42,9 +42,9 @@ class /*$<WrapperClassName>$*/_Internal;
 
 class
 /*$<WrapperClassName>$*/
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
     /*$<WrapperPropertyList>$*/
 
@@ -63,7 +63,7 @@ public:
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     /*$<RATGetSupportDecl>$*/
 
@@ -71,7 +71,7 @@ public:
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
     /*$<PropertyVarDef>$*/
 

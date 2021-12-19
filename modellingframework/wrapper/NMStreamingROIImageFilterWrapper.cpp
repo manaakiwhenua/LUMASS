@@ -37,12 +37,13 @@
 /*! Internal templated helper class linking to the core otb/itk filter
  *  by static methods.
  */
-template<class TInputImage, class TOutputImage, unsigned int Dimension>
+//template<class TInputImage, class TOutputImage, unsigned int Dimension>
+template<class TInputImage, unsigned int Dimension>
 class NMStreamingROIImageFilterWrapper_Internal
 {
 public:
     typedef otb::Image<TInputImage, Dimension>  InImgType;
-    typedef otb::Image<TOutputImage, Dimension> OutImgType;
+    typedef otb::Image<TInputImage, Dimension> OutImgType;
     typedef typename nm::StreamingROIImageFilter<InImgType, OutImgType> FilterType;
     typedef typename FilterType::Pointer        FilterTypePointer;
 
@@ -59,15 +60,15 @@ public:
     typedef typename OutImgType::IndexValueType   IndexValueType;
     typedef typename OutImgType::PointValueType   PointValueType;
 
-	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands)
-	{
-		FilterTypePointer f = FilterType::New();
-		otbFilter = f;
-	}
+    static void createInstance(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands)
+    {
+        FilterTypePointer f = FilterType::New();
+        otbFilter = f;
+    }
 
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
+                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
         InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
@@ -75,12 +76,12 @@ public:
     }
 
 
-	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, unsigned int idx)
-	{
-		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
-	}
+    static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands, unsigned int idx)
+    {
+        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
+    }
 
 /*$<InternalRATGetSupport>$*/
 
@@ -88,35 +89,35 @@ public:
 
 
     static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, NMProcess* proc,
-			unsigned int step, const QMap<QString, NMModelComponent*>& repo)
-	{
-		NMDebugCtx("NMStreamingROIImageFilterWrapper_Internal", << "...");
+            unsigned int numBands, NMProcess* proc,
+            unsigned int step, const QMap<QString, NMModelComponent*>& repo)
+    {
+        NMDebugCtx("NMStreamingROIImageFilterWrapper_Internal", << "...");
 
-		FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		NMStreamingROIImageFilterWrapper* p =
-				dynamic_cast<NMStreamingROIImageFilterWrapper*>(proc);
+        FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        NMStreamingROIImageFilterWrapper* p =
+                dynamic_cast<NMStreamingROIImageFilterWrapper*>(proc);
 
-		// make sure we've got a valid filter object
-		if (f == 0)
-		{
-			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        // make sure we've got a valid filter object
+        if (f == 0)
+        {
+            NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
                         e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
-			throw e;
-			return;
-		}
+            throw e;
+            return;
+        }
 
-		/* do something reasonable here */
-		bool bok;
-		int givenStep = step;
+        /* do something reasonable here */
+        bool bok;
+        int givenStep = step;
 
-		
+
         QVariant curROIIndexVar = p->getParameter("ROIIndex");
         if (curROIIndexVar.isValid())
         {
            std::vector<IndexValueType> vecROIIndex;
            QStringList curValVarList = curROIIndexVar.toStringList();
-           foreach(const QString& vStr, curValVarList) 
+           foreach(const QString& vStr, curValVarList)
            {
                 long curROIIndex = vStr.toLong(&bok);
                 if (bok)
@@ -141,7 +142,7 @@ public:
         {
            std::vector<IndexValueType> vecROISize;
            QStringList curValVarList = curROISizeVar.toStringList();
-           foreach(const QString& vStr, curValVarList) 
+           foreach(const QString& vStr, curValVarList)
            {
                 long curROISize = vStr.toLong(&bok);
                 if (bok)
@@ -166,7 +167,7 @@ public:
         {
            std::vector<PointValueType> vecROIOrigin;
            QStringList curValVarList = curROIOriginVar.toStringList();
-           foreach(const QString& vStr, curValVarList) 
+           foreach(const QString& vStr, curValVarList)
            {
                 double curROIOrigin = vStr.toDouble(&bok);
                 if (bok)
@@ -191,7 +192,7 @@ public:
         {
            std::vector<PointValueType> vecROILength;
            QStringList curValVarList = curROILengthVar.toStringList();
-           foreach(const QString& vStr, curValVarList) 
+           foreach(const QString& vStr, curValVarList)
            {
                 double curROILength = vStr.toDouble(&bok);
                 if (bok)
@@ -215,25 +216,35 @@ public:
                 /*$<ForwardInputUserIDs_Body>$*/
 
 
-		NMDebugCtx("NMStreamingROIImageFilterWrapper_Internal", << "done!");
-	}
+        NMDebugCtx("NMStreamingROIImageFilterWrapper_Internal", << "done!");
+    }
 };
 
 /*$<HelperClassInstantiation>$*/
 
-InstantiateObjectWrap( NMStreamingROIImageFilterWrapper, NMStreamingROIImageFilterWrapper_Internal )
-SetNthInputWrap( NMStreamingROIImageFilterWrapper, NMStreamingROIImageFilterWrapper_Internal )
-GetOutputWrap( NMStreamingROIImageFilterWrapper, NMStreamingROIImageFilterWrapper_Internal )
-LinkInternalParametersWrap( NMStreamingROIImageFilterWrapper, NMStreamingROIImageFilterWrapper_Internal )
+InstantiateInputTypeObjectWrap( NMStreamingROIImageFilterWrapper, NMStreamingROIImageFilterWrapper_Internal )
+SetInputTypeNthInputWrap( NMStreamingROIImageFilterWrapper, NMStreamingROIImageFilterWrapper_Internal )
+GetInputTypeOutputWrap( NMStreamingROIImageFilterWrapper, NMStreamingROIImageFilterWrapper_Internal )
+LinkInputTypeInternalParametersWrap( NMStreamingROIImageFilterWrapper, NMStreamingROIImageFilterWrapper_Internal )
 /*$<RATGetSupportWrap>$*/
 /*$<RATSetSupportWrap>$*/
 
 NMStreamingROIImageFilterWrapper
 ::NMStreamingROIImageFilterWrapper(QObject* parent)
 {
-	this->setParent(parent);
-	this->setObjectName("NMStreamingROIImageFilterWrapper");
-	this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->setParent(parent);
+    this->setObjectName("NMStreamingROIImageFilterWrapper");
+    this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->mInputNumBands = 1;
+    this->mOutputNumBands = 1;
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("PixelType"));
+    mUserProperties.insert(QStringLiteral("InputNumDimensions"), QStringLiteral("NumDimensions"));
+    mUserProperties.insert(QStringLiteral("ROIIndex"), QStringLiteral("ROIIndex"));
+    mUserProperties.insert(QStringLiteral("ROISize"), QStringLiteral("ROISize"));
+    mUserProperties.insert(QStringLiteral("ROIOrigin"), QStringLiteral("ROIOrigin"));
+    mUserProperties.insert(QStringLiteral("ROILength"), QStringLiteral("ROILength"));
 }
 
 NMStreamingROIImageFilterWrapper

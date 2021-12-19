@@ -55,44 +55,68 @@ public:
     typedef typename OutImgType::PointValueType   OutPointValueType;
     typedef typename OutImgType::SizeValueType    SizeValueType;
 
-	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands)
-	{
-		FilterTypePointer f = FilterType::New();
-		otbFilter = f;
-	}
+    static void createInstance(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands)
+    {
+        FilterTypePointer f = FilterType::New();
+        otbFilter = f;
+    }
 
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
+                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-        if (idx == 0)
+        if (!name.isEmpty())
         {
-            OutImgType* img = dynamic_cast<OutImgType*>(dataObj);
-            filter->SetZoneImage(img);
-        }
-        else if (idx == 1)
-        {
-            InImgType* img = dynamic_cast<InImgType*>(dataObj);
-            filter->SetValueImage(img);
+            if (name.toLower().contains("zone"))
+            {
+                OutImgType* img = dynamic_cast<OutImgType*>(dataObj);
+                if (img != nullptr)
+                {
+                    filter->SetZoneImage(img);
+                    filter->SetInput(name.toLower().toStdString(), dataObj);
+                }
+            }
+            else if (name.toLower().contains("value"))
+            {
+                InImgType* img = dynamic_cast<InImgType*>(dataObj);
+                if (img != nullptr)
+                {
+                    filter->SetValueImage(img);
+                    filter->SetInput(name.toLower().toStdString(), dataObj);
+                }
+            }
         }
         else
         {
-            InImgType* img = dynamic_cast<InImgType*>(dataObj);
-            filter->SetInput(idx, img);
+            if (idx == 0)
+            {
+                OutImgType* img = dynamic_cast<OutImgType*>(dataObj);
+                if (img != nullptr)
+                {
+                    filter->SetZoneImage(img);
+                }
+            }
+            else if (idx == 1)
+            {
+                InImgType* img = dynamic_cast<InImgType*>(dataObj);
+                if (img != nullptr)
+                {
+                    filter->SetValueImage(img);
+                }
+            }
         }
     }
 
-
-	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, unsigned int idx)
-	{
-		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
-	}
+    static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands, unsigned int idx)
+    {
+        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
+    }
 
     static otb::AttributeTable::Pointer getRAT(
-        itk::ProcessObject::Pointer& procObj, 
+        itk::ProcessObject::Pointer& procObj,
         unsigned int numBands, unsigned int idx)
     {
         FilterType *f = dynamic_cast<FilterType*>(procObj.GetPointer());
@@ -104,28 +128,28 @@ public:
 
 
     static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, NMProcess* proc,
-			unsigned int step, const QMap<QString, NMModelComponent*>& repo)
-	{
-		NMDebugCtx("NMSumZonesFilterWrapper_Internal", << "...");
+            unsigned int numBands, NMProcess* proc,
+            unsigned int step, const QMap<QString, NMModelComponent*>& repo)
+    {
+        NMDebugCtx("NMSumZonesFilterWrapper_Internal", << "...");
 
-		FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		NMSumZonesFilterWrapper* p =
-				dynamic_cast<NMSumZonesFilterWrapper*>(proc);
+        FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        NMSumZonesFilterWrapper* p =
+                dynamic_cast<NMSumZonesFilterWrapper*>(proc);
 
-		// make sure we've got a valid filter object
-		if (f == 0)
-		{
-			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        // make sure we've got a valid filter object
+        if (f == 0)
+        {
+            NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
             e.setSource(p->parent()->objectName().toStdString());
-			e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
-			throw e;
-			return;
-		}
+            e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
+            throw e;
+            return;
+        }
 
-		/* do something reasonable here */
-		bool bok;
-		int givenStep = step;
+        /* do something reasonable here */
+        bool bok;
+        int givenStep = step;
 
         QVariant curIgnoreNodataValueVar = p->getParameter("IgnoreNodataValue");
         if (curIgnoreNodataValueVar.isValid())
@@ -201,8 +225,8 @@ public:
             p->addRunTimeParaProvN(provZoneTableFN);
         }
 
-		NMDebugCtx("NMSumZonesFilterWrapper_Internal", << "done!");
-	}
+        NMDebugCtx("NMSumZonesFilterWrapper_Internal", << "done!");
+    }
 };
 
 template class NMSumZonesFilterWrapper_Internal<unsigned char, unsigned char, 1>;
@@ -518,9 +542,25 @@ GetRATWrap( NMSumZonesFilterWrapper, NMSumZonesFilterWrapper_Internal )
 NMSumZonesFilterWrapper
 ::NMSumZonesFilterWrapper(QObject* parent)
 {
-	this->setParent(parent);
-	this->setObjectName("NMSumZonesFilterWrapper");
-	this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->setParent(parent);
+    this->setObjectName("NMSumZonesFilterWrapper");
+    this->mParameterHandling = NMProcess::NM_USE_UP;
+
+    this->mOutputNumDimensions = 2;
+    this->mInputNumBands = 1;
+    this->mOutputNumBands = 1;
+    this->mInputComponentType = otb::ImageIOBase::FLOAT;
+    this->mOutputComponentType = otb::ImageIOBase::INT;
+
+    // overwrite default NMProcess properties & display names
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("ValueImagePixelType"));
+    mUserProperties.insert(QStringLiteral("NMOutputComponentType"), QStringLiteral("ZoneImagePixelType"));
+    mUserProperties.insert(QStringLiteral("OutputNumDimensions"), QStringLiteral("NumDimensions"));
+    mUserProperties.insert(QStringLiteral("IgnoreNodataValue"), QStringLiteral("IgnoreNodataValue"));
+    mUserProperties.insert(QStringLiteral("NodataValue"), QStringLiteral("NodataValue"));
+    mUserProperties.insert(QStringLiteral("HaveMaxKeyRows"), QStringLiteral("HaveMaxKeyRows"));
+    mUserProperties.insert(QStringLiteral("ZoneTableFileName"), QStringLiteral("ZoneTableFileName"));
 }
 
 NMSumZonesFilterWrapper

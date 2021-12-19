@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
+ /******************************************************************************
+ * Created by Alexander Herzig
  * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -42,8 +42,8 @@ const std::string NMModelComponent::ctx = "NMModelComponent";
 
 NMModelComponent::NMModelComponent(QObject* parent)
 {
-	this->setParent(parent);
-	this->initAttributes();
+    this->setParent(parent);
+    this->initAttributes();
 }
 
 void NMModelComponent::initAttributes(void)
@@ -228,12 +228,19 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
     return param;
 }
 
+QStringList
+NMModelComponent::getOutputNames()
+{
+    return QStringList();
+}
+
+
 void
 NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
-		QStringList& upstreamPipe, int step)
+        QStringList& upstreamPipe, int step)
 {
-	if (this->mInputs.size() == 0)
-		return;
+    if (this->mInputs.size() == 0)
+        return;
 
     int compstep = step;
 
@@ -264,36 +271,36 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
     //		//compstep = this->mInputs.size()-1;
     //	}
 
-	QStringList inputs = this->mInputs.at(compstep);
-	if (inputs.size() == 0)
-	{
-		//NMDebugAI(<< this->objectName().toStdString()
-		//		<< "::getUpstreamPipe: step #" << compstep
-		//		<< " has no inputs ..." << endl);
+    QStringList inputs = this->mInputs.at(compstep);
+    if (inputs.size() == 0)
+    {
+        //NMDebugAI(<< this->objectName().toStdString()
+        //		<< "::getUpstreamPipe: step #" << compstep
+        //		<< " has no inputs ..." << endl);
 
-		return;
-	}
+        return;
+    }
 
 
-	foreach(const QString& in, inputs)
-	{
+    foreach(const QString& in, inputs)
+    {
         // make sure that we strip off any input index, e.g. MapAlgebra:1, should
         // be turned into MapAlgebra
         QString inName = this->getModelController()->getComponentNameFromInputSpec(in);
 
         //NMDebugAI(<< this->objectName().toStdString()
-		//		<< "::getUpstreamPipe: investigating input '"
-		//		<< in.toStdString() << "' ..." << endl);
+        //		<< "::getUpstreamPipe: investigating input '"
+        //		<< in.toStdString() << "' ..." << endl);
 
-		// when we've got a cyclic relationship (e.g. for iteratively
-		// updating data buffer components), we have to make sure
-		// we don't include the root (executable) element again
-		// in the same pipeline
+        // when we've got a cyclic relationship (e.g. for iteratively
+        // updating data buffer components), we have to make sure
+        // we don't include the root (executable) element again
+        // in the same pipeline
         if (upstreamPipe.contains(inName))
-		{
+        {
             //NMDebug(<< endl);
-			continue;
-		}
+            continue;
+        }
 
 
         // we follow inputs upstream as long as they are sitting outside this component's host or
@@ -333,13 +340,13 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 
         //if (comp != 0 && comp->getTimeLevel() == this->getTimeLevel())
         if (bGoUp)
-		{
-			// here, we distinguish between components hosting an itk::Process-derived
-			// process object, which can be piped together with other itk::Process-derived
-			// objects, and components, which host either any other kind of non-pipeable
-			// process components, or components of any other kind, such as group
-			// components or data components; thus we're looking for an itk::Process object
-			NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
+        {
+            // here, we distinguish between components hosting an itk::Process-derived
+            // process object, which can be piped together with other itk::Process-derived
+            // objects, and components, which host either any other kind of non-pipeable
+            // process components, or components of any other kind, such as group
+            // components or data components; thus we're looking for an itk::Process object
+            NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
 
             // determine the relevant step parameter for the input component:
             // - if input and this component share the host, we use the stepping
@@ -428,8 +435,8 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
                     }
                 }
             }
-		}
-	}
+        }
+    }
 }
 
 void NMModelComponent::setTimeLevel(short level)
@@ -450,9 +457,9 @@ void NMModelComponent::setTimeLevel(short level)
 
 void NMModelComponent::changeTimeLevel(int diff)
 {
-	this->mTimeLevel += diff;
-	if (this->mTimeLevel < 0)
-		this->mTimeLevel = 0;
+    this->mTimeLevel += diff;
+    if (this->mTimeLevel < 0)
+        this->mTimeLevel = 0;
 
     //emit NMModelComponentChanged();
     emit TimeLevelChanged(mTimeLevel);
@@ -462,10 +469,10 @@ void NMModelComponent::changeTimeLevel(int diff)
 void
 NMModelComponent::setDescription(QString descr)
 {
-	this->mDescription = descr;
+    this->mDescription = descr;
     //emit NMModelComponentChanged();
     emit nmChanged();
-	emit ComponentDescriptionChanged(descr);
+    emit ComponentDescriptionChanged(descr);
 }
 
 void

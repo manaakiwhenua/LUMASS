@@ -41,8 +41,8 @@
 
 
 #ifdef BUILD_RASSUPPORT
-	#include "RasdamanConnector.hh"
-	#include "NMRasdamanConnectorWrapper.h"
+    #include "RasdamanConnector.hh"
+    #include "NMRasdamanConnectorWrapper.h"
 #endif
 
 template<class InPixelType, unsigned int Dimension>
@@ -50,48 +50,48 @@ class NMCostDistanceBufferImageWrapper_Internal;
 
 class NMCOSTDISTANCEBUFFERIMAGEWRAPPER_EXPORT NMCostDistanceBufferImageWrapper : public NMProcess
 {
-	Q_OBJECT
-	//Q_PROPERTY(int MemoryMax READ getMemoryMax WRITE setMemoryMax)
-	Q_PROPERTY(QStringList InputImageFileName READ getInputImageFileName WRITE setInputImageFileName);
-	Q_PROPERTY(QStringList CostImageFileName READ getCostImageFileName WRITE setCostImageFileName);
-	Q_PROPERTY(QStringList OutputImageFileName READ getOutputImageFileName WRITE setOutputImageFileName);
-	Q_PROPERTY(QList<QStringList> ObjectValueList READ getObjectValueList WRITE setObjectValueList);
-	Q_PROPERTY(QStringList MaxDistance READ getMaxDistance WRITE setMaxDistance);
-	Q_PROPERTY(bool UseImageSpacing READ getUseImageSpacing WRITE setUseImageSpacing);
-	Q_PROPERTY(bool CreateBuffer READ getCreateBuffer WRITE setCreateBuffer);
-	Q_PROPERTY(QStringList BufferZoneIndicator READ getBufferZoneIndicator WRITE setBufferZoneIndicator);
+    Q_OBJECT
+    //Q_PROPERTY(int MemoryMax READ getMemoryMax WRITE setMemoryMax)
+    Q_PROPERTY(QStringList InputImageFileName READ getInputImageFileName WRITE setInputImageFileName);
+    Q_PROPERTY(QStringList CostImageFileName READ getCostImageFileName WRITE setCostImageFileName);
+    Q_PROPERTY(QStringList OutputImageFileName READ getOutputImageFileName WRITE setOutputImageFileName);
+    Q_PROPERTY(QList<QStringList> ObjectValueList READ getObjectValueList WRITE setObjectValueList);
+    Q_PROPERTY(QStringList MaxDistance READ getMaxDistance WRITE setMaxDistance);
+    Q_PROPERTY(bool UseImageSpacing READ getUseImageSpacing WRITE setUseImageSpacing);
+    Q_PROPERTY(bool CreateBuffer READ getCreateBuffer WRITE setCreateBuffer);
+    Q_PROPERTY(QStringList BufferZoneIndicator READ getBufferZoneIndicator WRITE setBufferZoneIndicator);
 #ifdef BUILD_RASSUPPORT
-	Q_PROPERTY(NMRasdamanConnectorWrapper* RasConnector READ getRasConnector WRITE setRasConnector);
+    Q_PROPERTY(NMRasdamanConnectorWrapper* RasConnector READ getRasConnector WRITE setRasConnector);
 #endif
 
 
 public:
-	//NMPropertyGetSet( MemoryMax, int )
-	NMPropertyGetSet( ObjectValueList, QList<QStringList> )
-	NMPropertyGetSet( MaxDistance, QStringList )
-	NMPropertyGetSet( UseImageSpacing, bool )
-	NMPropertyGetSet( CreateBuffer, bool )
-	NMPropertyGetSet( BufferZoneIndicator, QStringList)
-	NMPropertyGetSet( InputImageFileName, QStringList)
-	NMPropertyGetSet( OutputImageFileName, QStringList)
-	NMPropertyGetSet( CostImageFileName, QStringList)
+    //NMPropertyGetSet( MemoryMax, int )
+    NMPropertyGetSet( ObjectValueList, QList<QStringList> )
+    NMPropertyGetSet( MaxDistance, QStringList )
+    NMPropertyGetSet( UseImageSpacing, bool )
+    NMPropertyGetSet( CreateBuffer, bool )
+    NMPropertyGetSet( BufferZoneIndicator, QStringList)
+    NMPropertyGetSet( InputImageFileName, QStringList)
+    NMPropertyGetSet( OutputImageFileName, QStringList)
+    NMPropertyGetSet( CostImageFileName, QStringList)
 //#ifdef BUILD_RASSUPPORT
 //	NMPropertyGetSet(RasConnector, NMRasdamanConnectorWrapper*)
 //#endif
 
 
 public:
-	NMCostDistanceBufferImageWrapper(QObject* parent = 0);
-	virtual ~NMCostDistanceBufferImageWrapper();
+    NMCostDistanceBufferImageWrapper(QObject* parent = 0);
+    virtual ~NMCostDistanceBufferImageWrapper();
 
-	template<class InPixelType, unsigned int Dimension>
-	friend class NMCostDistanceBufferImageWrapper_Internal;
+    template<class InPixelType, unsigned int Dimension>
+    friend class NMCostDistanceBufferImageWrapper_Internal;
 
     QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
-	void instantiateObject(void);
+    void instantiateObject(void);
 
-	void setNthInput(unsigned int numInput,
-			QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+    void setNthInput(unsigned int numInput,
+            QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
 #ifdef BUILD_RASSUPPORT
     void setRasConnector(NMRasdamanConnectorWrapper* rw);
@@ -100,37 +100,37 @@ public:
     void setRasdamanConnector(RasdamanConnector * rasconn);
 #endif
 
-	void update(void);
+    void update(void);
 
 protected:
 
-	int mMemoryMax;
-	bool mUseImageSpacing;
-	bool mCreateBuffer;
-	QStringList mBufferZoneIndicator;
-	QStringList mMaxDistance;
-	QStringList mInputImageFileName;
-	QStringList mOutputImageFileName;
-	QStringList mCostImageFileName;
-	QList<QStringList> mObjectValueList;
-	int mCurrentStep;
+    int mMemoryMax;
+    bool mUseImageSpacing;
+    bool mCreateBuffer;
+    QStringList mBufferZoneIndicator;
+    QStringList mMaxDistance;
+    QStringList mInputImageFileName;
+    QStringList mOutputImageFileName;
+    QStringList mCostImageFileName;
+    QList<QStringList> mObjectValueList;
+    int mCurrentStep;
 
 #ifdef BUILD_RASSUPPORT
-	NMRasdamanConnectorWrapper* mRasConnector;
-	RasdamanConnector * mRasconn;
+    NMRasdamanConnectorWrapper* mRasConnector;
+    RasdamanConnector * mRasconn;
 #endif
-	bool mbRasMode;
+    bool mbRasMode;
 
 
-	typedef itk::MemberCommand<NMCostDistanceBufferImageWrapper> DistanceObserverType;
+    typedef itk::MemberCommand<NMCostDistanceBufferImageWrapper> DistanceObserverType;
 
-	void UpdateProgressInfo(itk::Object*, const itk::EventObject&);
+    void UpdateProgressInfo(itk::Object*, const itk::EventObject&);
 
 
-	void linkParameters(unsigned int step,
-			const QMap<QString, NMModelComponent*>& repo);
+    void linkParameters(unsigned int step,
+            const QMap<QString, NMModelComponent*>& repo);
 
-	void linkInputs(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
+    void linkInputs(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
 };
 
 #endif /* NMCOSTDISTANCEBUFFERIMAGEWRAPPER_H_ */

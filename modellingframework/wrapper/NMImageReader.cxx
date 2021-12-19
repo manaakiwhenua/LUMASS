@@ -356,6 +356,11 @@ public:
         if (numBands == 1)
         {
             ReaderType *r = dynamic_cast<ReaderType*>(procObj);
+            const int curOvvIdx = r->GetOverviewIdx();
+            if (r->GetOverviewsCount() > 0)
+            {
+                r->SetOverviewIdx(r->GetOverviewsCount()-1);
+            }
             if (index != nullptr && size != nullptr)
             {
                 typename ReaderType::ImageRegionType::IndexType idx;
@@ -396,6 +401,8 @@ public:
             stats.push_back(f->GetSigma());
             stats.push_back(r->GetOutput()->GetLargestPossibleRegion().GetNumberOfPixels());
             stats.push_back(-9999);
+
+            r->SetOverviewIdx(curOvvIdx);
         }
         else
         {
@@ -605,6 +612,10 @@ public:
         if (numBands == 1)
         {
             ReaderType *r = dynamic_cast<ReaderType*>(procObj.GetPointer());
+            if (r == nullptr)
+            {
+                return;
+            }
             r->SetOverviewIdx(ovvidx);
             if (userLPR != 0)
             {
@@ -626,6 +637,10 @@ public:
         else if (rgbMode && numBands == 3)
         {
             RGBReaderType *r = dynamic_cast<RGBReaderType*>(procObj.GetPointer());
+            if (r == nullptr)
+            {
+                return;
+            }
             r->SetOverviewIdx(ovvidx);
             if (userLPR != 0)
             {
@@ -647,6 +662,10 @@ public:
         else
         {
             VecReaderType *r = dynamic_cast<VecReaderType*>(procObj.GetPointer());
+            if (r == nullptr)
+            {
+                return;
+            }
             r->SetOverviewIdx(ovvidx);
             if (userLPR != 0)
             {
@@ -1315,6 +1334,15 @@ NMImageReader::NMImageReader(QObject * parent)
 #endif
     this->mZSliceIdx = -1;
 
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMOutputComponentType"), QStringLiteral("PixelType"));
+    mUserProperties.insert(QStringLiteral("OutputNumDimensions"), QStringLiteral("NumDimensions"));
+    mUserProperties.insert(QStringLiteral("OutputNumBands"), QStringLiteral("NumBands"));
+    mUserProperties.insert(QStringLiteral("BandList"), QStringLiteral("BandList"));
+    mUserProperties.insert(QStringLiteral("FileNames"), QStringLiteral("FileNames"));
+    mUserProperties.insert(QStringLiteral("RATType"), QStringLiteral("RATType"));
+    mUserProperties.insert(QStringLiteral("DbRATReadOnly"), QStringLiteral("DbRATReadOnly"));
+    mUserProperties.insert(QStringLiteral("RGBMode"), QStringLiteral("RGBMode"));
 }
 
 NMImageReader::~NMImageReader()
@@ -2108,7 +2136,7 @@ NMImageReader::linkParameters(unsigned int step,
 
 
 void NMImageReader::setNthInput(unsigned int numInput,
-        QSharedPointer<NMItkDataObjectWrapper> img)
+        QSharedPointer<NMItkDataObjectWrapper> img, const QString& name)
 {
     // don't need file input for the reader
 }

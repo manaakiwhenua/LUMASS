@@ -59,15 +59,15 @@ public:
     typedef typename OutImgType::PointValueType   OutPointValueType;
     typedef typename OutImgType::SizeValueType    SizeValueType;
 
-	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands)
-	{
-		FilterTypePointer f = FilterType::New();
-		otbFilter = f;
-	}
+    static void createInstance(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands)
+    {
+        FilterTypePointer f = FilterType::New();
+        otbFilter = f;
+    }
 
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
+                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
 //        if (idx == 1)
@@ -83,12 +83,12 @@ public:
     }
 
 
-	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, unsigned int idx)
-	{
-		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
-	}
+    static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands, unsigned int idx)
+    {
+        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
+    }
 
 /*$<InternalRATGetSupport>$*/
 
@@ -96,30 +96,30 @@ public:
 
 
     static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, NMProcess* proc,
-			unsigned int step, const QMap<QString, NMModelComponent*>& repo)
-	{
-		NMDebugCtx("NMResampleImageFilterWrapper_Internal", << "...");
+            unsigned int numBands, NMProcess* proc,
+            unsigned int step, const QMap<QString, NMModelComponent*>& repo)
+    {
+        NMDebugCtx("NMResampleImageFilterWrapper_Internal", << "...");
 
-		FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		NMResampleImageFilterWrapper* p =
-				dynamic_cast<NMResampleImageFilterWrapper*>(proc);
+        FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        NMResampleImageFilterWrapper* p =
+                dynamic_cast<NMResampleImageFilterWrapper*>(proc);
 
-		// make sure we've got a valid filter object
-		if (f == 0)
-		{
-			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        // make sure we've got a valid filter object
+        if (f == 0)
+        {
+            NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
             e.setSource(p->parent()->objectName().toStdString());
-			e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
-			throw e;
-			return;
-		}
+            e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
+            throw e;
+            return;
+        }
 
-		/* do something reasonable here */
-		bool bok;
-		int givenStep = step;
+        /* do something reasonable here */
+        bool bok;
+        int givenStep = step;
 
-		
+
         QVariant curInterpolationMethodVar = p->getParameter("InterpolationMethod");
         std::string curInterpolationMethod;
         if (curInterpolationMethodVar.isValid())
@@ -156,7 +156,7 @@ public:
         {
            std::vector<OutSpacingValueType> vecOutputSpacing;
            QStringList curValVarList = curOutputSpacingVar.toStringList();
-           foreach(const QString& vStr, curValVarList) 
+           foreach(const QString& vStr, curValVarList)
            {
                 double curOutputSpacing = vStr.toDouble(&bok);
                 if (bok)
@@ -193,7 +193,7 @@ public:
         {
            std::vector<OutPointValueType> vecOutputOrigin;
            QStringList curValVarList = curOutputOriginVar.toStringList();
-           foreach(const QString& vStr, curValVarList) 
+           foreach(const QString& vStr, curValVarList)
            {
                 double curOutputOrigin = vStr.toDouble(&bok);
                 if (bok)
@@ -226,7 +226,7 @@ public:
         {
            std::vector<FilterSizeValueType> vecSize;
            QStringList curValVarList = curSizeVar.toStringList();
-           foreach(const QString& vStr, curValVarList) 
+           foreach(const QString& vStr, curValVarList)
            {
                 // since ...
                 // using itk::SizeValueType = unsigned long
@@ -265,8 +265,8 @@ public:
                 /*$<ForwardInputUserIDs_Body>$*/
 
 
-		NMDebugCtx("NMResampleImageFilterWrapper_Internal", << "done!");
-	}
+        NMDebugCtx("NMResampleImageFilterWrapper_Internal", << "done!");
+    }
 };
 
 InstantiateObjectWrap( NMResampleImageFilterWrapper, NMResampleImageFilterWrapper_Internal )
@@ -282,6 +282,18 @@ NMResampleImageFilterWrapper
     this->setParent(parent);
     this->setObjectName("NMResampleImageFilterWrapper");
     this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->mOutputNumDimensions = 2;
+    this->mInputNumBands = 1;
+    this->mOutputNumBands = 1;
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("InputPixelType"));
+    mUserProperties.insert(QStringLiteral("NMOutputComponentType"), QStringLiteral("OutputPixelType"));
+    mUserProperties.insert(QStringLiteral("InterpolationMethod"), QStringLiteral("InterpolationMethod"));
+    mUserProperties.insert(QStringLiteral("DefaultPixelValue"), QStringLiteral("DefaultPixelValue"));
+    mUserProperties.insert(QStringLiteral("OutputSpacing"), QStringLiteral("OutputSpacing"));
+    mUserProperties.insert(QStringLiteral("OutputOrigin"), QStringLiteral("OutputOrigin"));
+    mUserProperties.insert(QStringLiteral("Size"), QStringLiteral("OutputSize"));
 }
 
 NMResampleImageFilterWrapper

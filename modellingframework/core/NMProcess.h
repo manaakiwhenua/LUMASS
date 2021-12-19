@@ -114,6 +114,8 @@ class NMMODFRAMECORE_EXPORT NMProcess : public QObject, public NMModelObject
 
     Q_OBJECT
     Q_ENUMS(AdvanceParameter)
+//    Q_PROPERTY(QList<QStringList> InputNames READ getInputNames WRITE setInputNames NOTIFY NMProcessChanged)
+//    Q_PROPERTY(QList<QStringList> OutputNames READ getOutputNames WRITE setOutputNames NOTIFY NMProcessChanged)
     Q_PROPERTY(QList<QStringList> InputComponents READ getInputComponents WRITE setInputComponents)
     Q_PROPERTY(NMProcess::AdvanceParameter ParameterHandling READ getParameterHandling WRITE setParameterHandling NOTIFY NMProcessChanged)
 //	Q_PROPERTY(NMItkDataObjectWrapper::NMComponentType NMComponentType READ getNMComponentType WRITE setNMComponentType NOTIFY NMProcessChanged)
@@ -166,12 +168,28 @@ public:
     otb::ImageIOBase::IOComponentType getInputComponentType(void);
 
     virtual void setNthInput(unsigned int numInput,
-            QSharedPointer<NMItkDataObjectWrapper> img) = 0;
-    void setInput (QSharedPointer<NMItkDataObjectWrapper> img)
-            {this->setNthInput(0, img);}
+            QSharedPointer<NMItkDataObjectWrapper> img, const QString& name="") = 0;
+    void setInput (QSharedPointer<NMItkDataObjectWrapper> img, const QString& name="")
+            {this->setNthInput(0, img, name);}
     virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx) = 0;
+    /** default 'empty' implementation outputs */
+    virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(const QString& name)
+        {QSharedPointer<NMItkDataObjectWrapper> dw; return dw;}
     virtual void update(void);
     void reset(void);
+
+//    void setInputNames(QStringList inputNames) {mInputNames = inputNames;}
+    virtual QStringList getInputNames(void);// {return mInputNames;}
+//    void setOutputNames(QStringList outputNames) {mOutputNames = outputNames;}
+    virtual QStringList getOutputNames(void);
+
+    /** default 'no-op' setOutputNames function for most processes
+     *  subclasses that produce multiple outputs that shall be named,
+     *  reimplement this function.
+    */
+    virtual void setOutputNames(const QStringList& names){}
+
+
 
     virtual void instantiateObject(void) = 0;
     bool isInitialised(void)
@@ -238,6 +256,12 @@ public:
     int getAuxDataIdx(void)
         {return this->mAuxDataIdx;}
 
+    void setUserProperty(const QString& propName, QString& displayName)
+        { mUserProperties[propName] = displayName;}
+    QString getUserProperty(const QString& propName)
+        { return mUserProperties[propName]; }
+    QString mapDisplayToPropertyName(const QString& propName);
+
 
 public slots:
     void removeInputComponent(const QString& input);
@@ -288,6 +312,18 @@ protected:
 
     QStringList mRuntimeParaProv;
 
+//    QStringList mInputNames;
+    QStringList mOutputNames;
+
+    /** \brief Map of user visible properties and associated display names
+     *  objecti properties not in this map, are not presented to the
+     *  user via the GUI modelling framework
+     *
+     *  key: Object property name
+     *  value: Display name
+     *
+    */
+    QMap<QString, QString> mUserProperties;
 
     /*! \brief Call-back method for itk::Process-based NMProcess classes to
      *         signal (emit) the process' state to listeners
@@ -312,6 +348,9 @@ protected:
      */
     virtual void linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
 
+
+    //virtual void setInputName(unsigned int idx, const QString& name);
+    //virtual void setOutputName(unsigned int idx, const QString& name);
 
 private:
     unsigned int mStepIndex;

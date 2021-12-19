@@ -88,7 +88,7 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     // adapt highlighter colours for dark mode, if applicable
     QColor bkg = this->mEdit->palette().background().color();
     bool bdark = false;
-    if (    NMGlobalHelper::getMainWindow()->isInDarkMode() 
+    if (    NMGlobalHelper::getMainWindow()->isInDarkMode()
          || (bkg.red() < 80 && bkg.green() < 80 && bkg.blue() < 80)
        )
     {
@@ -240,19 +240,7 @@ NMHoverEdit::showExpressionPreview(bool preview)
 
     // iterate over each expression in the parameter and substitute with
     // the evaluated value
-    int maxcount = 0;
-    QString nested = curExpr;
-    QStringList innerExp = ctrl->getNextParamExpr(nested);
-    while (innerExp.size() > 0)
-    {
-        foreach(const QString& s, innerExp)
-        {
-            nested = nested.replace(s, QString(""));
-            ++maxcount;
-        }
-        innerExp = ctrl->getNextParamExpr(nested);
-    }
-    maxcount *= 11;
+    const int maxcount = 15000;
 
     int count = 0;
     QStringList expList = ctrl->getNextParamExpr(curExpr);
@@ -398,13 +386,20 @@ NMHoverEdit::setProperty(const QString &compName, const QString& propName)
             NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
             if (ic && ic->getProcess() != 0)
             {
-                if (ctrl->getPropertyList(ic->getProcess()).contains(propName))
+                mProc = ic->getProcess();
+                QString internalPropName = mProc->mapDisplayToPropertyName(propName);
+
+                if (ctrl->getPropertyList(ic->getProcess()).contains(internalPropName))
                 {
                     mProc = ic->getProcess();
                     mComp = comp;
                     connect(mProc, SIGNAL(nmChanged()), this, SLOT(updateEditor()));
                     mCompName = compName;
-                    mPropName = propName;
+                    mPropName = internalPropName;
+                }
+                else
+                {
+                    mProc = nullptr;
                 }
             }
         }
@@ -451,9 +446,11 @@ NMHoverEdit::updateEditor()
     }
 
     QVariant model;
+    QString displayName = mPropName;
     if (mProc)
     {
         model = mProc->property(mPropName.toStdString().c_str());
+        displayName = mProc->getUserProperty(mPropName);
     }
     else if (mComp)
     {
@@ -485,11 +482,11 @@ NMHoverEdit::updateEditor()
     QString title;
     if (mComp->getUserID().isEmpty())
     {
-        title = QString("Edit %2 of %1").arg(mCompName).arg(mPropName);
+        title = QString("Edit %2 of %1").arg(mCompName).arg(displayName);
     }
     else
     {
-        title = QString("Edit %3 of %1 (%2)").arg(mComp->getUserID()).arg(mCompName).arg(mPropName);
+        title = QString("Edit %3 of %1 (%2)").arg(mComp->getUserID()).arg(mCompName).arg(displayName);
     }
     this->setWindowTitle(title);
 
@@ -726,4 +723,6 @@ NMHoverEdit::applyChanges()
     {
         emit signalCompProcChanged();
     }
+
+    updateEditor();
 }

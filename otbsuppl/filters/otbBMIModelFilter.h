@@ -85,6 +85,10 @@ public:
 
     void SetBMIModule(const std::shared_ptr<bmi::Bmi>& bmiModule);
     void SetInputNames(const std::vector<std::string>& inputNames);
+    void SetOutputNames(const std::vector<std::string>& outputNames)
+        {m_OutputNames = outputNames;}
+
+    OutputImageType* GetOutputByName(const std::string& name);
 
     /*! In case the filter needs a larger input requested region than
      * the output requested region, or we'll need to process the whole
@@ -128,6 +132,7 @@ protected:
     std::string m_YamlConfigFileName;
 
     std::vector<std::string> m_InputNames;
+    std::vector<std::string> m_OutputNames;
 
     /*! for Python models:
      *  required to fetch the associated python module

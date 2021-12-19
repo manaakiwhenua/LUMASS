@@ -46,7 +46,7 @@
 #include "otbImageIOBase.h"
 
 #ifdef BUILD_RASSUPPORT
-	#include "otbRasdamanImageReader.h"
+    #include "otbRasdamanImageReader.h"
 #endif
 
 
@@ -58,59 +58,63 @@ class NMCostDistanceBufferImageWrapper_Internal
 //	static const std::string ctx;
 
 public:
-	typedef otb::Image<InPixelType, 2> InputImgType;
-	typedef otb::Image<double, 2> OutputImgType;
-	typedef itk::NMCostDistanceBufferImageFilter<InputImgType, OutputImgType> DistanceFilterType;
+    typedef otb::Image<InPixelType, 2> InputImgType;
+    typedef otb::Image<float, 2> OutputImgType;
+    typedef itk::NMCostDistanceBufferImageFilter<InputImgType, OutputImgType> DistanceFilterType;
 
-	typedef otb::ImageFileReader<InputImgType> ReaderType;
-	typedef otb::ImageFileReader<typename DistanceFilterType::OutputImageType> TmpOutReaderType;
+    typedef otb::ImageFileReader<InputImgType> ReaderType;
+    typedef otb::ImageFileReader<typename DistanceFilterType::OutputImageType> TmpOutReaderType;
 
 #ifdef BUILD_RASSUPPORT
-	typedef otb::RasdamanImageReader<InputImgType> RasReaderType;
-	typedef otb::RasdamanImageReader<typename DistanceFilterType::OutputImageType> RasOutReaderType;
+    typedef otb::RasdamanImageReader<InputImgType> RasReaderType;
+    typedef otb::RasdamanImageReader<typename DistanceFilterType::OutputImageType> RasOutReaderType;
 #endif
 
-	typedef otb::StreamingRATImageFileWriter<OutputImgType> WriterType;
+    typedef otb::StreamingRATImageFileWriter<OutputImgType> WriterType;
 
-	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands)
-	{
-		typename DistanceFilterType::Pointer f = DistanceFilterType::New();
-		otbFilter = f;
-	}
+    static void createInstance(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands)
+    {
+        typename DistanceFilterType::Pointer f = DistanceFilterType::New();
+        otbFilter = f;
+    }
 
-	static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
-	{
-		InputImgType* img = dynamic_cast<InputImgType*>(dataObj);
-		DistanceFilterType* filter = dynamic_cast<DistanceFilterType*>(otbFilter.GetPointer());
-		filter->SetInput(idx, img);
-	}
+    static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
+    {
+        InputImgType* img = dynamic_cast<InputImgType*>(dataObj);
+        DistanceFilterType* filter = dynamic_cast<DistanceFilterType*>(otbFilter.GetPointer());
+        if (!name.isEmpty())
+        {
+            filter->SetInput(name.toStdString(), img);
+        }
+        filter->SetInput(idx, img);
+    }
 
-	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, unsigned int idx)
-	{
-		DistanceFilterType* f = dynamic_cast<DistanceFilterType*>(otbFilter.GetPointer());
-		return dynamic_cast<OutputImgType*>(f->GetOutput(idx));
-	}
+    static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands, unsigned int idx)
+    {
+        DistanceFilterType* f = dynamic_cast<DistanceFilterType*>(otbFilter.GetPointer());
+        return dynamic_cast<OutputImgType*>(f->GetOutput(idx));
+    }
 
     static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, NMProcess* proc, unsigned int step,
-			const QMap<QString, NMModelComponent*>& repo)
-	{
-		typename DistanceFilterType::Pointer f = DistanceFilterType::New();
-		otbFilter = f;
-		NMCostDistanceBufferImageWrapper* p = dynamic_cast<NMCostDistanceBufferImageWrapper*>(proc);
+            unsigned int numBands, NMProcess* proc, unsigned int step,
+            const QMap<QString, NMModelComponent*>& repo)
+    {
+        typename DistanceFilterType::Pointer f = DistanceFilterType::New();
+        otbFilter = f;
+        NMCostDistanceBufferImageWrapper* p = dynamic_cast<NMCostDistanceBufferImageWrapper*>(proc);
 
-		// save the current step internally, since we need it again
-		// for the execute function to get parameters 'external' to the
-		// process object itself
-		p->mParamPos = step;
+        // save the current step internally, since we need it again
+        // for the execute function to get parameters 'external' to the
+        // process object itself
+        p->mParamPos = step;
 
-		// -------------------------------------------------------------
-		// set the object values
-		int ols = step;
-		bool bok;
+        // -------------------------------------------------------------
+        // set the object values
+        int ols = step;
+        bool bok;
 
         QVariant objVarList = p->getParameter("ObjectValueList");
         if (objVarList.isValid())
@@ -159,7 +163,7 @@ public:
         p->addRunTimeParaProvN(maxDistProvN);
 
         // -------------------------------------------------------------------
-		// set buffer zone indicator
+        // set buffer zone indicator
 
         QVariant curBufferZoneIndicatorVar = p->getParameter("BufferZoneIndicator");
         QString bufferZoneIDProvVal;
@@ -179,8 +183,8 @@ public:
         p->addRunTimeParaProvN(bufferZoneIDProvN);
 
 
-		// -------------------------------------------------------------------
-		// set the other 'singular / fixed' parameters
+        // -------------------------------------------------------------------
+        // set the other 'singular / fixed' parameters
         // since we know both variables are boolean and that they are assigned
         // default values, we can rely on them being valid in any case
 
@@ -210,27 +214,27 @@ public:
         }
 
 
-		// set the observer for this process object
-		NMCostDistanceBufferImageWrapper::DistanceObserverType::Pointer observer =
-				NMCostDistanceBufferImageWrapper::DistanceObserverType::New();
-		observer->SetCallbackFunction(p,
-				&NMCostDistanceBufferImageWrapper::UpdateProgressInfo);
-		f->AddObserver(itk::ProgressEvent(), observer);
-		//f->AddObserver(itk::StartEvent(), observer);
-		//f->AddObserver(itk::EndEvent(), observer);
-		f->AddObserver(itk::AbortEvent(), observer);
-	}
+        // set the observer for this process object
+        NMCostDistanceBufferImageWrapper::DistanceObserverType::Pointer observer =
+                NMCostDistanceBufferImageWrapper::DistanceObserverType::New();
+        observer->SetCallbackFunction(p,
+                &NMCostDistanceBufferImageWrapper::UpdateProgressInfo);
+        f->AddObserver(itk::ProgressEvent(), observer);
+        //f->AddObserver(itk::StartEvent(), observer);
+        //f->AddObserver(itk::EndEvent(), observer);
+        f->AddObserver(itk::AbortEvent(), observer);
+    }
 
-	static void execute(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, NMProcess* proc)
-	{
-		NMDebugCtx("CostDistanceInternal", << "...");
+    static void execute(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands, NMProcess* proc)
+    {
+        NMDebugCtx("CostDistanceInternal", << "...");
 
-		DistanceFilterType* distfilter = dynamic_cast<DistanceFilterType*>(otbFilter.GetPointer());
-		NMCostDistanceBufferImageWrapper* p = qobject_cast<NMCostDistanceBufferImageWrapper*>(proc);
+        DistanceFilterType* distfilter = dynamic_cast<DistanceFilterType*>(otbFilter.GetPointer());
+        NMCostDistanceBufferImageWrapper* p = qobject_cast<NMCostDistanceBufferImageWrapper*>(proc);
 
-		// get the input, cost, and output image filenames
-		int pos = p->mParamPos;
+        // get the input, cost, and output image filenames
+        int pos = p->mParamPos;
 
         QVariant fileNameVar = p->getParameter("InputImageFileName");
         QString fileName;
@@ -239,22 +243,22 @@ public:
             fileName = fileNameVar.toString();
         }
 
-		if (fileName.isEmpty())
-		{
+        if (fileName.isEmpty())
+        {
             NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
             e.setSource(p->parent()->objectName().toStdString());
             e.setDescription("No input image filename!");
             throw e;
 
             NMLogError(<< "CostDistanceInternal: Please provide an input image file name!");
-			return;
-		}
+            return;
+        }
 
-		bool bInRas = false;
-		if (!fileName.contains('.'))
-			bInRas = true;
+        bool bInRas = false;
+        if (!fileName.contains('.'))
+            bInRas = true;
 
-		pos = p->mParamPos;
+        pos = p->mParamPos;
 
         QVariant costFNVar = p->getParameter("CostImageFileName");
         QString costFN;
@@ -264,16 +268,16 @@ public:
         }
 
 
-		bool bCostRas = false;
+        bool bCostRas = false;
         if (!costFN.contains('.'))
         {
             bCostRas = true;
         }
 
-		pos = p->mParamPos;
+        pos = p->mParamPos;
 
         QVariant outputImageFNVar = p->getParameter("OutputImageFileName");
-		QString out;
+        QString out;
         if (outputImageFNVar.isValid())
         {
             out = outputImageFNVar.toString();
@@ -290,17 +294,17 @@ public:
             return;
         }
 
-		bool bOutRas = false;
-		if (!out.contains('.'))
-			bOutRas = true;
+        bool bOutRas = false;
+        if (!out.contains('.'))
+            bOutRas = true;
 
 
 #ifdef BUILD_RASSUPPORT
-		RasdamanConnector* rcon = 0;
-		if (bOutRas || bInRas || bCostRas)
-		{
-			if (p->mRasConnector == 0)
-			{
+        RasdamanConnector* rcon = 0;
+        if (bOutRas || bInRas || bCostRas)
+        {
+            if (p->mRasConnector == 0)
+            {
                 NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
                 e.setSource(p->parent()->objectName().toStdString());
                 e.setDescription("Invalid RasdamanConnector object!");
@@ -309,338 +313,349 @@ public:
                 NMLogError(<<  "NMCostDistanceBufferImageWrapper" << "RasdamanConnector object!");
                 return;
             }
-			else
-			{
-				rcon = const_cast<RasdamanConnector*>(
-						p->mRasConnector->getConnector());
-			}
-		}
+            else
+            {
+                rcon = const_cast<RasdamanConnector*>(
+                        p->mRasConnector->getConnector());
+            }
+        }
 
 
-		typename RasReaderType::Pointer rasreader;
-		typename RasReaderType::Pointer rascostreader;
-		typename RasOutReaderType::Pointer rasoutreader;
+        typename RasReaderType::Pointer rasreader;
+        typename RasReaderType::Pointer rascostreader;
+        typename RasOutReaderType::Pointer rasoutreader;
 #endif
 
 
-		// instantiate readers and writers
-		otb::GDALRATImageIO::Pointer inrio;
-		typename ReaderType::Pointer reader;
+        // instantiate readers and writers
+        otb::GDALRATImageIO::Pointer inrio;
+        typename ReaderType::Pointer reader;
 #ifdef BUILD_RASSUPPORT
-		if (bInRas)
-		{
-			rasreader = RasReaderType::New();
-			rasreader->SetRasdamanConnector(rcon);
-			rasreader->SetFileName(fileName.toStdString().c_str());
-		}
-		else
+        if (bInRas)
+        {
+            rasreader = RasReaderType::New();
+            rasreader->SetRasdamanConnector(rcon);
+            rasreader->SetFileName(fileName.toStdString().c_str());
+        }
+        else
 #endif
-		{
-			reader = ReaderType::New();
-			inrio = otb::GDALRATImageIO::New();
-			inrio->SetRATSupport(true);
-			reader->SetFileName(fileName.toStdString().c_str());
-			reader->SetImageIO(dynamic_cast<otb::ImageIOBase*>(inrio.GetPointer()));
-		}
+        {
+            reader = ReaderType::New();
+            inrio = otb::GDALRATImageIO::New();
+            inrio->SetRATSupport(true);
+            reader->SetFileName(fileName.toStdString().c_str());
+            reader->SetImageIO(dynamic_cast<otb::ImageIOBase*>(inrio.GetPointer()));
+        }
 
 
 
-		typename TmpOutReaderType::Pointer tmpOutReader;// = TmpOutReaderType::New();
-		otb::GDALRATImageIO::Pointer tmpOutGIO;
+        typename TmpOutReaderType::Pointer tmpOutReader;// = TmpOutReaderType::New();
+        otb::GDALRATImageIO::Pointer tmpOutGIO;
 #ifdef BUILD_RASSUPPORT
-		if (bOutRas)
-		{
-			rasoutreader = RasOutReaderType::New();
-			rasoutreader->SetRasdamanConnector(rcon);
-		}
-		else
+        if (bOutRas)
+        {
+            rasoutreader = RasOutReaderType::New();
+            rasoutreader->SetRasdamanConnector(rcon);
+        }
+        else
 #endif
-		{
-			tmpOutReader = TmpOutReaderType::New();
-			tmpOutGIO = otb::GDALRATImageIO::New();
-			tmpOutReader->SetImageIO(dynamic_cast<otb::ImageIOBase*>(tmpOutGIO.GetPointer()));
-		}
+        {
+            tmpOutReader = TmpOutReaderType::New();
+            tmpOutGIO = otb::GDALRATImageIO::New();
+            tmpOutReader->SetImageIO(dynamic_cast<otb::ImageIOBase*>(tmpOutGIO.GetPointer()));
+        }
 
 
-		typedef otb::StreamingRATImageFileWriter<OutputImgType> WriterType;
-		typename WriterType::Pointer writer = WriterType::New();
-		writer->SetFileName(out.toStdString().c_str());
-		otb::GDALRATImageIO::Pointer outgio;
+        typedef otb::StreamingRATImageFileWriter<OutputImgType> WriterType;
+        typename WriterType::Pointer writer = WriterType::New();
+        writer->SetFileName(out.toStdString().c_str());
+        otb::GDALRATImageIO::Pointer outgio;
 #ifdef BUILD_RASSUPPORT
-		if (bOutRas)
-		{
-			writer->SetRasdamanConnector(rcon);
-			writer->SetFileName(out.toStdString().c_str());
-		}
-		else
+        if (bOutRas)
+        {
+            writer->SetRasdamanConnector(rcon);
+            writer->SetFileName(out.toStdString().c_str());
+        }
+        else
 #endif
-		{
-			outgio = otb::GDALRATImageIO::New();
-			writer->SetImageIO(dynamic_cast<otb::ImageIOBase*>(outgio.GetPointer()));
-		}
-		writer->SetNumberOfDivisionsStrippedStreaming(1);
+        {
+            outgio = otb::GDALRATImageIO::New();
+            writer->SetImageIO(dynamic_cast<otb::ImageIOBase*>(outgio.GetPointer()));
+        }
+        //writer->SetNumberOfDivisionsStrippedStreaming(1);
 
-
-		// let's get an idea about the size of the image to process
-		typename InputImgType::RegionType lpr;
-		typename InputImgType::RegionType pr;
-		typename InputImgType::SpacingType inputSpacing;
-		typename InputImgType::PointType inputOrigin;
+        // let's get an idea about the size of the image to process
+        typename InputImgType::RegionType lpr;
+        typename InputImgType::RegionType pr;
+        typename InputImgType::SpacingType inputSpacing;
+        typename InputImgType::PointType inputOrigin;
 #ifdef BUILD_RASSUPPORT
-		if (bInRas)
-		{
-			rasreader->GetOutput()->UpdateOutputInformation();
-			lpr          = rasreader->GetOutput()->GetLargestPossibleRegion();
+        if (bInRas)
+        {
+            rasreader->GetOutput()->UpdateOutputInformation();
+            lpr          = rasreader->GetOutput()->GetLargestPossibleRegion();
             inputSpacing = rasreader->GetOutput()->GetSignedSpacing();
-			inputOrigin  = rasreader->GetOutput()->GetOrigin();
-		}
-		else
+            inputOrigin  = rasreader->GetOutput()->GetOrigin();
+        }
+        else
 #endif
-		{
-			reader->GetOutput()->UpdateOutputInformation();
-			lpr          = reader->GetOutput()->GetLargestPossibleRegion();
+        {
+            reader->GetOutput()->UpdateOutputInformation();
+            lpr          = reader->GetOutput()->GetLargestPossibleRegion();
             inputSpacing = reader->GetOutput()->GetSignedSpacing();
-			inputOrigin  = reader->GetOutput()->GetOrigin();
-		}
-		pr.SetSize(0, lpr.GetSize()[0]);
-		pr.SetIndex(0, 0);
-		itk::ImageIORegion lprio(2);
-		lprio.SetSize(0, lpr.GetSize()[0]);
-		lprio.SetSize(1, lpr.GetSize()[1]);
-		lprio.SetIndex(0, lpr.GetIndex()[0]);
-		lprio.SetIndex(1, lpr.GetIndex()[1]);
+            inputOrigin  = reader->GetOutput()->GetOrigin();
+        }
+        pr.SetSize(0, lpr.GetSize()[0]);
+        pr.SetIndex(0, 0);
+        itk::ImageIORegion lprio(2);
+        lprio.SetSize(0, lpr.GetSize()[0]);
+        lprio.SetSize(1, lpr.GetSize()[1]);
+        lprio.SetIndex(0, lpr.GetIndex()[0]);
+        lprio.SetIndex(1, lpr.GetIndex()[1]);
 
-		writer->SetForcedLargestPossibleRegion(lprio);
+        writer->SetForcedLargestPossibleRegion(lprio);
 
-		//typedef itk::ImageIORegionAdaptor<2> IORegAdaptor;
-		itk::ImageIORegion ior(2);
-		ior.SetSize(0, lpr.GetSize()[0]);
-		ior.SetIndex(0, 0);
-		int nrows = lpr.GetSize()[1];
+        typename DistanceFilterType::OutputImageRegionType distOutLPR;
+        distOutLPR.SetSize(0,  lpr.GetSize()[0]);
+        distOutLPR.SetSize(1,  lpr.GetSize()[1]);
+        distOutLPR.SetIndex(0,  lpr.GetIndex()[0]);
+        distOutLPR.SetIndex(1,  lpr.GetIndex()[1]);
 
-		// calc memory cost for image and derive iteration parameters
-		int memmax = p->mMemoryMax * 1024 * 1024;
-		int rowcost = lpr.GetSize()[0] * sizeof(double) * 5;
-		int chunksize = memmax / rowcost;
-		bool bRAM = false;
-		if (chunksize > nrows)
-		{
-			bRAM = true;
-		}
-		if (chunksize < 3)
-			chunksize = 3;
-	    unsigned long niter = chunksize == 0 ? nrows : nrows / (chunksize-1);
-	    unsigned long rest = nrows - (niter * (chunksize-1));
-	    while (rest > 0 && rest < 2)
-	    {
-	    	--chunksize;
-	    	niter = nrows / (chunksize-1);
-	    	rest = nrows - (niter * (chunksize - 1));
-	    }
-	    if (chunksize < 2)
-	    {
+        //typedef itk::ImageIORegionAdaptor<2> IORegAdaptor;
+        itk::ImageIORegion ior(2);
+        ior.SetSize(0, lpr.GetSize()[0]);
+        ior.SetIndex(0, 0);
+        int nrows = lpr.GetSize()[1];
+
+        // calc memory cost for image and derive iteration parameters
+        int memmax = p->mMemoryMax * 1024 * 1024;
+        int rowcost = lpr.GetSize()[0] * sizeof(double) * 5;
+        int chunksize = memmax / rowcost;
+        bool bRAM = false;
+        if (chunksize > nrows)
+        {
+            bRAM = true;
+        }
+        if (chunksize < 3)
+            chunksize = 3;
+        unsigned long niter = chunksize == 0 ? nrows : nrows / (chunksize-1);
+        unsigned long rest = nrows - (niter * (chunksize-1));
+        while (rest > 0 && rest < 2)
+        {
+            --chunksize;
+            niter = nrows / (chunksize-1);
+            rest = nrows - (niter * (chunksize - 1));
+        }
+        if (chunksize < 2)
+        {
             NMLogError(<< "CostDistanceInternal: Chunk size below minimum (< 2)!");
-	    	NMDebugCtx("CostDistanceInternal", << "done!");
-	    	return;
-	    }
+            NMDebugCtx("CostDistanceInternal", << "done!");
+            return;
+        }
 
-	    long startrow = lpr.GetIndex()[1];
-	    unsigned long endrow = startrow + chunksize - 1;
-	    unsigned long rowstoread = chunksize;
+        long startrow = lpr.GetIndex()[1];
+        unsigned long endrow = startrow + chunksize - 1;
+        unsigned long rowstoread = chunksize;
 
-	    NMDebugAI(<< "Iteration params ..." << endl);
-	    NMDebugAI(<< "  chunksize=" << chunksize
-	    		  << "  niter=" << niter
-	    		  << "  rest=" << rest << endl);
+        NMDebugAI(<< "Iteration params ..." << endl);
+        NMDebugAI(<< "  chunksize=" << chunksize
+                  << "  niter=" << niter
+                  << "  rest=" << rest << endl);
 
-	    //const piepeline connections // and filter settings
+        //const piepeline connections // and filter settings
 #ifdef BUILD_RASSUPPORT
-		if (bInRas)
-			distfilter->SetInput(rasreader->GetOutput());
-		else
+        if (bInRas)
+            distfilter->SetInput(rasreader->GetOutput());
+        else
 #endif
-			distfilter->SetInput(reader->GetOutput());
+            distfilter->SetInput(reader->GetOutput());
 
-		typename ReaderType::Pointer costreader;
-		if (!costFN.isNull())
-		{
+        typename ReaderType::Pointer costreader;
+        if (!costFN.isNull())
+        {
 #ifdef BUILD_RASSUPPORT
-			if (bCostRas)
-			{
-				rascostreader = RasReaderType::New();
-				rascostreader->SetRasdamanConnector(rcon);
-				rascostreader->SetFileName(costFN.toStdString().c_str());
-				distfilter->SetInput(1, rascostreader->GetOutput());
-			}
-			else
+            if (bCostRas)
+            {
+                rascostreader = RasReaderType::New();
+                rascostreader->SetRasdamanConnector(rcon);
+                rascostreader->SetFileName(costFN.toStdString().c_str());
+                distfilter->SetInput(1, rascostreader->GetOutput());
+            }
+            else
 #endif
-			{
-				costreader = ReaderType::New();
-				costreader->SetFileName(costFN.toStdString().c_str());
-				distfilter->SetInput(1, costreader->GetOutput());
-			}
-		}
+            {
+                costreader = ReaderType::New();
+                costreader->SetFileName(costFN.toStdString().c_str());
+                distfilter->SetInput(1, costreader->GetOutput());
+            }
+        }
 
-		/* ================================================================== */
-		/* just check the single-run algorithm */
+        /* ================================================================== */
+        /* just check the single-run algorithm */
 
-		p->UpdateProgressInfo(distfilter, itk::StartEvent());
-			if (bRAM)
-			{
-				writer->SetInput(distfilter->GetOutput());
+        p->UpdateProgressInfo(distfilter, itk::StartEvent());
+            if (bRAM)
+            {
+                writer->SetInput(distfilter->GetOutput());
 
-				itk::TimeProbe chrono;
-				chrono.Start();
-				writer->Update();
-				chrono.Stop();
-				NMDebugAI(<< "==> this took " << chrono.GetMean()
-						<< " time units " << endl);
-				NMDebugCtx("CostDistanceInternal", << "done!");
-				p->UpdateProgressInfo(distfilter, itk::EndEvent());
-				return;
-			}
-		/* ================================================================== */
+                itk::TimeProbe chrono;
+                chrono.Start();
+                writer->Update();
+                chrono.Stop();
+                NMDebugAI(<< "==> this took " << chrono.GetMean()
+                        << " time units " << endl);
+                NMDebugCtx("CostDistanceInternal", << "done!");
+                p->UpdateProgressInfo(distfilter, itk::EndEvent());
+                return;
+            }
+        /* ================================================================== */
 
 
-	    distfilter->resetExecCounter();
-	    distfilter->SetProcessDownward(true);
-	    // iterate over the regions (chunks of rows)
-	    // to get the job done
-	    QString nfn = QString("%1:_last_").arg(out.toStdString().c_str());
-	    for (int iter=0; iter <= niter && !p->mbAbortExecution; ++iter)
-	    {
-	    	NMDebugAI(<< "  startrow=" << startrow << "  endrow=" << endrow
-	    			<< "  rowstoread=" << rowstoread << "  rest=" << rest << endl);
+        distfilter->resetExecCounter();
+        distfilter->SetProcessDownward(true);
+        // iterate over the regions (chunks of rows)
+        // to get the job done
+        //QString nfn = QString("%1:_last_").arg(out.toStdString().c_str());
+        for (int iter=0; iter <= niter && !p->mbAbortExecution; ++iter)
+        {
+            NMDebugAI(<< "  startrow=" << startrow << "  endrow=" << endrow
+                    << "  rowstoread=" << rowstoread << "  rest=" << rest << endl);
 
-	    	pr.SetIndex(1, startrow);
-	    	ior.SetIndex(1, startrow);
-			pr.SetSize(1, rowstoread);
-			ior.SetSize(1, rowstoread);
+            pr.SetIndex(1, startrow);
+            ior.SetIndex(1, startrow);
+            pr.SetSize(1, rowstoread);
+            ior.SetSize(1, rowstoread);
 
-	    	if (iter >= 1)
-	    	{
-	    		OutputImgType::Pointer tout;
-    			if (!bOutRas)
-	    		{
-	    			tmpOutReader->SetFileName(out.toStdString().c_str());
-    				tmpOutReader->SetImageIO(
-    						dynamic_cast<otb::ImageIOBase*>(tmpOutGIO.GetPointer()));
-    				tmpOutReader->GetOutput()->SetRequestedRegion(pr);
-    	    		tmpOutReader->Update();
+            if (iter >= 1)
+            {
+                OutputImgType::Pointer tout;
+                if (!bOutRas)
+                {
+                    tmpOutReader->SetFileName(out.toStdString().c_str());
+                    tmpOutReader->SetImageIO(
+                            dynamic_cast<otb::ImageIOBase*>(tmpOutGIO.GetPointer()));
+                    tmpOutReader->GetOutput()->SetRequestedRegion(pr);
+                    tmpOutReader->GetOutput()->SetLargestPossibleRegion(distOutLPR);
+                    tmpOutReader->Update();
 
-    	    		tout = tmpOutReader->GetOutput();
+                    tout = tmpOutReader->GetOutput();
 
-    	    		//writer->SetFileName(out.toStdString().c_str());
-	    		}
+                    //writer->SetFileName(out.toStdString().c_str());
+                }
 #ifdef BUILD_RASSUPPORT
-    			else
-    			{
-    				rasoutreader->SetFileName(nfn.toStdString().c_str());
-    				rasoutreader->GetOutput()->SetRequestedRegion(pr);
-    				rasoutreader->Update();
+                else
+                {
+                    rasoutreader->SetFileName(nfn.toStdString().c_str());
+                    rasoutreader->GetOutput()->SetRequestedRegion(pr);
+                    rasoutreader->Update();
 
-    				tout = rasoutreader->GetOutput();
-    				writer->SetFileName(nfn.toStdString().c_str());
-    			}
+                    tout = rasoutreader->GetOutput();
+                    writer->SetFileName(nfn.toStdString().c_str());
+                }
 #endif
-	    		tout->DisconnectPipeline();
-	    		distfilter->GraftOutput(tout);
+                tout->DisconnectPipeline();
+                distfilter->GraftOutput(tout);
 
-	    		writer->SetUpdateMode(true);
-	    	}
+                writer->SetUpdateMode(true);
+            }
 
-	    	// set the largest possible and requested regions
-	    	distfilter->GetOutput()->SetRequestedRegion(pr);
-	    	distfilter->Update();
+            // set the largest possible and requested regions
+            distfilter->GetOutput()->SetRequestedRegion(pr);
+            distfilter->GetOutput()->SetLargestPossibleRegion(distOutLPR);
+            distfilter->Update();
 
-	    	OutputImgType::Pointer di = distfilter->GetOutput();
-	    	di->DisconnectPipeline();
+            OutputImgType::Pointer di = distfilter->GetOutput();
+            di->DisconnectPipeline();
 
-	    	writer->SetInput(di);
-	    	writer->SetUpdateRegion(ior);
-	    	writer->Update();
+            writer->SetInput(0, di);
+            //writer->SetInput(0, distfilter->GetOutput());
+            writer->SetUpdateRegion(ior);
+            //writer->GetOutput()->SetRequestedRegion(pr);
+            writer->Update();
 
-	   		// need to close the datasets explicitly this time,
-	   		// since they're not closed for re-reading in non
-	   		// update mode
-	   		if (iter == 0)
-	   		{
+            // need to close the datasets explicitly this time,
+            // since they're not closed for re-reading in non
+            // update mode
+            if (iter == 0)
+            {
 #ifdef BUILD_RASSUPPORT
-	   			if (!bOutRas)
+                if (!bOutRas)
 #endif
-	   				outgio->CloseDataset();
-	   		}
+                    outgio->CloseDataset();
+            }
 
-	 		startrow = endrow;
-	 		endrow = startrow + chunksize - 1;
-	 		endrow = endrow > nrows-1 ? nrows-1 : endrow;
-	 		rowstoread = endrow - startrow + 1;
-	    }
+            startrow = endrow;
+            endrow = startrow + chunksize - 1;
+            endrow = endrow > nrows-1 ? nrows-1 : endrow;
+            rowstoread = endrow - startrow + 1;
+        }
 
-	    NMDebugAI(<< "!!! GET UP !!!" << endl);
+        NMDebugAI(<< "!!! GET UP !!!" << endl);
 
-	    // ---------------------------------------------------------------
-	    // get up!
-	    distfilter->SetProcessDownward(false);
-	    distfilter->SetProcessUpward(true);
-	    startrow = nrows - chunksize;
-	    endrow = nrows - 1;
-	    rowstoread = chunksize;
-	    for (int iter=0; iter <= niter && !p->mbAbortExecution; ++iter)
-	    {
-	    	NMDebugAI(<< "startrow=" << startrow << " endrow=" << endrow
-	    			<< " rowstoread=" << rowstoread << " rest=" << rest << endl);
+        // ---------------------------------------------------------------
+        // get up!
+        distfilter->SetProcessDownward(false);
+        distfilter->SetProcessUpward(true);
+        startrow = nrows - chunksize;
+        endrow = nrows - 1;
+        rowstoread = chunksize;
+        for (int iter=0; iter <= niter && !p->mbAbortExecution; ++iter)
+        {
+            NMDebugAI(<< "startrow=" << startrow << " endrow=" << endrow
+                    << " rowstoread=" << rowstoread << " rest=" << rest << endl);
 
-	    	pr.SetIndex(1, startrow);
-	   		pr.SetSize(1, rowstoread);
-	    	ior.SetIndex(1, startrow);
-	   		ior.SetSize(1, rowstoread);
+            pr.SetIndex(1, startrow);
+            pr.SetSize(1, rowstoread);
+            ior.SetIndex(1, startrow);
+            ior.SetSize(1, rowstoread);
 
-    		OutputImgType::Pointer tout;
-			if (!bOutRas)
-    		{
-    			tmpOutReader->SetFileName(out.toStdString().c_str());
-				tmpOutReader->SetImageIO(
-						dynamic_cast<otb::ImageIOBase*>(tmpOutGIO.GetPointer()));
-				tmpOutReader->GetOutput()->SetRequestedRegion(pr);
-	    		tmpOutReader->Update();
+            OutputImgType::Pointer tout;
+            if (!bOutRas)
+            {
+                tmpOutReader->SetFileName(out.toStdString().c_str());
+                tmpOutReader->SetImageIO(
+                        dynamic_cast<otb::ImageIOBase*>(tmpOutGIO.GetPointer()));
+                tmpOutReader->GetOutput()->SetRequestedRegion(pr);
+                tmpOutReader->GetOutput()->SetLargestPossibleRegion(distOutLPR);
+                tmpOutReader->Update();
 
-	    		tout = tmpOutReader->GetOutput();
-    		}
+                tout = tmpOutReader->GetOutput();
+            }
 #ifdef BUILD_RASSUPPORT
-			else
-			{
-				QString nfn = QString("%1:_last_").arg(out.toStdString().c_str());
-				rasoutreader->SetFileName(nfn.toStdString().c_str());
-				rasoutreader->GetOutput()->SetRequestedRegion(pr);
-				rasoutreader->Update();
+            else
+            {
+                QString nfn = QString("%1:_last_").arg(out.toStdString().c_str());
+                rasoutreader->SetFileName(nfn.toStdString().c_str());
+                rasoutreader->GetOutput()->SetRequestedRegion(pr);
+                rasoutreader->Update();
 
-				tout = rasoutreader->GetOutput();
-			}
+                tout = rasoutreader->GetOutput();
+            }
 #endif
-			tout->DisconnectPipeline();
-			distfilter->GraftOutput(tout);
+            tout->DisconnectPipeline();
+            distfilter->GraftOutput(tout);
 
-	    	// set the largest possible and requested regions
-	    	distfilter->GetOutput()->SetRequestedRegion(pr);
-	    	distfilter->Update();
+            // set the largest possible and requested regions
+            distfilter->GetOutput()->SetRequestedRegion(pr);
+            distfilter->GetOutput()->SetLargestPossibleRegion(distOutLPR);
+            distfilter->Update();
 
-	    	OutputImgType::Pointer di = distfilter->GetOutput();
-	    	di->DisconnectPipeline();
+            OutputImgType::Pointer di = distfilter->GetOutput();
+            di->DisconnectPipeline();
 
-	    	writer->SetInput(di);
-	    	writer->SetUpdateRegion(ior);
-	    	writer->Update();
+            writer->SetInput(di);
+            writer->SetUpdateRegion(ior);
+            writer->Update();
 
-	        endrow = startrow;
-	        startrow = endrow - chunksize + 1;
-	        startrow = startrow < 0 ? 0 : startrow;
-	        rowstoread = endrow - startrow + 1;
-	    }
+            endrow = startrow;
+            startrow = endrow - chunksize + 1;
+            startrow = startrow < 0 ? 0 : startrow;
+            rowstoread = endrow - startrow + 1;
+        }
 
-	    p->UpdateProgressInfo(distfilter, itk::EndEvent());
-		NMDebugCtx("CostDistanceInternal", << "done!");
-	}
+        p->UpdateProgressInfo(distfilter, itk::EndEvent());
+        NMDebugCtx("CostDistanceInternal", << "done!");
+    }
 
 };
 
@@ -683,20 +698,35 @@ LinkInputTypeInternalParametersWrap( NMCostDistanceBufferImageWrapper, NMCostDis
 
 NMCostDistanceBufferImageWrapper::NMCostDistanceBufferImageWrapper(QObject* parent)
     : mMemoryMax(512), mUseImageSpacing(true),
-	  mCreateBuffer(false)
+      mCreateBuffer(false)
 {
-	this->setParent(parent);
-	this->setObjectName("NMCostDistanceBufferImageWrapper");
-	this->mInputComponentType = otb::ImageIOBase::INT;
-	this->mOutputComponentType = otb::ImageIOBase::DOUBLE;
-	this->mParameterHandling = NMProcess::NM_USE_UP;
-	this->mParamPos = 0;
-	this->mbRasMode = false;
+    this->setParent(parent);
+    this->setObjectName("NMCostDistanceBufferImageWrapper");
+    this->mInputComponentType = otb::ImageIOBase::INT;
+    this->mOutputComponentType = otb::ImageIOBase::FLOAT;
+    this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->mParamPos = 0;
+    this->mbRasMode = false;
+    this->mInputNumDimensions = 2;
+    this->mOutputNumDimensions = 2;
+    this->mInputNumBands = 1;
+    this->mOutputNumBands = 1;
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("InputPixelType"));
+    mUserProperties.insert(QStringLiteral("InputImageFileName"), QStringLiteral("InputImageFileName"));
+    mUserProperties.insert(QStringLiteral("CostImageFileName"), QStringLiteral("CostImageFileName"));
+    mUserProperties.insert(QStringLiteral("OutputImageFileName"), QStringLiteral("OutputImageFileName"));
+    mUserProperties.insert(QStringLiteral("ObjectValueList"), QStringLiteral("ObjectValueList"));
+    mUserProperties.insert(QStringLiteral("MaxDistance"), QStringLiteral("MaxDistance"));
+    mUserProperties.insert(QStringLiteral("UseImageSpacing"), QStringLiteral("UseImageSpacing"));
+    mUserProperties.insert(QStringLiteral("CreateBuffer"), QStringLiteral("CreateBuffer"));
+    mUserProperties.insert(QStringLiteral("BufferZoneIndicator"), QStringLiteral("BufferZoneIndicator"));
 
 
 #ifdef BUILD_RASSUPPORT
-	this->mRasconn = 0;
-	this->mRasConnector = 0;
+    this->mRasconn = 0;
+    this->mRasConnector = 0;
 #endif
 
 }
@@ -709,7 +739,7 @@ NMCostDistanceBufferImageWrapper::~NMCostDistanceBufferImageWrapper()
 void
 NMCostDistanceBufferImageWrapper::setRasdamanConnector(RasdamanConnector * rasconn)
 {
-	this->mRasconn = rasconn;
+    this->mRasconn = rasconn;
 }
 
 void NMCostDistanceBufferImageWrapper::setRasConnector(NMRasdamanConnectorWrapper* rw)
@@ -731,34 +761,34 @@ NMRasdamanConnectorWrapper* NMCostDistanceBufferImageWrapper::getRasConnector(vo
 void
 NMCostDistanceBufferImageWrapper::UpdateProgressInfo(itk::Object* obj, const itk::EventObject& event)
 {
-	// just call base class implementation here
-	NMProcess::UpdateProgressInfo(obj, event);
+    // just call base class implementation here
+    NMProcess::UpdateProgressInfo(obj, event);
 }
 
 void
 NMCostDistanceBufferImageWrapper::update()
 {
-	if (!this->mbIsInitialised)
-		return;
+    if (!this->mbIsInitialised)
+        return;
 
-	int oldParamPos = this->mParamPos;
-	switch(this->mInputComponentType)
-	{
-	MacroPerType( callInputTypeInternalExecute, NMCostDistanceBufferImageWrapper_Internal )
-	default:
-		break;
-	}
+    int oldParamPos = this->mParamPos;
+    switch(this->mInputComponentType)
+    {
+    MacroPerType( callInputTypeInternalExecute, NMCostDistanceBufferImageWrapper_Internal )
+    default:
+        break;
+    }
 
-	this->mMTime = QDateTime::currentDateTimeUtc();
-	this->mParamPos = oldParamPos + 1;
+    this->mMTime = QDateTime::currentDateTimeUtc();
+    this->mParamPos = oldParamPos + 1;
 }
 
 void
 NMCostDistanceBufferImageWrapper::linkInputs(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 {
-	// this process component doesn't have any 'buffered' data input but reads its own
-	// data in chunks as required, so we don't do anything here; we only want to avoid
-	// that the superclass' method is being called;
+    // this process component doesn't have any 'buffered' data input but reads its own
+    // data in chunks as required, so we don't do anything here; we only want to avoid
+    // that the superclass' method is being called;
 }
 
 

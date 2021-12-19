@@ -40,17 +40,17 @@ template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class NMCombineTwoFilterWrapper_Internal;
 
 class NMCOMBINETWOFILTERWRAPPER_EXPORT NMCombineTwoFilterWrapper
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
-    
+
     Q_PROPERTY(QList<QStringList> InputNodata READ getInputNodata WRITE setInputNodata)
     Q_PROPERTY(QStringList OutputTableFileName READ getOutputTableFileName WRITE setOutputTableFileName)
 
 public:
 
-    
+
     NMPropertyGetSet( InputNodata, QList<QStringList> )
     NMPropertyGetSet( OutputTableFileName, QStringList )
 
@@ -65,20 +65,20 @@ public:
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     QSharedPointer<NMItkDataObjectWrapper> getRAT(unsigned int idx);
 
 
-    void setRAT(unsigned int idx, 
+    void setRAT(unsigned int idx,
         QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
-    
+
     QList<QStringList> mInputNodata;
     QStringList mOutputTableFileName;
 

@@ -42,9 +42,9 @@ class NMExternalSortFilterWrapper_Internal;
 
 class NMEXTERNALSORTFILTERWRAPPER_EXPORT
 NMExternalSortFilterWrapper
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
     Q_PROPERTY(QList<QStringList> InputImageFileNames READ getInputImageFileNames WRITE setInputImageFileNames)
     Q_PROPERTY(QStringList SortAscending READ getSortAscending WRITE setSortAscending)
@@ -67,7 +67,7 @@ public:
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     /*$<RATGetSupportDecl>$*/
 
@@ -75,7 +75,7 @@ public:
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
     QList<QStringList> mInputImageFileNames;
     QStringList mSortAscending;

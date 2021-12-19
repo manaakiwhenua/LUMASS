@@ -55,7 +55,8 @@ public:
     NMDataComponent(QObject* parent=0);
     virtual ~NMDataComponent(void);
 
-    virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg);
+    virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg, const QString& name="");
+    virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(const QString& name);
     virtual void linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
     virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
     virtual void update(const QMap<QString, NMModelComponent*>& repo);

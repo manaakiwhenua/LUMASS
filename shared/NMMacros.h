@@ -285,7 +285,89 @@ type get ## name() \
 }
 
 /** ==============================================================
- * 					getOutput
+ * 					callSetOutputNames
+ *  ==============================================================
+ */
+
+#define callSetOutputNames( inputType, outputType, wrapName ) \
+{ \
+    if (this->mOutputNumDimensions == 1)		\
+    {		\
+        rat = wrapName< inputType, outputType, 1>::setOutputNames(this->mOtbProcess, \
+                this->mInputNumBands, outputNames);	\
+    }		\
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        rat = wrapName< inputType, outputType, 2 >::setOutputNames(this->mOtbProcess, \
+                this->mInputNumBands, outputNames);	\
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        rat = wrapName< inputType, outputType, 3 >::setOutputNames(this->mOtbProcess, \
+            this->mInputNumBands, outputNames);	\
+    }\
+}
+
+#define callInputDimSetOutputNames( inputType, outputType, wrapName ) \
+{ \
+    if (this->mInputNumDimensions == 1)		\
+    {		\
+        rat = wrapName< inputType, outputType, 1>::setOutputNames(this->mOtbProcess, \
+                this->mInputNumBands, outputNames);	\
+    }		\
+    else if (this->mInputNumDimensions == 2) \
+    { \
+        rat = wrapName< inputType, outputType, 2 >::setOutputNames(this->mOtbProcess, \
+                this->mInputNumBands, outputNames);	\
+    } \
+    else if (this->mInputNumDimensions == 3) \
+    { \
+        rat = wrapName< inputType, outputType, 3 >::setOutputNames(this->mOtbProcess, \
+                this->mInputNumBands, outputNames);	\
+    }\
+}
+
+#define callOutputTypeSetOutputNames( outputType, wrapName ) \
+{ \
+    if (this->mOutputNumDimensions == 1)		\
+    {		\
+        rat = wrapName< outputType, 1>::setOutputNames(this->mOtbProcess, \
+                this->mInputNumBands, outputNames);	\
+    }		\
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        rat = wrapName< outputType, 2 >::setOutputNames(this->mOtbProcess, \
+                this->mInputNumBands, outputNames);	\
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        rat = wrapName< outputType, 3 >::setOutputNames(this->mOtbProcess, \
+                this->mInputNumBands, outputNames);	\
+    }\
+}
+
+#define callInputTypeSetOutputNames( inputType, wrapName ) \
+{ \
+    if (this->mInputNumDimensions == 1)		\
+    {		\
+        rat = wrapName< inputType, 1>::setOutputNames(this->mOtbProcess, \
+                this->mInputNumBands, outputNames);	\
+    }		\
+    else if (this->mInputNumDimensions == 2) \
+    { \
+        rat = wrapName< inputType, 2 >::setOutputNames(this->mOtbProcess, \
+                this->mInputNumBands, outputNames);	\
+    } \
+    else if (this->mInputNumDimensions == 3) \
+    { \
+        rat = wrapName< inputType, 3 >::setOutputNames(this->mOtbProcess, \
+                this->mInputNumBands, outputNames);	\
+    }\
+}
+
+
+/** ==============================================================
+ * 					getOutput (by index)
  *  ==============================================================
  */
 
@@ -362,6 +444,87 @@ type get ## name() \
     { \
         img = wrapName< inputType, 3 >::getOutput(this->mOtbProcess, \
                 this->mInputNumBands, idx);	\
+    }\
+}
+
+/** ==============================================================
+ * 					getOutput (by name)
+ *  ==============================================================
+ */
+
+#define callGetOutputByName( inputType, outputType, wrapName ) \
+{ \
+    if (this->mOutputNumDimensions == 1)		\
+    {		\
+        img = wrapName< inputType, outputType, 1>::getOutput(this->mOtbProcess, \
+                this->mInputNumBands, name);	\
+    }		\
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        img = wrapName< inputType, outputType, 2 >::getOutput(this->mOtbProcess, \
+                this->mInputNumBands, name);	\
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        img = wrapName< inputType, outputType, 3 >::getOutput(this->mOtbProcess, \
+                this->mInputNumBands, name);	\
+    }\
+}
+
+#define callInputDimGetOutputByName( inputType, outputType, wrapName ) \
+{ \
+    if (this->mInputNumDimensions == 1)		\
+    {		\
+        img = wrapName< inputType, outputType, 1>::getOutput(this->mOtbProcess, \
+                this->mInputNumBands, name);	\
+    }		\
+    else if (this->mInputNumDimensions == 2) \
+    { \
+        img = wrapName< inputType, outputType, 2 >::getOutput(this->mOtbProcess, \
+                this->mInputNumBands, name);	\
+    } \
+    else if (this->mInputNumDimensions == 3) \
+    { \
+        img = wrapName< inputType, outputType, 3 >::getOutput(this->mOtbProcess, \
+                this->mInputNumBands, name);	\
+    }\
+}
+
+#define callOutputTypeGetOutputByName( outputType, wrapName ) \
+{ \
+    if (this->mOutputNumDimensions == 1)		\
+    {		\
+        img = wrapName< outputType, 1>::getOutput(this->mOtbProcess, \
+                this->mOutputNumBands, name);	\
+    }		\
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        img = wrapName< outputType, 2 >::getOutput(this->mOtbProcess, \
+                this->mOutputNumBands, name);	\
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        img = wrapName< outputType, 3 >::getOutput(this->mOtbProcess, \
+                this->mOutputNumBands, name);	\
+    }\
+}
+
+#define callInputTypeGetOutputByName( inputType, wrapName ) \
+{ \
+    if (this->mInputNumDimensions == 1)		\
+    {		\
+        img = wrapName< inputType, 1>::getOutput(this->mOtbProcess, \
+                this->mInputNumBands, name);	\
+    }		\
+    else if (this->mInputNumDimensions == 2) \
+    { \
+        img = wrapName< inputType, 2 >::getOutput(this->mOtbProcess, \
+                this->mInputNumBands, name);	\
+    } \
+    else if (this->mInputNumDimensions == 3) \
+    { \
+        img = wrapName< inputType, 3 >::getOutput(this->mOtbProcess, \
+                this->mInputNumBands, name);	\
     }\
 }
 
@@ -454,17 +617,17 @@ type get ## name() \
     if (this->mOutputNumDimensions == 1) \
     { \
         wrapName< inputType, outputType, 1 >::setNthInput( \
-                this->mOtbProcess, this->mInputNumBands, numInput, img); \
+                this->mOtbProcess, this->mInputNumBands, numInput, img, name); \
     } \
     else if (this->mOutputNumDimensions == 2) \
     { \
         wrapName< inputType, outputType, 2 >::setNthInput( \
-                this->mOtbProcess, this->mInputNumBands, numInput, img); \
+                this->mOtbProcess, this->mInputNumBands, numInput, img, name); \
     } \
     else if (this->mOutputNumDimensions == 3) \
     { \
         wrapName< inputType, outputType, 3 >::setNthInput( \
-                this->mOtbProcess, this->mInputNumBands, numInput, img); \
+                this->mOtbProcess, this->mInputNumBands, numInput, img, name); \
     }\
 }
 
@@ -473,17 +636,17 @@ type get ## name() \
     if (this->mInputNumDimensions == 1) \
     { \
         wrapName< inputType, outputType, 1 >::setNthInput( \
-                this->mOtbProcess, this->mInputNumBands, numInput, img); \
+                this->mOtbProcess, this->mInputNumBands, numInput, img, name); \
     } \
     else if (this->mInputNumDimensions == 2) \
     { \
         wrapName< inputType, outputType, 2 >::setNthInput( \
-                this->mOtbProcess, this->mInputNumBands, numInput, img); \
+                this->mOtbProcess, this->mInputNumBands, numInput, img, name); \
     } \
     else if (this->mInputNumDimensions == 3) \
     { \
         wrapName< inputType, outputType, 3 >::setNthInput( \
-                this->mOtbProcess, this->mInputNumBands, numInput, img); \
+                this->mOtbProcess, this->mInputNumBands, numInput, img, name); \
     }\
 }
 
@@ -492,17 +655,17 @@ type get ## name() \
     if (this->mInputNumDimensions == 1) \
     { \
         wrapName< imgType, 1 >::setNthInput( \
-                this->mOtbProcess, this->mInputNumBands, numInput, img); \
+                this->mOtbProcess, this->mInputNumBands, numInput, img, name); \
     } \
     else if (this->mInputNumDimensions == 2) \
     { \
         wrapName< imgType, 2 >::setNthInput( \
-                this->mOtbProcess, this->mInputNumBands, numInput, img); \
+                this->mOtbProcess, this->mInputNumBands, numInput, img, name); \
     } \
     else if (this->mInputNumDimensions == 3) \
     { \
         wrapName< imgType, 3 >::setNthInput( \
-                this->mOtbProcess, this->mInputNumBands, numInput, img); \
+                this->mOtbProcess, this->mInputNumBands, numInput, img, name); \
     }\
 }
 
@@ -511,17 +674,17 @@ type get ## name() \
     if (this->mOutputNumDimensions == 1) \
     { \
         wrapName< imgType, 1 >::setNthInput( \
-                this->mOtbProcess, this->mInputNumBands, numInput, img); \
+                this->mOtbProcess, this->mInputNumBands, numInput, img, name); \
     } \
     else if (this->mOutputNumDimensions == 2) \
     { \
         wrapName< imgType, 2 >::setNthInput( \
-                this->mOtbProcess, this->mInputNumBands, numInput, img); \
+                this->mOtbProcess, this->mInputNumBands, numInput, img, name); \
     } \
     else if (this->mOutputNumDimensions == 3) \
     { \
         wrapName< imgType, 3 >::setNthInput( \
-                this->mOtbProcess, this->mInputNumBands, numInput, img); \
+                this->mOtbProcess, this->mInputNumBands, numInput, img, name); \
     }\
 }
 
@@ -1331,7 +1494,7 @@ void ClassName::instantiateObject(void)                                 \
 }
 
 /*********************************************************************************
- *                  GET-OUTPUT MACROS                                            *
+ *                  GET-OUTPUT MACROS (by INDEX)                                  *
  *********************************************************************************/
 
 /** get the output of the process object, which is templated
@@ -1666,8 +1829,396 @@ QSharedPointer<NMItkDataObjectWrapper> ClassName::getOutput(unsigned int idx)			
 #endif
 
 /*********************************************************************************
+ *                  GET-OUTPUT MACROS (by NAME)                                  *
+ *********************************************************************************/
+
+/** get the output of the process object, which is templated
+ *  over the OUTPUT component type of this wrapper class
+ */
+#define GetOutputTypeOutputByNameWrap( ClassName, InternalWrapper )                     \
+QSharedPointer<NMItkDataObjectWrapper> ClassName::getOutput(const QString& name)    \
+{                                                                                 \
+    QSharedPointer<NMItkDataObjectWrapper> ret;                                    \
+    ret.clear();                                                                    \
+    if (!this->mbIsInitialised)                                                   \
+        return ret;                                                                 \
+                                                                                  \
+    itk::DataObject* img = 0;                                                     \
+                                                                                  \
+    switch (this->mOutputComponentType)                                           \
+    {                                                                             \
+    MacroPerType( callOutputTypeGetOutputByName, InternalWrapper )                       \
+    default:                                                                      \
+        break;                                                                    \
+    }                                                                             \
+                                                                                  \
+    QSharedPointer<NMItkDataObjectWrapper> dw(                                  \
+            new NMItkDataObjectWrapper(this, img, this->mOutputComponentType,     \
+            this->mOutputNumDimensions, this->mOutputNumBands));                   \
+                                                                                  \
+    return dw;																	  \
+}
+
+/** get the output of the process object, which is templated
+ *  over the INPUT component type of this wrapper class
+ */
+#define GetInputTypeOutputByNameWrap( ClassName, InternalWrapper )                     \
+QSharedPointer<NMItkDataObjectWrapper> ClassName::getOutput(const QString& name)							      \
+{                                                                                 \
+    QSharedPointer<NMItkDataObjectWrapper> ret;                                    \
+    ret.clear();                                                                    \
+    if (!this->mbIsInitialised)                                                   \
+        return ret;                                                                 \
+                                                                                  \
+    itk::DataObject* img = 0;                                                     \
+                                                                                  \
+    switch (this->mInputComponentType)                                           \
+    {                                                                             \
+    MacroPerType( callInputTypeGetOutputByName, InternalWrapper )                       \
+    default:                                                                      \
+        break;                                                                    \
+    }                                                                             \
+                                                                                  \
+    QSharedPointer<NMItkDataObjectWrapper> dw(                                    \
+            new NMItkDataObjectWrapper(this, img, this->mInputComponentType,     \
+            this->mInputNumDimensions, this->mInputNumBands));                   \
+                                                                                  \
+    return dw;																	  \
+}
+
+/** get the output of the process object, which is templated
+ *  over the INPUT and OUTPUT component type of this wrapper class
+ */
+#if defined(_WIN32) && SIZEOF_LONGLONG >= 8
+#define GetOutputWrapByName( ClassName, InternalWrapper )                                              \
+QSharedPointer<NMItkDataObjectWrapper> ClassName::getOutput(const QString& name)					\
+{                                                                               \
+    QSharedPointer<NMItkDataObjectWrapper> ret;                                    \
+    ret.clear();                                                                    \
+    \
+    if (name.compare(QStringLiteral("AuxTab")) == 0)                                               \
+    {                                                                           \
+        QSharedPointer<NMItkDataObjectWrapper> dw(                                      \
+                        new NMItkDataObjectWrapper(this, 0, this->mOutputComponentType,   \
+            this->mOutputNumDimensions, this->mOutputNumBands));                 \
+                                                                                \
+        dw->setOTBTab(this->mAuxTab);                                           \
+        return dw;                                                              \
+    }                                                                           \
+    else if (this->mbIsInitialised)                                                   \
+    {                                                                           \
+    itk::DataObject* img = 0;                                                   \
+                                                                                \
+    switch (this->mInputComponentType)                                         \
+    {                                                                           \
+    case otb::ImageIOBase::UCHAR:                                               \
+        outputTypeSwitch( unsigned char, callGetOutputByName, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::CHAR:                                                \
+        outputTypeSwitch( char, callGetOutputByName, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::USHORT:                                              \
+        outputTypeSwitch( unsigned short, callGetOutputByName, InternalWrapper );                                        \
+        break;                                                                  \
+    case otb::ImageIOBase::SHORT:                                               \
+        outputTypeSwitch( short, callGetOutputByName, InternalWrapper );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::UINT:                                                \
+        outputTypeSwitch( unsigned int, callGetOutputByName, InternalWrapper );                                          \
+        break;                                                                  \
+    case otb::ImageIOBase::INT:                                                 \
+        outputTypeSwitch( int, callGetOutputByName, InternalWrapper );                                                   \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONG:                                               \
+        outputTypeSwitch( unsigned long, callGetOutputByName, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONG:                                                \
+        outputTypeSwitch( long, callGetOutputByName, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONGLONG:                                               \
+        outputTypeSwitch( unsigned long long, callGetOutputByName, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONGLONG:                                                \
+        outputTypeSwitch( long long, callGetOutputByName, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::FLOAT:                                               \
+        outputTypeSwitch( float, callGetOutputByName, InternalWrapper );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::DOUBLE:                                              \
+        outputTypeSwitch( double, callGetOutputByName, InternalWrapper );                                                \
+        break;																	\
+    default:                                                                    \
+        break;                                                                  \
+    }                                                                           \
+                                                                                    \
+        QSharedPointer<NMItkDataObjectWrapper> dw(                                      \
+            new NMItkDataObjectWrapper(this, img, this->mOutputComponentType,   \
+            this->mOutputNumDimensions, this->mOutputNumBands));                 \
+        return dw;                                                              \
+    }                                                                           \
+    return ret;                                                                  \
+}
+#else
+#define GetOutputWrapByName( ClassName, InternalWrapper )                                              \
+QSharedPointer<NMItkDataObjectWrapper> ClassName::getOutput(const QString& name)					\
+{                                                                               \
+    QSharedPointer<NMItkDataObjectWrapper> ret;                                    \
+    ret.clear();                                                                    \
+    \
+    if (name.compare(QStringLiteral("AuxTab")) == 0)                                               \
+    {                                                                           \
+        QSharedPointer<NMItkDataObjectWrapper> dw(                                      \
+                        new NMItkDataObjectWrapper(this, 0, this->mOutputComponentType,   \
+            this->mOutputNumDimensions, this->mOutputNumBands));                 \
+                                                                                \
+        dw->setOTBTab(this->mAuxTab);                                           \
+        return dw;                                                              \
+    } \
+    else if (this->mbIsInitialised)                                                   \
+    {                                                                           \
+        itk::DataObject* img = 0;                                                   \
+                                                                                    \
+        switch (this->mInputComponentType)                                         \
+        {                                                                           \
+        case otb::ImageIOBase::UCHAR:                                               \
+            outputTypeSwitch( unsigned char, callGetOutputByName, InternalWrapper );                                         \
+            break;                                                                  \
+        case otb::ImageIOBase::CHAR:                                                \
+            outputTypeSwitch( char, callGetOutputByName, InternalWrapper );                                                  \
+            break;                                                                  \
+        case otb::ImageIOBase::USHORT:                                              \
+            outputTypeSwitch( unsigned short, callGetOutputByName, InternalWrapper );                                        \
+            break;                                                                  \
+        case otb::ImageIOBase::SHORT:                                               \
+            outputTypeSwitch( short, callGetOutputByName, InternalWrapper );                                                 \
+            break;                                                                  \
+        case otb::ImageIOBase::UINT:                                                \
+            outputTypeSwitch( unsigned int, callGetOutputByName, InternalWrapper );                                          \
+            break;                                                                  \
+        case otb::ImageIOBase::INT:                                                 \
+            outputTypeSwitch( int, callGetOutputByName, InternalWrapper );                                                   \
+            break;                                                                  \
+        case otb::ImageIOBase::ULONG:                                               \
+            outputTypeSwitch( unsigned long, callGetOutputByName, InternalWrapper );                                         \
+            break;                                                                  \
+        case otb::ImageIOBase::LONG:                                                \
+            outputTypeSwitch( long, callGetOutputByName, InternalWrapper );                                                  \
+            break;                                                                  \
+        case otb::ImageIOBase::FLOAT:                                               \
+            outputTypeSwitch( float, callGetOutputByName, InternalWrapper );                                                 \
+            break;                                                                  \
+        case otb::ImageIOBase::DOUBLE:                                              \
+            outputTypeSwitch( double, callGetOutputByName, InternalWrapper );                                                \
+            break;																	\
+        default:                                                                    \
+            break;                                                                  \
+        }                                                                           \
+                                                                                    \
+        QSharedPointer<NMItkDataObjectWrapper> dw(                                      \
+            new NMItkDataObjectWrapper(this, img, this->mOutputComponentType,   \
+            this->mOutputNumDimensions, this->mOutputNumBands));                 \
+        return dw;                                                              \
+    }                                                                           \
+    return ret;                                                                  \
+}
+#endif
+
+
+#if defined(_WIN32) && SIZEOF_LONGLONG >= 8
+#define WrapFlexiGetOutputByName( ClassName, InternalWrapper, callMacroName )                                              \
+QSharedPointer<NMItkDataObjectWrapper> ClassName::getOutput(const QString& name)					\
+{                                                                               \
+    QSharedPointer<NMItkDataObjectWrapper> ret;                                    \
+    ret.clear();                                                                    \
+    \
+    if (name.compare(QStringLiteral("AuxTab")) == 0)                                               \
+    {                                                                           \
+        QSharedPointer<NMItkDataObjectWrapper> dw(                                      \
+                        new NMItkDataObjectWrapper(this, 0, this->mOutputComponentType,   \
+            this->mOutputNumDimensions, this->mOutputNumBands));                 \
+                                                                                \
+        dw->setOTBTab(this->mAuxTab);                                           \
+        return dw;                                                              \
+    }                                                                           \
+    else if (this->mbIsInitialised)                                                   \
+    {                                                                           \
+    itk::DataObject* img = 0;                                                   \
+                                                                                \
+    switch (this->mInputComponentType)                                         \
+    {                                                                           \
+    case otb::ImageIOBase::UCHAR:                                               \
+        outputTypeSwitch( unsigned char, callMacroName, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::CHAR:                                                \
+        outputTypeSwitch( char, callMacroName, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::USHORT:                                              \
+        outputTypeSwitch( unsigned short, callMacroName, InternalWrapper );                                        \
+        break;                                                                  \
+    case otb::ImageIOBase::SHORT:                                               \
+        outputTypeSwitch( short, callMacroName, InternalWrapper );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::UINT:                                                \
+        outputTypeSwitch( unsigned int, callMacroName, InternalWrapper );                                          \
+        break;                                                                  \
+    case otb::ImageIOBase::INT:                                                 \
+        outputTypeSwitch( int, callMacroName, InternalWrapper );                                                   \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONG:                                               \
+        outputTypeSwitch( unsigned long, callMacroName, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONG:                                                \
+        outputTypeSwitch( long, callMacroName, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONGLONG:                                               \
+        outputTypeSwitch( unsigned long long, callMacroName, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONGLONG:                                                \
+        outputTypeSwitch( long long, callMacroName, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::FLOAT:                                               \
+        outputTypeSwitch( float, callMacroName, InternalWrapper );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::DOUBLE:                                              \
+        outputTypeSwitch( double, callMacroName, InternalWrapper );                                                \
+        break;																	\
+    default:                                                                    \
+        break;                                                                  \
+    }                                                                           \
+                                                                                    \
+        QSharedPointer<NMItkDataObjectWrapper> dw(                                      \
+            new NMItkDataObjectWrapper(this, img, this->mOutputComponentType,   \
+            this->mOutputNumDimensions, this->mOutputNumBands));                 \
+        return dw;                                                              \
+    }                                                                           \
+    return ret;                                                                  \
+}
+#else
+#define WrapFlexiGetOutputByName( ClassName, InternalWrapper, callMacroName )                                              \
+QSharedPointer<NMItkDataObjectWrapper> ClassName::getOutput(const QString& name)					\
+{                                                                               \
+    QSharedPointer<NMItkDataObjectWrapper> ret;                                    \
+    ret.clear();                                                                    \
+    \
+    if (name.compare(QStringLiteral("AuxTab")) == 0)                                               \
+    {                                                                           \
+        QSharedPointer<NMItkDataObjectWrapper> dw(                                      \
+                        new NMItkDataObjectWrapper(this, 0, this->mOutputComponentType,   \
+            this->mOutputNumDimensions, this->mOutputNumBands));                 \
+                                                                                \
+        dw->setOTBTab(this->mAuxTab);                                           \
+        return dw;                                                              \
+    }                                                                           \
+    else if (this->mbIsInitialised)                                                   \
+    {                                                                           \
+    itk::DataObject* img = 0;                                                   \
+                                                                                \
+    switch (this->mInputComponentType)                                         \
+    {                                                                           \
+    case otb::ImageIOBase::UCHAR:                                               \
+        outputTypeSwitch( unsigned char, callMacroName, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::CHAR:                                                \
+        outputTypeSwitch( char, callMacroName, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::USHORT:                                              \
+        outputTypeSwitch( unsigned short, callMacroName, InternalWrapper );                                        \
+        break;                                                                  \
+    case otb::ImageIOBase::SHORT:                                               \
+        outputTypeSwitch( short, callMacroName, InternalWrapper );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::UINT:                                                \
+        outputTypeSwitch( unsigned int, callMacroName, InternalWrapper );                                          \
+        break;                                                                  \
+    case otb::ImageIOBase::INT:                                                 \
+        outputTypeSwitch( int, callMacroName, InternalWrapper );                                                   \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONG:                                               \
+        outputTypeSwitch( unsigned long, callMacroName, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONG:                                                \
+        outputTypeSwitch( long, callMacroName, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::FLOAT:                                               \
+        outputTypeSwitch( float, callMacroName, InternalWrapper );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::DOUBLE:                                              \
+        outputTypeSwitch( double, callMacroName, InternalWrapper );                                                \
+        break;																	\
+    default:                                                                    \
+        break;                                                                  \
+    }                                                                           \
+                                                                                    \
+        QSharedPointer<NMItkDataObjectWrapper> dw(                                      \
+            new NMItkDataObjectWrapper(this, img, this->mOutputComponentType,   \
+            this->mOutputNumDimensions, this->mOutputNumBands));                 \
+        return dw;                                                              \
+    }                                                                           \
+    return ret;                                                                  \
+}
+#endif
+
+/*********************************************************************************
  *                  GET-OUTPUT-RAT MACROS                                        *
  *********************************************************************************/
+
+/** get the output of the process object, which is templated
+ *  over the OUTPUT component type of this wrapper class
+ */
+#define GetOutputTypeOutputRATtWrap( ClassName, InternalWrapper )                     \
+QSharedPointer<NMItkDataObjectWrapper> ClassName::getRAT(unsigned int idx)							      \
+{                                                                                 \
+    QSharedPointer<NMItkDataObjectWrapper> ret;                                    \
+    ret.clear();                                                                    \
+    if (!this->mbIsInitialised)                                                   \
+        return ret;                                                                 \
+                                                                                  \
+    itk::DataObject* img = 0;                                                     \
+    otb::AttributeTable::Pointer rat = 0;                                       \
+                                                                                  \
+    switch (this->mOutputComponentType)                                           \
+    {                                                                             \
+    MacroPerType( callOutputTypeGetOutput, InternalWrapper )                       \
+    default:                                                                      \
+        break;                                                                    \
+    }                                                                             \
+                                                                                  \
+    QSharedPointer<NMItkDataObjectWrapper> dw(                                  \
+            new NMItkDataObjectWrapper(this, img, this->mOutputComponentType,     \
+            this->mOutputNumDimensions, this->mOutputNumBands));                   \
+                                                                                \
+    dw->setOTBTab(this->getRAT(idx)->getOTBTab());                                 \
+    return dw;																	  \
+}
+
+/** get the output of the process object, which is templated
+ *  over the INPUT component type of this wrapper class
+ */
+#define GetInputTypeOutputRATWrap( ClassName, InternalWrapper )                     \
+QSharedPointer<NMItkDataObjectWrapper> ClassName::getOutput(unsigned int idx)							      \
+{                                                                                 \
+    QSharedPointer<NMItkDataObjectWrapper> ret;                                    \
+    ret.clear();                                                                    \
+    if (!this->mbIsInitialised)                                                   \
+        return ret;                                                                 \
+                                                                                  \
+    itk::DataObject* img = 0;                                                     \
+    otb::AttributeTable::Pointer rat = 0;                                       \
+                                                                                  \
+    switch (this->mInputComponentType)                                           \
+    {                                                                             \
+    MacroPerType( callInputTypeGetOutput, InternalWrapper )                       \
+    default:                                                                      \
+        break;                                                                    \
+    }                                                                             \
+                                                                                  \
+    QSharedPointer<NMItkDataObjectWrapper> dw(                                    \
+            new NMItkDataObjectWrapper(this, img, this->mInputComponentType,     \
+            this->mInputNumDimensions, this->mInputNumBands));                   \
+                                                                                  \
+    dw->setOTBTab(this->getRAT(idx)->getOTBTab());                                 \
+    return dw;																	  \
+}
 
 /** get the output of the process object, which is templated
  *  over the INPUT and OUTPUT component type of this wrapper class
@@ -1803,7 +2354,7 @@ QSharedPointer<NMItkDataObjectWrapper> ClassName::getOutput(unsigned int idx)			
 #if defined(_WIN32) && SIZEOF_LONGLONG >= 8
 #define SetNthInputWrap( ClassName, InternalWrapper )						\
 void ClassName::setNthInput(unsigned int numInput,  		\
-        QSharedPointer<NMItkDataObjectWrapper> imgWrapper)                 \
+        QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name)                 \
 {                                                           \
     if (!this->mbIsInitialised)                             \
         return;                                             \
@@ -1854,7 +2405,7 @@ void ClassName::setNthInput(unsigned int numInput,  		\
 #else
 #define SetNthInputWrap( ClassName, InternalWrapper )						\
 void ClassName::setNthInput(unsigned int numInput,  		\
-        QSharedPointer<NMItkDataObjectWrapper> imgWrapper)                 \
+        QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name)                 \
 {                                                           \
     if (!this->mbIsInitialised)                             \
         return;                                             \
@@ -1902,7 +2453,7 @@ void ClassName::setNthInput(unsigned int numInput,  		\
 #if defined(_WIN32) && SIZEOF_LONGLONG >= 8
 #define WrapFlexiSetNthInput( ClassName, InternalWrapper, callMacroName )						\
 void ClassName::setNthInput(unsigned int numInput,  		\
-        QSharedPointer<NMItkDataObjectWrapper> imgWrapper)                 \
+        QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name)                 \
 {                                                           \
     if (!this->mbIsInitialised)                             \
         return;                                             \
@@ -1953,7 +2504,7 @@ void ClassName::setNthInput(unsigned int numInput,  		\
 #else
 #define WrapFlexiSetNthInput( ClassName, InternalWrapper, callMacroName )						\
 void ClassName::setNthInput(unsigned int numInput,  		\
-        QSharedPointer<NMItkDataObjectWrapper> imgWrapper)                 \
+        QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name)                 \
 {                                                           \
     if (!this->mbIsInitialised)                             \
         return;                                             \
@@ -2004,7 +2555,7 @@ void ClassName::setNthInput(unsigned int numInput,  		\
  */
 #define SetInputTypeNthInputWrap( ClassName, InternalWrapper )						\
 void ClassName::setNthInput(unsigned int numInput,  		\
-        QSharedPointer<NMItkDataObjectWrapper> imgWrapper)                 \
+        QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name)                 \
 {                                                           \
     if (!this->mbIsInitialised)                             \
         return;                                             \
@@ -2019,8 +2570,280 @@ void ClassName::setNthInput(unsigned int numInput,  		\
 }
 
 /*********************************************************************************
+ *                  SET-OUTPUT-NAMES MACROS                                         *
+ *********************************************************************************/
+
+/** set the output names of a process object, which is
+ *  templated over the INPUT and OUTPUT type of this
+ *  wrapper class
+ */
+#if defined(_WIN32) && SIZEOF_LONGLONG >= 8
+#define SetOutputNamesWrap( ClassName, InternalWrapper )						\
+void ClassName::setOutputNames(const QStringList& outputNames)                 \
+{                                                           \
+    if (!this->mbIsInitialised)                             \
+        return;                                             \
+                                                            \
+    switch (this->mInputComponentType)                      \
+    {                                                       \
+    case otb::ImageIOBase::UCHAR:                                               \
+        outputTypeSwitch( unsigned char, callSetOutputNames, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::CHAR:                                                \
+        outputTypeSwitch( char, callSetOutputNames, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::USHORT:                                              \
+        outputTypeSwitch( unsigned short, callSetOutputNames, InternalWrapper );                                        \
+        break;                                                                  \
+    case otb::ImageIOBase::SHORT:                                               \
+        outputTypeSwitch( short, callSetOutputNames, InternalWrapper );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::UINT:                                                \
+        outputTypeSwitch( unsigned int, callSetOutputNames, InternalWrapper );                                          \
+        break;                                                                  \
+    case otb::ImageIOBase::INT:                                                 \
+        outputTypeSwitch( int, callSetOutputNames, InternalWrapper );                                                   \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONG:                                               \
+        outputTypeSwitch( unsigned long, callSetOutputNames, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONG:                                                \
+        outputTypeSwitch( long, callSetOutputNames, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONGLONG:                                               \
+        outputTypeSwitch( unsigned long long, callSetOutputNames, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONGLONG:                                                \
+        outputTypeSwitch( long long, callSetOutputNames, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::FLOAT:                                               \
+        outputTypeSwitch( float, callSetOutputNames, InternalWrapper );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::DOUBLE:                                              \
+        outputTypeSwitch( double, callSetOutputNames, InternalWrapper );                                                \
+        break;																	\
+    default:                                                \
+        break;                                              \
+    }                                                       \
+}
+#else
+#define SetOutputNamesWrap( ClassName, InternalWrapper )						\
+    void ClassName::setOutputNames(const QStringList& outputNames)               \
+{                                                           \
+    if (!this->mbIsInitialised)                             \
+        return;                                             \
+                                                            \
+    switch (this->mInputComponentType)                      \
+    {                                                       \
+    case otb::ImageIOBase::UCHAR:                                               \
+        outputTypeSwitch( unsigned char, callSetOutputNames, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::CHAR:                                                \
+        outputTypeSwitch( char, callSetOutputNames, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::USHORT:                                              \
+        outputTypeSwitch( unsigned short, callSetOutputNames, InternalWrapper );                                        \
+        break;                                                                  \
+    case otb::ImageIOBase::SHORT:                                               \
+        outputTypeSwitch( short, callSetOutputNames, InternalWrapper );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::UINT:                                                \
+        outputTypeSwitch( unsigned int, callSetOutputNames, InternalWrapper );                                          \
+        break;                                                                  \
+    case otb::ImageIOBase::INT:                                                 \
+        outputTypeSwitch( int, callSetOutputNames, InternalWrapper );                                                   \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONG:                                               \
+        outputTypeSwitch( unsigned long, callSetOutputNames, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONG:                                                \
+        outputTypeSwitch( long, callSetOutputNames, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::FLOAT:                                               \
+        outputTypeSwitch( float, callSetOutputNames, InternalWrapper );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::DOUBLE:                                              \
+        outputTypeSwitch( double, callSetOutputNames, InternalWrapper );                                                \
+        break;																	\
+    default:                                                \
+        break;                                              \
+    }                                                       \
+}
+#endif
+
+
+#if defined(_WIN32) && SIZEOF_LONGLONG >= 8
+#define WrapFlexiSetOutputNames( ClassName, InternalWrapper, callMacroName )						\
+void ClassName::setOutputNames(const QStringList& outputNames)               \
+{                                                           \
+    if (!this->mbIsInitialised)                             \
+        return;                                             \
+                                                            \
+    switch (this->mInputComponentType)                      \
+    {                                                       \
+    case otb::ImageIOBase::UCHAR:                                               \
+        outputTypeSwitch( unsigned char, callMacroName, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::CHAR:                                                \
+        outputTypeSwitch( char, callMacroName, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::USHORT:                                              \
+        outputTypeSwitch( unsigned short, callMacroName, InternalWrapper );                                        \
+        break;                                                                  \
+    case otb::ImageIOBase::SHORT:                                               \
+        outputTypeSwitch( short, callMacroName, InternalWrapper );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::UINT:                                                \
+        outputTypeSwitch( unsigned int, callMacroName, InternalWrapper );                                          \
+        break;                                                                  \
+    case otb::ImageIOBase::INT:                                                 \
+        outputTypeSwitch( int, callMacroName, InternalWrapper );                                                   \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONG:                                               \
+        outputTypeSwitch( unsigned long, callMacroName, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONG:                                                \
+        outputTypeSwitch( long, callMacroName, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONGLONG:                                               \
+        outputTypeSwitch( unsigned long long, callMacroName, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONGLONG:                                                \
+        outputTypeSwitch( long long, callMacroName, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::FLOAT:                                               \
+        outputTypeSwitch( float, callMacroName, InternalWrapper );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::DOUBLE:                                              \
+        outputTypeSwitch( double, callMacroName, InternalWrapper );                                                \
+        break;																	\
+    default:                                                \
+        break;                                              \
+    }                                                       \
+}
+#else
+#define WrapFlexiSetOutputNames( ClassName, InternalWrapper, callMacroName )						\
+    void ClassName::setOutputNames(const QStringList& outputNames)               \
+{                                                           \
+    if (!this->mbIsInitialised)                             \
+        return;                                             \
+                                                            \
+    switch (this->mInputComponentType)                      \
+    {                                                       \
+    case otb::ImageIOBase::UCHAR:                                               \
+        outputTypeSwitch( unsigned char, callMacroName, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::CHAR:                                                \
+        outputTypeSwitch( char, callMacroName, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::USHORT:                                              \
+        outputTypeSwitch( unsigned short, callMacroName, InternalWrapper );                                        \
+        break;                                                                  \
+    case otb::ImageIOBase::SHORT:                                               \
+        outputTypeSwitch( short, callMacroName, InternalWrapper );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::UINT:                                                \
+        outputTypeSwitch( unsigned int, callMacroName, InternalWrapper );                                          \
+        break;                                                                  \
+    case otb::ImageIOBase::INT:                                                 \
+        outputTypeSwitch( int, callMacroName, InternalWrapper );                                                   \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONG:                                               \
+        outputTypeSwitch( unsigned long, callMacroName, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONG:                                                \
+        outputTypeSwitch( long, callMacroName, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::FLOAT:                                               \
+        outputTypeSwitch( float, callMacroName, InternalWrapper );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::DOUBLE:                                              \
+        outputTypeSwitch( double, callMacroName, InternalWrapper );                                                \
+        break;																	\
+    default:                                                \
+        break;                                              \
+    }                                                       \
+}
+#endif
+
+
+/** set the nth input of a process object, which is
+ *  templated over the INPUT type of this
+ *  wrapper class
+ */
+#define SetInputTypeOutputNamestWrap( ClassName, InternalWrapper )						\
+    void ClassName::setOutputNames(const QStringList& outputNames)               \
+{                                                           \
+    if (!this->mbIsInitialised)                             \
+        return;                                             \
+                                                            \
+    switch (this->mInputComponentType)                      \
+    {       \
+    MacroPerType( callInputTypeSetOutputNames, InternalWrapper )                       \
+    default:                                                                      \
+        break;                                                                    \
+    }                                                                             \
+}
+
+/*********************************************************************************
  *                  GET-RAT MACROS                                               *
  *********************************************************************************/
+
+/** get the RAT of the process object, which is templated
+ *  over the OUTPUT component type of this wrapper class
+ */
+#define GetOutputTypeRATWrap( ClassName, InternalWrapper )                     \
+QSharedPointer<NMItkDataObjectWrapper> ClassName::getRAT(unsigned int idx)							      \
+{                                                                                 \
+    QSharedPointer<NMItkDataObjectWrapper> ret;                                    \
+    ret.clear();                                                                    \
+    if (!this->mbIsInitialised)                                                   \
+        return ret;                                                                 \
+                                                                                \
+    otb::AttributeTable::Pointer rat = 0;                                       \
+                                                                                  \
+    switch (this->mOutputComponentType)                                           \
+    {                                                                             \
+    MacroPerType( callOutputTypeGetRAT, InternalWrapper )                       \
+    default:                                                                      \
+        break;                                                                    \
+    }                                                                             \
+                                                                                  \
+    QSharedPointer<NMItkDataObjectWrapper> dw(                                  \
+            new NMItkDataObjectWrapper(this, 0, this->mOutputComponentType,     \
+            this->mOutputNumDimensions, this->mOutputNumBands));                 \
+    dw->setOTBTab(rat);                                                         \
+                                                                                  \
+    return dw;																	  \
+}
+
+/** get the RAT of the process object, which is templated
+ *  over the INPUT component type of this wrapper class
+ */
+#define GetInputTypeRATWrap( ClassName, InternalWrapper )                     \
+QSharedPointer<NMItkDataObjectWrapper> ClassName::getRAT(unsigned int idx)							      \
+{                                                                                 \
+    QSharedPointer<NMItkDataObjectWrapper> ret;                                    \
+    ret.clear();                                                                    \
+    if (!this->mbIsInitialised)                                                   \
+        return ret;                                                                 \
+                                                                                \
+    otb::AttributeTable::Pointer rat = 0;                                       \
+                                                                                  \
+    switch (this->mInputComponentType)                                           \
+    {                                                                             \
+    MacroPerType( callInputTypeGetRAT, InternalWrapper )                       \
+    default:                                                                      \
+        break;                                                                    \
+    }                                                                             \
+                                                                                  \
+    QSharedPointer<NMItkDataObjectWrapper> dw(                                  \
+            new NMItkDataObjectWrapper(this, 0, this->mOutputComponentType,     \
+            this->mOutputNumDimensions, this->mOutputNumBands));                 \
+    dw->setOTBTab(rat);                                                         \
+                                                                                  \
+    return dw;																	  \
+}
 
 /** get the raster attribute table (RAT) of the process object,
  *  which is templated over the INPUT and OUTPUT component type
@@ -2251,5 +3074,26 @@ void ClassName::setRAT(unsigned int numInput,  		\
     }                                                                           \
 }
 #endif
+
+/** set the RAT of the process object, which is
+ *  templated over the INPUT type of this
+ *  wrapper class
+ */
+#define SetInputTypeRATWrap( ClassName, InternalWrapper )						\
+void ClassName::setRAT(unsigned int numInput,  		\
+        QSharedPointer<NMItkDataObjectWrapper> imgWrapper)                 \
+{                                                           \
+    if (!this->mbIsInitialised)                                                 \
+        return;                                                               \
+                                                                                \
+    otb::AttributeTable::Pointer rat = imgWrapper->getOTBTab();                 \
+                                                                                \
+    switch (this->mInputComponentType)                      \
+    {       \
+    MacroPerType( callInputTypeSetRAT, InternalWrapper )                       \
+    default:                                                                      \
+        break;                                                                    \
+    }                                                                             \
+}
 
 #endif /* NMMACROS_H_ */

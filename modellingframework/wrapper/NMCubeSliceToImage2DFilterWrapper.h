@@ -42,11 +42,11 @@ class NMCubeSliceToImage2DFilterWrapper_Internal;
 
 class
 NMCubeSliceToImage2DFilterWrapper
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
-    
+
     Q_PROPERTY(QList<QStringList> DimMapping READ getDimMapping WRITE setDimMapping)
     Q_PROPERTY(QList<QStringList> InputOrigin READ getInputOrigin WRITE setInputOrigin)
     Q_PROPERTY(QList<QStringList> InputSize READ getInputSize WRITE setInputSize)
@@ -54,7 +54,7 @@ NMCubeSliceToImage2DFilterWrapper
 
 public:
 
-    
+
     NMPropertyGetSet( DimMapping, QList<QStringList> )
     NMPropertyGetSet( InputOrigin, QList<QStringList> )
     NMPropertyGetSet( InputSize, QList<QStringList> )
@@ -71,7 +71,7 @@ public:
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     /*$<RATGetSupportDecl>$*/
 
@@ -79,9 +79,9 @@ public:
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
-    
+
     QList<QStringList> mDimMapping;
     QList<QStringList> mInputOrigin;
     QList<QStringList> mInputSize;

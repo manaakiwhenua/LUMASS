@@ -56,15 +56,15 @@ public:
     typedef typename OutImgType::PointValueType   OutPointValueType;
     typedef typename OutImgType::SizeValueType    SizeValueType;
 
-	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands)
-	{
-		FilterTypePointer f = FilterType::New();
-		otbFilter = f;
-	}
+    static void createInstance(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands)
+    {
+        FilterTypePointer f = FilterType::New();
+        otbFilter = f;
+    }
 
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
+                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
         InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
@@ -72,12 +72,12 @@ public:
     }
 
 
-	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, unsigned int idx)
-	{
-		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
-	}
+    static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands, unsigned int idx)
+    {
+        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
+    }
 
 /*$<InternalRATGetSupport>$*/
 
@@ -85,35 +85,35 @@ public:
 
 
     static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, NMProcess* proc,
-			unsigned int step, const QMap<QString, NMModelComponent*>& repo)
-	{
-		NMDebugCtx("NMCubeSliceToImage2DFilterWrapper_Internal", << "...");
+            unsigned int numBands, NMProcess* proc,
+            unsigned int step, const QMap<QString, NMModelComponent*>& repo)
+    {
+        NMDebugCtx("NMCubeSliceToImage2DFilterWrapper_Internal", << "...");
 
-		FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		NMCubeSliceToImage2DFilterWrapper* p =
-				dynamic_cast<NMCubeSliceToImage2DFilterWrapper*>(proc);
+        FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        NMCubeSliceToImage2DFilterWrapper* p =
+                dynamic_cast<NMCubeSliceToImage2DFilterWrapper*>(proc);
 
-		// make sure we've got a valid filter object
-		if (f == 0)
-		{
-			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        // make sure we've got a valid filter object
+        if (f == 0)
+        {
+            NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
                         e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
-			throw e;
-			return;
-		}
+            throw e;
+            return;
+        }
 
-		/* do something reasonable here */
-		bool bok;
-		int givenStep = step;
+        /* do something reasonable here */
+        bool bok;
+        int givenStep = step;
 
-		
+
         QVariant curDimMappingVar = p->getParameter("DimMapping");
         if (curDimMappingVar.isValid())
         {
            std::vector<int> vecDimMapping;
            QStringList curValVarList = curDimMappingVar.toStringList();
-           foreach(const QString& vStr, curValVarList) 
+           foreach(const QString& vStr, curValVarList)
            {
                 int curDimMapping = vStr.toInt(&bok);
                 if (bok)
@@ -136,7 +136,7 @@ public:
         {
            std::vector<double> vecInputOrigin;
            QStringList curValVarList = curInputOriginVar.toStringList();
-           foreach(const QString& vStr, curValVarList) 
+           foreach(const QString& vStr, curValVarList)
            {
                 double curInputOrigin = vStr.toDouble(&bok);
                 if (bok)
@@ -159,7 +159,7 @@ public:
         {
            std::vector<long long> vecInputSize;
            QStringList curValVarList = curInputSizeVar.toStringList();
-           foreach(const QString& vStr, curValVarList) 
+           foreach(const QString& vStr, curValVarList)
            {
                 long long curInputSize = vStr.toLongLong(&bok);
                 if (bok)
@@ -182,7 +182,7 @@ public:
         {
            std::vector<long long> vecInputIndex;
            QStringList curValVarList = curInputIndexVar.toStringList();
-           foreach(const QString& vStr, curValVarList) 
+           foreach(const QString& vStr, curValVarList)
            {
                 long long curInputIndex = vStr.toLongLong(&bok);
                 if (bok)
@@ -204,8 +204,8 @@ public:
                 /*$<ForwardInputUserIDs_Body>$*/
 
 
-		NMDebugCtx("NMCubeSliceToImage2DFilterWrapper_Internal", << "done!");
-	}
+        NMDebugCtx("NMCubeSliceToImage2DFilterWrapper_Internal", << "done!");
+    }
 };
 
 /*$<HelperClassInstantiation>$*/
@@ -219,9 +219,22 @@ WrapFlexiLinkInternal( NMCubeSliceToImage2DFilterWrapper, NMCubeSliceToImage2DFi
 NMCubeSliceToImage2DFilterWrapper
 ::NMCubeSliceToImage2DFilterWrapper(QObject* parent)
 {
-	this->setParent(parent);
-	this->setObjectName("NMCubeSliceToImage2DFilterWrapper");
-	this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->setParent(parent);
+    this->setObjectName("NMCubeSliceToImage2DFilterWrapper");
+    this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->mInputNumBands = 1;
+    this->mOutputNumBands = 1;
+    this->mInputNumDimensions = 3;
+    this->mOutputNumDimensions = 2;
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("InputPixelType"));
+    mUserProperties.insert(QStringLiteral("NMOutputComponentType"), QStringLiteral("OutputPixelType"));
+    mUserProperties.insert(QStringLiteral("DimMapping"), QStringLiteral("DimMapping"));
+    mUserProperties.insert(QStringLiteral("InputOrigin"), QStringLiteral("InputOrigin"));
+    mUserProperties.insert(QStringLiteral("InputSize"), QStringLiteral("InputSize"));
+    mUserProperties.insert(QStringLiteral("InputIndex"), QStringLiteral("InputIndex"));
+
 }
 
 NMCubeSliceToImage2DFilterWrapper

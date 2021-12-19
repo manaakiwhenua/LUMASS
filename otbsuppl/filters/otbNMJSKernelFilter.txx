@@ -89,7 +89,10 @@ NMJSKernelFilter<TInputImage, TOutputImage>
 
     this->SetNumberOfIndexedOutputs(2);
 
-    this->SetNthOutput(1, MakeOutput(1));
+    itk::DataObject::Pointer auxTab = MakeOutput(1);
+
+    this->SetOutput("AuxTab", auxTab);
+    this->SetNthOutput(1, auxTab);
 }
 
 template <class TInputImage, class TOutputImage>

@@ -40,9 +40,9 @@
 
 class NMMODFRAMECORE_EXPORT
 NMTableReader
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
 
     Q_PROPERTY(bool CreateTable READ getCreateTable WRITE setCreateTable)
@@ -65,11 +65,11 @@ public:
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper){}
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name){}
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
     bool mCreateTable;
     QStringList mFileName;

@@ -25,7 +25,7 @@
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -67,7 +67,7 @@ namespace otb
  *
  * OTB additional functions:
  * ndvi(r, niri)
- * 
+ *
  * OTB additional constants:
  * e - log2e - log10e - ln2 - ln10 - pi - euler
  *
@@ -81,7 +81,7 @@ namespace otb
  * names. For example, in the default case with three input images the
  * following expression is valid :
  * "ndvi(b1,b2)*b3"
- * 
+ *
  * As an additional functionality, the filter also granted access to
  * indexes information under special virtual bands named idxX, idxY
  * for the images indexes and idxPhyX,idxPhyY for the physical
@@ -94,7 +94,7 @@ namespace otb
  * physical index (105.3;207.1) by a black area
  * This functionality assumes that all the band involved have the same
  * spacing and origin.
- * 
+ *
  * NOTE:
  * The inputs to this filter, if more than one, need to be specified in
  * sequential order, i.e. starting with index 0: 0,1,...,n
@@ -102,9 +102,9 @@ namespace otb
  * and may be subsequnently executed with a varying number of inputs.
  * When ever an indexed input is specified, all potentially previously
  * set input images are removed from the input list.
- * 
+ *
  * \sa Parser
- * 
+ *
  * \ingroup Streamed
  * \ingroup Threaded
  */
@@ -122,7 +122,7 @@ public:
 
   /** Method for creation through the object factory. */
   itkNewMacro(Self);
-  
+
   /** Run-time type information (and related methods). */
   itkTypeMacro(RATBandMathImageFilter, InPlaceImageFilter);
 
@@ -130,7 +130,7 @@ public:
   typedef TImage                                  ImageType;
   typedef typename ImageType::ConstPointer        ImageConstPointer;
   typedef typename ImageType::Pointer             ImagePointer;
-  typedef typename ImageType::RegionType          ImageRegionType; 
+  typedef typename ImageType::RegionType          ImageRegionType;
   typedef typename ImageRegionType::SizeType      SizeType;
   typedef typename ImageType::PixelType           PixelType;
   typedef typename ImageType::IndexType           IndexType;
@@ -140,7 +140,7 @@ public:
   typedef typename itk::ImageBase< ImageType::ImageDimension > ImageBaseType;
 
   typedef MultiParser                             ParserType;
-  
+
   typedef typename AttributeTable::Pointer		   TablePointer;
   typedef typename AttributeTable::TableColumnType ColumnType;
 
@@ -150,7 +150,7 @@ public:
 
   /** Set the attribute table of the nth filter input */
   void SetNthAttributeTable( unsigned int idx, const AttributeTable::Pointer,
-		  std::vector<std::string> vAttrNames);
+          std::vector<std::string> vAttrNames);
 
   /** Change the nth filter input associated variable name */
   void SetNthInputName(unsigned int idx, const std::string& expression);
@@ -158,9 +158,15 @@ public:
   /** Set the expression to be parsed */
   void SetExpression(const std::string& expression);
 
+  /** Set user-defined output names */
+  void SetOutputNames(const std::vector<std::string> outNames)
+    {m_OutputNames = outNames;}
+
+  ImageType* GetOutputByName(const std::string& name);
+
   /** Return the expression to be parsed */
   std::string GetExpression() const;
-  
+
   /** Return the nth filter input associated variable name */
   std::string GetNthInputName(unsigned int idx) const;
 
@@ -187,7 +193,7 @@ protected :
   RATBandMathImageFilter();
   virtual ~RATBandMathImageFilter();
   virtual void PrintSelf(std::ostream& os, itk::Indent indent) const;
- 
+
   void BeforeThreadedGenerateData();
   void ThreadedGenerateData(const ImageRegionType& outputRegionForThread, itk::ThreadIdType threadId );
   void AfterThreadedGenerateData();
@@ -201,12 +207,13 @@ private :
   /** Attribute Table support */
   //bool DefineAttrVars();
 
-  std::string                           m_Expression; 
+  std::string                           m_Expression;
   std::string                           m_ConcatChar;
   std::vector<ParserType::Pointer>      m_VParser;
   std::vector< std::vector<double> >    m_AImage;
   std::vector< std::string >            m_VVarName;
   std::vector< std::string >            m_UserNames;
+  std::vector<std::string>              m_OutputNames;
   unsigned int                          m_NbVar;
   int									m_NbExpr;
 

@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -59,16 +59,16 @@
 
 class NMMODFRAMECORE_EXPORT NMImageReader : public NMProcess
 {
-	Q_OBJECT
-	Q_PROPERTY(QStringList FileNames READ getFileNames WRITE setFileNames)
+    Q_OBJECT
+    Q_PROPERTY(QStringList FileNames READ getFileNames WRITE setFileNames)
     Q_PROPERTY(QString RATType READ getRATType WRITE setRATType)
     Q_PROPERTY(bool DbRATReadOnly READ getDbRATReadOnly WRITE setDbRATReadOnly)
     Q_PROPERTY(QStringList RATEnum READ getRATEnum)
     Q_PROPERTY(bool RGBMode READ getRGBMode WRITE setRGBMode)
     Q_PROPERTY(QList<QStringList> BandList READ getBandList WRITE setBandList)
 
-#ifdef BUILD_RASSUPPORT	
-	Q_PROPERTY(NMRasdamanConnectorWrapper* RasConnector READ getRasConnector WRITE setRasConnector)
+#ifdef BUILD_RASSUPPORT
+    Q_PROPERTY(NMRasdamanConnectorWrapper* RasConnector READ getRasConnector WRITE setRasConnector)
 #endif
 
 public:
@@ -85,46 +85,46 @@ public:
 //#endif
 
 signals:
-	void FileNamesChanged(QStringList);
+    void FileNamesChanged(QStringList);
 
-#ifdef BUILD_RASSUPPORT	
-	void RasConnectorChanged(NMRasdamanConnectorWrapper*);
+#ifdef BUILD_RASSUPPORT
+    void RasConnectorChanged(NMRasdamanConnectorWrapper*);
 #endif
 
 public:
 
-	NMImageReader(QObject *parent=0);
-	virtual ~NMImageReader();
+    NMImageReader(QObject *parent=0);
+    virtual ~NMImageReader();
 
-	void setNthInput(unsigned int numInput,
-			QSharedPointer<NMItkDataObjectWrapper> img);//,
+    void setNthInput(unsigned int numInput,
+            QSharedPointer<NMItkDataObjectWrapper> img, const QString& name);//,
 
-	// get the associated raster attribute table
-	otb::AttributeTable::Pointer getRasterAttributeTable(int band);
+    // get the associated raster attribute table
+    otb::AttributeTable::Pointer getRasterAttributeTable(int band);
 
-	// get the ITK Image Base
-	itk::DataObject* getItkImage(void);
-	QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
+    // get the ITK Image Base
+    itk::DataObject* getItkImage(void);
+    QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 
     // file name getter and setter
-	void setFileName(QString filename);
-	QString getFileName(void);
+    void setFileName(QString filename);
+    QString getFileName(void);
 
     // enable the RGB mode, i.e. in case we've got 3 bands
     // they're going to be interpreted as RGBPixel
 
 
-#ifdef BUILD_RASSUPPORT	
+#ifdef BUILD_RASSUPPORT
     void setRasConnector(NMRasdamanConnectorWrapper* rw);
     NMRasdamanConnectorWrapper* getRasConnector(void);
 
     void setRasdamanConnector(RasdamanConnector * rasconn);
 #endif
-	// initialise the reader: this will probe the given
-	// image file,  and set up the first part of the image pipeline
+    // initialise the reader: this will probe the given
+    // image file,  and set up the first part of the image pipeline
 
-	const otb::ImageIOBase* getImageIOBase();
-	void getBBox(double bbox[6]);
+    const otb::ImageIOBase* getImageIOBase();
+    void getBBox(double bbox[6]);
 
     void getSignedSpacing(double signedspacing[3]);
     void getOrigin(double origin[3]);
@@ -146,7 +146,7 @@ public:
     void setBandMap(std::vector<int> map);
 
     bool isRasMode(void) {return this->mbRasMode;}
-	void instantiateObject(void);
+    void instantiateObject(void);
 
     void setOverviewIdx(int ovvidx, const int* userLPR);
     void setRequestedRegion(itk::ImageIORegion& ior);
@@ -155,26 +155,26 @@ public:
     int getZSliceIdx(){return mZSliceIdx;}
 
 protected:
-	void UpdateProgressInfo(itk::Object* obj,
-			const itk::EventObject& event);
+    void UpdateProgressInfo(itk::Object* obj,
+            const itk::EventObject& event);
 
-	typedef itk::MemberCommand<NMImageReader> ReaderObserverType;
+    typedef itk::MemberCommand<NMImageReader> ReaderObserverType;
 
 private:
 
-	bool initialise();
-	void linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
+    bool initialise();
+    void linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
     void setInternalRATType(void);
     void setInternalDbRATReadOnly(void);
 
-	QString mFileName;
-	QStringList mFileNames;
+    QString mFileName;
+    QStringList mFileNames;
 
 #ifdef BUILD_RASSUPPORT
-	NMRasdamanConnectorWrapper* mRasConnector;
-	RasdamanConnector * mRasconn;
+    NMRasdamanConnectorWrapper* mRasConnector;
+    RasdamanConnector * mRasconn;
 #endif
-	bool mbRasMode;
+    bool mbRasMode;
 
     // support vector / RGB display
     QList<QStringList> mBandList;
@@ -190,10 +190,10 @@ private:
 
     otb::ImageIOBase::Pointer mItkImgIOBase;
 
-	/** NMImageReader needs its own input parameter position indicator,
-	 *  since it doesn't use the input components' path
-	 */
-	//unsigned int mFilePos;
+    /** NMImageReader needs its own input parameter position indicator,
+     *  since it doesn't use the input components' path
+     */
+    //unsigned int mFilePos;
 };
 
 #endif /* NMImageReader_H_ */

@@ -41,11 +41,11 @@ class NMVirtualStreamWriter_Internal;
 
 class
 NMVirtualStreamWriter
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
-    
+
     Q_PROPERTY(int StreamingSize READ getStreamingSize WRITE setStreamingSize)
     Q_PROPERTY(QString StreamingMethodType READ getStreamingMethodType WRITE setStreamingMethodType)
     Q_PROPERTY(QStringList StreamingMethodEnum READ getStreamingMethodEnum)
@@ -53,7 +53,7 @@ NMVirtualStreamWriter
 
 public:
 
-    
+
     NMPropertyGetSet( StreamingSize, int )
     NMPropertyGetSet( StreamingMethodType, QString )
     NMPropertyGetSet( StreamingMethodEnum, QStringList)
@@ -70,20 +70,20 @@ public:
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     QSharedPointer<NMItkDataObjectWrapper> getRAT(unsigned int idx);
 
 
-    void setRAT(unsigned int idx, 
+    void setRAT(unsigned int idx,
         QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
-    
+
     int mStreamingSize;
     QString mStreamingMethodType;
     QStringList mStreamingMethodEnum;

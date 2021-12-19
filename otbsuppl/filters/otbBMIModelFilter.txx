@@ -126,20 +126,40 @@ BMIModelFilter<TInputImage, TOutputImage>
     // set the number of outputs produced by
     // the configured BMI module
     const int outitems = this->m_BMIModule->GetOutputItemCount();
-    if (outitems < 1 || outitems != this->m_BMIModule->GetOutputVarNames().size())
+    std::vector<std::string> outnames = this->m_BMIModule->GetOutputVarNames();
+    if (outitems < 1 || outitems != outnames.size())
     {
-        NMProcErr(<< "The number output items does not match the number of "
+        NMProcErr(<< "The number of output items does not match the number of "
                   << "output variables names!");
     }
+    this->SetOutputNames(outnames);
 
-    this->SetNumberOfIndexedOutputs(outitems);
-    for (int oid=1; oid < outitems; ++oid)
+    for (int oid=0; oid < outitems; ++oid)
     {
-        this->SetNthOutput(oid, this->MakeOutput(oid));
+        if (oid >= this->GetNumberOfIndexedOutputs())
+        {
+            this->SetNthOutput(oid, this->MakeOutput(oid));
+        }
     }
     this->Modified();
 }
 
+
+template <class TInputImage, class TOutputImage>
+TOutputImage* BMIModelFilter<TInputImage, TOutputImage>
+::GetOutputByName(const std::string &name)
+{
+    OutputImageType* img = nullptr;
+    for (int n=0; n < this->m_OutputNames.size(); ++n)
+    {
+        if (m_OutputNames[n].compare(name) == 0)
+        {
+            img = this->GetOutput(n);
+            break;
+        }
+    }
+    return img;
+}
 
 template <class TInputImage, class TOutputImage>
 void
@@ -322,7 +342,7 @@ void BMIModelFilter<TInputImage, TOutputImage>
 ::GenerateData(void)
 {
     this->AllocateOutputs();
-    
+
     ///TOOD: multi-threaded implementation
     /*
     if (this->m_IsThreadable)

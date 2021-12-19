@@ -49,9 +49,10 @@ public:
     NMDataRefComponent(QObject* parent=0);
     virtual ~NMDataRefComponent(void);
 
-    virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg);
-    virtual void linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
+    virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg, const QString& name="");
     virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
+    virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(const QString& name);
+    virtual void linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
     virtual void update(const QMap<QString, NMModelComponent*>& repo);
     virtual void reset(void);
 
@@ -64,13 +65,13 @@ protected:
 
     long long mTabMinPK;
     unsigned int mParamPos;
-	bool mbLinked;
+    bool mbLinked;
 
     QDateTime mSourceMTime;
     QString mLastInputCompName;
-	QString mInputCompName;
-	unsigned int mInputOutputIdx;
-	unsigned int mLastInputOutputIdx;
+    QString mInputCompName;
+    unsigned int mInputOutputIdx;
+    unsigned int mLastInputOutputIdx;
 
     virtual QVariant getModelParameter(const QString &paramSpec);
 
@@ -79,7 +80,7 @@ protected:
     void updateDataSource(void);
 
 private:
-	static const std::string ctx;
+    static const std::string ctx;
 
 };
 

@@ -90,7 +90,10 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
     this->SetNumberOfIndexedOutputs(2);
 
-    this->SetNthOutput(1, MakeOutput(1));
+    itk::DataObject::Pointer auxTab = MakeOutput(1);
+
+    this->SetOutput("AuxTab", auxTab);
+    this->SetNthOutput(1, auxTab);
 }
 
 template <class TInputImage, class TOutputImage>
@@ -976,7 +979,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 }
 
 template <class TInputImage, class TOutputImage>
-void 
+void
 NMScriptableKernelFilter2<TInputImage, TOutputImage>
 ::GenerateInputRequestedRegion() throw ()
 {
@@ -1531,19 +1534,19 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     }
     os << std::endl;
 
-	if (m_mapNameAuxValue.size() > 0)
-	{
-		os << indent << "Tables: ";
+    if (m_mapNameAuxValue.size() > 0)
+    {
+        os << indent << "Tables: ";
         std::map<std::string, ParserValue>::const_iterator auxIt =
-				m_mapNameAuxValue.at(0).begin();
+                m_mapNameAuxValue.at(0).begin();
 
-		while (auxIt != m_mapNameAuxValue.at(0).end())
-		{
-			os << auxIt->first << " ";
-			++auxIt;
-		}
-		os << std::endl;
-	}
+        while (auxIt != m_mapNameAuxValue.at(0).end())
+        {
+            os << auxIt->first << " ";
+            ++auxIt;
+        }
+        os << std::endl;
+    }
 
 }
 

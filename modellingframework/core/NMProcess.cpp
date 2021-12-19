@@ -57,6 +57,14 @@ NMProcess::NMProcess(QObject *parent)
     this->mStepIndex = 0;
     this->mObserver = 0;
     this->mAuxDataIdx = -1;
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("InputPixelType"));
+    mUserProperties.insert(QStringLiteral("NMOutputComponentType"), QStringLiteral("OutputPixelType"));
+    mUserProperties.insert(QStringLiteral("InputNumDimensions"), QStringLiteral("NumInputDimensions"));
+    mUserProperties.insert(QStringLiteral("OutputNumDimensions"), QStringLiteral("NumOutputDimensions"));
+    mUserProperties.insert(QStringLiteral("InputNumBands"), QStringLiteral("NumInputBands"));
+    mUserProperties.insert(QStringLiteral("OutputNumBands"), QStringLiteral("NumOutputBands"));
 }
 
 NMProcess::~NMProcess()
@@ -141,6 +149,26 @@ NMProcess::linkInPipeline(unsigned int step,
     this->mbLinked = true;
 
     NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
+}
+
+QString
+NMProcess::mapDisplayToPropertyName(const QString& propName)
+{
+    QString ret = propName;
+    if (mUserProperties.values().contains(propName))
+    {
+        QMap<QString, QString>::const_iterator kit = mUserProperties.cbegin();
+        while (kit != mUserProperties.cend())
+        {
+            if (kit.value().compare(propName, Qt::CaseInsensitive) == 0)
+            {
+                ret = kit.key();
+                break;
+            }
+            ++kit;
+        }
+    }
+    return ret;
 }
 
 void
@@ -308,6 +336,68 @@ NMProcess::getParameter(const QString& property)
     return ret;
 }
 
+//void NMProcess::setInputName(unsigned int idx, const QString &name)
+//{
+//    if (idx < mInputNames.size())
+//    {
+//        mInputNames[idx] = name;
+//    }
+//    else
+//    {
+//        for (unsigned int i=mInputNames.size(); i <= idx; ++i)
+//        {
+//            mInputNames.push_back(QString("img_%1").arg(idx));
+//        }
+//        mInputNames.push_back(name);
+//    }
+//}
+
+//void NMProcess::setOutputName(unsigned int idx, const QString &name)
+//{
+//    if (idx < mOutputNames.size())
+//    {
+//        mOutputNames[idx] = name;
+//    }
+//    else
+//    {
+//        for (unsigned int i=mOutputNames.size(); i <= idx; ++i)
+//        {
+//            mOutputNames.push_back(QString("img_%1").arg(idx));
+//        }
+//        mOutputNames.push_back(name);
+//    }
+//}
+
+QStringList
+NMProcess::getInputNames(void)
+{
+    QStringList ret;
+    if (this->mOtbProcess.IsNotNull())
+    {
+        std::vector<std::string> inputnames = this->mOtbProcess->GetInputNames();
+        for (int s=0; s < inputnames.size(); ++s)
+        {
+            ret << inputnames[s].c_str();
+        }
+    }
+    return ret;
+}
+
+QStringList
+NMProcess::getOutputNames(void)
+{
+    QStringList ret;
+    if (this->mOtbProcess.IsNotNull())
+    {
+        std::vector<std::string> outnames = this->mOtbProcess->GetOutputNames();
+        for (int s=0; s < outnames.size(); ++s)
+        {
+            ret << outnames[s].c_str();
+        }
+    }
+    return ret;
+}
+
 void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 {
     NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
@@ -346,6 +436,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
         {
             // (re-)set default ouput index of input component
             outIdx = 0;
+            QString outName;
             // parse the input source string
             inputSrc = this->mInputComponents.at(step).at(
                     ii);
@@ -356,8 +447,10 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                 outIdx = inputSrcParams.at(1).toInt(&bOK);
                 if (!bOK)
                 {
-                    NMLogError(<< ctxNMProcess << ": failed to interpret input source parameter"
-                            << "'" << inputSrc.toStdString() << "'");
+                    //NMLogError(<< ctxNMProcess << ": failed to interpret input source parameter"
+                    //        << "'" << inputSrc.toStdString() << "'");
+                    outName = inputSrcParams.at(1);
+                    outIdx = -1;
                 }
             }
 
@@ -368,6 +461,15 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
             {
                 NMModelComponent*& ic =
                         const_cast<NMModelComponent*&>(it.value());
+
+                // assign a name to the 'output impage', if the user didn't provide
+                // a name as part of the imagespec, use the UserID as the default
+                // name being provided to the downstream component
+                if (outName.isEmpty())
+                {
+                    outName = ic->getUserID();
+                }
+
 
                 // double check, whether the input is meant to be linked in as input for this run
                 NMSequentialIterComponent* seqComp = qobject_cast<NMSequentialIterComponent*>(it.value());
@@ -392,7 +494,16 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                           << ic->objectName().toStdString()
                           << "[" << outIdx << "] ... " << std::endl);
 
-                QSharedPointer<NMItkDataObjectWrapper> iw = ic->getOutput(outIdx);
+                QSharedPointer<NMItkDataObjectWrapper> iw;
+                if (outIdx >= 0)
+                {
+                    iw = ic->getOutput(outIdx);
+                }
+                else
+                {
+                    iw = ic->getOutput(outName);
+                }
+
                 bool bInvalidOutput = true;
                 stringstream ss;
                 ss << ic->objectName().toStdString() << "::getOutput("
@@ -405,7 +516,11 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                 {
                     if (iw->getDataObject() != 0)
                     {
-                        this->setNthInput(ii, iw);
+                        if (outName.isEmpty())
+                        {
+                            outName = ic->objectName();
+                        }
+                        this->setNthInput(ii, iw, outName);
                         bInvalidOutput = false;
                         NMDebugAI(<< "input #" << ii << ": " << inputSrc.toStdString()
                                   << " (DataObject)" << std::endl);

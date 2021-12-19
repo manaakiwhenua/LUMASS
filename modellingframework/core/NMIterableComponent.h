@@ -201,9 +201,12 @@ public:
 
     virtual QVariant getModelParameter(const QString& paramSpec);
 
-    virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg);
+    virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg, const QString& name="");
 
     virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
+    virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(const QString& name);
+
+    QStringList getOutputNames(void);
 
     virtual void changeTimeLevel(int diff);
     virtual void setProcess(NMProcess* proc);

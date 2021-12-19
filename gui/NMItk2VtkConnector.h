@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -44,35 +44,36 @@ class NMLogger;
 
 class NMItk2VtkConnector : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 public:
 
-	NMItk2VtkConnector(QObject* parent=0);
-	virtual ~NMItk2VtkConnector();
+    NMItk2VtkConnector(QObject* parent=0);
+    virtual ~NMItk2VtkConnector();
 
-	void setNthInput(unsigned int numInput, QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+    void setNthInput(unsigned int numInput, QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name="");
+    QSharedPointer<NMItkDataObjectWrapper> getOutput(const QString& name);
     QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 
-	vtkImageData *getVtkImage(void);
-	vtkAlgorithmOutput *getVtkAlgorithmOutput(void);
+    vtkImageData *getVtkImage(void);
+    vtkAlgorithmOutput *getVtkAlgorithmOutput(void);
 
     NMVtkImageImport* getVtkImageImport(void);
 
     bool isConnected(void)
         {return this->mbIsConnected;}
 
-	void instantiateObject(void);
+    void instantiateObject(void);
 
     void updateInput(QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
     void update(void);
 
 private:
-	NMItk2VtkConnector & operator=(const NMItk2VtkConnector&);
+    NMItk2VtkConnector & operator=(const NMItk2VtkConnector&);
 
-	vtkSmartPointer<NMVtkImageImport> mVtkImgImp;
-	vtkSmartPointer<vtkImageChangeInformation> mVtkImgChangeInfo;
-	itk::VTKImageExportBase::Pointer mVtkImgExp;
+    vtkSmartPointer<NMVtkImageImport> mVtkImgImp;
+    vtkSmartPointer<vtkImageChangeInformation> mVtkImgChangeInfo;
+    itk::VTKImageExportBase::Pointer mVtkImgExp;
 
     NMLogger* mLogger;
     bool mbIsConnected;

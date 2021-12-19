@@ -38,20 +38,20 @@ template<class TInputImage, class TOutputImage, unsigned int Dimension>
 class NMItkCastImageFilterWrapper_Internal
 {
 public:
-	typedef otb::Image<TInputImage, Dimension> InImgType;
-	typedef otb::Image<TOutputImage, Dimension> OutImgType;
-	typedef typename itk::CastImageFilter<InImgType, OutImgType> FilterType;
-	typedef typename FilterType::Pointer FilterTypePointer;
+    typedef otb::Image<TInputImage, Dimension> InImgType;
+    typedef otb::Image<TOutputImage, Dimension> OutImgType;
+    typedef typename itk::CastImageFilter<InImgType, OutImgType> FilterType;
+    typedef typename FilterType::Pointer FilterTypePointer;
 
-	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands)
-	{
-		FilterTypePointer f = FilterType::New();
-		otbFilter = f;
-	}
+    static void createInstance(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands)
+    {
+        FilterTypePointer f = FilterType::New();
+        otbFilter = f;
+    }
 
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
+                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
         InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
@@ -59,12 +59,12 @@ public:
     }
 
 
-	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, unsigned int idx)
-	{
-		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
-	}
+    static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands, unsigned int idx)
+    {
+        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
+    }
 
 /*$<InternalRATGetSupport>$*/
 
@@ -72,24 +72,24 @@ public:
 
 
     static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, NMProcess* proc,
-			unsigned int step, const QMap<QString, NMModelComponent*>& repo)
-	{
-		NMDebugCtx("NMItkCastImageFilterWrapper_Internal", << "...");
+            unsigned int numBands, NMProcess* proc,
+            unsigned int step, const QMap<QString, NMModelComponent*>& repo)
+    {
+        NMDebugCtx("NMItkCastImageFilterWrapper_Internal", << "...");
 
-		FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		NMItkCastImageFilterWrapper* p =
-				dynamic_cast<NMItkCastImageFilterWrapper*>(proc);
+        FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        NMItkCastImageFilterWrapper* p =
+                dynamic_cast<NMItkCastImageFilterWrapper*>(proc);
 
-		// make sure we've got a valid filter object
-		if (f == 0)
-		{
-			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        // make sure we've got a valid filter object
+        if (f == 0)
+        {
+            NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
             e.setSource(p->parent()->objectName().toStdString());
-			e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
-			throw e;
-			return;
-		}
+            e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
+            throw e;
+            return;
+        }
 
         QString inputTypeStr = QString("nm:InputComponentType=\"%1\"")
                 .arg(NMItkDataObjectWrapper::getComponentTypeString(p->getInputNMComponentType()));
@@ -100,12 +100,12 @@ public:
         p->addRunTimeParaProvN(outputTypeStr);
 
 
-		/* do something reasonable here */
-		bool bok;
-		int givenStep = step;
+        /* do something reasonable here */
+        bool bok;
+        int givenStep = step;
 
-		NMDebugCtx("NMItkCastImageFilterWrapper_Internal", << "done!");
-	}
+        NMDebugCtx("NMItkCastImageFilterWrapper_Internal", << "done!");
+    }
 };
 
 template class NMItkCastImageFilterWrapper_Internal<unsigned char, unsigned char, 1>;
@@ -422,6 +422,13 @@ NMItkCastImageFilterWrapper
     this->setParent(parent);
     this->setObjectName("NMItkCastImageFilterWrapper");
     this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->mInputNumBands = 1;
+    this->mOutputNumBands = 1;
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("InputPixelType"));
+    mUserProperties.insert(QStringLiteral("NMOutputComponentType"), QStringLiteral("OutputPixelType"));
+    mUserProperties.insert(QStringLiteral("OutputNumDimensions"), QStringLiteral("NumDimensions"));
 }
 
 NMItkCastImageFilterWrapper

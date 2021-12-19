@@ -55,15 +55,15 @@ public:
     typedef typename OutImgType::PointValueType   OutPointValueType;
     typedef typename OutImgType::SizeValueType    SizeValueType;
 
-	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands)
-	{
-		FilterTypePointer f = FilterType::New();
-		otbFilter = f;
-	}
+    static void createInstance(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands)
+    {
+        FilterTypePointer f = FilterType::New();
+        otbFilter = f;
+    }
 
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
+                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
         InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
@@ -71,15 +71,15 @@ public:
     }
 
 
-	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, unsigned int idx)
-	{
-		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
-	}
+    static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands, unsigned int idx)
+    {
+        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
+    }
 
     static otb::AttributeTable::Pointer getRAT(
-        itk::ProcessObject::Pointer& procObj, 
+        itk::ProcessObject::Pointer& procObj,
         unsigned int numBands, unsigned int idx)
     {
         FilterType *f = dynamic_cast<FilterType*>(procObj.GetPointer());
@@ -88,7 +88,7 @@ public:
 
 
     static void setRAT(
-        itk::ProcessObject::Pointer& procObj, 
+        itk::ProcessObject::Pointer& procObj,
         unsigned int numBands, unsigned int idx,
         otb::AttributeTable::Pointer& rat)
     {
@@ -99,28 +99,28 @@ public:
 
 
     static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, NMProcess* proc,
-			unsigned int step, const QMap<QString, NMModelComponent*>& repo)
-	{
-		NMDebugCtx("NMUniqueCombinationFilterWrapper_Internal", << "...");
+            unsigned int numBands, NMProcess* proc,
+            unsigned int step, const QMap<QString, NMModelComponent*>& repo)
+    {
+        NMDebugCtx("NMUniqueCombinationFilterWrapper_Internal", << "...");
 
-		FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		NMUniqueCombinationFilterWrapper* p =
-				dynamic_cast<NMUniqueCombinationFilterWrapper*>(proc);
+        FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        NMUniqueCombinationFilterWrapper* p =
+                dynamic_cast<NMUniqueCombinationFilterWrapper*>(proc);
 
-		// make sure we've got a valid filter object
-		if (f == 0)
-		{
-			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        // make sure we've got a valid filter object
+        if (f == 0)
+        {
+            NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
             e.setSource(p->parent()->objectName().toStdString());
-			e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
-			throw e;
-			return;
-		}
+            e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
+            throw e;
+            return;
+        }
 
-		/* do something reasonable here */
-		bool bok;
-		int givenStep = step;
+        /* do something reasonable here */
+        bool bok;
+        int givenStep = step;
 
 
         QVariant curOutputImgFileNameVar = p->getParameter("OutputImageFileName");
@@ -164,46 +164,46 @@ public:
         }
 
 
-	    step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());				
-	    std::vector<std::string> userIDs;                                                                       
-	    QStringList currentInputs;                                                                              
-	    if (step < p->mInputComponents.size())                                                                  
-	    {                                                                                                       
-		    currentInputs = p->mInputComponents.at(step);                                                   
-		    int cnt=0;                                                                                      
-		    foreach (const QString& input, currentInputs)                                                   
-		    {                                                                                               
-		        std::stringstream uid;                                                                      
-		        uid << "L" << cnt;                                                                          
+        step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());
+        std::vector<std::string> userIDs;
+        QStringList currentInputs;
+        if (step < p->mInputComponents.size())
+        {
+            currentInputs = p->mInputComponents.at(step);
+            int cnt=0;
+            foreach (const QString& input, currentInputs)
+            {
+                std::stringstream uid;
+                uid << "L" << cnt;
                 QString inputCompName = p->getModelController()->getComponentNameFromInputSpec(input);
                 NMModelComponent* comp = p->getModelController()->getComponent(inputCompName);
                 QString curProvUID;
                 if (comp != 0)
-		        {                                                                                           
-			        if (comp->getUserID().isEmpty())                                                        
-			        {                                                                                       
+                {
+                    if (comp->getUserID().isEmpty())
+                    {
                         userIDs.push_back(uid.str());
                         curProvUID = uid.str().c_str();
-			        }                                                                                       
-			        else                                                                                    
-			        {                                                                                       
+                    }
+                    else
+                    {
                         userIDs.push_back(comp->getUserID().toStdString());
                         curProvUID = comp->getUserID().toStdString().c_str();
-			        }                                                                                       
-		        }                                                                                           
-		        else                                                                                        
-		        {                                                                                           
+                    }
+                }
+                else
+                {
                     userIDs.push_back(uid.str());
                     curProvUID = uid.str().c_str();
                 }
                 QString userIDProvN = QString("nm:InputUserID-%1=\"%2\"").arg(cnt).arg(curProvUID);
                 p->addRunTimeParaProvN(userIDProvN);
-		        ++cnt;                                                                                      
-		    }                                                                                               
-	    }                                                                                                       
-	    f->SetImageNames(userIDs);
-		NMDebugCtx("NMUniqueCombinationFilterWrapper_Internal", << "done!");
-	}
+                ++cnt;
+            }
+        }
+        f->SetImageNames(userIDs);
+        NMDebugCtx("NMUniqueCombinationFilterWrapper_Internal", << "done!");
+    }
 };
 
 template class NMUniqueCombinationFilterWrapper_Internal<unsigned char, unsigned char, 1>;
@@ -520,9 +520,18 @@ SetRATWrap( NMUniqueCombinationFilterWrapper, NMUniqueCombinationFilterWrapper_I
 NMUniqueCombinationFilterWrapper
 ::NMUniqueCombinationFilterWrapper(QObject* parent)
 {
-	this->setParent(parent);
-	this->setObjectName("NMUniqueCombinationFilterWrapper");
-	this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->setParent(parent);
+    this->setObjectName("NMUniqueCombinationFilterWrapper");
+    this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->mInputNumBands = 1;
+    this->mOutputNumBands = 1;
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("InputPixelType"));
+    mUserProperties.insert(QStringLiteral("NMOutputComponentType"), QStringLiteral("OutputPixelType"));
+    mUserProperties.insert(QStringLiteral("OutputNumDimensions"), QStringLiteral("NumDimensions"));
+    mUserProperties.insert(QStringLiteral("OutputImageFileName"), QStringLiteral("OutputImageFileName"));
+    mUserProperties.insert(QStringLiteral("InputNodata"), QStringLiteral("NodataValue"));
 }
 
 NMUniqueCombinationFilterWrapper

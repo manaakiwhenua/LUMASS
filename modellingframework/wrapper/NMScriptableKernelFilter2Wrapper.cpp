@@ -57,15 +57,15 @@ public:
     typedef typename OutImgType::PointValueType   OutPointValueType;
     typedef typename OutImgType::SizeValueType    SizeValueType;
 
-	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands)
-	{
-		FilterTypePointer f = FilterType::New();
-		otbFilter = f;
-	}
+    static void createInstance(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands)
+    {
+        FilterTypePointer f = FilterType::New();
+        otbFilter = f;
+    }
 
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
+                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
         //InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
@@ -74,17 +74,17 @@ public:
     }
 
 
-	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, unsigned int idx)
-	{
-		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
-	}
+    static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands, unsigned int idx)
+    {
+        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
+    }
 
 /*$<InternalRATGetSupport>$*/
 
     static void setRAT(
-        itk::ProcessObject::Pointer& procObj, 
+        itk::ProcessObject::Pointer& procObj,
         unsigned int numBands, unsigned int idx,
         otb::AttributeTable::Pointer& rat)
     {
@@ -95,28 +95,28 @@ public:
 
 
     static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, NMProcess* proc,
-			unsigned int step, const QMap<QString, NMModelComponent*>& repo)
-	{
-		NMDebugCtx("NMScriptableKernelFilter2Wrapper_Internal", << "...");
+            unsigned int numBands, NMProcess* proc,
+            unsigned int step, const QMap<QString, NMModelComponent*>& repo)
+    {
+        NMDebugCtx("NMScriptableKernelFilter2Wrapper_Internal", << "...");
 
-		FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		NMScriptableKernelFilter2Wrapper* p =
-				dynamic_cast<NMScriptableKernelFilter2Wrapper*>(proc);
+        FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        NMScriptableKernelFilter2Wrapper* p =
+                dynamic_cast<NMScriptableKernelFilter2Wrapper*>(proc);
 
-		// make sure we've got a valid filter object
-		if (f == 0)
-		{
-			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        // make sure we've got a valid filter object
+        if (f == 0)
+        {
+            NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
             e.setSource(p->parent()->objectName().toStdString());
-			e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
-			throw e;
-			return;
-		}
+            e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
+            throw e;
+            return;
+        }
 
-		/* do something reasonable here */
-		bool bok;
-		int givenStep = step;
+        /* do something reasonable here */
+        bool bok;
+        int givenStep = step;
 
         f->SetNumThreads(p->getNumThreads());
 
@@ -126,7 +126,7 @@ public:
         {
            std::vector<int> vecRadius;
            QStringList curValVarList = curRadiusVar.toStringList();
-           foreach(const QString& vStr, curValVarList) 
+           foreach(const QString& vStr, curValVarList)
            {
                 int curRadius = vStr.toInt(&bok);
                 if (bok)
@@ -216,41 +216,41 @@ public:
         }
 
 
-                
-	    step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());				
-	    std::vector<std::string> userIDs;                                                                       
+
+        step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());
+        std::vector<std::string> userIDs;
         QStringList currentInputs;
         QStringList inputNamesProvVal;
-	    if (step < p->mInputComponents.size())                                                                  
-	    {                                                                                                       
-		    currentInputs = p->mInputComponents.at(step);                                                   
-		    int cnt=0;                                                                                      
-		    foreach (const QString& input, currentInputs)                                                   
-		    {                                                                                               
-		        std::stringstream uid;                                                                      
-		        uid << "L" << cnt;                                                                          
+        if (step < p->mInputComponents.size())
+        {
+            currentInputs = p->mInputComponents.at(step);
+            int cnt=0;
+            foreach (const QString& input, currentInputs)
+            {
+                std::stringstream uid;
+                uid << "L" << cnt;
                 QString inputCompName = p->getModelController()->getComponentNameFromInputSpec(input);
                 NMModelComponent* comp = p->getModelController()->getComponent(inputCompName);
-		        if (comp != 0)                                                                              
-		        {                                                                                           
-			        if (comp->getUserID().isEmpty())                                                        
-			        {                                                                                       
-				        userIDs.push_back(uid.str());                                                   
-			        }                                                                                       
-			        else                                                                                    
-			        {                                                                                       
-				        userIDs.push_back(comp->getUserID().toStdString());                             
-			        }                                                                                       
-		        }                                                                                           
-		        else                                                                                        
-		        {                                                                                           
-			        userIDs.push_back(uid.str());                                                           
+                if (comp != 0)
+                {
+                    if (comp->getUserID().isEmpty())
+                    {
+                        userIDs.push_back(uid.str());
+                    }
+                    else
+                    {
+                        userIDs.push_back(comp->getUserID().toStdString());
+                    }
+                }
+                else
+                {
+                    userIDs.push_back(uid.str());
                 }
                 inputNamesProvVal << QString(userIDs.back().c_str());
-		        ++cnt;                                                                                      
-		    }                                                                                               
-	    }                                                                                                       
-	    f->SetInputNames(userIDs);
+                ++cnt;
+            }
+        }
+        f->SetInputNames(userIDs);
         QString inputNamesProvN = QString("nm:InputNames=\"%1\"").arg(inputNamesProvVal.join(' '));
         p->addRunTimeParaProvN(inputNamesProvN);
 
@@ -260,8 +260,8 @@ public:
 
 
 
-		NMDebugCtx("NMScriptableKernelFilter2Wrapper_Internal", << "done!");
-	}
+        NMDebugCtx("NMScriptableKernelFilter2Wrapper_Internal", << "done!");
+    }
 };
 
 template class NMScriptableKernelFilter2Wrapper_Internal<unsigned char, unsigned char, 1>;
@@ -577,15 +577,32 @@ SetRATWrap( NMScriptableKernelFilter2Wrapper, NMScriptableKernelFilter2Wrapper_I
 NMScriptableKernelFilter2Wrapper
 ::NMScriptableKernelFilter2Wrapper(QObject* parent)
 {
-	this->setParent(parent);
-	this->setObjectName("NMScriptableKernelFilter2Wrapper");
-	this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->setParent(parent);
+    this->setObjectName("NMScriptableKernelFilter2Wrapper");
+    this->mParameterHandling = NMProcess::NM_USE_UP;
 
     mKernelShapeType = QString(tr("RECTANGULAR"));
     mKernelShapeEnum.clear();
     mKernelShapeEnum << "RECTANGULAR" << "CIRCULAR";
     mNumThreads = QThread::idealThreadCount() < 0 ? (unsigned int)1 : (unsigned int)QThread::idealThreadCount();
     this->mAuxDataIdx = 1;
+    this->mInputNumBands = 1;
+    this->mOutputNumBands = 1;
+    this->mOutputNumDimensions = 2;
+    this->mInputComponentType = otb::ImageIOBase::FLOAT;
+    this->mOutputComponentType = otb::ImageIOBase::FLOAT;
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("InputPixelType"));
+    mUserProperties.insert(QStringLiteral("NMOutputComponentType"), QStringLiteral("OutputPixelType"));
+    mUserProperties.insert(QStringLiteral("OutputNumDimensions"), QStringLiteral("NumDimensions"));
+    mUserProperties.insert(QStringLiteral("Radius"), QStringLiteral("KernelRadius"));
+    mUserProperties.insert(QStringLiteral("KernelShapeType"), QStringLiteral("KernelShape"));
+    mUserProperties.insert(QStringLiteral("InitScript"), QStringLiteral("InitScript"));
+    mUserProperties.insert(QStringLiteral("KernelScript"), QStringLiteral("KernelScript"));
+    mUserProperties.insert(QStringLiteral("Nodata"), QStringLiteral("NodataValue"));
+    mUserProperties.insert(QStringLiteral("NumThreads"), QStringLiteral("NumThreads"));
+
 }
 
 NMScriptableKernelFilter2Wrapper

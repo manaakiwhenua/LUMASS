@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -37,7 +37,7 @@
 
 /**
   * class NMRATBandMathImageFilterWrapper
-  * 
+  *
   * NMRATBandMathImageFilterWrapper wraps the RATBandMathImageFilter, which
   * permits simple mathematical (and conditional) operations on
   * a single image band.
@@ -64,28 +64,28 @@
 
 class NMRATBANDMATHIMAGEFILTERWRAPPER_EXPORT NMRATBandMathImageFilterWrapper : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
-//	Q_PROPERTY(QList<QStringList> InputImgVarNames READ getInputImgVarNames WRITE setInputImgVarNames)
-	Q_PROPERTY(QList<QStringList> InputTables READ getInputTables WRITE setInputTables)
-	Q_PROPERTY(QList<QList<QStringList> > InputTableVarNames READ getInputTableVarNames WRITE setInputTableVarNames)
-	Q_PROPERTY(QStringList MapExpressions READ getMapExpressions WRITE setMapExpressions )
-	Q_PROPERTY(QStringList NumExpressions READ getNumExpressions WRITE setNumExpressions )
+    //Q_PROPERTY(QList<QStringList> InputImgVarNames READ getInputImgVarNames WRITE setInputImgVarNames)
+    Q_PROPERTY(QList<QStringList> InputTables READ getInputTables WRITE setInputTables)
+    Q_PROPERTY(QList<QStringList> UserOutputNames READ getUserOutputNames WRITE setUserOutputNames)
+    Q_PROPERTY(QStringList MapExpressions READ getMapExpressions WRITE setMapExpressions )
+    Q_PROPERTY(QStringList NumExpressions READ getNumExpressions WRITE setNumExpressions )
     Q_PROPERTY(bool UseTableColumnCache READ getUseTableColumnCache WRITE setUseTableColumnCache )
 
 public:
-//	NMPropertyGetSet( InputImgVarNames, QList<QStringList> )
+    // NMPropertyGetSet( InputImgVarNames, QList<QStringList> )
     NMPropertyGetSet( InputTables, QList<QStringList> )
-    NMPropertyGetSet( InputTableVarNames, QList<QList<QStringList> > )
+    NMPropertyGetSet( UserOutputNames, QList<QStringList> )
     NMPropertyGetSet( MapExpressions, QStringList )
     NMPropertyGetSet( NumExpressions, QStringList )
     NMPropertyGetSet( UseTableColumnCache, bool )
 
 signals:
 //	void InputImgVarNamesChanged(QList<QStringList>);
-	void InputTablesChanged(QList<QStringList>);
-	void InputTableVarNamesChanged(QList<QList<QStringList> > );
-	void MapExpressionsChanged(QStringList);
+    void InputTablesChanged(QList<QStringList>);
+    void OutputNamesChanged(QList<QStringList> );
+    void MapExpressionsChanged(QStringList);
 
 
 public:
@@ -93,13 +93,15 @@ public:
     ~NMRATBandMathImageFilterWrapper ( );
 
     QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
+    QSharedPointer<NMItkDataObjectWrapper> getOutput(const QString& name);
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-    		QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+            QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
     void setNthAttributeTable(unsigned int idx,
-    		otb::AttributeTable::Pointer table,
-    		std::vector<std::string> tableColumns);
+            otb::AttributeTable::Pointer table,
+            std::vector<std::string> tableColumns);
+    //void setOutputNames(const QStringList &names);
 
 protected:
 
@@ -108,13 +110,14 @@ protected:
     void setInternalNumExpression(unsigned int numExpr);
     void setInternalNthInputName(unsigned int idx, const QString& varName);
     void setInternalUseTableCache(bool useCache);
+    void setInternalOutputNames(const QStringList& outputNames);
 
     std::string ctx;
-    QList<QStringList> 		   mInputImgVarNames;
-    QList<QStringList> 		   mInputTables;
-    QList<QList<QStringList> > mInputTableVarNames;
-    QStringList 			   mMapExpressions;
-    QStringList				   mNumExpressions;
+    QList<QStringList>  mInputImgVarNames;
+    QList<QStringList> 	mInputTables;
+    QList<QStringList>  mUserOutputNames;
+    QStringList 		mMapExpressions;
+    QStringList			mNumExpressions;
     bool                mUseTableColumnCache;
 
 //    void setTableParams( const QMap<QString,

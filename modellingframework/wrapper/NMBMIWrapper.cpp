@@ -115,9 +115,13 @@ public:
     }
 
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-                            unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
+                            unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        if (!name.isEmpty())
+        {
+            filter->SetInput(name.toStdString(), dataObj);
+        }
         filter->SetNthInput(idx, dataObj);
     }
 
@@ -127,6 +131,14 @@ public:
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
         return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
     }
+
+    static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
+                                      unsigned int numBands, const QString& name)
+    {
+        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        return filter->GetOutputByName(name.toStdString());
+    }
+
 
     /*$<InternalRATGetSupport>$*/
 
@@ -203,6 +215,44 @@ public:
         f->SetInputNames(userIDs);
         QString inputNamesProvN = QString("nm:InputNames=\"%1\"").arg(inputNamesProvVal.join(' '));
         p->addRunTimeParaProvN(inputNamesProvN);
+        //p->initialiseBMILibrary();
+
+        //QVariant curOutputNamesVar = p->getParameter(QStringLiteral("OutputNames"));
+        //QStringList curOutputNames;
+        //if (curOutputNamesVar.isValid())
+        //{
+        //    curOutputNames = curOutputNamesVar.toString();
+        //    std::vector<std::string> voutnames;
+        //    foreach (const QString& oname, curOutputNames)
+        //    {
+        //        voutnames.push_back(oname.toStdString());
+        //    }
+        //    f->SetOutputNames(voutnames);
+        //
+        //    QString outputNamesProvN = QString("nm:OutputNames=\"%1\"").arg(curOutputNames.join(''));
+        //    p->addRunTimeParaProvN(outputNamesProvN);
+        //
+        //}
+
+        // pass on the wrapper object name, so the filter can fetch
+        // associated python modules from the global module map
+        f->SetWrapperName(p->objectName().toStdString());
+
+        // need to do this after initialisation, i.e.
+        // after the yaml config for the BMI model has
+        // been parsed
+        f->SetIsStreamable(p->mbIsStreamable);
+        f->SetIsThreadable(p->mbIsThreadable);
+
+        //if (p->mPtrBMILib.get() == nullptr)
+        //{
+        //    NMErr("NMBMIWrapper", << "BMI library initialisation failed!");
+        //    NMMfwException be(NMMfwException::NMProcess_UninitialisedProcessObject);
+        //    be.setDescription("BMI library initialisation failed!");
+        //    throw be;
+        //}
+        //f->SetBMIModule(p->mPtrBMILib);
+
         p->initialiseBMILibrary();
 
         // pass on the wrapper object name, so the filter can fetch
@@ -224,83 +274,16 @@ public:
         }
         f->SetBMIModule(p->mPtrBMILib);
 
-        // initialize the BMILibrary
-        //std::map<std::string, py::object>::iterator pyIt = lumass_python::ctrlPyObjects.find(p->objectName().toStdString());
-        //if (pyIt != lumass_python::ctrlPyObjects.end())
-        //{
-        //    bmi::PythonBMI* pybmi = static_cast<bmi::PythonBMI*>(p->mPtrBMILib.get());
-        //    if (pybmi == nullptr)
-        //    {
-        //        std::stringstream sse;
-        //        sse << "PythonBMI - reloading python module for '" << p->objectName().toStdString() << "' failed! "
-        //            << "I couldn't even get the PythonBMI object!";
-        //        NMMfwException be(NMMfwException::NMProcess_UninitialisedProcessObject);
-        //        be.setDescription(sse.str().c_str());
-        //        throw be;
-        //    }
-        //
-        //    std::string pyModuleName = pybmi->getPyModuleName();
-        //    try
-        //    {
-        //        py::module pymod = py::module::import(pyModuleName.c_str());
-        //        if (!pymod.is_none())
-        //        {
-        //            pymod.reload();
-        //        }
-        //
-        //        pyIt->second.dec_ref();
-        //        lumass_python::ctrlPyObjects.erase(pyIt);
-        //
-        //        std::string bmiclass = pybmi->getBMIClassName();
-        //        py::object model = pymod.attr(bmiclass.c_str())();
-        //        if (!model.is_none())
-        //        {
-        //            model.inc_ref();
-        //            lumass_python::ctrlPyObjects.insert(std::pair<std::string, py::object>(p->objectName().toStdString(), model));
-        //        }
-        //    }
-        //    catch(py::error_already_set& eas)
-        //    {
-        //        std::stringstream sse;
-        //        sse << "PythonBMI - reloading module '" << pyModuleName << "' failed! "
-        //              << eas.what();
-        //        NMMfwException be(NMMfwException::NMProcess_UninitialisedProcessObject);
-        //        be.setDescription(sse.str().c_str());
-        //        throw be;
-        //    }
-        //    catch(std::exception& se)
-        //    {
-        //        std::stringstream ssestr;
-        //        ssestr << "PythonBMI - reloading module '" << pyModuleName << "' failed! "
-        //              << se.what();
-        //        NMMfwException see(NMMfwException::NMProcess_UninitialisedProcessObject);
-        //        see.setDescription(ssestr.str().c_str());
-        //        throw see;
-        //    }
-        //}
-        //else
+        std::vector<std::string> voutnames = p->mPtrBMILib->GetOutputVarNames();
+        QStringList curOutNames;
+        for (int n=0; n < voutnames.size(); ++n)
         {
-            p->initialiseBMILibrary();
+            curOutNames << voutnames[n].c_str();
         }
+        //f->SetOutputNames(voutnames);
 
-        // pass on the wrapper object name, so the filter can fetch
-        // associated python modules from the global module map
-        f->SetWrapperName(p->objectName().toStdString());
-
-        // need to do this after initialisation, i.e.
-        // after the yaml config for the BMI model has
-        // been parsed
-        f->SetIsStreamable(p->mbIsStreamable);
-        f->SetIsThreadable(p->mbIsThreadable);
-
-        if (p->mPtrBMILib.get() == nullptr)
-        {
-            NMErr("NMBMIWrapper", << "BMI library initialisation failed!");
-            NMMfwException be(NMMfwException::NMProcess_UninitialisedProcessObject);
-            be.setDescription("BMI library initialisation failed!");
-            throw be;
-        }
-        f->SetBMIModule(p->mPtrBMILib);
+        QString outputNamesProvN = QString("nm:OutputNames=\"%1\"").arg(curOutNames.join(' '));
+        p->addRunTimeParaProvN(outputNamesProvN);
 
 
         NMDebugCtx("NMBMIWrapper_Internal", << "done!");
@@ -309,7 +292,9 @@ public:
 
 InstantiateObjectWrap( NMBMIWrapper, NMBMIWrapper_Internal )
 SetNthInputWrap( NMBMIWrapper, NMBMIWrapper_Internal )
+//stSetOutputNamesWrap( NMBMIWrapper, NMBMIWrapper_Internal )
 GetOutputWrap( NMBMIWrapper, NMBMIWrapper_Internal )
+GetOutputWrapByName( NMBMIWrapper, NMBMIWrapper_Internal )
 LinkInternalParametersWrap( NMBMIWrapper, NMBMIWrapper_Internal )
 /*$<RATGetSupportWrap>$*/
 /*$<RATSetSupportWrap>$*/
@@ -321,7 +306,15 @@ NMBMIWrapper
 {
     this->setParent(parent);
     this->setObjectName("NMBMIWrapper");
+    this->mInputNumBands = 1;
     this->mParameterHandling = NMProcess::NM_USE_UP;
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("InputPixelType"));
+    mUserProperties.insert(QStringLiteral("NMOutputComponentType"), QStringLiteral("OutputPixelType"));
+    mUserProperties.insert(QStringLiteral("OutputNumDimensions"), QStringLiteral("NumDimensions"));
+    //mUserProperties.insert(QStringLiteral("OutputNames"), QStringLiteral("OutputNames"));
+    mUserProperties.insert(QStringLiteral("YamlConfigFileName"), QStringLiteral("YamlConfigFileName"));
 }
 
 void NMBMIWrapper::bmilog(int ilevel, const char* msg)

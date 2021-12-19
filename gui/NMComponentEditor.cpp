@@ -40,6 +40,7 @@
 #include "NMProcess.h"
 #include "NMModelComponent.h"
 #include "NMDataComponent.h"
+#include "NMParameterTable.h"
 #include "NMIterableComponent.h"
 #include "NMConditionalIterComponent.h"
 #include "NMSequentialIterComponent.h"
@@ -261,14 +262,24 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
         // ------------------------------------------------------
         // PROCESSING proper NMModelComponent and subclasses' PROPERTIES
         // ------------------------------------------------------
+        NMParameterTable* pto = qobject_cast<NMParameterTable*>(comp);
+        QStringList ptoNoProps;
+        if (pto != nullptr)
+        {
+            ptoNoProps << "Description" << "Inputs" << "IsStreamable";
+        }
 
         const QMetaObject* meta = obj->metaObject();
         unsigned int nprop = meta->propertyCount();
         for (unsigned int p=0; p < nprop; ++p)
         {
             QMetaProperty property = meta->property(p);
-            if (QString(property.name()).endsWith("Enum"))
+            if (     QString(property.name()).endsWith("Enum")
+                 ||  ptoNoProps.contains(property.name())
+               )
+            {
                 continue;
+            }
             this->createPropertyEdit(property, obj);
         }
 
@@ -331,10 +342,16 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
         for (unsigned int p=0; p < nprop; ++p)
         {
             QMetaProperty property = procmeta->property(p);
-            if (QString(property.name()).endsWith("Enum")
-                || QString::fromLatin1("InputComponents").compare(QString(property.name())) == 0
-                || QString::fromLatin1("ParameterHandling").compare(QString(property.name())) == 0)
+            if (    QString(property.name()).endsWith("Enum")
+                 || QString::fromLatin1("InputComponents").compare(QString(property.name())) == 0
+                 || QString::fromLatin1("ParameterHandling").compare(QString(property.name())) == 0
+                 || (   proc->getUserProperty(property.name()).isEmpty()
+                     && QString(property.name()).compare(QStringLiteral("objectName")) != 0
+                    )
+               )
+            {
                 continue;
+            }
             this->createPropertyEdit(property, proc);
         }
     }
@@ -350,13 +367,25 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
     NMProcess* proc = qobject_cast<NMProcess*>(obj);
 
     QString propName = QString(property.name());
+    QString displayName = propName;
+
+    if (proc != nullptr)
+    {
+        displayName = proc->getUserProperty(propName);
+    }
 
     if (QString("objectName").compare(property.name()) == 0)
     {
         if (proc != 0)
-            propName = "ProcessName";
+        {
+            //propName = "ProcessName";
+            displayName = "ProcessName";
+        }
         else if (comp != 0)
-            propName = "ComponentName";
+        {
+            //propName = "ComponentName";
+            displayName = "ComponentName";
+        }
     }
     int propType = property.userType();
 
@@ -389,7 +418,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
     {
         propType = QVariant::Int;
         value = obj->property(property.name()).toInt(&bok);
-        prop = manager->addProperty(propType, propName);
+        prop = manager->addProperty(propType, displayName);
     }
     else if (QString("uchar").compare(property.typeName()) == 0 ||
             QString("uint").compare(property.typeName()) == 0 ||
@@ -399,7 +428,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
     {
         value = obj->property(property.name()).toInt(&bok);
         propType = value.type();
-        prop = manager->addProperty(propType, propName);
+        prop = manager->addProperty(propType, displayName);
         prop->setAttribute("minimum", 1);
         prop->setAttribute("maximum", std::numeric_limits<int>::max());
     }
@@ -407,7 +436,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
     {
         value = obj->property(property.name()).toDouble(&bok);
         propType = value.type();
-        prop = manager->addProperty(propType, propName);
+        prop = manager->addProperty(propType, displayName);
         prop->setAttribute("minimum", QVariant::fromValue(
                 (std::numeric_limits<float>::max()-1) * -1));
         prop->setAttribute("maximum", QVariant::fromValue(
@@ -417,7 +446,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
             .compare(property.typeName()) == 0)
     {
         propType = QtVariantPropertyManager::enumTypeId();
-        prop = manager->addProperty(propType, propName);
+        prop = manager->addProperty(propType, displayName);
         prop->setAttribute("enumNames", ctypes);
         QString curPropValStr = NMItkDataObjectWrapper::getComponentTypeString(
                 obj->property(property.name())
@@ -433,7 +462,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
     else if (QString("NMProcess::AdvanceParameter").compare(property.typeName()) == 0)
     {
         propType = QtVariantPropertyManager::enumTypeId();
-        prop = manager->addProperty(propType, propName);
+        prop = manager->addProperty(propType, displayName);
         prop->setAttribute("enumNames", parammodes);
         NMProcess::AdvanceParameter ap =
                 obj->property(property.name()).value<NMProcess::AdvanceParameter>();
@@ -450,7 +479,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
 
         propType = QVariant::Bool;
         value = QVariant(false);
-        prop = manager->addProperty(propType, propName);
+        prop = manager->addProperty(propType, displayName);
 
         if (this->mRasConn == 0)
         {
@@ -480,7 +509,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
         bracedList << QString(tr("}"));
 
         value = QVariant::fromValue(bracedList);
-        prop = manager->addProperty(QVariant::StringList, propName);
+        prop = manager->addProperty(QVariant::StringList, displayName);
         propToolTip = tr("QStringList");
     }
     else if (QString("QList<QStringList>").compare(property.typeName()) == 0)
@@ -509,7 +538,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
         bracedList << QString("}");
 
         value = QVariant::fromValue(bracedList);
-        prop = manager->addProperty(QVariant::StringList, propName);
+        prop = manager->addProperty(QVariant::StringList, displayName);
         propToolTip = tr("QList<QStringList>");
     }
     else if (QString("QList<QList<QStringList> >").compare(property.typeName()) == 0)
@@ -535,7 +564,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
         bracedList << QString("}");
 
         value = QVariant::fromValue(bracedList);
-        prop = manager->addProperty(QVariant::StringList, propName);
+        prop = manager->addProperty(QVariant::StringList, displayName);
         propToolTip = tr("QList<QList<QStringList> >");
     }
     else if (QString("QString").compare(property.typeName()) == 0
@@ -546,12 +575,13 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
                 != QVariant::Invalid)
     {
         // let's see whether we've got Type/Enum property pair
-        QString tname(property.name());
+        //QString tname(property.name());
+        QString tname(propName);
         QString enumProp = QString("%1Enum").arg(tname.left(tname.size()-4));
         QStringList typeList = obj->property(enumProp.toStdString().c_str()).toStringList();
 
         propType = QtVariantPropertyManager::enumTypeId();
-        prop = manager->addProperty(propType, propName);
+        prop = manager->addProperty(propType, displayName);
         prop->setAttribute("enumNames", typeList);
 
         QString stype = obj->property(property.name()).toString();
@@ -568,7 +598,17 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
     {
 //        NMDebug(<< "standard ");
         value = obj->property(property.name());
-        prop = manager->addProperty(propType, propName);
+        prop = manager->addProperty(propType, displayName);
+
+        NMParameterTable* pto = qobject_cast<NMParameterTable*>(obj);
+        if (    pto != nullptr
+             && (    QString("TableName").compare(property.name()) == 0
+                  || QString("FileName").compare(property.name()) == 0
+                )
+           )
+        {
+            prop->setEnabled(false);
+        }
     }
 
     // add property to browser and set value
@@ -627,21 +667,34 @@ void NMComponentEditor::applySettings(QtProperty* prop,
         return;
     }
 
-    NMModelComponent* comp = qobject_cast<NMModelComponent*>(mObj);
+    //NMModelComponent* comp = qobject_cast<NMModelComponent*>(mObj);
     NMIterableComponent* itComp = qobject_cast<NMIterableComponent*>(mObj);
-    NMProcess* proc = qobject_cast<NMProcess*>(mObj);
+    NMProcess* proc = nullptr;
+    if (itComp != nullptr && itComp->getProcess() != nullptr)
+    {
+        proc = itComp->getProcess();
+    }
+
+    QString propName = prop->propertyName();
+
+    // for NMProcess objects we need to look up the proper
+    // property name associated with the displayed name
+    if (proc != nullptr)
+    {
+        propName = proc->mapDisplayToPropertyName(propName);
+    }
 
     mUpdating = true;
-    if (mObj->property(prop->propertyName().toStdString().c_str()).isValid() ||
-        (prop->propertyName().compare("ComponentName")== 0))
+    if (mObj->property(propName.toStdString().c_str()).isValid() ||
+        (propName.compare("ComponentName")== 0))
     {
         this->setComponentProperty(prop, mObj);
     }
     else if (itComp != 0 && itComp->getProcess() != 0)
     {
         proc = itComp->getProcess();
-        if (proc->property(prop->propertyName().toStdString().c_str()).isValid() ||
-            (prop->propertyName().compare("ProcessName") == 0))
+        if (proc->property(propName.toStdString().c_str()).isValid() ||
+            (propName.compare("ProcessName") == 0))
         {
             this->setComponentProperty(prop, proc);
         }
@@ -683,16 +736,25 @@ void NMComponentEditor::setComponentProperty(const QtProperty* prop,
             << ") ... ");
 
     QVariant updatedValue;
+
     QString propName = prop->propertyName();
 
-    if (QString("ComponentName").compare(prop->propertyName()) == 0 ||
-        QString("ProcessName").compare(prop->propertyName()) == 0)
+    // if we set the property for an NMProcess object, we need  to
+    // identify the proper Property name first
+    NMProcess* proc = qobject_cast<NMProcess*>(obj);
+    if (proc != nullptr)
+    {
+        propName = proc->mapDisplayToPropertyName(propName);
+    }
+
+    if (QString("ComponentName").compare(propName) == 0 ||
+        QString("ProcessName").compare(propName) == 0)
     {
         propName = "objectName";
         updatedValue = value.toString();
     }
 #ifdef BUILD_RASSUPPORT
-    else if (QString("RasConnector").compare(prop->propertyName()) == 0)
+    else if (QString("RasConnector").compare(propName) == 0)
     {
         if (value.toBool())
         {
@@ -714,13 +776,13 @@ void NMComponentEditor::setComponentProperty(const QtProperty* prop,
     }
 #endif
     else if (QString("int").compare(value.typeName()) == 0 &&
-            prop->propertyName().contains("ComponentType"))
+            propName.contains("ComponentType"))
     {
         NMItkDataObjectWrapper::NMComponentType type =
                 NMItkDataObjectWrapper::getComponentTypeFromString(ctypes.at(value.toInt(&bok)));
         updatedValue = QVariant::fromValue(type);
     }
-    else if (QString("ParameterHandling").compare(prop->propertyName()) == 0)
+    else if (QString("ParameterHandling").compare(propName) == 0)
     {
         int v = value.toInt(&bok);
         NMProcess::AdvanceParameter ap;
@@ -790,7 +852,7 @@ void NMComponentEditor::setComponentProperty(const QtProperty* prop,
     // do some value checking and set the new value
     if (!updatedValue.isNull() && updatedValue.isValid())
     {
-        if (QString("Subcomponents").compare(prop->propertyName()) == 0 &&
+        if (QString("Subcomponents").compare(propName) == 0 &&
             QString("QStringList").compare(updatedValue.typeName()) == 0)
         {
             this->updateSubComponents(updatedValue.value<QStringList>());

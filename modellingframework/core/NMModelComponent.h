@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
+ /******************************************************************************
+ * Created by Alexander Herzig
  * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -67,27 +67,27 @@ class NMIterableComponent;
 
 class NMMODFRAMECORE_EXPORT NMModelComponent : public QObject, public NMModelObject
 {
-	Q_OBJECT
+    Q_OBJECT
     Q_PROPERTY(QString UserID READ getUserID WRITE setUserID)
-	Q_PROPERTY(QString Description READ getDescription WRITE setDescription)
-	Q_PROPERTY(short TimeLevel READ getTimeLevel WRITE setTimeLevel NOTIFY NMModelComponentChanged)
-	Q_PROPERTY(QList<QStringList> Inputs READ getInputs WRITE setInputs NOTIFY NMModelComponentChanged)
+    Q_PROPERTY(QString Description READ getDescription WRITE setDescription)
+    Q_PROPERTY(short TimeLevel READ getTimeLevel WRITE setTimeLevel NOTIFY NMModelComponentChanged)
+    Q_PROPERTY(QList<QStringList> Inputs READ getInputs WRITE setInputs NOTIFY NMModelComponentChanged)
 
 public:
-	NMPropertyGetSet(HostComponent, NMIterableComponent*);
+    NMPropertyGetSet(HostComponent, NMIterableComponent*);
     //NMPropertyGetSet(Description, QString);
 
 signals:
-	void NMModelComponentChanged();
+    void NMModelComponentChanged();
     void nmChanged();
     void TimeLevelChanged(short level);
-	void ComponentDescriptionChanged(const QString& descr);
+    void ComponentDescriptionChanged(const QString& descr);
     void ComponentUserIDChanged(const QString& oldID, const QString& newID);
 
 public:
     virtual ~NMModelComponent(void);
 
-	// common public interface with common behaviour for
+    // common public interface with common behaviour for
     // all model component classes
 
     /*! Follows and lists the process chain upstream
@@ -95,10 +95,10 @@ public:
      *  host an itk::Process object and hence cannot
      *  be 'piped' but has to be executed explicitly.  */
     void getUpstreamPipe(QList<QStringList>& hydra,
-    		QStringList& upstreamPipe, int step);
+            QStringList& upstreamPipe, int step);
 
     short getTimeLevel(void)
-    	{return this->mTimeLevel;}
+        {return this->mTimeLevel;}
     void setTimeLevel(short level);
     virtual void changeTimeLevel(int diff);
 
@@ -123,7 +123,7 @@ public:
 
     void setDescription(QString descr);
     QString getDescription()
-    	{return this->mDescription;}
+        {return this->mDescription;}
 
 
     void ProcessLogEvent(itk::Object* obj, const itk::EventObject& event);
@@ -134,28 +134,32 @@ public:
      *  very same doubly linked list as the
      *  component at hand */
     NMModelComponent* getDownstreamModelComponent(void)
-    	{return this->mDownComponent;}
+        {return this->mDownComponent;}
     NMModelComponent* getUpstreamModelComponent(void)
-    	{return this->mUpComponent;}
+        {return this->mUpComponent;}
 
     void setDownstreamModelComponent(NMModelComponent* comp)
-    	{this->mDownComponent = comp;}
+        {this->mDownComponent = comp;}
     void setUpstreamModelComponent(NMModelComponent* comp)
-    	{this->mUpComponent = comp;}
+        {this->mUpComponent = comp;}
 
-    void setInput(QSharedPointer<NMItkDataObjectWrapper> inputImg)
-        {this->setNthInput(0, inputImg);}
+    void setInput(QSharedPointer<NMItkDataObjectWrapper> inputImg, const QString& name="")
+        {this->setNthInput(0, inputImg, name);}
 
     // virtual functions, defining sub-class specific behaviour
     virtual void setInputs(const QList<QStringList>& inputs)
         {mInputs = inputs;}
     virtual const QList<QStringList> getInputs(void)
         {return mInputs;}
-    virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg)=0;//{};
+    virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg, const QString& name="")=0;//{};
     virtual void linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo)=0;//{};
     virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx)=0;//{return 0;};
+    virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(const QString& outName)=0;
     virtual void update(const QMap<QString, NMModelComponent*>& repo)=0;//{};
     virtual void reset(void){}
+
+    // returns empty list of strings as default
+    virtual QStringList getOutputNames(void);
 
     virtual void processUserID();
 

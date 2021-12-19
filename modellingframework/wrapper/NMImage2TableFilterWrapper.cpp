@@ -37,7 +37,8 @@
 /*! Internal templated helper class linking to the core otb/itk filter
  *  by static methods.
  */
-template<class TInputImage, class TOutputImage, unsigned int Dimension>
+//template<class TInputImage, class TOutputImage, unsigned int Dimension>
+template<class TInputImage, unsigned int Dimension>
 class NMImage2TableFilterWrapper_Internal
 {
 public:
@@ -64,7 +65,7 @@ public:
         }
 
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
+                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
         InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
@@ -262,19 +263,35 @@ public:
 
 /*$<HelperClassInstantiation>$*/
 
-InstantiateObjectWrap( NMImage2TableFilterWrapper, NMImage2TableFilterWrapper_Internal )
-SetNthInputWrap( NMImage2TableFilterWrapper, NMImage2TableFilterWrapper_Internal )
-GetOutputWrap( NMImage2TableFilterWrapper, NMImage2TableFilterWrapper_Internal )
-LinkInternalParametersWrap( NMImage2TableFilterWrapper, NMImage2TableFilterWrapper_Internal )
-GetRATWrap( NMImage2TableFilterWrapper, NMImage2TableFilterWrapper_Internal )
-SetRATWrap( NMImage2TableFilterWrapper, NMImage2TableFilterWrapper_Internal )
+InstantiateInputTypeObjectWrap( NMImage2TableFilterWrapper, NMImage2TableFilterWrapper_Internal )
+SetInputTypeNthInputWrap( NMImage2TableFilterWrapper, NMImage2TableFilterWrapper_Internal )
+GetInputTypeOutputWrap( NMImage2TableFilterWrapper, NMImage2TableFilterWrapper_Internal )
+LinkInputTypeInternalParametersWrap( NMImage2TableFilterWrapper, NMImage2TableFilterWrapper_Internal )
+GetInputTypeRATWrap( NMImage2TableFilterWrapper, NMImage2TableFilterWrapper_Internal )
+SetInputTypeRATWrap( NMImage2TableFilterWrapper, NMImage2TableFilterWrapper_Internal )
 
 NMImage2TableFilterWrapper
 ::NMImage2TableFilterWrapper(QObject* parent)
 {
-        this->setParent(parent);
-        this->setObjectName("NMImage2TableFilterWrapper");
-        this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->setParent(parent);
+    this->setObjectName("NMImage2TableFilterWrapper");
+    this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->mInputNumBands = 1;
+    this->mOutputNumBands = 1;
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("PixelType"));
+    mUserProperties.insert(QStringLiteral("InputNumDimensions"), QStringLiteral("NumDimensions"));
+    mUserProperties.insert(QStringLiteral("TableFileName"), QStringLiteral("TableFileName"));
+    mUserProperties.insert(QStringLiteral("TableName"), QStringLiteral("TableName"));
+    mUserProperties.insert(QStringLiteral("ImageVarName"), QStringLiteral("ImageVarName"));
+    mUserProperties.insert(QStringLiteral("UpdateMode"), QStringLiteral("UpdateMode"));
+    mUserProperties.insert(QStringLiteral("NcImageContainer"), QStringLiteral("NcImageContainer"));
+    mUserProperties.insert(QStringLiteral("NcGroupName"), QStringLiteral("NcGroupName"));
+    mUserProperties.insert(QStringLiteral("StartIndex"), QStringLiteral("StartIndex"));
+    mUserProperties.insert(QStringLiteral("Size"), QStringLiteral("Size"));
+    mUserProperties.insert(QStringLiteral("DimVarNames"), QStringLiteral("DimVarNames"));
+    mUserProperties.insert(QStringLiteral("AuxVarNames"), QStringLiteral("AuxVarNames"));
 }
 
 NMImage2TableFilterWrapper

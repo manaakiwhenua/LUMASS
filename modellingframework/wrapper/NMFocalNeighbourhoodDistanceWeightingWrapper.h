@@ -42,34 +42,34 @@ class NMFocalNeighbourhoodDistanceWeightingWrapper_Internal;
 
 class
 NMFOCALNEIGHBOURHOODDISTANCEWEIGHTINGWRAPPER_EXPORT NMFocalNeighbourhoodDistanceWeightingWrapper
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
-	Q_PROPERTY(QStringList RadiusList READ getRadiusList WRITE setRadiusList)
-	Q_PROPERTY(QList<QList<QStringList> > Weights READ getWeights WRITE setWeights)
-	Q_PROPERTY(QList<QStringList> Values READ getValues WRITE setValues)
+    Q_OBJECT
+    Q_PROPERTY(QStringList RadiusList READ getRadiusList WRITE setRadiusList)
+    Q_PROPERTY(QList<QList<QStringList> > Weights READ getWeights WRITE setWeights)
+    Q_PROPERTY(QList<QStringList> Values READ getValues WRITE setValues)
 
 public:
 
-	NMPropertyGetSet ( RadiusList, QStringList)
-	NMPropertyGetSet ( Weights, QList<QList<QStringList> >)
-	NMPropertyGetSet ( Values, QList<QStringList>)
+    NMPropertyGetSet ( RadiusList, QStringList)
+    NMPropertyGetSet ( Weights, QList<QList<QStringList> >)
+    NMPropertyGetSet ( Values, QList<QStringList>)
 
-	NMFocalNeighbourhoodDistanceWeightingWrapper(QObject* parent=0);
-	virtual ~NMFocalNeighbourhoodDistanceWeightingWrapper();
+    NMFocalNeighbourhoodDistanceWeightingWrapper(QObject* parent=0);
+    virtual ~NMFocalNeighbourhoodDistanceWeightingWrapper();
 
-	template<class InPixelType, class OutPixelType, unsigned int Dimension>
-	friend class NMFocalNeighbourhoodDistanceWeightingWrapper_Internal;
+    template<class InPixelType, class OutPixelType, unsigned int Dimension>
+    friend class NMFocalNeighbourhoodDistanceWeightingWrapper_Internal;
 
-	QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
-	void instantiateObject(void);
+    QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
+    void instantiateObject(void);
 
-	void setNthInput(unsigned int numInput,
-			QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+    void setNthInput(unsigned int numInput,
+            QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
     QStringList 				mRadiusList;
     QList<QList<QStringList> >  mWeights;

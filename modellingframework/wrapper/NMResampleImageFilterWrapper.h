@@ -41,11 +41,11 @@ class NMResampleImageFilterWrapper_Internal;
 
 class NMRESAMPLEIMAGEFILTERWRAPPER_EXPORT
 NMResampleImageFilterWrapper
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
-    
+
     Q_PROPERTY(QStringList InterpolationMethod READ getInterpolationMethod WRITE setInterpolationMethod)
     Q_PROPERTY(QStringList DefaultPixelValue READ getDefaultPixelValue WRITE setDefaultPixelValue)
     Q_PROPERTY(QList<QStringList> OutputSpacing READ getOutputSpacing WRITE setOutputSpacing)
@@ -54,7 +54,7 @@ NMResampleImageFilterWrapper
 
 public:
 
-    
+
     NMPropertyGetSet( InterpolationMethod, QStringList )
     NMPropertyGetSet( DefaultPixelValue, QStringList )
     NMPropertyGetSet( OutputSpacing, QList<QStringList> )
@@ -72,7 +72,7 @@ public:
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     /*$<RATGetSupportDecl>$*/
 
@@ -80,9 +80,9 @@ public:
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
-    
+
     QStringList mInterpolationMethod;
     QStringList mDefaultPixelValue;
     QList<QStringList> mOutputSpacing;

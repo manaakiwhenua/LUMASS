@@ -37,12 +37,12 @@
 /*! Internal templated helper class linking to the core otb/itk filter
  *  by static methods.
  */
-template<class TInputImage, class TOutputImage, unsigned int Dimension>
+template<class TInputImage, unsigned int Dimension>
 class NMDEMSlopeAspectFilterWrapper_Internal
 {
 public:
     typedef otb::Image<TInputImage, Dimension>  InImgType;
-    typedef otb::Image<TOutputImage, Dimension> OutImgType;
+    typedef otb::Image<TInputImage, Dimension> OutImgType;
     typedef typename otb::DEMSlopeAspectFilter<InImgType, OutImgType>      FilterType;
     typedef typename FilterType::Pointer        FilterTypePointer;
 
@@ -56,15 +56,15 @@ public:
     typedef typename OutImgType::PointValueType   OutPointValueType;
     typedef typename OutImgType::SizeValueType    SizeValueType;
 
-	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands)
-	{
-		FilterTypePointer f = FilterType::New();
-		otbFilter = f;
-	}
+    static void createInstance(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands)
+    {
+        FilterTypePointer f = FilterType::New();
+        otbFilter = f;
+    }
 
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
+                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
         //InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
@@ -72,12 +72,12 @@ public:
     }
 
 
-	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, unsigned int idx)
-	{
-		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
-	}
+    static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands, unsigned int idx)
+    {
+        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
+    }
 
 /*$<InternalRATGetSupport>$*/
 
@@ -85,29 +85,29 @@ public:
 
 
     static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, NMProcess* proc,
-			unsigned int step, const QMap<QString, NMModelComponent*>& repo)
-	{
-		NMDebugCtx("NMDEMSlopeAspectFilterWrapper_Internal", << "...");
+            unsigned int numBands, NMProcess* proc,
+            unsigned int step, const QMap<QString, NMModelComponent*>& repo)
+    {
+        NMDebugCtx("NMDEMSlopeAspectFilterWrapper_Internal", << "...");
 
-		FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		NMDEMSlopeAspectFilterWrapper* p =
-				dynamic_cast<NMDEMSlopeAspectFilterWrapper*>(proc);
+        FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        NMDEMSlopeAspectFilterWrapper* p =
+                dynamic_cast<NMDEMSlopeAspectFilterWrapper*>(proc);
 
-		// make sure we've got a valid filter object
-		if (f == 0)
-		{
-			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        // make sure we've got a valid filter object
+        if (f == 0)
+        {
+            NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
                         e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
-			throw e;
-			return;
-		}
+            throw e;
+            return;
+        }
 
-		/* do something reasonable here */
-		bool bok;
-		int givenStep = step;
+        /* do something reasonable here */
+        bool bok;
+        int givenStep = step;
 
-		
+
         QVariant curTerrainAttributeVar = p->getParameter("TerrainAttributeType");
         std::string curTerrainAttribute;
         if (curTerrainAttributeVar.isValid())
@@ -159,53 +159,53 @@ public:
         }
 
 
-	    step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());				
-	    std::vector<std::string> userIDs;                                                                       
+        step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());
+        std::vector<std::string> userIDs;
         QStringList currentInputs;
         QStringList userInputIDProvVal;
-	    if (step < p->mInputComponents.size())                                                                  
-	    {                                                                                                       
-		    currentInputs = p->mInputComponents.at(step);                                                   
+        if (step < p->mInputComponents.size())
+        {
+            currentInputs = p->mInputComponents.at(step);
             int cnt=0;
-		    foreach (const QString& input, currentInputs)                                                   
-		    {                                                                                               
-		        std::stringstream uid;                                                                      
-		        uid << "L" << cnt;                                                                          
+            foreach (const QString& input, currentInputs)
+            {
+                std::stringstream uid;
+                uid << "L" << cnt;
                 QString inputCompName = p->getModelController()->getComponentNameFromInputSpec(input);
                 NMModelComponent* comp = p->getModelController()->getComponent(inputCompName);
-		        if (comp != 0)                                                                              
-		        {                                                                                           
-			        if (comp->getUserID().isEmpty())                                                        
-			        {                                                                                       
-				        userIDs.push_back(uid.str());                                                   
-			        }                                                                                       
-			        else                                                                                    
-			        {                                                                                       
-				        userIDs.push_back(comp->getUserID().toStdString());                             
-			        }                                                                                       
-		        }                                                                                           
-		        else                                                                                        
-		        {                                                                                           
-			        userIDs.push_back(uid.str());                                                           
+                if (comp != 0)
+                {
+                    if (comp->getUserID().isEmpty())
+                    {
+                        userIDs.push_back(uid.str());
+                    }
+                    else
+                    {
+                        userIDs.push_back(comp->getUserID().toStdString());
+                    }
+                }
+                else
+                {
+                    userIDs.push_back(uid.str());
                 }
                 userInputIDProvVal << uid.str().c_str();
-		        ++cnt;                                                                                      
-		    }                                                                                               
-	    }                                                                                                       
-	    f->SetInputNames(userIDs);
+                ++cnt;
+            }
+        }
+        f->SetInputNames(userIDs);
         QString inputIDsProvN = QString("nm:InputUserIDs=\"%1\"").arg(userInputIDProvVal.join(' '));
         p->addRunTimeParaProvN(inputIDsProvN);
 
-		NMDebugCtx("NMDEMSlopeAspectFilterWrapper_Internal", << "done!");
-	}
+        NMDebugCtx("NMDEMSlopeAspectFilterWrapper_Internal", << "done!");
+    }
 };
 
 /*$<HelperClassInstantiation>$*/
 
-InstantiateObjectWrap( NMDEMSlopeAspectFilterWrapper, NMDEMSlopeAspectFilterWrapper_Internal )
-SetNthInputWrap( NMDEMSlopeAspectFilterWrapper, NMDEMSlopeAspectFilterWrapper_Internal )
-GetOutputWrap( NMDEMSlopeAspectFilterWrapper, NMDEMSlopeAspectFilterWrapper_Internal )
-LinkInternalParametersWrap( NMDEMSlopeAspectFilterWrapper, NMDEMSlopeAspectFilterWrapper_Internal )
+InstantiateInputTypeObjectWrap( NMDEMSlopeAspectFilterWrapper, NMDEMSlopeAspectFilterWrapper_Internal )
+SetInputTypeNthInputWrap( NMDEMSlopeAspectFilterWrapper, NMDEMSlopeAspectFilterWrapper_Internal )
+GetInputTypeOutputWrap( NMDEMSlopeAspectFilterWrapper, NMDEMSlopeAspectFilterWrapper_Internal )
+LinkInputTypeInternalParametersWrap( NMDEMSlopeAspectFilterWrapper, NMDEMSlopeAspectFilterWrapper_Internal )
 /*$<RATGetSupportWrap>$*/
 /*$<RATSetSupportWrap>$*/
 
@@ -227,6 +227,18 @@ NMDEMSlopeAspectFilterWrapper
     this->mTerrainAlgorithmEnum.clear();
     this->mTerrainAlgorithmEnum << "Horn" << "Zevenbergen";
     this->mTerrainAlgorithmType = QString(tr("Zevenbergen"));
+
+    this->mInputNumBands = 1;
+    this->mOutputNumBands = 1;
+    this->mInputNumDimensions = 2;
+    this->mOutputNumDimensions = 2;
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("PixelType"));
+    mUserProperties.insert(QStringLiteral("TerrainAttributeType"), QStringLiteral("Attribute"));
+    mUserProperties.insert(QStringLiteral("AttributeUnitType"), QStringLiteral("Unit"));
+    mUserProperties.insert(QStringLiteral("TerrainAlgorithmType"), QStringLiteral("Algorithm"));
+    mUserProperties.insert(QStringLiteral("Nodata"), QStringLiteral("NodataValue"));
 
 }
 

@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -40,12 +40,12 @@ template <class PixelType, unsigned int ImageDimension>
 class PipelineConnector
 {
 public:
-	typedef otb::Image< PixelType, ImageDimension > ImgType;
-	typedef itk::NMVTKImageExport< ImgType >	    ExporterType;
-	typedef typename ExporterType::Pointer	        ExporterTypePointer;
-	typedef typename ImgType::SpacingType			ImgSpacing;
-	typedef typename ImgType::PointType				ImgOrigin;
-	typedef typename ImgType::SizeType				ImgSize;
+    typedef otb::Image< PixelType, ImageDimension > ImgType;
+    typedef itk::NMVTKImageExport< ImgType >	    ExporterType;
+    typedef typename ExporterType::Pointer	        ExporterTypePointer;
+    typedef typename ImgType::SpacingType			ImgSpacing;
+    typedef typename ImgType::PointType				ImgOrigin;
+    typedef typename ImgType::SizeType				ImgSize;
 
     typedef itk::RGBPixel< PixelType >                  RGBPixelType;
     typedef otb::Image< RGBPixelType, ImageDimension >  RGBImgType;
@@ -73,35 +73,35 @@ public:
     }
 
     static void connectPipeline(
-			itk::VTKImageExportBase::Pointer& vtkImgExp,
-			vtkSmartPointer<NMVtkImageImport>& vtkImgImp,
-			vtkSmartPointer<vtkImageChangeInformation>& vtkImgChangeInfo,
-			itk::DataObject::Pointer& imgObj,
-			unsigned int numBands)
-	{
-		NMDebugCtx(ctxNMItk2VtkConnector, << "...");
+            itk::VTKImageExportBase::Pointer& vtkImgExp,
+            vtkSmartPointer<NMVtkImageImport>& vtkImgImp,
+            vtkSmartPointer<vtkImageChangeInformation>& vtkImgChangeInfo,
+            itk::DataObject::Pointer& imgObj,
+            unsigned int numBands)
+    {
+        NMDebugCtx(ctxNMItk2VtkConnector, << "...");
 
-		if (numBands == 1)
-		{
-			ImgType *img = dynamic_cast<ImgType*>(imgObj.GetPointer());
-			ExporterTypePointer vtkExp = ExporterType::New();
+        if (numBands == 1)
+        {
+            ImgType *img = dynamic_cast<ImgType*>(imgObj.GetPointer());
+            ExporterTypePointer vtkExp = ExporterType::New();
 
-			vtkExp->SetInput(img);
-			vtkImgImp->SetBufferPointerCallback(vtkExp->GetBufferPointerCallback());
-			vtkImgImp->SetCallbackUserData(vtkExp->GetCallbackUserData());
-			vtkImgImp->SetDataExtentCallback(vtkExp->GetDataExtentCallback());
-			vtkImgImp->SetNumberOfComponentsCallback(vtkExp->GetNumberOfComponentsCallback());
-			vtkImgImp->SetOriginCallback(vtkExp->GetOriginCallback());
-			vtkImgImp->SetPipelineModifiedCallback(vtkExp->GetPipelineModifiedCallback());
-			vtkImgImp->SetPropagateUpdateExtentCallback(vtkExp->GetPropagateUpdateExtentCallback());
-			vtkImgImp->SetScalarTypeCallback(vtkExp->GetScalarTypeCallback());
-			vtkImgImp->SetSpacingCallback(vtkExp->GetSpacingCallback());
-			vtkImgImp->SetUpdateDataCallback(vtkExp->GetUpdateDataCallback());
-			vtkImgImp->SetUpdateInformationCallback(vtkExp->GetUpdateInformationCallback());
-			vtkImgImp->SetWholeExtentCallback(vtkExp->GetWholeExtentCallback());
+            vtkExp->SetInput(img);
+            vtkImgImp->SetBufferPointerCallback(vtkExp->GetBufferPointerCallback());
+            vtkImgImp->SetCallbackUserData(vtkExp->GetCallbackUserData());
+            vtkImgImp->SetDataExtentCallback(vtkExp->GetDataExtentCallback());
+            vtkImgImp->SetNumberOfComponentsCallback(vtkExp->GetNumberOfComponentsCallback());
+            vtkImgImp->SetOriginCallback(vtkExp->GetOriginCallback());
+            vtkImgImp->SetPipelineModifiedCallback(vtkExp->GetPipelineModifiedCallback());
+            vtkImgImp->SetPropagateUpdateExtentCallback(vtkExp->GetPropagateUpdateExtentCallback());
+            vtkImgImp->SetScalarTypeCallback(vtkExp->GetScalarTypeCallback());
+            vtkImgImp->SetSpacingCallback(vtkExp->GetSpacingCallback());
+            vtkImgImp->SetUpdateDataCallback(vtkExp->GetUpdateDataCallback());
+            vtkImgImp->SetUpdateInformationCallback(vtkExp->GetUpdateInformationCallback());
+            vtkImgImp->SetWholeExtentCallback(vtkExp->GetWholeExtentCallback());
 
             vtkImgExp = vtkExp;
-		}
+        }
         else if (numBands == 3)
         {
             RGBImgType *img = dynamic_cast<RGBImgType*>(imgObj.GetPointer());
@@ -123,30 +123,30 @@ public:
 
             vtkImgExp = vtkExp;
         }
-		NMDebugCtx(ctxNMItk2VtkConnector, << "done!");
-	}
+        NMDebugCtx(ctxNMItk2VtkConnector, << "done!");
+    }
 };
 
 
 #define ConnectPipelines( PixelType ) \
 { \
-	switch (this->mInputNumDimensions) \
-	{ \
-	case 3: \
-		PipelineConnector< PixelType, 3 >::connectPipeline( \
-			this->mVtkImgExp, this->mVtkImgImp, this->mVtkImgChangeInfo, this->mInputImg, \
-			this->mInputNumBands); \
-		break; \
-	case 1: \
-		PipelineConnector< PixelType, 1 >::connectPipeline( \
-			this->mVtkImgExp, this->mVtkImgImp, this->mVtkImgChangeInfo, this->mInputImg, \
-			this->mInputNumBands); \
-		break; \
-	default: \
-		PipelineConnector< PixelType, 2 >::connectPipeline( \
-			this->mVtkImgExp, this->mVtkImgImp, this->mVtkImgChangeInfo, this->mInputImg, \
-			this->mInputNumBands); \
-	} \
+    switch (this->mInputNumDimensions) \
+    { \
+    case 3: \
+        PipelineConnector< PixelType, 3 >::connectPipeline( \
+            this->mVtkImgExp, this->mVtkImgImp, this->mVtkImgChangeInfo, this->mInputImg, \
+            this->mInputNumBands); \
+        break; \
+    case 1: \
+        PipelineConnector< PixelType, 1 >::connectPipeline( \
+            this->mVtkImgExp, this->mVtkImgImp, this->mVtkImgChangeInfo, this->mInputImg, \
+            this->mInputNumBands); \
+        break; \
+    default: \
+        PipelineConnector< PixelType, 2 >::connectPipeline( \
+            this->mVtkImgExp, this->mVtkImgImp, this->mVtkImgChangeInfo, this->mInputImg, \
+            this->mInputNumBands); \
+    } \
 }
 
 #define UpdateInput( PixelType ) \
@@ -171,7 +171,7 @@ public:
 NMItk2VtkConnector::NMItk2VtkConnector(QObject* parent)
     : mbIsConnected(false)
 {
-	this->setParent(parent);
+    this->setParent(parent);
     mLogger = new NMLogger(this);
     mLogger->setHtmlMode(true);
 
@@ -187,7 +187,7 @@ NMItk2VtkConnector::~NMItk2VtkConnector()
 {
 }
 
-void NMItk2VtkConnector::setNthInput(unsigned int numInput, QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
+void NMItk2VtkConnector::setNthInput(unsigned int numInput, QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name)
 {
     //NMDebugCtx(ctxNMItk2VtkConnector, << "...");
 
@@ -203,20 +203,20 @@ void NMItk2VtkConnector::setNthInput(unsigned int numInput, QSharedPointer<NMItk
     this->mInputNumDimensions = imgWrapper->getNumDimensions();
     this->mInputNumBands = imgWrapper->getNumBands();
 
-	this->mVtkImgImp = vtkSmartPointer<NMVtkImageImport>::New();
+    this->mVtkImgImp = vtkSmartPointer<NMVtkImageImport>::New();
     //this->mVtkImgChangeInfo = vtkSmartPointer<vtkImageChangeInformation>::New();
 
-	bool connect = true;
-	switch(this->mInputComponentType)
-	{
+    bool connect = true;
+    switch(this->mInputComponentType)
+    {
     LocalMacroPerSingleType( ConnectPipelines )
-	default:
+    default:
         NMLogError(<< ctxNMItk2VtkConnector
                 << ": UNKNOWN DATA TYPE, couldn't connect pipelines!");
-		this->mInputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
+        this->mInputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
         connect = false;
-		break;
-	}
+        break;
+    }
 
     this->mbIsConnected = connect;
     //	NMDebugCtx(ctxNMItk2VtkConnector, << "done!");
@@ -298,8 +298,17 @@ void NMItk2VtkConnector::instantiateObject(void)
 {
 }
 
+
 QSharedPointer<NMItkDataObjectWrapper>
 NMItk2VtkConnector::getOutput(unsigned int idx)
+{
+    QSharedPointer<NMItkDataObjectWrapper> dw;
+    dw.clear();
+    return dw;
+}
+
+QSharedPointer<NMItkDataObjectWrapper>
+NMItk2VtkConnector::getOutput(const QString& name)
 {
     QSharedPointer<NMItkDataObjectWrapper> dw;
     dw.clear();

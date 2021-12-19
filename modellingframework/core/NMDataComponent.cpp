@@ -71,7 +71,7 @@ NMDataComponent::initAttributes(void)
 }
 
 void
-NMDataComponent::setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg)
+NMDataComponent::setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg, const QString& name)
 {
     // note QSharedPointer takes care of management, so no
     // parent required, actually if we had a parent
@@ -464,6 +464,12 @@ NMDataComponent::fetchData(NMModelComponent* comp)
 
 QSharedPointer<NMItkDataObjectWrapper>
 NMDataComponent::getOutput(unsigned int idx)
+{
+    return mDataWrapper;
+}
+
+QSharedPointer<NMItkDataObjectWrapper>
+NMDataComponent::getOutput(const QString& name)
 {
     return mDataWrapper;
 }

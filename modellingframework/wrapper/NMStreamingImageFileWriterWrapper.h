@@ -109,7 +109,7 @@ public:
 
     // NMProcess interface methods
     void setNthInput(unsigned int numInput,
-            QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+            QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
     QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 
     void setRAT(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> imgWrapper);

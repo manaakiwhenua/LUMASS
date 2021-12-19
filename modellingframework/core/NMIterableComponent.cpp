@@ -693,16 +693,16 @@ void NMIterableComponent::destroySubComponents(QMap<QString, NMModelComponent*>&
     this->setInternalStartComponent(0);
 }
 
-void NMIterableComponent::setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg)
+void NMIterableComponent::setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg, const QString& name)
 {
     if (this->mProcess != 0)
     {
-        this->mProcess->setNthInput(idx, inputImg);
+        this->mProcess->setNthInput(idx, inputImg, name);
         return;
     }
 
     NMModelComponent* sc = this->mProcessChainStart;
-    sc->setNthInput(idx, inputImg);
+    sc->setNthInput(idx, inputImg, name);
 }
 
 NMModelComponent* NMIterableComponent::getLastInternalComponent(void)
@@ -740,7 +740,7 @@ NMIterableComponent::getOutput(unsigned int idx)
         else
         {
             NMLogWarn(<< this->objectName().toStdString() <<
-                    ": No output available!");
+                    ": No output available at idx= " << idx << " !");
         }
         return ret;
     }
@@ -750,6 +750,44 @@ NMIterableComponent::getOutput(unsigned int idx)
             ": No output available!");
     return ret;
 
+}
+
+QSharedPointer<NMItkDataObjectWrapper>
+NMIterableComponent::getOutput(const QString &name)
+{
+    QSharedPointer<NMItkDataObjectWrapper> ret;
+    if (this->mProcess != nullptr)
+    {
+        ret = mProcess->getOutput(name);
+        if (!ret.isNull())
+        {
+            if (ret->getOTBTab().IsNotNull())
+            {
+                ret->getOTBTab()->AddObserver(itk::NMLogEvent(), mProcess->getObserver());
+            }
+        }
+        else
+        {
+            NMLogWarn(<< this->objectName().toStdString() <<
+                    ": No output available!");
+        }
+    }
+
+    NMLogWarn(<< this->objectName().toStdString() << ": No output '"
+              << name.toStdString() << "'");
+
+    return ret;
+}
+
+QStringList
+NMIterableComponent::getOutputNames(void)
+{
+    QStringList ret;
+    if (this->mProcess != nullptr)
+    {
+        ret = this->mProcess->getOutputNames();
+    }
+    return ret;
 }
 
 NMModelComponent* NMIterableComponent::getInternalStartComponent(void)

@@ -37,16 +37,16 @@
 
 #include "nmdemslopeaspectfilterwrapper_export.h"
 
-template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
+template<class TInputImage, unsigned int Dimension=2>
 class NMDEMSlopeAspectFilterWrapper_Internal;
 
 class NMDEMSLOPEASPECTFILTERWRAPPER_EXPORT
 NMDEMSlopeAspectFilterWrapper
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
-    
+
     Q_PROPERTY(QString TerrainAttributeType READ getTerrainAttributeType WRITE setTerrainAttributeType)
     Q_PROPERTY(QString TerrainAlgorithmType READ getTerrainAlgorithmType WRITE setTerrainAlgorithmType)
     Q_PROPERTY(QString AttributeUnitType READ getAttributeUnitType WRITE setAttributeUnitType)
@@ -57,7 +57,7 @@ NMDEMSlopeAspectFilterWrapper
 
 public:
 
-    
+
     NMPropertyGetSet( TerrainAttributeType, QString )
     NMPropertyGetSet( TerrainAlgorithmType, QString )
     NMPropertyGetSet( AttributeUnitType, QString )
@@ -70,14 +70,14 @@ public:
     NMDEMSlopeAspectFilterWrapper(QObject* parent=0);
     virtual ~NMDEMSlopeAspectFilterWrapper();
 
-    template<class TInputImage, class TOutputImage, unsigned int Dimension>
+    template<class TInputImage, unsigned int Dimension>
     friend class NMDEMSlopeAspectFilterWrapper_Internal;
 
     QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     /*$<RATGetSupportDecl>$*/
 
@@ -85,7 +85,7 @@ public:
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
     QString mTerrainAttributeType;
     QString mTerrainAlgorithmType;

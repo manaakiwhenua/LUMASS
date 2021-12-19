@@ -36,48 +36,48 @@
 #include <QList>
 #include "nmsqliteprocessorwrapper_export.h"
 
-template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
+template<class TInputImage, unsigned int Dimension=2>
 class NMSQLiteProcessorWrapper_Internal;
 
 class NMSQLITEPROCESSORWRAPPER_EXPORT
 NMSQLiteProcessorWrapper
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
-    
+
     Q_PROPERTY(QStringList SQLStatement READ getSQLStatement WRITE setSQLStatement)
 
 public:
 
-    
+
     NMPropertyGetSet( SQLStatement, QStringList )
 
 public:
     NMSQLiteProcessorWrapper(QObject* parent=0);
     virtual ~NMSQLiteProcessorWrapper();
 
-    template<class TInputImage, class TOutputImage, unsigned int Dimension>
+    template<class TInputImage, unsigned int Dimension>
     friend class NMSQLiteProcessorWrapper_Internal;
 
     QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     QSharedPointer<NMItkDataObjectWrapper> getRAT(unsigned int idx);
 
 
-    void setRAT(unsigned int idx, 
+    void setRAT(unsigned int idx,
         QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
-    
+
     QStringList mSQLStatement;
 
 };

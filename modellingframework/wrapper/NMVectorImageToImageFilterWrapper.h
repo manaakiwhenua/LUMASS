@@ -42,16 +42,16 @@ class NMVectorImageToImageFilterWrapper_Internal;
 
 class NMVECTORIMAGETOIMAGEFILTERWRAPPER_EXPORT
 NMVectorImageToImageFilterWrapper
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
-    
+
     Q_PROPERTY(QStringList Band READ getBand WRITE setBand)
 
 public:
 
-    
+
     NMPropertyGetSet( Band, QStringList )
 
 public:
@@ -65,7 +65,7 @@ public:
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     /*$<RATGetSupportDecl>$*/
 
@@ -73,9 +73,9 @@ public:
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
-    
+
     QStringList mBand;
 
 };

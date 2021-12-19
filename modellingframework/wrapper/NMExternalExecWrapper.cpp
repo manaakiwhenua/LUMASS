@@ -44,6 +44,10 @@ NMExternalExecWrapper::NMExternalExecWrapper(QObject* parent)
     : mCmdProcess(0)
 {
     this->setParent(parent);
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("Command"), QStringLiteral("Command"));
+    mUserProperties.insert(QStringLiteral("Environment"), QStringLiteral("Environment"));
 }
 
 NMExternalExecWrapper::~NMExternalExecWrapper()
@@ -73,7 +77,7 @@ NMExternalExecWrapper::instantiateObject(void)
 
 void
 NMExternalExecWrapper::setNthInput(unsigned int numInput,
-          QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
+          QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name)
 {
 }
 
@@ -135,14 +139,14 @@ NMExternalExecWrapper::update(void)
 
     NMDebugAI( << mCurCmd.toStdString() << std::endl);
 
-#ifndef _WIN32
+//#ifndef _WIN32
     connect(mCmdProcess, SIGNAL(readyReadStandardOutput()),
             this, SLOT(readOutput()));
-#else
-
-    NMLogInfo( << "Invoking external component ... " << std::endl
-               << mCurCmd.toStdString());
-#endif
+//#else
+//
+//    NMLogInfo( << "Invoking external component ... " << std::endl
+//               << mCurCmd.toStdString());
+//#endif
 
     mCmdProcess->setProcessEnvironment(mProcEnv);
 
@@ -152,12 +156,12 @@ NMExternalExecWrapper::update(void)
     mCmdProcess->start(mCurCmd);
     mCmdProcess->waitForFinished(-1);
 
-#ifndef _WIN32
+//#ifndef _WIN32
     disconnect(mCmdProcess, SIGNAL(readyReadStandardOutput()),
                this, SLOT(readOutput()));
-#else
-    NMLogInfo( << "...finished!");
-#endif
+//#else
+//    NMLogInfo( << "...finished!");
+//#endif
 
     emit signalExecutionStopped(objName);
 

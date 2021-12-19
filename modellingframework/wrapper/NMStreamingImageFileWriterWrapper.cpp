@@ -538,6 +538,19 @@ NMStreamingImageFileWriterWrapper
     mForcedLPR = {0,0,0,0,0,0};
     mUpdateRegion = {0,0,0,0,0,0};
 
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMOutputComponentType"), QStringLiteral("PixelType"));
+    mUserProperties.insert(QStringLiteral("OutputNumDimensions"), QStringLiteral("NumDimensions"));
+    mUserProperties.insert(QStringLiteral("OutputNumBands"), QStringLiteral("NumBands"));
+    mUserProperties.insert(QStringLiteral("FileNames"), QStringLiteral("FileNames"));
+    mUserProperties.insert(QStringLiteral("InputTables"), QStringLiteral("InputTables"));
+    mUserProperties.insert(QStringLiteral("RGBMode"), QStringLiteral("RGBMode"));
+    mUserProperties.insert(QStringLiteral("WriteImage"), QStringLiteral("WriteImage"));
+    mUserProperties.insert(QStringLiteral("WriteTable"), QStringLiteral("WriteTable"));
+    mUserProperties.insert(QStringLiteral("StreamingMethodType"), QStringLiteral("StreamingMethod"));
+    mUserProperties.insert(QStringLiteral("StreamingSize"), QStringLiteral("PipelineMemoryFootprint"));
+    mUserProperties.insert(QStringLiteral("PyramidResamplingType"), QStringLiteral("PyramidResampling"));
+
 #ifdef BUILD_RASSUPPORT
     this->mRasConnector = 0;
     this->mParameterHandling = NMProcess::NM_USE_UP;
@@ -581,6 +594,20 @@ NMStreamingImageFileWriterWrapper
 
     mForcedLPR = {0,0,0,0,0,0};
     mUpdateRegion = {0,0,0,0,0,0};
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMOutputComponentType"), QStringLiteral("PixelType"));
+    mUserProperties.insert(QStringLiteral("OutputNumDimensions"), QStringLiteral("NumDimensions"));
+    mUserProperties.insert(QStringLiteral("OutputNumBands"), QStringLiteral("NumBands"));
+    mUserProperties.insert(QStringLiteral("FileNames"), QStringLiteral("FileNames"));
+    mUserProperties.insert(QStringLiteral("InputTables"), QStringLiteral("InputTables"));
+    mUserProperties.insert(QStringLiteral("RGBMode"), QStringLiteral("RGBMode"));
+    mUserProperties.insert(QStringLiteral("WriteImage"), QStringLiteral("WriteImage"));
+    mUserProperties.insert(QStringLiteral("WriteTable"), QStringLiteral("WriteTable"));
+    mUserProperties.insert(QStringLiteral("StreamingMethodType"), QStringLiteral("StreamingMethod"));
+    mUserProperties.insert(QStringLiteral("StreamingSize"), QStringLiteral("PipelineMemoryFootprint"));
+    mUserProperties.insert(QStringLiteral("PyramidResamplingType"), QStringLiteral("PyramidResampling"));
+
 
 #ifdef BUILD_RASSUPPORT
     this->mRasConnector = 0;
@@ -783,23 +810,41 @@ NMStreamingImageFileWriterWrapper
         }
     }
 
+    // enable 'just streaming` or `VirtualWriter` mode
+    // if no file- or tablename has been specified and
+    // WriteImage and WriteTable are not selected but
+    // we have inputs defined for this component
+    //
+    // This provides a 'virtual sink' for the pipeline,
+    // e.g. for streaming over the Image2Table component
+    int numFns = this->getFileNames().size();
+    int numTns = this->getInputTables().size();
+    bool bJustStreaming = false;
+    if (nbInputs > 0 && numFns == 0 && numTns == 0 && !mWriteImage && !mWriteTable)
+    {
+        bJustStreaming = true;
+    }
+
+
     if (nbInputs == 1)
     {
         QVariant param = this->getParameter("FileNames");
         if (param.isValid())
         {
-            if (!this->isOutputFileNameWriteable(param.toString()))
+            if (!bJustStreaming)
             {
-                errtxt.str("");
-                errtxt << "The filename '" << param.toString().toStdString()
-                       << "' is not writable!";
-                NMErr("NMStreamingImageFileWriterWrapper", << errtxt.str());
-                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                e.setDescription(errtxt.str());
-                throw e;
+                if (!this->isOutputFileNameWriteable(param.toString()))
+                {
+                    errtxt.str("");
+                    errtxt << "The filename '" << param.toString().toStdString()
+                           << "' is not writable!";
+                    NMErr("NMStreamingImageFileWriterWrapper", << errtxt.str());
+                    NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                    e.setDescription(errtxt.str());
+                    throw e;
+                }
+                this->setInternalFileNames(QStringList(param.toString()));
             }
-
-            this->setInternalFileNames(QStringList(param.toString()));
             fnProvNAttr = QString("nm:FileNames=\"%1\"")
                                   .arg(param.toString());
         }
@@ -1076,7 +1121,7 @@ NMStreamingImageFileWriterWrapper::setUpdateRegion(std::array<int, 6> updateRegi
 void
 NMStreamingImageFileWriterWrapper
 ::setNthInput(unsigned int numInput,
-        QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
+        QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name)
 {
     if (!this->mbIsInitialised)
         return;

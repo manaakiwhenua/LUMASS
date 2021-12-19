@@ -37,16 +37,17 @@
 
 #include "nmstreamingroiimagefilterwrapper_export.h"
 
-template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
+//template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
+template<class TInputImage, unsigned int Dimension=2>
 class NMStreamingROIImageFilterWrapper_Internal;
 
 class
 NMStreamingROIImageFilterWrapper
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
-    
+
     Q_PROPERTY(QList<QStringList> ROIIndex READ getROIIndex WRITE setROIIndex)
     Q_PROPERTY(QList<QStringList> ROISize READ getROISize WRITE setROISize)
     Q_PROPERTY(QList<QStringList> ROIOrigin READ getROIOrigin WRITE setROIOrigin)
@@ -54,7 +55,7 @@ NMStreamingROIImageFilterWrapper
 
 public:
 
-    
+
     NMPropertyGetSet( ROIIndex, QList<QStringList> )
     NMPropertyGetSet( ROISize, QList<QStringList> )
     NMPropertyGetSet( ROIOrigin, QList<QStringList> )
@@ -64,14 +65,15 @@ public:
     NMStreamingROIImageFilterWrapper(QObject* parent=0);
     virtual ~NMStreamingROIImageFilterWrapper();
 
-    template<class TInputImage, class TOutputImage, unsigned int Dimension>
+    //template<class TInputImage, class TOutputImage, unsigned int Dimension>
+    template<class TInputImage, unsigned int Dimension>
     friend class NMStreamingROIImageFilterWrapper_Internal;
 
     QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     /*$<RATGetSupportDecl>$*/
 
@@ -79,9 +81,9 @@ public:
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
-    
+
     QList<QStringList> mROIIndex;
     QList<QStringList> mROISize;
     QList<QStringList> mROIOrigin;

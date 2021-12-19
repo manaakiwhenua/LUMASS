@@ -37,7 +37,8 @@
 
 #include "nmimage2tablefilterwrapper_export.h"
 
-template<class TInputImage, class TOutputImage = TInputImage, unsigned int Dimension=2>
+//template<class TInputImage, class TOutputImage = TInputImage, unsigned int Dimension=2>
+template<class TInputImage, unsigned int Dimension=2>
 class NMImage2TableFilterWrapper_Internal;
 
 class
@@ -76,14 +77,15 @@ public:
     NMImage2TableFilterWrapper(QObject* parent=0);
     virtual ~NMImage2TableFilterWrapper();
 
-    template<class TInputImage, class TOutputImage, unsigned int Dimension>
+    //template<class TInputImage, class TOutputImage, unsigned int Dimension>
+    template<class TInputImage, unsigned int Dimension>
     friend class NMImage2TableFilterWrapper_Internal;
 
     QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     QSharedPointer<NMItkDataObjectWrapper> getRAT(unsigned int idx);
 

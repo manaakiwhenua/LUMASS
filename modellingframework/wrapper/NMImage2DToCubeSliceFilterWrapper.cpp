@@ -64,7 +64,7 @@ public:
     }
 
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
+                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
         InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
@@ -246,6 +246,19 @@ NMImage2DToCubeSliceFilterWrapper
     this->setParent(parent);
     this->setObjectName("NMImage2DToCubeSliceFilterWrapper");
     this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->mInputNumBands = 1;
+    this->mOutputNumBands = 1;
+    this->mInputNumDimensions = 2;
+    this->mOutputNumDimensions = 3;
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("InputPixelType"));
+    mUserProperties.insert(QStringLiteral("NMOutputComponentType"), QStringLiteral("OutputPixelType"));
+    mUserProperties.insert(QStringLiteral("DimMapping"), QStringLiteral("DimMapping"));
+    mUserProperties.insert(QStringLiteral("OutputOrigin"), QStringLiteral("OutputOrigin"));
+    mUserProperties.insert(QStringLiteral("OutputSpacing"), QStringLiteral("OutputSpacing"));
+    mUserProperties.insert(QStringLiteral("OutputSize"), QStringLiteral("OutputSize"));
+    mUserProperties.insert(QStringLiteral("OutputIndex"), QStringLiteral("OutputIndex"));
 }
 
 NMImage2DToCubeSliceFilterWrapper

@@ -68,7 +68,7 @@ NMDataRefComponent::initAttributes(void)
 }
 
 void
-NMDataRefComponent::setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg)
+NMDataRefComponent::setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg, const QString& name)
 {
     if (mDataComponent)
     {
@@ -495,6 +495,19 @@ NMDataRefComponent::fetchData(NMModelComponent* comp)
 
 QSharedPointer<NMItkDataObjectWrapper>
 NMDataRefComponent::getOutput(unsigned int idx)
+{
+    QSharedPointer<NMItkDataObjectWrapper> ret;
+
+    if (mDataComponent)
+    {
+        return mDataComponent->mDataWrapper;
+    }
+
+    return ret;
+}
+
+QSharedPointer<NMItkDataObjectWrapper>
+NMDataRefComponent::getOutput(const QString& name)
 {
     QSharedPointer<NMItkDataObjectWrapper> ret;
 

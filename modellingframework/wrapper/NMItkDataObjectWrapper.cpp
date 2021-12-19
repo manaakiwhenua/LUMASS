@@ -88,23 +88,35 @@ public:
     }
 
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-                    unsigned int numBands, unsigned int idx, bool rgbMode, itk::DataObject* dataObj)
+                    unsigned int numBands, unsigned int idx, bool rgbMode, itk::DataObject* dataObj, const QString& name)
     {
         if (numBands == 1)
         {
             ImgBufferFilterPointer f = dynamic_cast<ImgBufferFilterType*>(otbFilter.GetPointer());
+            if (!name.isEmpty())
+            {
+                f->SetInput(name.toStdString(), dataObj);
+            }
             f->SetNthInput(idx, dataObj);
         }
         else if (numBands == 3 && rgbMode)
         {
             RGBImgBufferFilterPointer f = dynamic_cast<RGBImgBufferFilterType*>(
                                             otbFilter.GetPointer());
+            if (!name.isEmpty())
+            {
+                f->SetInput(name.toStdString(), dataObj);
+            }
             f->SetNthInput(idx, dataObj);
         }
         else
         {
             VecImgBufferFilterPointer f = dynamic_cast<VecImgBufferFilterType*>(
                                             otbFilter.GetPointer());
+            if (!name.isEmpty())
+            {
+                f->SetInput(name.toStdString(), dataObj);
+            }
             f->SetNthInput(idx, dataObj);
         }
     }
@@ -300,15 +312,15 @@ public:
     { \
     case 1: \
         NMItkDataObjectWrapper_Internal<comptype, 1>::setNthInput( \
-            mItkProcess, mNumBands, idx, mIsRGBImage, dataObj); \
+            mItkProcess, mNumBands, idx, mIsRGBImage, dataObj, name); \
         break; \
     case 2: \
         NMItkDataObjectWrapper_Internal<comptype, 2>::setNthInput( \
-            mItkProcess, mNumBands, idx, mIsRGBImage, dataObj); \
+            mItkProcess, mNumBands, idx, mIsRGBImage, dataObj, name); \
         break; \
     case 3: \
         NMItkDataObjectWrapper_Internal<comptype, 3>::setNthInput( \
-            mItkProcess, mNumBands, idx, mIsRGBImage, dataObj); \
+            mItkProcess, mNumBands, idx, mIsRGBImage, dataObj, name); \
         break; \
     }\
 }
@@ -516,6 +528,7 @@ NMItkDataObjectWrapper::setBufferFilterInput()
 
     itk::DataObject* dataObj = mDataObject.GetPointer();
     unsigned int idx = 0;
+    QString name;
 
     switch(this->getItkComponentType())
     {

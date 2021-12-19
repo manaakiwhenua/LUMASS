@@ -1888,14 +1888,14 @@ NMModelViewWidget::exportComponent(QGraphicsItem* item,
     NMModelSerialiser xmlS;
     xmlS.setModelController(mModelController);
     xmlS.setLogger(mLogger);
-    NMModelComponent* comp = 0;
+    NMModelComponent* comp = nullptr;
     switch (item->type())
     {
     case NMProcessComponentItem::Type:
         {
             NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(item);
             comp = this->mModelController->getComponent(pi->getTitle());
-            if (comp == 0)
+            if (comp == nullptr)
             {
                 NMLogError(<< ctx << ": couldn't write '" << pi->getTitle().toStdString() << "' - skip it!");
                 //NMDebugCtx(ctx, << "done!");
@@ -1944,7 +1944,7 @@ NMModelViewWidget::exportComponent(QGraphicsItem* item,
         {
             NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
             comp = this->mModelController->getComponent(ai->getTitle());
-            if (comp == 0)
+            if (comp == nullptr)
             {
                 NMLogError(<< ctx << ": couldn't write '" << ai->getTitle().toStdString() << "' - skip it!");
                 //NMDebugCtx(ctx, << "done!");
@@ -1962,7 +1962,7 @@ NMModelViewWidget::exportComponent(QGraphicsItem* item,
         {
             QGraphicsProxyWidget* pwi = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
             comp = this->mModelController->getComponent(pwi->objectName());
-            if (comp == 0)
+            if (comp == nullptr)
             {
                 NMLogError(<< ctx << ": couldn't write '" << pwi->objectName().toStdString() << "' - skip it!");
                 return;
@@ -2467,6 +2467,10 @@ NMModelViewWidget::loadYAMLSettings(const QString &yamlFile)
         {
             modelconfig = yamlconfig["ModelConfig"];
             this->configureModel(modelconfig);
+
+            QFileInfo fifo(yamlFile);
+            QString cfpath = fifo.canonicalPath();
+            this->mModelController->updateSettings("ConfigPath", cfpath);
         }
         this->mConfigPathEdit->setText(yamlFile);
     }
@@ -2480,6 +2484,18 @@ NMModelViewWidget::loadYAMLSettings(const QString &yamlFile)
         NMLogError(<< re.what());
         this->mConfigPathEdit->clear();
     }
+    catch (std::exception& se)
+    {
+        NMLogError(<< se.what());
+        this->mConfigPathEdit->clear();
+    }
+    catch (...)
+    {
+        NMLogError(<< "Something went horribly wrong! "
+                   << "Unfortnately, I've got no clue what!");
+        this->mConfigPathEdit->clear();
+    }
+
     emit modelConfigurationChanged();
 }
 
@@ -2522,10 +2538,26 @@ NMModelViewWidget::updateToolContext(const QString &tool)
             QFileInfo mfInfo(mfFN);
             QString mfSuffix = mfInfo.suffix();
             QString yamlFN = mfFN.left(mfFN.length()-mfSuffix.length());
+            QString ymlFN = yamlFN + "yml";
             yamlFN += "yaml";
 
-            mModelController->clearModelSettings();
-            this->loadYAMLSettings(yamlFN);
+            QFileInfo yamlInfo(yamlFN);
+            QFileInfo ymlInfo(ymlFN);
+            if (yamlInfo.isReadable())
+            {
+                mModelController->clearModelSettings();
+                this->loadYAMLSettings(yamlFN);
+            }
+            else if (ymlInfo.isReadable())
+            {
+                mModelController->clearModelSettings();
+                this->loadYAMLSettings(ymlFN);
+            }
+            else
+            {
+                NMLogError(<< "Couldn't find a YAML next to the model files!");
+                this->mConfigPathEdit->clear();
+            }
         }
     }
     else
@@ -3393,7 +3425,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     QPointF scenePos;
 
                     lmv >> ptName >> scenePos;
-                }
+        }
                 break;
         default:
             break;

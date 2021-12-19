@@ -53,11 +53,11 @@ namespace otb
 class OTBGDALRATIMAGEIO_EXPORT SQLiteTable : public AttributeTable
 {
 public:
-	/** Standard class typedefs. */
+    /** Standard class typedefs. */
     typedef SQLiteTable             		Self;
-	typedef itk::DataObject					Superclass;
-	typedef itk::SmartPointer<Self>			Pointer;
-	typedef itk::SmartPointer<const Self>	ConstPointer;
+    typedef itk::DataObject					Superclass;
+    typedef itk::SmartPointer<Self>			Pointer;
+    typedef itk::SmartPointer<const Self>	ConstPointer;
 
     /** Indicates table status after open/create */
     typedef enum
@@ -72,15 +72,15 @@ public:
     static Pointer New();
     itkTypeMacro(SQLiteTable, Superclass);
 
-	// getting info about the table
+    // getting info about the table
     long long GetNumRows();
     long long int GetRowIdx(const std::string& column, void* value);
 
-	//long GetRowIdx(const std::string& column, const double& value);
-	//long GetRowIdx(const std::string& column, const long& value);
-	//long GetRowIdx(const std::string& column, const std::string& value);
+    //long GetRowIdx(const std::string& column, const double& value);
+    //long GetRowIdx(const std::string& column, const long& value);
+    //long GetRowIdx(const std::string& column, const std::string& value);
 
-	// managing the attribute table's content
+    // managing the attribute table's content
     bool isRowidColumn(const std::string& sColName);
     bool AddColumn(const std::string &sColName, TableColumnType type)
         {return AddConstrainedColumn(sColName, type, "");}
@@ -113,8 +113,8 @@ public:
     long long GetIntValue(int col, long long row);
     std::string GetStrValue(int col, long long row);
 
-	bool RemoveColumn(int col);
-	bool RemoveColumn(const std::string& name);
+    bool RemoveColumn(int col);
+    bool RemoveColumn(const std::string& name);
 
 //	// print the table
 //	void Print(std::ostream& os, itk::Indent indent, int nrows);
@@ -192,6 +192,10 @@ public:
                             std::map<int, std::map<long long, long long> >& valstore);
     bool GreedyStringFetch(const std::vector<std::string>& columns,
                             std::map<int, std::map<long long, std::string> >& valstore);
+
+    bool TableDataFetch(std::vector< std::vector< ColumnValue > >& restab,
+                        const std::vector<otb::AttributeTable::TableColumnType>& coltypes,
+                        const std::string& query);
 
 
     /// more 'free-style' sql support
@@ -317,22 +321,22 @@ protected:
     void createPreparedColumnStatements(const std::string& colname);
     void resetTableAdmin();
 
-	/*! deletes the ldb table if the ldb file has a more recent modified data; 
-	 *  returns 1 when ldb is deleted or did not exist 
-	 *  returns 0 when existing ldb is kept
-	 *  returns -1 when provided 'vt' is not accessible
-	 */
-	int deleteOldLDB(const std::string& vt, const std::string& ldb);
+    /*! deletes the ldb table if the ldb file has a more recent modified data;
+     *  returns 1 when ldb is deleted or did not exist
+     *  returns 0 when existing ldb is kept
+     *  returns -1 when provided 'vt' is not accessible
+     */
+    int deleteOldLDB(const std::string& vt, const std::string& ldb);
 
 
-	/*! replace any char in 
-	 *	{ '-', '.', '+', '*', '/', '%', '|', '<', '>', '=', '!', '~'},
-	 *  i.e. operator characters or a leading digit with '_' or double
-	 *  quote any keyword
-	 */
-	// awesome function - we're actually not using it, we just double quote
-	// any table name identifier!
-	//std::string formatTableName(const std::string& tableName);
+    /*! replace any char in
+     *	{ '-', '.', '+', '*', '/', '%', '|', '<', '>', '=', '!', '~'},
+     *  i.e. operator characters or a leading digit with '_' or double
+     *  quote any keyword
+     */
+    // awesome function - we're actually not using it, we just double quote
+    // any table name identifier!
+    //std::string formatTableName(const std::string& tableName);
     long long GetMinMaxPKValue(bool bmax);
 
     inline bool sqliteError(const int& rc, sqlite3_stmt** stmt);
@@ -370,7 +374,7 @@ protected:
     sqlite3_stmt* m_StmtRollback;
 
     const char* m_CurPrepStmt;
-	void* m_SpatialiteCache;
+    void* m_SpatialiteCache;
 
 };
 

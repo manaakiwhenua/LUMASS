@@ -1164,6 +1164,79 @@ SQLiteTable::GreedyStringFetch(const std::vector<std::string>& columns,
 }
 
 bool
+SQLiteTable::TableDataFetch(std::vector<std::vector<ColumnValue> > &restab,
+                            const std::vector<TableColumnType> &coltypes,
+                            const std::string &query)
+{
+    if (m_db == 0)
+    {
+        m_lastLogMsg = "No active database connection!";
+        return false;
+    }
+
+    if (query.empty())
+    {
+        m_lastLogMsg = "No valid SQL query provided!";
+        return false;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(m_db, query.c_str(), -1, &stmt, 0);
+    if (sqliteError(rc, &stmt))
+    {
+        sqlite3_finalize(stmt);
+        return false;
+    }
+
+    while(sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        std::vector<ColumnValue> nrow;
+        for (int c=0; c < coltypes.size(); ++c)
+        {
+            const otb::AttributeTable::TableColumnType type = coltypes.at(c);
+            ColumnValue cval;
+            cval.type = type;
+
+            switch(type)
+            {
+            case otb::AttributeTable::ATTYPE_INT:
+                cval.ival = static_cast<long long>(sqlite3_column_int64(stmt, c));
+                break;
+            case otb::AttributeTable::ATTYPE_DOUBLE:
+                cval.dval = static_cast<double>(sqlite3_column_double(stmt, c));
+                break;
+            default:
+                {
+                    cval.slen = std::max(sqlite3_column_bytes(stmt, c), 1) + 1;
+                    const char* val = reinterpret_cast<char*>(
+                                        const_cast<unsigned char*>(
+                                          sqlite3_column_text(stmt, c)));
+                    cval.tval = new char[cval.slen];
+                    if (val != 0)
+                    {
+                        ::sprintf(cval.tval, "%s", sqlite3_column_text(stmt, c));
+                    }
+                    else
+                    {
+                        ::sprintf(cval.tval, "%s", "\0");
+                    }
+                }
+                break;
+            }
+
+            nrow.push_back(cval);
+        }
+
+        restab.push_back(nrow);
+    }
+
+    // finalize the affair ...
+    sqlite3_finalize(stmt);
+
+    return true;
+}
+
+bool
 SQLiteTable::DoPtrBulkSet(std::vector<int *> &intVals,
                              std::vector<double *> &dblVals,
                              std::vector<char **> &chrVals,

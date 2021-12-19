@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -41,7 +41,7 @@ namespace otb {
 
 template <class TInputImage, class TOutputImage>
 class OTBSUPPLFILTERS_EXPORT FlowAccumulationFilter
-			: public itk::ImageToImageFilter<TInputImage, TOutputImage>
+            : public itk::ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:
 
@@ -116,8 +116,8 @@ public:
 
 
 protected:
-	FlowAccumulationFilter();
-	virtual ~FlowAccumulationFilter();
+    FlowAccumulationFilter();
+    virtual ~FlowAccumulationFilter();
 
     virtual void EnlargeOutputRequestedRegion(itk::DataObject *output);
     virtual void GenerateData(void);
@@ -129,8 +129,8 @@ protected:
                   InputImagePixelType* ibuf,
                   InputImagePixelType* wbuf,
                   OutputImagePixelType* obuf,
-                  double xps, double yps,
-                  long ncols, long nrows, long& pixelcounter);
+                  const double xps, const double yps,
+                  const long ncols, const long nrows, long& pixelcounter);
 
     /*!
      * \brief Flow accumulation according to Quinn et al. 1991
@@ -139,8 +139,8 @@ protected:
                   InputImagePixelType *ibuf,
                   InputImagePixelType* wbuf,
                   OutputImagePixelType *obuf,
-                  double xps, double yps,
-                  long ncols, long nrows, long &pixelcounter);
+                  const double xps, const double yps,
+                  const long ncols, const long nrows, long &pixelcounter);
 
     /*!
      * \brief Flow accumulation according to Holmgren 1994
@@ -152,8 +152,8 @@ protected:
                   InputImagePixelType *ibuf,
                   InputImagePixelType* wbuf,
                   OutputImagePixelType *obuf,
-                  double xps, double yps,
-                  long ncols, long nrows, long &pixelcounter);
+                  const double xps, const double yps,
+                  const long ncols, const long nrows, long &pixelcounter);
 
     /*!
      * \brief sortHeightList sorts the input DEM according to descending height
@@ -169,8 +169,8 @@ protected:
     int convert2DTo1DIdx(const int& col, const int& row);
 
 private:
-	double m_xdist;
-	double m_ydist;
+    double m_xdist;
+    double m_ydist;
     double m_ddist;
     long m_numpixel;
     int m_FlowExponent;

@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -39,7 +39,7 @@ namespace otb {
 template <class TInputImage, class TOutputImage>
 FlowAccumulationFilter<TInputImage, TOutputImage>
 ::FlowAccumulationFilter()
-    : m_xdist(1), m_ydist(1), m_nodata(0), m_FlowExponent(1),
+    : m_xdist(1), m_ydist(1), m_nodata(0), m_FlowExponent(4),
       m_bFlowLength(false)
 {
     this->SetNumberOfRequiredInputs(1);
@@ -67,7 +67,7 @@ void FlowAccumulationFilter< TInputImage, TOutputImage >
 template <class TInputImage, class TOutputImage>
 void FlowAccumulationFilter<TInputImage, TOutputImage>
 ::QFlowAcc(HeightList *phlSort, InputImagePixelType *ibuf, InputImagePixelType *wbuf, OutputImagePixelType *obuf,
-           double xps, double yps, long ncols, long nrows, long &pixelcounter)
+           const double xps, const double yps, const long ncols, const long nrows, long &pixelcounter)
 {
     //HQFlowAcc calculates the flow accumulation based on a surface elevation grid
     //using the algorithm presented by QUINN et al. (1991)
@@ -205,7 +205,7 @@ void FlowAccumulationFilter<TInputImage, TOutputImage>
 template <class TInputImage, class TOutputImage>
 void FlowAccumulationFilter<TInputImage, TOutputImage>
 ::HFlowAcc(HeightList *phlSort, InputImagePixelType *ibuf, InputImagePixelType *wbuf, OutputImagePixelType *obuf,
-           double xps, double yps, long ncols, long nrows, long &pixelcounter)
+           const double xps, const double yps, const long ncols, const long nrows, long &pixelcounter)
 {
     //calculates the flow accumulation based on a surface elevation grid
     //using the algorithm presented by Holmgren 1994
@@ -223,6 +223,8 @@ void FlowAccumulationFilter<TInputImage, TOutputImage>
     double zx;					//elevation of the processing cell
     double zaehler[8];	//the numerator values for the moving window according to the used formula
     double hoehe[8];	//the elevation data of the moving window (see blow)
+
+    const double diags = sqrt(xps*xps+yps*yps);
 
     //the indices used to indicate each cell of the moving window
     //x is the processing cell got from the sorted elevation data
@@ -272,14 +274,13 @@ void FlowAccumulationFilter<TInputImage, TOutputImage>
                     {
                         //consider only lower cells with valid elevation values
                         if (    hoehe[i] != static_cast<double>(m_nodata)
-                            &&  (m_bFlowLengthUp ? hoehe[i] - zx : zx - hoehe[i]) > 0
+                            &&  (zx - hoehe[i]) > 0 //(m_bFlowLengthUp ? hoehe[i] - zx > 0 : zx - hoehe[i]) > 0
                            )
-
                         {
                             //numerator
                             if ((i % 2) == 0)
                             {
-                                zaehler[i] =  pow(((zx - hoehe[i]) / sqrt(xps*xps+yps*yps)), m_FlowExponent);
+                                zaehler[i] =  pow(((zx - hoehe[i]) / diags), m_FlowExponent);
                             }
                             else
                             {
@@ -294,7 +295,18 @@ void FlowAccumulationFilter<TInputImage, TOutputImage>
                             }
 
                             //denominator
-                            nenner += zaehler[i];
+                            if (!std::isnan(zaehler[i]) && !std::isinf(zaehler[i]))
+                            {
+                                nenner += zaehler[i];
+                            }
+                            else
+                            {
+                                zaehler[i] = 0;
+                            }
+                        }
+                        else
+                        {
+                            zaehler[i] = 0;
                         }
                     }
                     // .......................................................................
@@ -315,7 +327,6 @@ void FlowAccumulationFilter<TInputImage, TOutputImage>
                             }
                         }
                     }
-
                 }
 
                 // ...............................................................
@@ -326,11 +337,11 @@ void FlowAccumulationFilter<TInputImage, TOutputImage>
                     for (i=0; i < 8; i++)
                     {
                         //consider only lower cells
-                        if ((zx - hoehe[i]) > 0 && hoehe[i] != static_cast<double>(m_nodata))
+                        if (zaehler[i] > 0 && nenner > 0)//(zx - hoehe[i]) > 0 && hoehe[i] != static_cast<double>(m_nodata))
                         {
                             this->getNeighbourIndex(i, colx, rowx, nidx);
                             const double weight = (wbuf == nullptr ? 1.0 : wbuf[nidx]);
-                            obuf[nidx] += static_cast<OutputImagePixelType>(((zaehler[i]/nenner) * flaccx) * weight);
+                            obuf[nidx] += static_cast<OutputImagePixelType>((zaehler[i]/nenner) * flaccx * weight);
                         }
                     }
                 }
@@ -346,7 +357,7 @@ template <class TInputImage, class TOutputImage>
 void FlowAccumulationFilter<TInputImage, TOutputImage>
 ::TFlowAcc(HeightList *phlSort, InputImagePixelType *ibuf,
            InputImagePixelType* wbuf, OutputImagePixelType *obuf,
-           double xps, double yps, long ncols, long nrows, long &pixelcounter)
+           const double xps, const double yps, const long ncols, const long nrows, long &pixelcounter)
 {
     //Variablen deklarieren
     const double Pi = 3.1415926535897932384626433832795;
@@ -658,19 +669,46 @@ void FlowAccumulationFilter<TInputImage, TOutputImage>
 {
     NMProcDebug(<< "Enter FlowAcc::GenerateData" << std::endl);
 
-	// get a handle of the in- and output data
-	InputImagePointer pInImg =  const_cast<TInputImage* >(this->GetInput());
+    // get a handle of the in- and output data
+    InputImagePointer pInImg = nullptr;
+    InputImagePointer pWeightImg = nullptr;
 
-    InputImagePointer pWeightImg;
-    if (this->GetNumberOfIndexedInputs() == 2)
+    // try fetching inputs by name first
+    itk::ProcessObject::NameArray inputNames = this->GetInputNames();
+    for (int n=0; n < inputNames.size(); ++n)
     {
-        pWeightImg = const_cast<TInputImage*>(this->GetInput(1));
+        if (inputNames[n].find("dem") != std::string::npos)
+        {
+            pInImg = dynamic_cast<InputImageType*>(this->GetInputs()[n].GetPointer());
+        }
+
+        if (inputNames[n].find("weight") != std::string::npos)
+        {
+            pWeightImg = dynamic_cast<InputImageType*>(this->GetInputs()[n].GetPointer());
+        }
+    }
+
+    // try fetching by index if names didn't work
+    if (pInImg == nullptr)
+    {
+        pInImg = const_cast<InputImageType*>(this->GetInput(0));
+    }
+
+    if (this->GetNumberOfIndexedInputs() >= 2 && pWeightImg == nullptr)
+    {
+        pWeightImg = const_cast<InputImageType*>(this->GetInput(1));
+    }
+
+    // give up if there's no input dem
+    if (pInImg == nullptr)
+    {
+        itkExceptionMacro(<< "No valid input DEM specified!");
     }
 
 
-	OutputImagePointer pOutImg = this->GetOutput();
+    OutputImagePointer pOutImg = this->GetOutput();
     pOutImg->SetBufferedRegion(pOutImg->GetRequestedRegion());
-	pOutImg->Allocate();
+    pOutImg->Allocate();
     if (m_bFlowLength)
     {
         pOutImg->FillBuffer(0);
@@ -681,16 +719,16 @@ void FlowAccumulationFilter<TInputImage, TOutputImage>
     }
 
 
-	// get pixel size in x and y direction
+    // get pixel size in x and y direction
     typename TInputImage::SpacingType spacing = pInImg->GetSpacing();
-	m_xdist = spacing[0];
-	m_ydist = abs(spacing[1]);
+    m_xdist = spacing[0];
+    m_ydist = abs(spacing[1]);
     m_ddist = sqrt(m_xdist * m_xdist + m_ydist * m_ydist);
 
-	// get the number of pixels
+    // get the number of pixels
     long numcols = pInImg->GetRequestedRegion().GetSize(0);
     long numrows = pInImg->GetRequestedRegion().GetSize(1);
-	long numpix = numcols * numrows;
+    long numpix = numcols * numrows;
     m_numpixel = numpix * 2 + (numpix * std::log10(numpix));
     m_NumCols = numcols;
     m_NumRows = numrows;
@@ -698,7 +736,7 @@ void FlowAccumulationFilter<TInputImage, TOutputImage>
     NMProcDebug(<< " cellsize is: " << spacing[0] << ", " << spacing[1] << std::endl);
     NMProcDebug(<< "  m_xdist: " << m_xdist << ", m_ydist: " << m_ydist << std::endl);
     NMProcDebug(<< "  numcols: " << numcols << ", numrows: " << numrows <<
-			", numpix: " << numpix << std::endl);
+            ", numpix: " << numpix << std::endl);
 
     // -----------------------------------------------------------------
     // read the input dem into height structre

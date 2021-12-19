@@ -293,6 +293,7 @@ if (UNIX AND NOT APPLE)
 
     file(GLOB LUMASS_LINUX_UTILS
         ${lumass_SOURCE_DIR}/utils/*.bat
+        ${lumass_SOURCE_DIR}/utils/env.sh
     )
 
 

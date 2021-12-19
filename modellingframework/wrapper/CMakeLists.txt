@@ -29,6 +29,7 @@ INCLUDE_DIRECTORIES(
     ${OTB_INCLUDE_DIRS}
     ${LPSOLVE_INCLUDE_DIR}
     ${opt_SOURCE_DIR}
+    ${NMVtk_SOURCE_DIR}
     ${NCXX4_INCLUDE_DIR}
     ${NETCDF_INCLUDE_DIR}
     ${pybind11_INCLUDE_DIRS}
@@ -111,6 +112,8 @@ foreach( wrapper ${MFW_WRAPPER_NAMES} )
             list(APPEND MFW_WRAPPER_SOURCE_FILES ${opt_SOURCE_DIR}/LpHelper.cpp)
             list(APPEND MFW_WRAPPER_HEADER_FILES ${opt_SOURCE_DIR}/NMMosra.h)
             list(APPEND MFW_WRAPPER_HEADER_FILES ${opt_SOURCE_DIR}/LpHelper.h)
+            list(APPEND MFW_WRAPPER_SOURCE_FILES ${NMVtk_SOURCE_DIR}/NMvtkDelimitedTextWriter.cxx)
+            list(APPEND MFW_WRAPPER_HEADER_FILES ${NMVtk_SOURCE_DIR}/NMvtkDelimitedTextWriter.h)
             set(LINKLIBS ${NMMOSRA_WRAPPER_LINKLIBS})
         elseif (${wrapper} STREQUAL "NMJSKernelFilterWrapper")
             set(LINKLIBS ${NMJSKERNEL_WRAPPER_LINKLIBS})

@@ -29,7 +29,34 @@ SET(LIBRARY_OUTPUT_PATH ${lumass_BINARY_DIR}/lib)
 
 # we're setting some more variables
 SET(CMAKE_INCLUDE_CURRENT_DIR ON)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+SET(CMAKE_CXX_STANDARD 14)
+#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
+
+#====================================================================
+# OpenMPI
+#====================================================================
+OPTION(LUMASS_MPI_SUPPORT "Build LUMASS with MPI parallel processing support?" ON)
+
+# this is still under development (like most of this file anyway)
+# so won't bother with MPI on win for now ...
+
+if (NOT WIN32 AND LUMASS_MPI_SUPPORT)
+    find_package(MPI)
+    if (MPI_CXX_FOUND)
+        message(STATUS "MPI_CXX: found version: ${MPI_CXX_VERSION}")
+        message(STATUS "MPI_CXX_INCLUDE_DIRS=${MPI_CXX_INCLUDE_DIRS}")
+        message(STATUS "MPI_CXX_LIBRARIES=${MPI_CXX_LIBRARIES}")
+        message(STATUS "MPI_CXX_COMPILER=${MPI_CXX_COMPILER}")
+        message(STATUS "MPI_C_COMPILER=${MPI_C_COMPILER}")
+    else ()
+        set(MPI_CXX_INCLUDE_DIRS "MPI_CXX_INCLUDE_DIRS-NOTFOUND" CACHE STRING "Please specify the MPI-CXX include directories!")
+        set(MPI_CXX_LIBRARIES "MPI_CXX_LIBRARIES-NOTFOUND" CACHE STRING "Please specify the MPI-CXX libraries!")
+    endif()
+else()
+    set(MPI_CXX_INCLUDE_DIRS="")
+    set(MPI_CXX_LIBRARIES="")
+endif()
 
 IF(NOT WIN32)
         SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fPIC -fPIE")
@@ -483,27 +510,6 @@ message(STATUS "YAML_CPP_LIBRARIES=${YAML_CPP_LIBRARIES}")
 #    set(YAML_HEADERDIR "/opt/yaml-cpp/install/include" CACHE STRING "Path to yaml header directory")
 #    message(FATAL_ERROR "Please specify the yaml header dir!")
 #ENDIF()
-
-#====================================================================
-# OpenMPI
-#====================================================================
-# this is still under development (like most of this file anyway)
-# so won't bother with MPI on win for now ... 
-
-if (NOT WIN32)
-    find_package(MPI)
-    if (MPI_CXX_FOUND)
-        message(STATUS "MPI_CXX: found version: ${MPI_CXX_VERSION}")
-        message(STATUS "MPI_CXX_INCLUDE_DIRS=${MPI_CXX_INCLUDE_DIRS}")
-        message(STATUS "MPI_CXX_LIBRARIES=${MPI_CXX_LIBRARIES}")
-    else ()
-        set(MPI_CXX_INCLUDE_DIRS "MPI_CXX_INCLUDE_DIRS-NOTFOUND" CACHE STRING "Please specify the MPI-CXX include directories!")
-        set(MPI_CXX_LIBRARIES "MPI_CXX_LIBRARIES-NOTFOUND" CACHE STRING "Please specify the MPI-CXX libraries!")
-    endif()
-else()
-    set(MPI_CXX_INCLUDE_DIRS="")
-    set(MPI_CXX_LIBRARIES="")
-endif()
 
 #====================================================================
 # RASDAMAN SUPPORT - optional (requires PostgreSQL support)

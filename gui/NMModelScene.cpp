@@ -485,14 +485,21 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
     NMSqlTableModel* tabModel = qobject_cast<NMSqlTableModel*>(tv->getModel());
     QString dbFN = tabModel->getDatabaseName();
 
+    NMModelController* controller = NMGlobalHelper::getModelController();
+
     NMParameterTable* pt = new NMParameterTable(host);
-    pt->setTableName(tv->getModel()->tableName());
+    pt->setLogger(controller->getLogger());
+    pt->setModelController(controller);
+
+    QStringList unquotedTabName = tv->getModel()->tableName().split('\"', QString::SkipEmptyParts);
+    pt->setTableName(unquotedTabName.at(0));
     pt->setFileName(dbFN);
-    pt->setUserID(tv->getModel()->tableName());
-    pt->setDescription(tv->getModel()->tableName());
+
+    pt->setUserID(unquotedTabName.at(0));
+    pt->setDescription(unquotedTabName.at(0));
     if (host == 0)
     {
-        host = NMGlobalHelper::getModelController()->getComponent(QString::fromLatin1("root"));
+        host = controller->getComponent(QString::fromLatin1("root"));
     }
 
     pt->setTimeLevel(host->getTimeLevel());
@@ -509,6 +516,8 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
     connect(this, SIGNAL(itemDblClicked(QGraphicsSceneMouseEvent*)),
             tv, SLOT(processParaTableDblClick(QGraphicsSceneMouseEvent*)));
 
+    pt->setTimeLevel(host->getTimeLevel());
+
     if (ai)
     {
         ai->addToGroup(proxyWidget);
@@ -517,6 +526,7 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
     {
         this->addItem(proxyWidget);
     }
+    controller->addComponent(pt, host);
     proxyWidget->setPos(proxyWidget->mapToParent(mMousePos));
 }
 
@@ -713,7 +723,6 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                     }
                 }
             }
-            /* Don't think this is practicable and hasn't been used really
             // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             // PARAMETER TABLE
             // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -733,26 +742,32 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 QStringList sqliteformats;
                 sqliteformats << "db" << "sqlite" << "ldb" << "gpkg";
 
-                QString tableName;
-                if (sqliteformats.contains(suffix, Qt::CaseInsensitive))
+                if (    QMessageBox::question(NMGlobalHelper::getMainWindow(),
+                           QStringLiteral("Add table to model?"),
+                           QStringLiteral("Do you really want to add this table to the model?"))
+                     == QMessageBox::Yes
+                    )
                 {
-                    tableName = mwin->selectSqliteTable(fileName);
-                    if (!tableName.isEmpty())
+                    QString tableName;
+                    if (sqliteformats.contains(suffix, Qt::CaseInsensitive))
                     {
-                        tv = mwin->importTable(fileName,
-                                          LUMASSMainWin::NM_TABVIEW_SCENE,
-                                          true,
-                                          tableName);
+                        tableName = mwin->selectSqliteTable(fileName);
+                        if (!tableName.isEmpty())
+                        {
+                            tv = mwin->importTable(fileName,
+                                              LUMASSMainWin::NM_TABVIEW_SCENE,
+                                              true,
+                                              tableName);
+                        }
                     }
-                }
-                else
-                {
-                    tv = mwin->importTable(fileName, LUMASSMainWin::NM_TABVIEW_SCENE, true);
-                }
+                    else
+                    {
+                        tv = mwin->importTable(fileName, LUMASSMainWin::NM_TABVIEW_SCENE, true);
+                    }
 
-                this->addParameterTable(tv, aggrItem, host);
+                    this->addParameterTable(tv, aggrItem, host);
+                }
             }
-            */
             // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             // LIST OF IMAGE/TABLE FILENAMES ON PROCESS COMP ITEM
             // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

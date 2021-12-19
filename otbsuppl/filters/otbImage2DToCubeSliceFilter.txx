@@ -134,7 +134,7 @@ void Image2DToCubeSliceFilter<TInputImage, TOutputImage>
             !inIter.IsAtEnd();
                 ++inIter, ++outIter)
     {
-        outIter.Set(inIter.Get());
+        outIter.Set(static_cast<OutputImagePixelType>(inIter.Get()));
         progress.CompletedPixel();
     }
 }

@@ -29,7 +29,7 @@
 #include "itkImageRegionIterator.h"
 //#include "itkImageRegionIteratorWithIndex.h"
 #include "itkImageRegionConstIterator.h"
-#include "itkImageRegionConstIteratorWithIndex.h"
+//#include "itkImageRegionConstIteratorWithIndex.h"
 #include "itkProgressReporter.h"
 
 namespace otb {
@@ -172,14 +172,14 @@ void CubeSliceToImage2DFilter<TInputImage, TOutputImage>
         }
     }
 
-    const long inputNumPix = inRegion.GetNumberOfPixels();
-    const long outputNumPix = outputRegionForThread.GetNumberOfPixels();
+    //const long inputNumPix = inRegion.GetNumberOfPixels();
+    //const long outputNumPix = outputRegionForThread.GetNumberOfPixels();
 
-//    if (inputNumPix != outputNumPix)
-//    {
-//        itkExceptionMacro(<< "Input and output region do not have the same size! "
-//                          << "inRegion=" << inputNumPix << " | outRegion=" << outputNumPix);
-//    }
+    //    if (inputNumPix != outputNumPix)
+    //    {
+    //        itkExceptionMacro(<< "Input and output region do not have the same size! "
+    //                          << "inRegion=" << inputNumPix << " | outRegion=" << outputNumPix);
+    //    }
 
     using InIterType  = itk::ImageRegionConstIterator<TInputImage>;
     using OutIterType = itk::ImageRegionIterator<TOutputImage>;
@@ -193,7 +193,7 @@ void CubeSliceToImage2DFilter<TInputImage, TOutputImage>
             !inIter.IsAtEnd(); //!outIter.IsAtEnd();
                 ++inIter, ++outIter)
     {
-        outIter.Set(inIter.Get());
+        outIter.Set(static_cast<OutputImagePixelType>(inIter.Get()));
         progress.CompletedPixel();
     }
 }

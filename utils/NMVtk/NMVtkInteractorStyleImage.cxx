@@ -103,7 +103,7 @@ NMVtkInteractorStyleImage::OnMouseMove()
 void
 NMVtkInteractorStyleImage::DrawRubberBand()
 {
-    int *size = this->Interactor->GetRenderWindow()->GetSize();
+    const int *size = this->Interactor->GetRenderWindow()->GetSize();
     if (this->mEndPosition[0] > (size[0]-1))
       {
       this->mEndPosition[0] = size[0]-1;
@@ -139,24 +139,25 @@ NMVtkInteractorStyleImage::DrawRubberBand()
     int i;
     for (i = min[0]; i <= max[0]; i++)
       {
-      pixels[3*(min[1]*size[0]+i)] = 255 ^ pixels[3*(min[1]*size[0]+i)];
-      pixels[3*(min[1]*size[0]+i)+1] = 255 ^ pixels[3*(min[1]*size[0]+i)+1];
-      pixels[3*(min[1]*size[0]+i)+2] = 255 ^ pixels[3*(min[1]*size[0]+i)+2];
-      pixels[3*(max[1]*size[0]+i)] = 255 ^ pixels[3*(max[1]*size[0]+i)];
-      pixels[3*(max[1]*size[0]+i)+1] = 255 ^ pixels[3*(max[1]*size[0]+i)+1];
-      pixels[3*(max[1]*size[0]+i)+2] = 255 ^ pixels[3*(max[1]*size[0]+i)+2];
+      pixels[3*(min[1]*size[0]+i)] =    255 ^ pixels[3*(min[1]*size[0]+i)];
+      pixels[3*(min[1]*size[0]+i)+1] =  255 ^ pixels[3*(min[1]*size[0]+i)+1];
+      pixels[3*(min[1]*size[0]+i)+2] =  255 ^ pixels[3*(min[1]*size[0]+i)+2];
+      pixels[3*(max[1]*size[0]+i)] =    255 ^ pixels[3*(max[1]*size[0]+i)];
+      pixels[3*(max[1]*size[0]+i)+1] =  255 ^ pixels[3*(max[1]*size[0]+i)+1];
+      pixels[3*(max[1]*size[0]+i)+2] =  255 ^ pixels[3*(max[1]*size[0]+i)+2];
       }
     for (i = min[1]+1; i < max[1]; i++)
       {
-      pixels[3*(i*size[0]+min[0])] = 255 ^ pixels[3*(i*size[0]+min[0])];
-      pixels[3*(i*size[0]+min[0])+1] = 255 ^ pixels[3*(i*size[0]+min[0])+1];
-      pixels[3*(i*size[0]+min[0])+2] = 255 ^ pixels[3*(i*size[0]+min[0])+2];
-      pixels[3*(i*size[0]+max[0])] = 255 ^ pixels[3*(i*size[0]+max[0])];
-      pixels[3*(i*size[0]+max[0])+1] = 255 ^ pixels[3*(i*size[0]+max[0])+1];
-      pixels[3*(i*size[0]+max[0])+2] = 255 ^ pixels[3*(i*size[0]+max[0])+2];
+      pixels[3*(i*size[0]+min[0])] =    255 ^ pixels[3*(i*size[0]+min[0])];
+      pixels[3*(i*size[0]+min[0])+1] =  255 ^ pixels[3*(i*size[0]+min[0])+1];
+      pixels[3*(i*size[0]+min[0])+2] =  255 ^ pixels[3*(i*size[0]+min[0])+2];
+      pixels[3*(i*size[0]+max[0])] =    255 ^ pixels[3*(i*size[0]+max[0])];
+      pixels[3*(i*size[0]+max[0])+1] =  255 ^ pixels[3*(i*size[0]+max[0])+1];
+      pixels[3*(i*size[0]+max[0])+2] =  255 ^ pixels[3*(i*size[0]+max[0])+2];
       }
 
     this->Interactor->GetRenderWindow()->SetPixelData(0, 0, size[0]-1, size[1]-1, pixels, 1);
+    this->Interactor->GetRenderWindow()->Frame();
 
     tmpPixelArray->Delete();
 }

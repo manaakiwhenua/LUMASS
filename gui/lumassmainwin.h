@@ -401,6 +401,8 @@ protected slots:
 
 protected:
 
+    void hideEvent(QHideEvent* event);
+    void showEvent(QShowEvent* event);
     void mousePressEvent(QMouseEvent *event);
     bool eventFilter(QObject *obj, QEvent *event);
     void saveAsImageFile(bool onlyVisImg);
@@ -655,6 +657,12 @@ private:
     QMap<QString, NMAbstractAction*> mUserActions;
 
     QtTreePropertyBrowser* mSettingsBrowser;
+
+    // keep track of dock widgets
+    bool mbComponentInfoDockVisble;
+    bool mbComponentsWidgetVisible;
+    bool mbLogDockVisible;
+
 
     //QListWidget* mTableListWidget;
     NMListWidget* mTableListWidget;

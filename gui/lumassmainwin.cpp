@@ -406,6 +406,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     // **********************************************************************
     GDALAllRegister();
     GetGDALDriverManager()->AutoLoadDrivers();
+    CPLSetConfigOption("GDAL_PAM_ENABLED", "NO");
 
     // **********************************************************************
     // *                    SQLITE3                                         *
@@ -1558,6 +1559,22 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
     }
 
     return false;
+}
+
+void
+LUMASSMainWin::hideEvent(QHideEvent *event)
+{
+    this->mbComponentInfoDockVisble = this->ui->componentInfoDock->isVisible();
+    this->mbComponentsWidgetVisible = this->ui->componentsWidget->isVisible();
+    this->mbLogDockVisible = this->ui->logDock->isVisible();
+}
+
+void
+LUMASSMainWin::showEvent(QShowEvent *event)
+{
+    this->ui->componentInfoDock->setVisible(this->mbComponentInfoDockVisble);
+    this->ui->componentsWidget->setVisible(this->mbComponentsWidgetVisible);
+    this->ui->logDock->setVisible(this->mbLogDockVisible);
 }
 
 void
@@ -4090,68 +4107,70 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
-    // TEST pybind11 on Windows
+    QString fn_org = "/home/herziga/tmp/test/dem_sqr-o.kea";
+    QString fn_test = "/home/herziga/tmp/test/dem_sqr-t.kea";
 
-    if (!Py_IsInitialized())
+    QCryptographicHash hash_org(QCryptographicHash::Md5);
+    QCryptographicHash hash_test(QCryptographicHash::Md5);
+
+    QFile orgFile(fn_org);
+    QFile testFile(fn_test);
+
+    if (!orgFile.open(QFile::ReadOnly))
     {
-        py::initialize_interpreter();
-
+        NMLogError(<< "failed opening org file");
+        return;
     }
 
-    try
+    if (!testFile.open(QFile::ReadOnly))
     {
-        NMLogInfo(<< "get sys module_ ... ");
-
-        py::module_ sys = py::module_::import("sys");
-
-        std::string bmipy = "c:/src/python/bmi-python";
-        std::string appendstr = "c:/src/python/watyield/bmi";
-        std::string another = "c:/src/python/watyield";
-        sys.attr("path").attr("append")(py::cast(appendstr));
-        sys.attr("path").attr("append")(py::cast(another));
-        sys.attr("path").attr("append")(py::cast(bmipy));
-
-
-        //py::object pstr = sys.attr("path").attr("pop")();
-        //
-        //std::string cstr = pstr.cast<std::string>();
-        //
-        //NMLogInfo(<< "cstr='" << cstr << "'!");
-
-        //py::print(1, 2.0, "three");
-        //py::object atup = py::make_tuple("unpacked", true);
-
-        //NMLogInfo(<< "tuple=" << atup.cast<std::string>());
-
-        py::module mod = py::module::import("watyieldbmi");
-        if (!mod.is_none())
-        {
-            NMLogInfo(<< "Teilerfolg!");
-        }
-
-        py::object model = mod.attr("WatYieldBMI")();
-        if (!model.is_none())
-        {
-            NMLogInfo(<< "did it!");
-        }
-
-
+        NMLogError(<< "failed opening test file");
+        return;
     }
-    catch (py::cast_error& ce)
+
+    hash_org.addData(orgFile.readAll());
+    hash_test.addData(testFile.readAll());
+
+    NMLogInfo(<< "org hash:  " << hash_org.result().toHex().toStdString());
+    NMLogInfo(<< "test hash: " << hash_test.result().toHex().toStdString());
+
+    if (hash_org.result().compare(hash_test.result()) == 0)
     {
-        NMLogError(<< ce.what());
+        NMLogInfo(<< "identical");
     }
-    catch (py::error_already_set& eas)
+    else
     {
-        NMLogError(<< eas.what());
-    }
-    catch (std::exception& se)
-    {
-        NMLogError(<< se.what());
+        NMLogInfo(<< "different");
     }
 
 
-    // ::~LUMASSMainWin() finalizes it
+
+return;
+
+    std::string dbfn = "/home/herziga/crunch/OLW_HL/data/Scenarios/v8/Can_p4z/luopt_hl2.ldb";
+    std::string tabname = "luopt_hl2_1";
+    std::string losfn = "/home/herziga/tmp/los.los";
+
+    otb::SQLiteTable::Pointer db = otb::SQLiteTable::New();
+    db->SetDbFileName(dbfn);
+    db->SetOpenReadOnly(false);
+    if (!db->openConnection())
+    {
+        NMLogError(<< "DB connection failed!");
+        return;
+    }
+    db->SetTableName(tabname);
+    db->PopulateTableAdmin();
+
+    QScopedPointer<NMMosra> mosra(new NMMosra());
+    mosra->setLogger(this->getLogger());
+    mosra->setScenarioName("testBaseline");
+    mosra->loadSettings(losfn.c_str());
+    mosra->setDataSet(static_cast<otb::AttributeTable*>(db.GetPointer()));
+    mosra->configureProblem();
+//    mosra->calcBaseline();
+
+
 
 // -----------------------------------------------------
 //    MPI_Init(nullptr, nullptr);

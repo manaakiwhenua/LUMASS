@@ -1,6 +1,4 @@
-#!/bin/bash
-
-
+#! /usr/bin/env bash
 
 # get the current directory
 pushd `dirname $0` > /dev/null
@@ -9,6 +7,8 @@ popd > /dev/null
 
 # we assume that gdal is installed
 # and working
+
+$CURDIR/env.sh
 
 # call gal_rasterize with all arguments
 $CURDIR/gdal_polygonize.py "$@"

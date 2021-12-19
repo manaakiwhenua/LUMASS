@@ -115,12 +115,20 @@ NMLogger *NMLoggingProvider::getLogger() const
 void
 NMLoggingProvider::setLogFileName(const QString &fn)
 {
+    // if there's a log file open, we close it
+    if (mLogFile.isOpen())
+    {
+        mLogFile.flush();
+        mLogFile.close();
+    }
+
     mLogFile.setFileName(fn);
     if (!mLogFile.open(QIODevice::WriteOnly | QIODevice::Text))
     {
         NMErr("NMLoggingProvider", << "Failed creating log file!");
         return;
     }
+    mLogFileName = fn;
 
     connect(mLogger, SIGNAL(sendLogMsg(QString)), This(), SLOT(writeLogMsg(QString)));
 }
@@ -261,7 +269,7 @@ configureModel(const YAML::Node& modelConfig, NMModelController* mController)
 {
     NMLoggingProvider* log = NMLoggingProvider::This();
 
-    mController->clearModelSettings();
+    //mController->clearModelSettings();
 
     // =====================================================================
     // iterate over model components
@@ -590,10 +598,17 @@ void doModel(const QString& userFile, QString &workspace, QString& enginePath, b
     // ==============================================
     //  import the model
     // ==============================================
+    bool bYaml = false;
     QString modelFile;
+    QString yamlWorkspace;
+    QString yamlLogfileName;
+    bool byamlLogProv;
+
     QFileInfo ufinfo(userFile);
     YAML::Node configFile;
-    if (ufinfo.suffix().compare(QString("yaml"), Qt::CaseInsensitive) == 0)
+    if (    ufinfo.suffix().compare(QString("yaml"), Qt::CaseInsensitive) == 0
+         || ufinfo.suffix().compare(QString("yml"), Qt::CaseInsensitive) == 0
+       )
     {
         // read yaml configuration file
         try
@@ -614,6 +629,24 @@ void doModel(const QString& userFile, QString &workspace, QString& enginePath, b
             {
                 modelFile = engineConfig["modelfile"].as<std::string>().c_str();
             }
+
+            if (engineConfig["workspace"])
+            {
+                yamlWorkspace = engineConfig["workspace"].as<std::string>().c_str();
+            }
+
+            if (engineConfig["logfile"])
+            {
+                yamlLogfileName = engineConfig["logfile"].as<std::string>().c_str();
+            }
+
+            if (engineConfig["logprovenance"])
+            {
+                byamlLogProv = engineConfig["logprovenance"].IsDefined() ? 
+                    engineConfig["logprovenance"].as<bool>() : false;
+            }
+
+            bYaml = true;
         }
         catch (YAML::BadConversion& bc)
         {
@@ -631,10 +664,51 @@ void doModel(const QString& userFile, QString &workspace, QString& enginePath, b
             //std::cout << "cout: " << msg.str() << std::endl;
             return;
         }
+        catch (std::exception& se)
+        {
+            std::stringstream msg;
+            msg << "ERROR: " << se.what();
+            NMErr(ctx, << msg.str().c_str());
+            //std::cout << "cout: " << msg.str() << std::endl;
+            return;
+        }
     }
     else
     {
         modelFile = userFile;
+    }
+
+    QScopedPointer<NMModelController> ctrl(new NMModelController());
+    ctrl->setLogger(NMLoggingProvider::This()->getLogger());
+    ctrl->updateSettings("LUMASSPath", enginePath);
+    ctrl->updateSettings("TimeFormat", "yyyy-MM-ddThh:mm:ss.zzz");
+
+    // if no appropriate command line settings were passed, 
+    // use as much as possible the yaml configuration settings
+    if (bYaml)
+    {
+        ctrl->updateSettings("ConfigPath", ufinfo.canonicalPath());
+        modelFile = ctrl->processStringParameter(nullptr, modelFile);
+
+        if (workspace.isEmpty())
+        {
+            workspace = ctrl->processStringParameter(nullptr, yamlWorkspace);
+        }
+
+        QString curlogfile = NMLoggingProvider::This()->getLogFileName();
+        if (curlogfile.isEmpty() && !yamlLogfileName.isEmpty())
+        {
+            yamlLogfileName = ctrl->processStringParameter(nullptr, yamlLogfileName);
+
+            NMLoggingProvider::This()->setLogFileName(yamlLogfileName);
+
+            QString logstart = QString("lumassengine - %1, %2")
+                .arg(QDate::currentDate().toString())
+                .arg(QTime::currentTime().toString());
+
+            NMLoggingProvider::This()->getLogger()->setLogLevel(NMLogger::NM_LOG_INFO);
+            NMLoggingProvider::This()->writeLogMsg(logstart);
+        }
     }
 
 
@@ -645,11 +719,6 @@ void doModel(const QString& userFile, QString &workspace, QString& enginePath, b
         NMDebugCtx(ctx, << "done!");
         return;
     }
-
-    QScopedPointer<NMModelController> ctrl(new NMModelController());
-    ctrl->setLogger(NMLoggingProvider::This()->getLogger());
-    ctrl->updateSettings("LUMASSPath", enginePath);
-    ctrl->updateSettings("TimeFormat", "yyyy-MM-ddThh:mm:ss.zzz");
 
     // ====================================================
     //   set ModelController settings
@@ -720,6 +789,10 @@ void doModel(const QString& userFile, QString &workspace, QString& enginePath, b
         {
             NMErr(ctx, << re.what());
         }
+        catch (std::exception& se)
+        {
+            NMErr(ctx, << se.what());
+        }
     }
 
     // ==============================================
@@ -729,7 +802,7 @@ void doModel(const QString& userFile, QString &workspace, QString& enginePath, b
     GetGDALDriverManager()->AutoLoadDrivers();
     sqlite3_temp_directory = const_cast<char*>(workspace.toStdString().c_str());//getenv("HOME");
 
-    if (bLogProv)
+    if (bLogProv || byamlLogProv)
     {
         ctrl->setLogProvOn();
     }

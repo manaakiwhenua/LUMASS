@@ -44,6 +44,8 @@ public:
 
     NMLogger* getLogger() const;
     void setLogFileName(const QString& fn);
+    QString getLogFileName(void)
+        {return mLogFileName;}
 
 
 public slots:

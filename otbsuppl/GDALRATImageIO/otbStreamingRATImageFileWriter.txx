@@ -426,48 +426,6 @@ StreamingRATImageFileWriter<TInputImage>
     }
 }
 
-//template<class TInputImage>
-//void
-//StreamingRATImageFileWriter<TInputImage>
-//::EnlargeOutputRequestedRegion(itk::DataObject* output)
-//{
-//    Superclass::EnlargeOutputRequestedRegion(output);
-//    OutputImageType* out = static_cast<OutputImageType*>(output);
-
-//    if (m_UpdateMode && m_UseForcedLPR)
-//    {
-//        itk::ImageRegion<TInputImage::ImageDimension> outr;
-//        for (unsigned int d=0; d < TInputImage::ImageDimension; ++d)
-//        {
-//            outr.SetIndex(d, m_ForcedLargestPossibleRegion.GetIndex()[d]);
-//            outr.SetSize(d, m_ForcedLargestPossibleRegion.GetSize()[d]);
-//        }
-//        out->SetLargestPossibleRegion(outr);
-//    }
-//}
-
-//template<class TInputImage>
-//void StreamingRATImageFileWriter<TInputImage>
-//::GenerateInputRequestedRegion()
-// {
-//    //NMDebugCtx(ctxSIFR, << "...");
-//    Superclass::GenerateInputRequestedRegion();
-
-//    InputImageType * inputPtr = const_cast<InputImageType*>(this->GetInput());
-
-//    if(!inputPtr)
-//    {
-//        return;
-//    }
-//    typename InputImageType::RegionType lregion = inputPtr->GetLargestPossibleRegion();
-
-//    typename InputImageType::SizeType rsize;
-//    rsize.Fill(0);
-//    lregion.SetSize(rsize);
-
-//    inputPtr->SetRequestedRegion(lregion);
-//}
-
 template<class TInputImage>
 void
 StreamingRATImageFileWriter<TInputImage>
@@ -558,6 +516,39 @@ void StreamingRATImageFileWriter<TInputImage>
 }
 #endif
 
+template<class TInputImage>
+void
+StreamingRATImageFileWriter<TInputImage>
+::GenerateOutputInformation()
+{
+    Superclass::GenerateOutputInformation();
+    OutputImageType* outImg = this->GetOutput(0);
+
+    if (m_UseForcedLPR)
+    {
+        OutputImageRegionType outLPR;
+
+        for (unsigned int d=0; d < OutputImageType::ImageDimension; ++d)
+        {
+            outLPR.SetIndex(d, m_ForcedLargestPossibleRegion.GetIndex(d));
+            outLPR.SetSize(d, m_ForcedLargestPossibleRegion.GetSize(d));
+        }
+
+        outImg->SetLargestPossibleRegion(outLPR);
+    }
+    if (m_UseUpdateRegion)
+    {
+        OutputImageRegionType outRR;
+        for (unsigned int d=0; d < OutputImageType::ImageDimension; ++d)
+        {
+            outRR.SetIndex(d, m_UpdateRegion.GetIndex(d));
+            outRR.SetSize(d, m_UpdateRegion.GetSize(d));
+        }
+
+        outImg->SetRequestedRegion(outRR);
+    }
+}
+
 /**
  *
  */
@@ -598,8 +589,17 @@ StreamingRATImageFileWriter<TInputImage>
 
     /** Prepare ImageIO  : create ImageFactory */
 
+    bool bVirtualWriter = false;
     m_NumberOfInputs = this->GetNumberOfInputs();
-    if (m_FileNames.size() == 0)
+    if (    m_NumberOfInputs > 0
+        &&  !m_WriteImage
+        &&  m_InputRATs.size() == 0
+        &&  m_FileNames.size() == 0
+       )
+    {
+        bVirtualWriter = true;
+    }
+    else if (m_FileNames.size() == 0)
     {
         itkExceptionMacro(<< "No filename provided! Please specify a filename for each input "
                           << "image you want to write! Abort.");
@@ -645,7 +645,7 @@ StreamingRATImageFileWriter<TInputImage>
     bool bCanStreamWriteAll = true;
     for (int io=0; io < this->m_FileNames.size(); ++io)
     {
-        if (m_ImageIOs[io].IsNull())
+        if (!bVirtualWriter && m_ImageIOs[io].IsNull())
         {
             if (m_FileNames[io].find(".nc") != std::string::npos)
             {
@@ -702,6 +702,23 @@ StreamingRATImageFileWriter<TInputImage>
 
                 this->m_ImageIOs[io] = gioPtr;
 
+            }
+        }
+        // if the image io has been set externally
+        else
+        {
+            if (!this->m_ImageIOs[io]->CanWriteFile(this->m_FileNames[io].c_str()))
+            {
+                itkExceptionMacro(<< "GDAL cannot write the specified file "
+                                  << "'" << this->m_FileNames[io] << "!"
+                                  << "Make sure you've got write access to the "
+                                  << "specified location!");
+            }
+
+            this->m_ImageIOs[io]->SetFileName(this->m_FileNames[io]);
+            if (!this->m_ImageIOs[io]->CanStreamWrite())
+            {
+                bCanStreamWriteAll = false;
             }
         }
 
@@ -780,8 +797,17 @@ StreamingRATImageFileWriter<TInputImage>
     // streaming, we set this as the outputRegion to allow for streaming over this region
     OutputImageRegionType outputRegion = this->GetOutput(0)->GetLargestPossibleRegion();
 
-    if (m_NumberOfInputs == 1 && m_UpdateMode && m_UseUpdateRegion)
+    //if (m_NumberOfInputs == 1 && m_UpdateMode && m_UseUpdateRegion)
+    if (m_NumberOfInputs == 1 && m_UseUpdateRegion)
     {
+        if (this->m_ImageIOs[0].IsNull() || !this->m_ImageIOs[0]->CanStreamWrite())
+        {
+            itkExceptionMacro(<< "The specified file (format) "
+                              << "'" << this->m_FileNames[0] << "' "
+                              << "does not support streaming! "
+                              << "Please try a different format, e.g. *.kea or *.img.");
+        }
+
         for (unsigned int d=0; d < TInputImage::ImageDimension; ++d)
         {
             outputRegion.SetIndex(d, m_UpdateRegion.GetIndex()[d]);
@@ -821,7 +847,9 @@ StreamingRATImageFileWriter<TInputImage>
    */
 
     /** Control if the ImageIO is CanStreamWrite*/
-    if (!bCanStreamWriteAll || InputImageDimension == 1)
+    if (    !bVirtualWriter
+         && (!bCanStreamWriteAll || InputImageDimension == 1)
+       )
     {
         this->SetNumberOfDivisionsStrippedStreaming(1);
     }
@@ -829,55 +857,20 @@ StreamingRATImageFileWriter<TInputImage>
     {
         this->SetNumberOfDivisionsStrippedStreaming(1);
     }
-    else if (m_StreamingMethod.compare("NO_STREAMING") == 0)
+    else if (m_StreamingMethod.compare("NO_STREAMING") == 0 || this->m_UseForcedLPR)
     {
         this->SetNumberOfDivisionsStrippedStreaming(1);
     }
     m_StreamingManager->PrepareStreaming(inputPtr, outputRegion);
     m_NumberOfDivisions = m_StreamingManager->GetNumberOfSplits();
 
-    // below code is copied from otbMultiImageFileWriter.cxx
-//    if (m_NumberOfDivisions > 1)
-//    {
-//        // Check this number of division is compatible with all inputs
-//        bool nbDivValid = false;
-//        while ((!nbDivValid) && 1 < m_NumberOfDivisions)
-//        {
-//            unsigned int smallestNbDiv = m_NumberOfDivisions;
-//            for (unsigned int i = 0; i < m_NumberOfInputs; ++i)
-//            {
-//                InputImageRegionType inLPR = this->GetInput(i)->GetLargestPossibleRegion();
-//                unsigned int div = m_StreamingManager->GetSplitter()->GetNumberOfSplits(inLPR, m_NumberOfDivisions);
-//                smallestNbDiv    = std::min(div, smallestNbDiv);
-//            }
-//            if (smallestNbDiv == m_NumberOfDivisions)
-//            {
-//                nbDivValid = true;
-//            }
-//            else
-//            {
-//                m_NumberOfDivisions = smallestNbDiv;
-//            }
-//        }
-//        if (m_NumberOfDivisions == 1)
-//        {
-//            otbWarningMacro("Can't find a common split scheme between all inputs, streaming disabled\n");
-//        }
-//    }
 
     // no point in chopping up the image, if we're not
     // intrested in it (and only want to write the table)
-    if (!m_WriteImage)
+    if (!bVirtualWriter && !m_WriteImage)
     {
         m_NumberOfDivisions = 1;
     }
-    //otbMsgDebugMacro(<< "Number Of Stream Divisions : " << m_NumberOfDivisions);
-
-   /**
-   * Loop over the number of pieces of each image, execute the upstream pipeline on each
-   * piece (and image), and copy the results into the output image(s).
-   */
-    //InputImageRegionType streamRegion;
 
     //
     // Setup the ImageIOs with information from output images
@@ -958,10 +951,21 @@ StreamingRATImageFileWriter<TInputImage>
          m_CurrentDivision++, m_DivisionProgress = 0, this->UpdateFilterProgress())
     {
         InputImageType* inImg = const_cast<InputImageType*>(this->GetInput(0));
-        InputImageRegionType streamRegion = inImg->GetLargestPossibleRegion();
-        InputImageRegionType inLPR = streamRegion;
+        //InputImageRegionType streamRegion = inImg->GetLargestPossibleRegion();
+        //m_StreamingManager->GetSplitter()->GetSplit(m_CurrentDivision, m_NumberOfDivisions, streamRegion);
+        InputImageRegionType streamRegion = outputRegion;
         m_StreamingManager->GetSplitter()->GetSplit(m_CurrentDivision, m_NumberOfDivisions, streamRegion);
 
+        if (m_UseForcedLPR)
+        {
+            InputImageRegionType inLPR;
+            for (unsigned int d=0; d < OutputImageType::ImageDimension; ++d)
+            {
+                inLPR.SetIndex(d, m_ForcedLargestPossibleRegion.GetIndex()[d]);
+                inLPR.SetSize(d, m_ForcedLargestPossibleRegion.GetSize()[d]);
+            }
+            inImg->SetLargestPossibleRegion(inLPR);
+        }
         inImg->SetRequestedRegion(streamRegion);
         inImg->PropagateRequestedRegion();
         inImg->UpdateOutputData();
@@ -1000,12 +1004,6 @@ StreamingRATImageFileWriter<TInputImage>
     }
 
 
-    /** build overviews */
-    if (m_ResamplingType.compare("NONE") != 0 && m_WriteImage)
-    {
-        this->BuildOverviews();
-    }
-
     /**
    * If we ended due to aborting, push the progress up to 1.0 (since
    * it probably didn't end there)
@@ -1013,7 +1011,8 @@ StreamingRATImageFileWriter<TInputImage>
     // ONLY WHEN RAT AVAILABLE AND HAS NOT BEEN WRITTEN WITH IMAGE (above)
     for (int inimg=0; inimg < m_NumberOfInputs; ++inimg)
     {
-        if (!m_WriteImage && m_InputRATs[inimg].IsNotNull())
+        //if (!m_WriteImage && m_InputRATs[inimg].IsNotNull())
+        if (m_InputRATs[inimg].IsNotNull())
         {
             otb::GDALRATImageIO* gio = dynamic_cast<otb::GDALRATImageIO*>(m_ImageIOs[inimg].GetPointer());
             otb::NetCDFIO* nio = dynamic_cast<otb::NetCDFIO*>(m_ImageIOs[inimg].GetPointer());
@@ -1026,16 +1025,23 @@ StreamingRATImageFileWriter<TInputImage>
                 NMProcDebug(<< "writing ONLY RAT!");
                 gio->WriteRAT(m_InputRATs[inimg]);
             }
-            if (m_InputRATs[inimg]->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
-            {
-                otb::SQLiteTable* sqltab = static_cast<otb::SQLiteTable*>(m_InputRATs[inimg].GetPointer());
-                if (sqltab)
-                {
-                    sqltab->CloseTable();
-                }
-            }
+            //if (m_InputRATs[inimg]->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
+            //{
+            //    otb::SQLiteTable* sqltab = static_cast<otb::SQLiteTable*>(m_InputRATs[inimg].GetPointer());
+            //    if (sqltab)
+            //    {
+            //        sqltab->CloseTable();
+            //    }
+            //}
         }
     }
+
+    /** build overviews */
+    if (m_ResamplingType.compare("NONE") != 0 && m_WriteImage)
+    {
+        this->BuildOverviews();
+    }
+
 
     if (!this->GetAbortGenerateData())
     {
@@ -1076,7 +1082,7 @@ StreamingRATImageFileWriter<TInputImage>
     this->m_Updating = false;
 
     // close the GDALDataset
-    for (int num=0; num < m_NumberOfInputs; ++num)
+    for (int num=0; num < this->m_FileNames.size(); ++num)
     {
         //otb::GDALRATImageIO* agio = static_cast<otb::GDALRATImageIO*>(m_ImageIOs[num].GetPointer());
         //if (agio != nullptr)
@@ -1092,10 +1098,15 @@ StreamingRATImageFileWriter<TInputImage>
         std::vector<std::string> attrs;
 
         std::string fn = this->m_FileNames[num];//GetFileName();
-        std::size_t pos1 = fn.find_last_of("/\\");
-        std::string basename = fn.substr(pos1+1);
-        std::size_t pos2 = basename.find_last_of('.');
-        std::string ext = basename.substr(pos2+1);
+        std::string basename = "";
+        std::string ext = "";
+        if (fn.size() > 2)
+        {
+            std::size_t pos1 = fn.find_last_of("/\\");
+            basename = fn.substr(pos1+1);
+            std::size_t pos2 = basename.find_last_of('.');
+            ext = basename.substr(pos2+1);
+        }
 
         // provn used by
         sstr.str("");

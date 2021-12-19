@@ -322,6 +322,7 @@ protected:
   void PrintSelf(std::ostream& os, itk::Indent indent) const;
 
   void VerifyInputInformation();
+  void GenerateOutputInformation();
 
   /** Does the real work. */
   virtual void GenerateData(void);

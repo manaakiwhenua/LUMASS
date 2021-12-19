@@ -37,12 +37,13 @@
 /*! Internal templated helper class linking to the core otb/itk filter
  *  by static methods.
  */
-template<class TInputImage, class TOutputImage, unsigned int Dimension>
+//template<class TInputImage, class TOutputImage, unsigned int Dimension>
+template<class TInputImage, unsigned int Dimension>
 class NMFlowAccumulationFilterWrapper_Internal
 {
 public:
     typedef otb::Image<TInputImage, Dimension>  InImgType;
-    typedef otb::Image<TOutputImage, Dimension> OutImgType;
+    typedef otb::Image<TInputImage, Dimension> OutImgType;
     typedef typename otb::FlowAccumulationFilter<InImgType, OutImgType>      FilterType;
     typedef typename FilterType::Pointer        FilterTypePointer;
 
@@ -56,28 +57,32 @@ public:
     typedef typename OutImgType::PointValueType   OutPointValueType;
     typedef typename OutImgType::SizeValueType    SizeValueType;
 
-	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands)
-	{
-		FilterTypePointer f = FilterType::New();
-		otbFilter = f;
-	}
+    static void createInstance(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands)
+    {
+        FilterTypePointer f = FilterType::New();
+        otbFilter = f;
+    }
 
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
+                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
         InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        if (!name.isEmpty())
+        {
+            filter->SetInput(name.toLower().toStdString(), dataObj);
+        }
         filter->SetInput(idx, img);
     }
 
 
-	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, unsigned int idx)
-	{
-		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
-	}
+    static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands, unsigned int idx)
+    {
+        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
+    }
 
 /*$<InternalRATGetSupport>$*/
 
@@ -85,27 +90,27 @@ public:
 
 
     static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, NMProcess* proc,
-			unsigned int step, const QMap<QString, NMModelComponent*>& repo)
-	{
-		NMDebugCtx("NMFlowAccumulationFilterWrapper_Internal", << "...");
+            unsigned int numBands, NMProcess* proc,
+            unsigned int step, const QMap<QString, NMModelComponent*>& repo)
+    {
+        NMDebugCtx("NMFlowAccumulationFilterWrapper_Internal", << "...");
 
-		FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		NMFlowAccumulationFilterWrapper* p =
-				dynamic_cast<NMFlowAccumulationFilterWrapper*>(proc);
+        FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        NMFlowAccumulationFilterWrapper* p =
+                dynamic_cast<NMFlowAccumulationFilterWrapper*>(proc);
 
-		// make sure we've got a valid filter object
-		if (f == 0)
-		{
-			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        // make sure we've got a valid filter object
+        if (f == 0)
+        {
+            NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
                         e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
-			throw e;
-			return;
-		}
+            throw e;
+            return;
+        }
 
-		/* do something reasonable here */
-		bool bok;
-		int givenStep = step;
+        /* do something reasonable here */
+        bool bok;
+        int givenStep = step;
 
 
         QVariant curAlgorithmTypeVar = p->getParameter("AlgorithmType");
@@ -168,6 +173,7 @@ public:
            if (curFlowLengthType.compare("NO_FLOWLENGTH") == 0)
            {
                 f->SetFlowLength(false);
+                f->SetFlowLengthUpstream(true);
            }
            else if (curFlowLengthType.compare("UPSTREAM") == 0)
            {
@@ -186,25 +192,30 @@ public:
         /*$<ForwardInputUserIDs_Body>$*/
 
 
-		NMDebugCtx("NMFlowAccumulationFilterWrapper_Internal", << "done!");
-	}
+        NMDebugCtx("NMFlowAccumulationFilterWrapper_Internal", << "done!");
+    }
 };
 
 /*$<HelperClassInstantiation>$*/
 
-InstantiateObjectWrap( NMFlowAccumulationFilterWrapper, NMFlowAccumulationFilterWrapper_Internal )
-SetNthInputWrap( NMFlowAccumulationFilterWrapper, NMFlowAccumulationFilterWrapper_Internal )
-GetOutputWrap( NMFlowAccumulationFilterWrapper, NMFlowAccumulationFilterWrapper_Internal )
-LinkInternalParametersWrap( NMFlowAccumulationFilterWrapper, NMFlowAccumulationFilterWrapper_Internal )
+InstantiateInputTypeObjectWrap( NMFlowAccumulationFilterWrapper, NMFlowAccumulationFilterWrapper_Internal )
+SetInputTypeNthInputWrap( NMFlowAccumulationFilterWrapper, NMFlowAccumulationFilterWrapper_Internal )
+GetInputTypeOutputWrap( NMFlowAccumulationFilterWrapper, NMFlowAccumulationFilterWrapper_Internal )
+LinkInputTypeInternalParametersWrap( NMFlowAccumulationFilterWrapper, NMFlowAccumulationFilterWrapper_Internal )
 /*$<RATGetSupportWrap>$*/
 /*$<RATSetSupportWrap>$*/
 
 NMFlowAccumulationFilterWrapper
 ::NMFlowAccumulationFilterWrapper(QObject* parent)
 {
-	this->setParent(parent);
-	this->setObjectName("NMFlowAccumulationFilterWrapper");
-	this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->setParent(parent);
+    this->setObjectName("NMFlowAccumulationFilterWrapper");
+    this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->mInputNumBands = 1;
+    this->mOutputNumBands = 1;
+    this->mInputNumDimensions = 2;
+    this->mOutputNumDimensions = 2;
+    this->mInputComponentType = otb::ImageIOBase::FLOAT;
 
     this->mAlgorithmType = QString(tr("MFD"));
 
@@ -214,6 +225,16 @@ NMFlowAccumulationFilterWrapper
     mFlowLengthType = "NO_FLOWLENGTH";
     mFlowLengthEnum.clear();
     mFlowLengthEnum << "NO_FLOWLENGTH" << "DOWNSTREAM" << "UPSTREAM";
+
+    mFlowExponent << "4";
+    mNodata << "0";
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("PixelType"));
+    mUserProperties.insert(QStringLiteral("AlgorithmType"), QStringLiteral("Algorithm"));
+    mUserProperties.insert(QStringLiteral("FlowExponent"), QStringLiteral("FlowExponent"));
+    mUserProperties.insert(QStringLiteral("FlowLengthType"), QStringLiteral("FlowLength"));
+    mUserProperties.insert(QStringLiteral("Nodata"), QStringLiteral("Nodata"));
 }
 
 NMFlowAccumulationFilterWrapper

@@ -37,14 +37,15 @@
 
 #include "nmflowaccumulationfilterwrapper_export.h"
 
-template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
+//template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
+template<class TInputImage, unsigned int Dimension=2>
 class NMFlowAccumulationFilterWrapper_Internal;
 
 class NMFLOWACCUMULATIONFILTERWRAPPER_EXPORT
 NMFlowAccumulationFilterWrapper
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
     Q_PROPERTY(QStringList Nodata READ getNodata WRITE setNodata)
     Q_PROPERTY(QString AlgorithmType READ getAlgorithmType WRITE setAlgorithmType)
@@ -67,14 +68,15 @@ public:
     NMFlowAccumulationFilterWrapper(QObject* parent=0);
     virtual ~NMFlowAccumulationFilterWrapper();
 
-    template<class TInputImage, class TOutputImage, unsigned int Dimension>
+    //template<class TInputImage, class TOutputImage, unsigned int Dimension>
+    template<class TInputImage, unsigned int Dimension>
     friend class NMFlowAccumulationFilterWrapper_Internal;
 
     QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     /*$<RATGetSupportDecl>$*/
 
@@ -90,9 +92,9 @@ protected:
     QStringList mFlowLengthEnum;
 
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
-    
+
 
 };
 

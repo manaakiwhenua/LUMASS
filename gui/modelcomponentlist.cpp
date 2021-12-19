@@ -264,6 +264,28 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
 #endif
 
+    /* =============================================================
+                        COLOR RAMP CONTEXT MENU
+    ================================================================ */
+
+    this->mRampMenu = new QMenu(this);
+
+    mActRampInvert = new QAction(this->mRampMenu);
+    mActRampInvert->setText(tr("Invert Colour Ramp"));
+    mActRampInvert->setCheckable(true);
+    mActRampInvert->setChecked(false);
+    mActRampLogScale = new QAction(this->mRampMenu);
+    mActRampLogScale->setText(tr("Log Scale"));
+    mActRampLogScale->setCheckable(true);
+    mActRampLogScale->setChecked(false);
+
+    this->mRampMenu->addAction(mActRampInvert);
+    this->mRampMenu->addAction(mActRampLogScale);
+
+    this->connect(mActRampInvert, SIGNAL(toggled(bool)),
+                  this, SLOT(toggleClrRampInversion(bool)));
+    this->connect(mActRampLogScale, SIGNAL(toggled(bool)),
+                  this, SLOT(toggleClrRampScale(bool)));
 
     /* =============================================================
                         VECTOR CONTOUR MENU
@@ -737,6 +759,7 @@ void ModelComponentList::removeLayer(NMLayer* layer)
     mwin->getRenderWindow()->SetNumberOfLayers(mLayerModel->getItemLayerCount()+2);
     vtkRenderer* scaleRenderer = const_cast<vtkRenderer*>(mwin->getScaleRenderer());
     scaleRenderer->SetLayer(this->mLayerModel->getItemLayerCount()+1);
+    this->recalcMapBBox();
 
     NMDebugCtx(ctx, << "done!");
 }
@@ -1143,6 +1166,18 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
     }
     else if (   event->button() == Qt::RightButton
              && level == 1
+             && l->getLegendType() == NMLayer::NM_LEGEND_RAMP
+             && idx.row() == 2
+            )
+    {
+        this->mActRampInvert->setChecked(l->getIsInvertClrRamp());
+        this->mActRampLogScale->setChecked(l->getIsLogClrRamp());
+
+        this->mRampMenu->move(event->globalPos());
+        this->mRampMenu->exec();
+    }
+    else if (   event->button() == Qt::RightButton
+             && level == 1
              && idx.row() > 0
              //&& this->getCurrentLayer() != 0
             )
@@ -1161,6 +1196,28 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 
     //NMDebugCtx(ctx, << "done!");
 }
+
+void ModelComponentList::toggleClrRampInversion(bool tog)
+{
+    NMLayer* l = this->getCurrentLayer();
+    if (l == 0)
+        return;
+
+    l->setIsInvertClrRamp(tog);
+    l->updateMapping();
+}
+
+void ModelComponentList::toggleClrRampScale(bool tog)
+{
+    NMLayer* l = this->getCurrentLayer();
+    if (l == 0)
+        return;
+
+    l->setIsLogClrRamp(tog);
+    l->updateMapping();
+}
+
+
 
 void
 ModelComponentList::editLayerOpacity()
@@ -1855,7 +1912,17 @@ void ModelComponentList::zoom(int mode)
     LUMASSMainWin* win = qobject_cast<LUMASSMainWin*>(this->topLevelWidget());
     vtkRenderer* bkgRen = const_cast<vtkRenderer*>(win->getBkgRenderer());
     bkgRen->ResetCamera(box);
-    //win->findChild<QVTKOpenGLWidget*>(tr("qvtkWidget"))->update();
+
+    NMGlobalHelper::getRenderWindow()->Render();
+
+    // make sure we load the right
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+    if (il != nullptr)
+    {
+        il->mapExtentChanged();
+
+    }
+
     NMGlobalHelper::getRenderWindow()->Render();
 }
 

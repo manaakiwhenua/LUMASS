@@ -765,7 +765,7 @@ void GDALRATImageIO::InternalReadImageInformation()
       {
           if (m_NbBands > 1)
           {
-              if (this->m_BandMap.size() > 0)
+              if (this->m_BandMap.size() > 0 && this->m_BandMap.size() <= m_NbBands)
               {
                   this->SetNumberOfComponents(m_BandMap.size());
                   if (this->m_BandMap.size() > 1)
@@ -1563,395 +1563,395 @@ void GDALRATImageIO::SetForcedLPR(const itk::ImageIORegion& forcedLPR)
 
 void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
 {
-  char **     papszOptions = NULL;
-  std::string driverShortName;
-  m_NbBands = this->GetNumberOfComponents();
-  //this->Get
+	char** papszOptions = NULL;
+	std::string driverShortName;
+	m_NbBands = this->GetNumberOfComponents();
+	//this->Get
 
-  if ((m_Dimensions[0] == 0) && (m_Dimensions[1] == 0))
-    {
-    NMLogError(<< "Dimensions are not defined.");
-    }
+	if ((m_Dimensions[0] == 0) && (m_Dimensions[1] == 0))
+	{
+		itkExceptionMacro(<< "Dimensions are not defined.");
+	}
 
-  if ((this->GetPixelType() == COMPLEX) /*&& (m_NbBands / 2 > 0)*/)
-    {
-    //m_NbBands /= 2;
+	if ((this->GetPixelType() == COMPLEX) /*&& (m_NbBands / 2 > 0)*/)
+	{
+		//m_NbBands /= 2;
 
-    if (this->GetComponentType() == CSHORT)
-      {
-      m_BytePerPixel = 4;
-      m_GDALComponentType = GDT_CInt16;
-      }
-    else if (this->GetComponentType() == CINT)
-      {
-      m_BytePerPixel = 8;
-      m_GDALComponentType = GDT_CInt32;
-      }
-    else if (this->GetComponentType() == CFLOAT)
-      {
-      m_BytePerPixel = 8;
-      m_GDALComponentType = GDT_CFloat32;
-      }
-    else if (this->GetComponentType() == CDOUBLE)
-      {
-      m_BytePerPixel = 16;
-      m_GDALComponentType = GDT_CFloat64;
-      }
-    else
-      {
-      NMLogError(<< "This complex type is not defined :" << this->GetPixelTypeAsString(this->GetPixelType()) );
-      }
-    }
-  else
-    {
-    if (this->GetComponentType() == CHAR)
-      {
-      m_BytePerPixel = 1;
-      m_GDALComponentType = GDT_Byte;
-      }
-    else if (this->GetComponentType() == UCHAR)
-      {
-      m_BytePerPixel = 1;
-      m_GDALComponentType = GDT_Byte;
-      }
-    else if (this->GetComponentType() == USHORT)
-      {
-      m_BytePerPixel = 2;
-      m_GDALComponentType = GDT_UInt16;
-      }
-    else if (this->GetComponentType() == SHORT)
-      {
-      m_BytePerPixel = 2;
-      m_GDALComponentType = GDT_Int16;
-      }
-    else if (this->GetComponentType() == INT)
-      {
-      m_BytePerPixel = 4;
-      m_GDALComponentType = GDT_Int32;
-      }
-    else if (this->GetComponentType() == UINT)
-      {
-      m_BytePerPixel = 4;
-      m_GDALComponentType = GDT_UInt32;
-      }
-    else if (this->GetComponentType() == LONG)
-      {
-        long tmp;
-        m_BytePerPixel = sizeof(tmp);
-        if( m_BytePerPixel == 8 )
-          {
-            NMProcWarn(<< "Cast a long (64 bits) image into an int (32 bits) one.")
-          }
-        m_GDALComponentType = GDT_Int32;
-      }
-    else if (this->GetComponentType() == ULONG)
-      {
-        unsigned long tmp;
-        m_BytePerPixel = sizeof(tmp);
-        if( m_BytePerPixel == 8 )
-          {
-            NMProcWarn(<< "Cast an unsigned long (64 bits) image into an unsigned int (32 bits) one.")
-              }
-        m_GDALComponentType = GDT_UInt32;
-      }
+		if (this->GetComponentType() == CSHORT)
+		{
+			m_BytePerPixel = 4;
+			m_GDALComponentType = GDT_CInt16;
+		}
+		else if (this->GetComponentType() == CINT)
+		{
+			m_BytePerPixel = 8;
+			m_GDALComponentType = GDT_CInt32;
+		}
+		else if (this->GetComponentType() == CFLOAT)
+		{
+			m_BytePerPixel = 8;
+			m_GDALComponentType = GDT_CFloat32;
+		}
+		else if (this->GetComponentType() == CDOUBLE)
+		{
+			m_BytePerPixel = 16;
+			m_GDALComponentType = GDT_CFloat64;
+		}
+		else
+		{
+			itkExceptionMacro(<< "This complex type is not defined :" << this->GetPixelTypeAsString(this->GetPixelType()));
+		}
+	}
+	else
+	{
+		if (this->GetComponentType() == CHAR)
+		{
+			m_BytePerPixel = 1;
+			m_GDALComponentType = GDT_Byte;
+		}
+		else if (this->GetComponentType() == UCHAR)
+		{
+			m_BytePerPixel = 1;
+			m_GDALComponentType = GDT_Byte;
+		}
+		else if (this->GetComponentType() == USHORT)
+		{
+			m_BytePerPixel = 2;
+			m_GDALComponentType = GDT_UInt16;
+		}
+		else if (this->GetComponentType() == SHORT)
+		{
+			m_BytePerPixel = 2;
+			m_GDALComponentType = GDT_Int16;
+		}
+		else if (this->GetComponentType() == INT)
+		{
+			m_BytePerPixel = 4;
+			m_GDALComponentType = GDT_Int32;
+		}
+		else if (this->GetComponentType() == UINT)
+		{
+			m_BytePerPixel = 4;
+			m_GDALComponentType = GDT_UInt32;
+		}
+		else if (this->GetComponentType() == LONG)
+		{
+			long tmp;
+			m_BytePerPixel = sizeof(tmp);
+			if (m_BytePerPixel == 8)
+			{
+				itkWarningMacro(<< "Cast a long (64 bits) image into an int (32 bits) one.")
+			}
+			m_GDALComponentType = GDT_Int32;
+		}
+		else if (this->GetComponentType() == ULONG)
+		{
+			unsigned long tmp;
+			m_BytePerPixel = sizeof(tmp);
+			if (m_BytePerPixel == 8)
+			{
+				itkWarningMacro(<< "Cast an unsigned long (64 bits) image into an unsigned int (32 bits) one.")
+			}
+			m_GDALComponentType = GDT_UInt32;
+		}
 #if defined(_WIN32) && SIZEOF_LONGLONG >= 8
-    else if (this->GetComponentType() == LONGLONG)
-    {
-        m_BytePerPixel = sizeof(long long);
-        if (m_BytePerPixel == 8)
-        {
-            NMProcWarn(<< "Cast a long long (64 bits) image into an int (32 bits) one.")
-        }
-        m_GDALComponentType = GDT_Int32;
-    }
-    else if (this->GetComponentType() == ULONGLONG)
-    {
-        m_BytePerPixel = sizeof(unsigned long long);
-        if (m_BytePerPixel == 8)
-        {
-            NMProcWarn(<< "Cast an unsigned long long (64 bits) image into an unsigned int (32 bits) one.")
-        }
-        m_GDALComponentType = GDT_UInt32;
-    }
+		else if (this->GetComponentType() == LONGLONG)
+		{
+			m_BytePerPixel = sizeof(long long);
+			if (m_BytePerPixel == 8)
+			{
+                itkWarningMacro(<< "Cast a long long (64 bits) image into an int (32 bits) one.")
+			}
+			m_GDALComponentType = GDT_Int32;
+		}
+		else if (this->GetComponentType() == ULONGLONG)
+		{
+			m_BytePerPixel = sizeof(unsigned long long);
+			if (m_BytePerPixel == 8)
+			{
+                itkWarningMacro(<< "Cast an unsigned long long (64 bits) image into an unsigned int (32 bits) one.")
+			}
+			m_GDALComponentType = GDT_UInt32;
+		}
 #endif
-    else if (this->GetComponentType() == FLOAT)
-      {
-      m_BytePerPixel = 4;
-      m_GDALComponentType = GDT_Float32;
-      }
-    else if (this->GetComponentType() == DOUBLE)
-      {
-      m_BytePerPixel = 8;
-      m_GDALComponentType = GDT_Float64;
-      }
-    else
-      {
-      m_BytePerPixel = 1;
-      m_GDALComponentType = GDT_Byte;
-      }
-    }
+		else if (this->GetComponentType() == FLOAT)
+		{
+			m_BytePerPixel = 4;
+			m_GDALComponentType = GDT_Float32;
+		}
+		else if (this->GetComponentType() == DOUBLE)
+		{
+			m_BytePerPixel = 8;
+			m_GDALComponentType = GDT_Float64;
+		}
+		else
+		{
+			m_BytePerPixel = 1;
+			m_GDALComponentType = GDT_Byte;
+		}
+	}
 
-  // Automatically set the Type to Binary for GDAL data
-  this->SetFileTypeToBinary();
+	// Automatically set the Type to Binary for GDAL data
+	this->SetFileTypeToBinary();
 
-  driverShortName = FilenameToGdalDriverShortName(m_FileName);
-  if (driverShortName == "NOT-FOUND")
-    {
-    NMLogError(
-      << "GDAL Writing failed : the image file name '" << m_FileName.c_str() << "' is not recognized by GDAL.");
-    }
-
-
-  unsigned int totalRegionCols = m_Dimensions[0];
-  unsigned int totalRegionLines = m_Dimensions[1];
-  if (m_UseForcedLPR)
-  {
-      totalRegionCols = m_ForcedLPR.GetSize()[0];
-      totalRegionLines = m_ForcedLPR.GetSize()[1];
-  }
+	driverShortName = FilenameToGdalDriverShortName(m_FileName);
+	if (driverShortName == "NOT-FOUND")
+	{
+		itkExceptionMacro(
+			<< "GDAL Writing failed : the image file name '" << m_FileName.c_str() << "' is not recognized by GDAL.");
+	}
 
 
-  if (m_CanStreamWrite)
-    {
-
-    // Force tile mode for TIFF format. Tile mode is a lot more
-    // efficient when writing huge tiffs
-    if( driverShortName.compare("GTiff") == 0 )
-      {
-      NMLogDebug(<< "Enabling TIFF Tiled mode")
-      papszOptions = CSLAddNameValue( papszOptions, "TILED", "YES" );
-
-      // Use a fixed tile size
-      // Take as reference is a 256*256 short int 4 bands tile
-      const unsigned int ReferenceTileSizeInBytes = 256 * 256 * 4 * 2;
-
-      unsigned int nbPixelPerTile = ReferenceTileSizeInBytes / m_BytePerPixel / m_NbBands;
-      unsigned int tileDimension = static_cast<unsigned int>( vcl_sqrt(static_cast<float>(nbPixelPerTile)) );
-
-      // align the tile dimension to the next multiple of 16 (needed by TIFF spec)
-      tileDimension = ( tileDimension + 15 ) / 16 * 16;
-
-      NMLogDebug(<< "Tile dimension : " << tileDimension << " * " << tileDimension)
-
-      std::ostringstream oss;
-      oss << tileDimension;
-      papszOptions = CSLAddNameValue( papszOptions, "BLOCKXSIZE", oss.str().c_str() );
-      papszOptions = CSLAddNameValue( papszOptions, "BLOCKYSIZE", oss.str().c_str() );
-
-      if (this->m_UseCompression)
-        papszOptions = CSLAddNameValue( papszOptions, "COMPRESS", "LZW");
+	unsigned int totalRegionCols = m_Dimensions[0];
+	unsigned int totalRegionLines = m_Dimensions[1];
+	if (m_UseForcedLPR)
+	{
+		totalRegionCols = m_ForcedLPR.GetSize()[0];
+		totalRegionLines = m_ForcedLPR.GetSize()[1];
+	}
 
 
-      }
-    else if (driverShortName.compare("HFA") == 0)
-     {
-        //if (this->m_UseCompression)
-        papszOptions = CSLAddNameValue( papszOptions, "COMPRESSED", "TRUE");
-        papszOptions = CSLAddNameValue( papszOptions, "IGNOREUTM", "TRUE");
-     }
-    else if (driverShortName.compare("KEA") == 0)
-    {
-        std::stringstream cl;
-        cl << this->m_CompressionLevel;
-        papszOptions = CSLAddNameValue(papszOptions, "DEFLATE", cl.str().c_str());
-    }
+	if (m_CanStreamWrite)
+	{
 
-    GDALDriver* drv = GetGDALDriverManager()->GetDriverByName(driverShortName.c_str());
-    if (drv != 0)
-    {
-        m_Dataset = (GDALDataset*)drv->Create(
-                         GetGdalWriteImageFileName(driverShortName, m_FileName).c_str(),
-                         totalRegionCols, totalRegionLines,
-                         m_NbBands, m_GDALComponentType,
-                         papszOptions);
-        m_CreatedNotWritten = true;
-    }
-  }
-  else
-  {
-    // buffer casted in unsigned long cause under Win32 the adress
-    // don't begin with 0x, the adress in not interpreted as
-    // hexadecimal but alpha numeric value, then the conversion to
-    // integer make us pointing to an non allowed memory block => Crash.
-    std::ostringstream stream;
-    stream << "MEM:::"
-           <<  "DATAPOINTER=" << (unsigned long)(buffer) << ","
-           <<  "PIXELS=" << totalRegionCols << ","
-           <<  "LINES=" << totalRegionLines << ","
-           <<  "BANDS=" << m_NbBands << ","
-           <<  "DATATYPE=" << GDALGetDataTypeName(m_GDALComponentType) << ","
-           <<  "PIXELOFFSET=" << m_BytePerPixel * m_NbBands << ","
-           <<  "LINEOFFSET=" << m_BytePerPixel * m_NbBands * m_Dimensions[0] << ","
-           <<  "BANDOFFSET=" << m_BytePerPixel;
+		// Force tile mode for TIFF format. Tile mode is a lot more
+		// efficient when writing huge tiffs
+		if (driverShortName.compare("GTiff") == 0)
+		{
+			NMLogDebug(<< "Enabling TIFF Tiled mode")
+				papszOptions = CSLAddNameValue(papszOptions, "TILED", "YES");
 
-    m_Dataset = (GDALDataset*)GDALOpen(stream.str().c_str(), GA_ReadOnly);
-    }
+			// Use a fixed tile size
+			// Take as reference is a 256*256 short int 4 bands tile
+			const unsigned int ReferenceTileSizeInBytes = 256 * 256 * 4 * 2;
 
-  if (m_Dataset == 0)
-    {
-    NMLogError(
-      << "GDAL Writing failed : Impossible to create the image file name '" << m_FileName << "'.");
-    }
+			unsigned int nbPixelPerTile = ReferenceTileSizeInBytes / m_BytePerPixel / m_NbBands;
+			unsigned int tileDimension = static_cast<unsigned int>(vcl_sqrt(static_cast<float>(nbPixelPerTile)));
 
-  /*----------------------------------------------------------------------*/
-  /*-------------------------- METADATA ----------------------------------*/
-  /*----------------------------------------------------------------------*/
+			// align the tile dimension to the next multiple of 16 (needed by TIFF spec)
+			tileDimension = (tileDimension + 15) / 16 * 16;
 
-  /* -------------------------------------------------------------------- */
-  /* Set the LAYER_TYPE for HFA-based raster bands                        */
-  /* -------------------------------------------------------------------- */
-  if (driverShortName.compare("HFA") == 0)
-  {
-      for (int t=0; t < this->m_vecRAT.size(); ++t)
-      {
-          m_Dataset->GetRasterBand(t+1)->SetMetadataItem("LAYER_TYPE", "thematic");
-          m_Dataset->GetRasterBand(t+1)->SetMetadataItem("STATISTICS_HISTOBINFUNCTION",
-                                                                       "direct");
-      }
-  }
+			NMLogDebug(<< "Tile dimension : " << tileDimension << " * " << tileDimension)
+
+				std::ostringstream oss;
+			oss << tileDimension;
+			papszOptions = CSLAddNameValue(papszOptions, "BLOCKXSIZE", oss.str().c_str());
+			papszOptions = CSLAddNameValue(papszOptions, "BLOCKYSIZE", oss.str().c_str());
+
+			if (this->m_UseCompression)
+				papszOptions = CSLAddNameValue(papszOptions, "COMPRESS", "LZW");
 
 
-  // Now initialize the itk dictionary
-  itk::MetaDataDictionary& dict = this->GetMetaDataDictionary();
-  std::ostringstream oss;
-  //GDALDataset* dataset = m_Dataset->GetDataSet();
+		}
+		else if (driverShortName.compare("HFA") == 0)
+		{
+			//if (this->m_UseCompression)
+			papszOptions = CSLAddNameValue(papszOptions, "COMPRESSED", "TRUE");
+			papszOptions = CSLAddNameValue(papszOptions, "IGNOREUTM", "TRUE");
+		}
+		else if (driverShortName.compare("KEA") == 0)
+		{
+			std::stringstream cl;
+			cl << this->m_CompressionLevel;
+			papszOptions = CSLAddNameValue(papszOptions, "DEFLATE", cl.str().c_str());
+		}
 
-  std::string projectionRef;
-  itk::ExposeMetaData<std::string>(dict, MetaDataKey::ProjectionRefKey, projectionRef);
+		GDALDriver* drv = GetGDALDriverManager()->GetDriverByName(driverShortName.c_str());
+		if (drv != 0)
+		{
+			m_Dataset = (GDALDataset*)drv->Create(
+				GetGdalWriteImageFileName(driverShortName, m_FileName).c_str(),
+				totalRegionCols, totalRegionLines,
+				m_NbBands, m_GDALComponentType,
+				papszOptions);
+			m_CreatedNotWritten = true;
+		}
+	}
+	else
+	{
+		// buffer casted in unsigned long cause under Win32 the adress
+		// don't begin with 0x, the adress in not interpreted as
+		// hexadecimal but alpha numeric value, then the conversion to
+		// integer make us pointing to an non allowed memory block => Crash.
+		std::ostringstream stream;
+		stream << "MEM:::"
+			<< "DATAPOINTER=" << (unsigned long)(buffer) << ","
+			<< "PIXELS=" << totalRegionCols << ","
+			<< "LINES=" << totalRegionLines << ","
+			<< "BANDS=" << m_NbBands << ","
+			<< "DATATYPE=" << GDALGetDataTypeName(m_GDALComponentType) << ","
+			<< "PIXELOFFSET=" << m_BytePerPixel * m_NbBands << ","
+			<< "LINEOFFSET=" << m_BytePerPixel * m_NbBands * m_Dimensions[0] << ","
+			<< "BANDOFFSET=" << m_BytePerPixel;
 
-  /* -------------------------------------------------------------------- */
-  /* Set the GCPs                                                          */
-  /* -------------------------------------------------------------------- */
-  const double Epsilon = 1E-10;
-  if (projectionRef.empty()
-      &&  (vcl_abs(m_Origin[0]) > Epsilon
-           || vcl_abs(m_Origin[1]) > Epsilon
-           || vcl_abs(m_Spacing[0] - 1) > Epsilon
-           || vcl_abs(m_Spacing[1] - 1) > Epsilon) )
-    {
-    // See issue #303 :
-    // If there is no ProjectionRef, and the GeoTransform is not the identity,
-    // then saving also GCPs is undefined behavior for GDAL, and a WGS84 projection crs
-    // is assigned arbitrarily
-    //NMProcWarn(<< "Skipping GCPs saving to prevent GDAL from assigning a WGS84 projection ref to the file")
-    }
-  else
-    {
-    unsigned int gcpCount = 0;
-    itk::ExposeMetaData<unsigned int>(dict, MetaDataKey::GCPCountKey, gcpCount);
+		m_Dataset = (GDALDataset*)GDALOpen(stream.str().c_str(), GA_ReadOnly);
+	}
 
-    if (gcpCount > 0)
-      {
+	if (m_Dataset == nullptr)
+	{
+        itkExceptionMacro(
+			<< "GDAL Writing failed : Impossible to create the image file name '" << m_FileName << "'.");
+	}
 
-      GDAL_GCP * gdalGcps = new GDAL_GCP[gcpCount];
+	/*----------------------------------------------------------------------*/
+	/*-------------------------- METADATA ----------------------------------*/
+	/*----------------------------------------------------------------------*/
 
-      for (unsigned int gcpIndex = 0; gcpIndex < gcpCount; ++gcpIndex)
-        {
-        //Build the GCP string in the form of GCP_n
-        std::ostringstream lStream;
-        lStream << MetaDataKey::GCPParametersKey << gcpIndex;
-        std::string key = lStream.str();
-
-        GCP gcp;
-        itk::ExposeMetaData<GCP>(dict, key, gcp);
-
-        gdalGcps[gcpIndex].pszId = const_cast<char *>(gcp.m_Id.c_str());
-        gdalGcps[gcpIndex].pszInfo = const_cast<char *>(gcp.m_Info.c_str());
-        gdalGcps[gcpIndex].dfGCPPixel = gcp.m_GCPCol;
-        gdalGcps[gcpIndex].dfGCPLine = gcp.m_GCPRow;
-        gdalGcps[gcpIndex].dfGCPX = gcp.m_GCPX;
-        gdalGcps[gcpIndex].dfGCPY = gcp.m_GCPY;
-        gdalGcps[gcpIndex].dfGCPZ = gcp.m_GCPZ;
-        }
-
-      std::string gcpProjectionRef;
-      itk::ExposeMetaData<std::string>(dict, MetaDataKey::GCPProjectionKey, gcpProjectionRef);
-
-      m_Dataset->SetGCPs(gcpCount, gdalGcps, gcpProjectionRef.c_str());
-
-      delete[] gdalGcps;
-      }
-    }
-
-  /* -------------------------------------------------------------------- */
-  /* Set the projection coordinate system of the image : ProjectionRef    */
-  /* -------------------------------------------------------------------- */
-  if (!projectionRef.empty())
-    {
-    m_Dataset->SetProjection(projectionRef.c_str());
-    }
-
-  /* -------------------------------------------------------------------- */
-  /*  Set the six coefficients of affine geoTransform                     */
-  /* -------------------------------------------------------------------- */
-  itk::VariableLengthVector<double> geoTransform(6);
-
-  MetaDataKey::VectorType upperLeft;
-  itk::ExposeMetaData<MetaDataKey::VectorType>(dict, MetaDataKey::UpperLeftCornerKey, upperLeft);
-
-  // Setting the GeoTransform
-  geoTransform[0] = m_Origin[0] - 0.5 * m_Spacing[0];
-  geoTransform[3] = m_Origin[1] - 0.5 * m_Spacing[1];
-  geoTransform[1] = m_Spacing[0];
-  geoTransform[5] = m_Spacing[1];
-
-  // FIXME: Here component 1 and 4 should be replaced by the orientation parameters
-  geoTransform[2] = 0.;
-  geoTransform[4] = 0.;
-  m_Dataset->SetGeoTransform(const_cast<double*>(geoTransform.GetDataPointer()));
-
-  /* -------------------------------------------------------------------- */
-  /*      Report metadata.                                                */
-  /* -------------------------------------------------------------------- */
-
-  std::string              svalue = "";
-  std::vector<std::string> keys = dict.GetKeys();
-  std::string const metadataKey = MetaDataKey::MetadataKey;
-
-  for (unsigned int itkey = 0; itkey < keys.size(); ++itkey)
-    {
-    if (keys[itkey].compare(0, metadataKey.length(), metadataKey) == 0)
-      {
-      itk::ExposeMetaData<std::string>(dict, keys[itkey], svalue);
-      unsigned int equalityPos = svalue.find_first_of('=');
-      std::string  tag = svalue.substr(0, equalityPos);
-      std::string  value = svalue.substr(equalityPos + 1);
-      NMLogDebug(<< "Metadata: " << tag << "=" << value);
-      m_Dataset->SetMetadataItem(tag.c_str(), value.c_str(), NULL);
-      }
-    }
-  // END
-
-  // Dataset info
-  NMLogDebug( << "**** WriteImageInformation() DATASET INFO: ****" );
-  NMLogDebug( << "Projection Ref: "<<m_Dataset->GetProjectionRef() );
-  double GT[6];
-  if (m_Dataset->GetGeoTransform(GT) == CE_None)
-    {
-    NMLogDebug( <<"Geo Transform: "<< GT[0] << ", " << GT[1] << ", "
-                                 << GT[2] << ", " << GT[3] << ", "
-                                 << GT[4] << ", " << GT[5] );
-    }
-  else
-    {
-    NMLogDebug( << "No Geo Transform: ");
-    }
-
-  NMLogDebug( << "GCP Projection Ref: "<< m_Dataset->GetGCPProjection() );
-  NMLogDebug( << "GCP Count: " << m_Dataset->GetGCPCount() );
+	/* -------------------------------------------------------------------- */
+	/* Set the LAYER_TYPE for HFA-based raster bands                        */
+	/* -------------------------------------------------------------------- */
+	if (driverShortName.compare("HFA") == 0)
+	{
+		for (int t = 0; t < this->m_vecRAT.size(); ++t)
+		{
+			m_Dataset->GetRasterBand(t + 1)->SetMetadataItem("LAYER_TYPE", "thematic");
+			m_Dataset->GetRasterBand(t + 1)->SetMetadataItem("STATISTICS_HISTOBINFUNCTION",
+				"direct");
+		}
+	}
 
 
-  // we now write the RAT's
-  NMLogDebug( << "Writing RATs ...");
-  for (unsigned int ti = 0; ti < this->m_vecRAT.size(); ++ti)
-  {
-    otb::AttributeTable::Pointer tab = this->m_vecRAT.at(ti);
-    if (tab.IsNull())
-        continue;
+	// Now initialize the itk dictionary
+	itk::MetaDataDictionary& dict = this->GetMetaDataDictionary();
+	std::ostringstream oss;
+	//GDALDataset* dataset = m_Dataset->GetDataSet();
 
-    // for now, we assume ti=band
-    this->WriteRAT(tab, ti+1);
-  }
+	std::string projectionRef;
+	itk::ExposeMetaData<std::string>(dict, MetaDataKey::ProjectionRefKey, projectionRef);
+
+	/* -------------------------------------------------------------------- */
+	/* Set the GCPs                                                          */
+	/* -------------------------------------------------------------------- */
+	const double Epsilon = 1E-10;
+	if (projectionRef.empty()
+		&& (vcl_abs(m_Origin[0]) > Epsilon
+			|| vcl_abs(m_Origin[1]) > Epsilon
+			|| vcl_abs(m_Spacing[0] - 1) > Epsilon
+			|| vcl_abs(m_Spacing[1] - 1) > Epsilon))
+	{
+		// See issue #303 :
+		// If there is no ProjectionRef, and the GeoTransform is not the identity,
+		// then saving also GCPs is undefined behavior for GDAL, and a WGS84 projection crs
+		// is assigned arbitrarily
+		//NMProcWarn(<< "Skipping GCPs saving to prevent GDAL from assigning a WGS84 projection ref to the file")
+	}
+	else
+	{
+		unsigned int gcpCount = 0;
+		itk::ExposeMetaData<unsigned int>(dict, MetaDataKey::GCPCountKey, gcpCount);
+
+		if (gcpCount > 0)
+		{
+
+			GDAL_GCP* gdalGcps = new GDAL_GCP[gcpCount];
+
+			for (unsigned int gcpIndex = 0; gcpIndex < gcpCount; ++gcpIndex)
+			{
+				//Build the GCP string in the form of GCP_n
+				std::ostringstream lStream;
+				lStream << MetaDataKey::GCPParametersKey << gcpIndex;
+				std::string key = lStream.str();
+
+				GCP gcp;
+				itk::ExposeMetaData<GCP>(dict, key, gcp);
+
+				gdalGcps[gcpIndex].pszId = const_cast<char*>(gcp.m_Id.c_str());
+				gdalGcps[gcpIndex].pszInfo = const_cast<char*>(gcp.m_Info.c_str());
+				gdalGcps[gcpIndex].dfGCPPixel = gcp.m_GCPCol;
+				gdalGcps[gcpIndex].dfGCPLine = gcp.m_GCPRow;
+				gdalGcps[gcpIndex].dfGCPX = gcp.m_GCPX;
+				gdalGcps[gcpIndex].dfGCPY = gcp.m_GCPY;
+				gdalGcps[gcpIndex].dfGCPZ = gcp.m_GCPZ;
+			}
+
+			std::string gcpProjectionRef;
+			itk::ExposeMetaData<std::string>(dict, MetaDataKey::GCPProjectionKey, gcpProjectionRef);
+
+			m_Dataset->SetGCPs(gcpCount, gdalGcps, gcpProjectionRef.c_str());
+
+			delete[] gdalGcps;
+		}
+	}
+
+	/* -------------------------------------------------------------------- */
+	/* Set the projection coordinate system of the image : ProjectionRef    */
+	/* -------------------------------------------------------------------- */
+	if (!projectionRef.empty())
+	{
+		m_Dataset->SetProjection(projectionRef.c_str());
+	}
+
+	/* -------------------------------------------------------------------- */
+	/*  Set the six coefficients of affine geoTransform                     */
+	/* -------------------------------------------------------------------- */
+	itk::VariableLengthVector<double> geoTransform(6);
+
+	MetaDataKey::VectorType upperLeft;
+	itk::ExposeMetaData<MetaDataKey::VectorType>(dict, MetaDataKey::UpperLeftCornerKey, upperLeft);
+
+	// Setting the GeoTransform
+	geoTransform[0] = m_Origin[0] - 0.5 * m_Spacing[0];
+	geoTransform[3] = m_Origin[1] - 0.5 * m_Spacing[1];
+	geoTransform[1] = m_Spacing[0];
+	geoTransform[5] = m_Spacing[1];
+
+	// FIXME: Here component 1 and 4 should be replaced by the orientation parameters
+	geoTransform[2] = 0.;
+	geoTransform[4] = 0.;
+	m_Dataset->SetGeoTransform(const_cast<double*>(geoTransform.GetDataPointer()));
+
+	/* -------------------------------------------------------------------- */
+	/*      Report metadata.                                                */
+	/* -------------------------------------------------------------------- */
+
+	std::string              svalue = "";
+	std::vector<std::string> keys = dict.GetKeys();
+	std::string const metadataKey = MetaDataKey::MetadataKey;
+
+	for (unsigned int itkey = 0; itkey < keys.size(); ++itkey)
+	{
+		if (keys[itkey].compare(0, metadataKey.length(), metadataKey) == 0)
+		{
+			itk::ExposeMetaData<std::string>(dict, keys[itkey], svalue);
+			unsigned int equalityPos = svalue.find_first_of('=');
+			std::string  tag = svalue.substr(0, equalityPos);
+			std::string  value = svalue.substr(equalityPos + 1);
+			NMLogDebug(<< "Metadata: " << tag << "=" << value);
+			m_Dataset->SetMetadataItem(tag.c_str(), value.c_str(), NULL);
+		}
+	}
+	// END
+
+	// Dataset info
+	NMLogDebug(<< "**** WriteImageInformation() DATASET INFO: ****");
+	NMLogDebug(<< "Projection Ref: " << m_Dataset->GetProjectionRef());
+	double GT[6];
+	if (m_Dataset->GetGeoTransform(GT) == CE_None)
+	{
+		NMLogDebug(<< "Geo Transform: " << GT[0] << ", " << GT[1] << ", "
+			<< GT[2] << ", " << GT[3] << ", "
+			<< GT[4] << ", " << GT[5]);
+	}
+	else
+	{
+		NMLogDebug(<< "No Geo Transform: ");
+	}
+
+	NMLogDebug(<< "GCP Projection Ref: " << m_Dataset->GetGCPProjection());
+	NMLogDebug(<< "GCP Count: " << m_Dataset->GetGCPCount());
+
+
+	//// we now write the RAT's
+	//NMLogDebug( << "Writing RATs ...");
+	//for (unsigned int ti = 0; ti < this->m_vecRAT.size(); ++ti)
+	//{
+	//  otb::AttributeTable::Pointer tab = this->m_vecRAT.at(ti);
+	//  if (tab.IsNull())
+	//      continue;
+	//
+	//  // for now, we assume ti=band
+	//  this->WriteRAT(tab, ti+1);
+	//}
 
 }
 
@@ -2333,36 +2333,10 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
 
 SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 {
-    //CALLGRIND_START_INSTRUMENTATION;
 
-    // if m_Dataset hasn't been instantiated before, we do it here, because
-    // we might want to fetch the attribute table before the pipeline has
-    // been executed
-    GDALDataset* img;
-    bool bClose = false;
-    if (m_Dataset == 0)
-    {
-        m_Dataset = (GDALDataset*)GDALOpen(this->GetFileName(), GA_ReadOnly);
-        if (m_Dataset == 0)
-            return 0;
-        bClose = true;
-    }
-
-    // data set already available?
-    //img = m_Dataset->GetDataSet();
-//	if (img == 0)
-//	{
-//		//NMProcWarn(<< "ReadRAT: unable to access data set!");
-//		//NMLogError(<< "ReadRAT: unable to access data set!");
-//		return 0;
-//	}
-
-    // how many bands? (band index is 1-based)
-    if (m_Dataset->GetRasterCount() < iBand)
-    {
-        if (bClose) this->CloseDataset();
-        return 0;
-    }
+    // ==========================================================
+    //              READ EXISTING DATABASE FILE
+    // ==========================================================
 
     // format the database filename for the external lumass db file
     // copy gdal tab into otbAttributeTable
@@ -2375,16 +2349,66 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
     }
     dbFN += ".ldb";
 
+    // try and read database, if there's already
+    // an .ldb file available with that name
+    std::ifstream filestr(dbFN.c_str());
+    if (filestr.is_open())
+    {
+        filestr.close();
+
+        std::stringstream ssband;
+        ssband << iBand;
+
+        SQLiteTable::Pointer ldbTab = SQLiteTable::New();
+        ldbTab->SetOpenReadOnly(m_DbRATReadOnly);
+        if (ldbTab->CreateTable(dbFN, ssband.str()) == SQLiteTable::ATCREATE_READ)
+        {
+            return ldbTab;
+        }
+        else
+        {
+            ldbTab->CloseTable(false);
+            ldbTab = nullptr;
+
+            NMProcErr(<< "Failed reading a valid RAT from '" << dbFN << "'!");
+            return nullptr;
+        }
+    }
+
+    // ==========================================================
+    //              CREATE DB-RAT FROM IMAGE-RAT FILE
+    // ==========================================================
+
+    // if m_Dataset hasn't been instantiated before, we do it here, because
+    // we might want to fetch the attribute table before the pipeline has
+    // been executed
+    bool bClose = false;
+    if (m_Dataset == nullptr)
+    {
+        m_Dataset = (GDALDataset*)GDALOpen(this->GetFileName(), GA_ReadOnly);
+        if (m_Dataset == nullptr)
+            return nullptr;
+        bClose = true;
+    }
+
+    // how many bands? (band index is 1-based)
+    if (m_Dataset->GetRasterCount() < iBand)
+    {
+        if (bClose) this->CloseDataset();
+        return nullptr;
+    }
+
+
     // get the RAT for the specified band
 #ifdef GDAL_NEWRATAPI
     GDALRasterAttributeTable* rat = m_Dataset->GetRasterBand(iBand)->GetDefaultRAT();
 #else
     const GDALRasterAttributeTable* rat = m_Dataset->GetRasterBand(iBand)->GetDefaultRAT();
 #endif
-    if (rat == 0)
+    if (rat == nullptr)
     {
         if (bClose) this->CloseDataset();
-        return 0;
+        return nullptr;
     }
 
     // double check, whether the table actually contains some data
@@ -2392,32 +2416,7 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
     int ncols = rat->GetColumnCount();
     if (nrows == 0 || ncols == 0)
     {
-        // just test whether we've got an external ldb file here before
-        // we attempt to actually create a proper SQLiteTable
-        std::ifstream filestr(dbFN.c_str());
-        if (filestr)
-        {
-            filestr.close();
-        }
-        else
-        {
-            if (bClose) this->CloseDataset();
-            return 0;
-        }
-
-        std::stringstream ssband;
-        ssband << iBand;
-        // double check, whether there's an external lumass db file out there,
-        // which we could use instead
-        SQLiteTable::Pointer ldbTab = SQLiteTable::New();
-        ldbTab->SetOpenReadOnly(m_DbRATReadOnly);
-        if (ldbTab->CreateTable(dbFN, ssband.str()) == SQLiteTable::ATCREATE_READ)
-        {
-            return ldbTab;
-        }
-        ldbTab->DeleteDatabase();
-        ldbTab = 0;
-        return 0;
+        return nullptr;
     }
 
     // establish, whether we need an extra rowidx or whether
@@ -2750,8 +2749,6 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 
     otbTab->EndTransaction();
 
-    //CALLGRIND_STOP_INSTRUMENTATION;
-    //CALLGRIND_DUMP_STATS;
     if (bClose) this->CloseDataset();
     return otbTab;
 }

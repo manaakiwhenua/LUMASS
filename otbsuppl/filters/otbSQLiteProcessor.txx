@@ -107,19 +107,25 @@ template< class TInputImage, class TOutputImage >
 void SQLiteProcessor< TInputImage, TOutputImage >
 ::GenerateInputRequestedRegion()
 {
-    InputImagePointerType inputPtr =
-            const_cast< InputImageType *>(this->GetInput());
+    int numInputs = this->GetInputs().size();
 
-    if (inputPtr.IsNotNull())
+    InputImagePointerType inputPtr;
+    typename TInputImage::RegionType inputReqRegion;
+
+    for (int in = 0; in < numInputs; ++in)
     {
-        typename TInputImage::RegionType inputReqRegion;
-        inputReqRegion = inputPtr->GetRequestedRegion();
+        inputPtr = dynamic_cast<InputImageType*>(this->GetInputs()[in].GetPointer());
 
-        for (unsigned int d=0; d < InputImageDimension; ++d)
+        if (inputPtr.IsNotNull())
         {
-            inputReqRegion.SetSize(d, 1);
+            inputReqRegion = inputPtr->GetRequestedRegion();
+
+            for (unsigned int d = 0; d < InputImageDimension; ++d)
+            {
+                inputReqRegion.SetSize(d, 1);
+            }
+            inputPtr->SetRequestedRegion(inputReqRegion);
         }
-        inputPtr->SetRequestedRegion(inputReqRegion);
     }
 
     // in case we've got just a table reader (as instead of an image

@@ -83,7 +83,9 @@ public:
     itkSetMacro(CompName, std::string)
     itkSetMacro(Workspace, std::string)
     itkSetMacro(LosFileName, std::string)
+    itkSetMacro(ScenarioName, std::string)
     itkSetMacro(LosSettings, std::string)
+    itkSetMacro(GenerateReports, bool)
     itkSetMacro(TimeOut, int)
 
     void SetImageNames(std::vector<std::string> names) {m_ImageNames = names;}
@@ -101,18 +103,20 @@ public:
     ~NMMosraFilter();
 
     void GenerateData();
+    void GenerateReportData(NMMosra* mosra, char* theTime=nullptr);
 
     std::vector<std::string>  m_ImageNames;
 
     std::string m_CompName;
     std::string m_Workspace;
     std::string m_LosFileName;
+    std::string m_ScenarioName;
     std::string m_LosSettings;
 //    std::string m_ReportFileName;
 //    std::string m_LpFileName;
 //    std::string
 
-
+    bool m_GenerateReports;
     int m_TimeOut;
 
     NMMosraDataSet* m_DataSet;

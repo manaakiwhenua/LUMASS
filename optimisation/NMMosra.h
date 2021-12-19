@@ -183,26 +183,26 @@ protected:
 
 class NMMosra : public QObject
 {
-	Q_OBJECT
-	Q_ENUMS(NMMosoDVType)
-	Q_ENUMS(NMMOsoScalMeth)
+    Q_OBJECT
+    Q_ENUMS(NMMosoDVType)
+    Q_ENUMS(NMMOsoScalMeth)
 
 //friend class NMMosraDataSet;
 
 public:
-	NMMosra(QObject* parent=0);
-	virtual ~NMMosra();
+    NMMosra(QObject* parent=0);
+    virtual ~NMMosra();
 
-	// decision variable type
-	enum NMMosoDVType {NM_MOSO_REAL, NM_MOSO_INT,
-		NM_MOSO_BINARY};
+    // decision variable type
+    enum NMMosoDVType {NM_MOSO_REAL, NM_MOSO_INT,
+        NM_MOSO_BINARY};
 
-	// scalarisation method
-	enum NMMosoScalMeth {NM_MOSO_WSUM, NM_MOSO_INTERACTIVE};
+    // scalarisation method
+    enum NMMosoScalMeth {NM_MOSO_WSUM, NM_MOSO_INTERACTIVE};
 
-	// area unit type
-	enum AreaUnitType {NM_MOSO_MAP_UNITS, NM_MOSO_PERCENT_TOTAL,
-		NM_MOSO_PERCENT_SELECTED, NM_MOSO_PERCENT_ZONE};
+    // area unit type
+    enum AreaUnitType {NM_MOSO_MAP_UNITS, NM_MOSO_PERCENT_TOTAL,
+        NM_MOSO_PERCENT_SELECTED, NM_MOSO_PERCENT_ZONE};
 
     // type of model to export
     enum NMMosoExportType {NM_MOSO_LP, NM_MOSO_MPS};
@@ -211,12 +211,12 @@ public:
      *  and passes a string to the parseStringSettings function for doing the
      *  grunt work of analysing the string.
      */
-	int loadSettings(QString fileName);
+    int loadSettings(QString fileName);
 
     /*! parses the optimisation settings from a string and makes them meaningful to NMMosra*/
     int parseStringSettings(QString strSettings);
 
-	QString getLayerName(void);
+    QString getLayerName(void);
 
     void setLogger(NMLogger* logger);
 
@@ -233,20 +233,24 @@ public:
 
     /*! retreives the currently stored optimisation settings; use \ref parseStringSettings
      *  to parse the settings */
-	QString getLosSettings(void) { return msLosSettings; }
- 
-	void setDataSet(const vtkDataSet* dataset);
+    QString getLosSettings(void) { return msLosSettings; }
+
+    void setDataSet(const vtkDataSet* dataset);
     void setDataSet(otb::AttributeTable::Pointer otbtab);
     void setDataSet(const QSqlTableModel* sqlmod);
     const NMMosraDataSet* getDataSet()
-		{return this->mDataSet;}
-	vtkSmartPointer<vtkTable> getDataSetAsTable();
+        {return this->mDataSet;}
+    vtkSmartPointer<vtkTable> getDataSetAsTable();
+
+    void setScenarioName(const QString& name)
+        {mScenarioName = name;}
+    QString getScenarioName(void) {return mScenarioName;}
 
     void cancelSolving(void) {this->mbCanceled = true;}
     int configureProblem(void);
     void solveProblem(void);
-	int solveLp(void);
-	int mapLp(void);
+    int solveLp(void);
+    int mapLp(void);
     int mapLpTab(void);
     int mapLpDb(void);
     int mapLpQtSql(void);
@@ -254,25 +258,26 @@ public:
     int calcBaselineTab(void);
     int calcBaselineDb(void);
     int calcBaselineQtSql(void);
-	HLpHelper* getLp();
+    int calcOptPerformanceDb(void);
+    HLpHelper* getLp();
     vtkSmartPointer<vtkTable> sumResults(vtkSmartPointer<vtkTable>& changeMatrix);
 
-	// enquire batch processing set up
-	bool doBatch(void);
-	QString getDataPath(void)
-		{return this->msDataPath;}
-	QStringList getPerturbationItems()
-		{return this->mslPerturbItems;}
+    // enquire batch processing set up
+    bool doBatch(void);
+    QString getDataPath(void)
+        {return this->msDataPath;}
+    QStringList getPerturbationItems()
+        {return this->mslPerturbItems;}
     const QList< QList<float> >& getAllUncertaintyLevels()
         {return this->mlflPerturbUncertainties;}
     const QList<float>& getUncertaintyLevels(const int& perturbItemIdx)
         {return this->mlflPerturbUncertainties.at(perturbItemIdx);}
-	long getNumberOfPerturbations()
-		{return this->mlReps;}
-	QString getLosFileName(void)
-		{return this->msLosFileName;}
-	unsigned int getTimeOut(void)
-		{return this->muiTimeOut;}
+    long getNumberOfPerturbations()
+        {return this->mlReps;}
+    QString getLosFileName(void)
+        {return this->msLosFileName;}
+    unsigned int getTimeOut(void)
+        {return this->muiTimeOut;}
 
     /*! writes the model after it has been build
      *  but before solving it
@@ -282,43 +287,43 @@ public:
      */
     void writeProblem(QString filename, NMMosoExportType type);
 
-	void writeReport(QString fileName);
-	QString getReport(void);
+    void writeReport(QString fileName);
+    QString getReport(void);
 
     void writeBaselineReductions(QString filename);
 
-	/* set a solver timeout -> maximum availalbe time for solving
-	 * the problem
-	 */
-	void setTimeOut(int secs)
+    /* set a solver timeout -> maximum availalbe time for solving
+     * the problem
+     */
+    void setTimeOut(int secs)
         {this->muiTimeOut = secs >= 0 ? secs : 0;}
 
     void setBreakAtFirst(bool breakAtFirst)
         {this->mbBreakAtFirst = breakAtFirst;}
 
-	/*	\brief add uncertainty to performance scores
-	 *
-	 *  This function varies the individual performance scores by
-	 *  the uncertainty given as 'percent'. It takes the scores for
-	 *  each individual land use of the criterion, and randomly
-	 *  (uniform distribution) adds an uncertainty value
-	 *  of +/- 0 to percent.
-	 */
+    /*	\brief add uncertainty to performance scores
+     *
+     *  This function varies the individual performance scores by
+     *  the uncertainty given as 'percent'. It takes the scores for
+     *  each individual land use of the criterion, and randomly
+     *  (uniform distribution) adds an uncertainty value
+     *  of +/- 0 to percent.
+     */
     bool perturbCriterion(const QString& criterion,
                           const QList<float>& percent);
 
-	/* \brief varies a constraint by a given percent
-	 *
-	 *  This function varies the named criterion by the given
-	 *  percentage.
-	 */
+    /* \brief varies a constraint by a given percent
+     *
+     *  This function varies the named criterion by the given
+     *  percentage.
+     */
     bool varyConstraint(const QString& constraint,
                         float percent);
 
-	/* lp_solve callback function to check for user abortion ->
-	 * i.e. interactive cancellation of solving process rather
-	 * than a time one
-	 */
+    /* lp_solve callback function to check for user abortion ->
+     * i.e. interactive cancellation of solving process rather
+     * than a time one
+     */
     static int callbackIsSolveCanceled(lprec* lp, void* userhandle);
 
     static void lpLogCallback(lprec* lp, void* userhandle, char* buf);
@@ -329,51 +334,52 @@ private:
 
     static const std::string ctxNMMosra;
 
-	bool mbCanceled;
+    bool mbCanceled;
 
-	HLpHelper* mLp;
+    HLpHelper* mLp;
     //vtkDataSet* mDataSet;
     NMMosraDataSet* mDataSet;
     NMLogger* mLogger;
 
     itk::ProcessObject* mProcObj;
 
-	QString msReport;
-	QString msSettingsReport;
-	QString msLosFileName;
-	QString msLosSettings;
+    QString msReport;
+    QString msSettingsReport;
+    QString msLosFileName;
+    QString msLosSettings;
+    QString mScenarioName;
 
     QString mProblemFilename;
     NMMosoExportType mProblemType;
 
-	QString msLandUseField;
-	QString msAreaField;
-	QString msLayerName;
+    QString msLandUseField;
+    QString msAreaField;
+    QString msLayerName;
 
     QString msOptFeatures;
-	QString msDataPath;
-	QStringList mslPerturbItems;
+    QString msDataPath;
+    QStringList mslPerturbItems;
     QList< QList<float> > mlflPerturbUncertainties;
-	QList<float> mflUncertainties;
-	long mlReps;
+    QList<float> mflUncertainties;
+    long mlReps;
 
-	NMMosoDVType meDVType;
-	NMMosoScalMeth meScalMeth;
+    NMMosoDVType meDVType;
+    NMMosoScalMeth meScalMeth;
 
     bool mbBreakAtFirst;
-	unsigned int muiTimeOut;
-	int miNumOptions;
-	QStringList mslOptions;
+    unsigned int muiTimeOut;
+    int miNumOptions;
+    QStringList mslOptions;
     QStringList mslPerfSumZones;
 
-	// <objective> <min | max> <weight>
-	QMap<QString, QStringList> mmslObjectives;
+    // <objective> <min | max> <weight>
+    QMap<QString, QStringList> mmslObjectives;
 
-	// maps criterion performance measures onto criterion name
-	// <criterion name>, <performance of option 1> [ <performance of option 2> ...]
-	// option performance fields have to be given in the same order
-	// as in the mlsOptions list
-	QMap<QString, QStringList> mmslCriteria;
+    // maps criterion performance measures onto criterion name
+    // <criterion name>, <performance of option 1> [ <performance of option 2> ...]
+    // option performance fields have to be given in the same order
+    // as in the mlsOptions list
+    QMap<QString, QStringList> mmslCriteria;
 
     // map holding the incentive names (key) (comprised of two
     // valid criterion names from the CRITERIA section
@@ -388,23 +394,23 @@ private:
     // cost criterion (second)
     QMap<QString, QStringList> mIncNamePair;
 
-	// as above but this map contains per criterion the data fields which
-	// are going to be used to evaluate status quo and optimised
-	// performance
-	QMap<QString, QStringList> mmslEvalFields;
+    // as above but this map contains per criterion the data fields which
+    // are going to be used to evaluate status quo and optimised
+    // performance
+    QMap<QString, QStringList> mmslEvalFields;
 
-	// maps areal constraints onto options
+    // maps areal constraints onto options
     // <constr label>, <option[,option[,...]][:zonefield]> < >= | <= > < number > < percent_of_total | percent_of_selected | map_units >
-	QMap<QString, QStringList> mmslAreaCons;
-	QMap<QString, QStringList> mmslAreaZoneCons;
-	QStringList mmslAreaConsLabel;
+    QMap<QString, QStringList> mmslAreaCons;
+    QMap<QString, QStringList> mmslAreaZoneCons;
+    QStringList mmslAreaConsLabel;
 
     QMap<QString, QStringList> mmslFeatCons;
 
-	/*! nested map; holds for each zone field the maximum available area for each specified
-	 *  (combination of) land use options */
-	QMap<QString, QMap<QString, double > > mmslZoneAreas;
-	QMap<QString, QMap<QString, int > > mmslZoneLength;
+    /*! nested map; holds for each zone field the maximum available area for each specified
+     *  (combination of) land use options */
+    QMap<QString, QMap<QString, double > > mmslZoneAreas;
+    QMap<QString, QMap<QString, int > > mmslZoneLength;
 
     /*! map containing (non-overlapping) generic zone constraints
      * key: ZONE_CONS_<x>
@@ -420,53 +426,98 @@ private:
     QMap<QString, QStringList> mslZoneConstraints;
 
 
+    /*! FEATURE SET CONSTRAINTS
+     *
+     *  key: FEATSET_CONS_<X>
+     *  purpose: constrain the performance of a given set of land uses regarding a specific
+     *           criterion
+     *  string list: 0: land use option(s): <land_use_1[+land_use_2[+land_use_3[+...]]] | total>
+     *               1: column name containing the unique identifiers of sets of features: <column_name>
+     *               2: criterion the performance of land-use options on is to be constrained
+     *                  within the specified regions
+     *               3: operator: < <= | = | >= >
+     *               4: column name of right-hand-side values (thresholds) specified for individual
+     *                  sets of features (zones);
+     *
+     *  Example:
+     *  OPTIONS=Dai FOR SNB
+     *
+     *  FEATSET_CONS_1=Dai:cat_n   Nloss <= TN_MAL
+     *
+     *  FEATSET_CONS_2=total:cat_p Ploss <= TP_MAL
+     *
+     *
+     *  ID | n_dai | p_dai | p_snb | cat_n |  TN_MAL | cat_p |  TP_MAL |
+     *  ---|-------|-------|-------|-------|---------|-------|---------|
+     *  0  | 30    | 1.3   | 0.5   |       |         | 101   |  3.4    |
+     *  1  | 45    | 1.0   | 0.4   | 303   |  1343   | 303   |  7.5    |
+     *  2  | 80    | 0.7   | 0.3   | 303   |  1343   | 303   |  7.5    |
+     *  3  | 56    | 1.2   | 0.5   | 404   |   454   |       |         |
+     *  4  | 40    | 1.8   | 0.8   | 303   |  1343   | 303   |  7.5    |
+     *  5  | 103   | 1.3   | 0.7   | 303   |  1343   | 303   |  7.5    |
+     *  6  | 60    | 1.5   | 0.4   | 404   |   454   |       |         |
+     *  7  | 30    | 0.6   | 0.5   |       |         | 101   |  3.4    |
+     *
+     *  FEATSET_CONS_1_Dai_cat_n_303_lower: 45 X_1_1 + 80 X_2_1 + 40 X_4_1 + 103 X_5_1 <= 1343
+     *  FEATSET_CONS_1_Dai_cat_n_404_lower: 56 X_3_1 + 60 X_6_1 <= 454
+     *
+     *  FEATSET_CONS_2_total_cat_p_101_lower: 1.3 X_0_1 + 0.5 X_0_3 + 0.6 X_7_1 + 0.5 X_7_3 <= 3.4
+     *  FEATSET_CONS_2_total_cat_p_303_lower: 1.0 X_1_1 + 0.4 X_1_3 + 0.7 X_2_1 + 0.3 X_2_3 + 1.8 X_4_1 + 0.8 X_4_3 + 1.3 X_5_1 + 0.7 X_5_3 <= 7.5
+     *
+     */
 
-	// maps criterion constraints onto criteria
-	// nested maps:
-	// outer (multi-)map:
-	// 		key:   <criterion label>   value: <land use field map>
-	// inner map (land use field map):
-	// 		key: <land use label | "total">  value: <if 'land use': land use performance field>
-	//				        		                <if 'total': list of all land use performance fields>
-	//		 										 < >= | <= | = > < criterion cap >
-	QMultiMap<QString, QMap<QString, QStringList > > mmslCriCons;
+    QMap<QString, QStringList> mslFeatSetCons;
+    QMap<QString, QString> msFeatureSetConsLabel;
 
-	// maps objective constraints onto objectives
-	// <objective>, < >= | <= > < number >
-	QMap<QString, QStringList> mmslObjCons;
 
-	long mlNumDVar;
-	long mlNumArealDVar;
-	long mlNumOptFeat;
-	long mlCriCons;
-	long mlLpCols;
-	double mdAreaTotal;
-	double mdAreaSelected;
 
-	// reset internal variables
-	void reset(void);
-	void createReport(void);
+    // maps criterion constraints onto criteria
+    // nested maps:
+    // outer (multi-)map:
+    // 		key:   <criterion label>   value: <land use field map>
+    // inner map (land use field map):
+    // 		key: <land use label | "total">  value: <if 'land use': land use performance field>
+    //				        		                <if 'total': list of all land use performance fields>
+    //		 										 < >= | <= | = > < criterion cap >
+    QMultiMap<QString, QMap<QString, QStringList > > mmslCriCons;
 
-	int checkSettings(void);
+    // maps objective constraints onto objectives
+    // <objective>, < >= | <= > < number >
+    QMap<QString, QStringList> mmslObjCons;
 
-	int makeLp(void);
-	int addObjFn(void);
+    long mlNumDVar;
+    long mlNumArealDVar;
+    long mlNumOptFeat;
+    long mlCriCons;
+    long mlLpCols;
+    double mdAreaTotal;
+    double mdAreaSelected;
+
+    // reset internal variables
+    void reset(void);
+    void createReport(void);
+
+    int checkSettings(void);
+
+    int makeLp(void);
+    int addObjFn(void);
 
     int addIncentCons(void);
-	int addObjCons(void);
-	int addExplicitAreaCons(void);
-	int addImplicitAreaCons(void);
+    int addObjCons(void);
+    int addExplicitAreaCons(void);
+    int addImplicitAreaCons(void);
     int addFeatureCons(void);
+    int addFeatureSetConsDb(void);
     int addZoneCons(void);
-	int addCriCons(void);
+    int addCriCons(void);
 
-	int isSolveCanceled(void);
+    int isSolveCanceled(void);
     void forwardLpLog(const char* log);
 
-	/* converts the user specified area into area units
-	  (same units as the specified area field) */
-	double convertAreaUnits(double input, AreaUnitType otype);
-	double convertAreaUnits(double input, const QString& otype, const QStringList& zoneSpec);
+    /* converts the user specified area into area units
+      (same units as the specified area field) */
+    double convertAreaUnits(double input, AreaUnitType otype);
+    double convertAreaUnits(double input, const QString& otype, const QStringList& zoneSpec);
 
 };
 

@@ -216,7 +216,7 @@ NMMosraDataSet::setDataSet(otb::AttributeTable::Pointer otbtab)
     mSqlMod = nullptr;
     if (otbtab.IsNotNull())
     {
-		mOtbTab = otbtab;
+        mOtbTab = otbtab;
         mType = NM_MOSRA_DS_OTBTAB;
     }
     else
@@ -1804,33 +1804,35 @@ const std::string NMMosra::ctxNMMosra = "NMMosra";
 NMMosra::NMMosra(QObject* parent) //: QObject(parent)
     : mProblemFilename(""), mProblemType(NM_MOSO_LP)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...");
 
     this->mDataSet = new NMMosraDataSet(this);
 
     this->mLogger = 0;
     this->mProcObj = 0;
-	this->setParent(parent);
-	this->mLp = new HLpHelper();
-	this->reset();
+    this->setParent(parent);
+    this->mLp = new HLpHelper();
+    this->reset();
+
+    mScenarioName = "My Optimisation Scenario";
 
     // seed the random number generator
     srand(time(0));
 
-	NMDebugCtx(ctxNMMosra, << "done!");
+    NMDebugCtx(ctxNMMosra, << "done!");
 }
 
 NMMosra::~NMMosra()
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...");
 
-	if (this->mLp != 0)
-	{
-		this->mLp->DeleteLp();
-		delete this->mLp;
-	}
+    if (this->mLp != 0)
+    {
+        this->mLp->DeleteLp();
+        delete this->mLp;
+    }
 
-	NMDebugCtx(ctxNMMosra, << "done!");
+    NMDebugCtx(ctxNMMosra, << "done!");
 }
 
 void
@@ -1839,6 +1841,7 @@ NMMosra::setItkProcessObject(itk::ProcessObject *obj)
     mProcObj = obj;
     mDataSet->setProcObj(obj);
     mDataSet->setLogger(nullptr);
+    mLogger = nullptr;
 }
 
 void
@@ -1852,12 +1855,12 @@ NMMosra::setLogger(NMLogger *logger)
 void
 NMMosra::setDataSet(const vtkDataSet* dataset)
 {
-	if (dataset != 0)
+    if (dataset != 0)
         this->mDataSet->setDataSet(const_cast<vtkDataSet*>(dataset));
-	else
-	{
+    else
+    {
         MosraLogError( << "vtkDataSet data set is NULL!");
-	}
+    }
 }
 
 void
@@ -1886,42 +1889,42 @@ NMMosra::setDataSet(const QSqlTableModel *sqlmod)
 
 void NMMosra::reset(void)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...");
 
-	this->mLp->DeleteLp();
-	this->msLosFileName.clear();
+    this->mLp->DeleteLp();
+    this->msLosFileName.clear();
 
-	this->mlNumDVar = 0;
-	this->mlNumOptFeat = 0;
-	this->mlCriCons = 0;
-	this->mlLpCols = 0;
-	this->mdAreaSelected = 0;
-	this->mdAreaTotal = 0;
+    this->mlNumDVar = 0;
+    this->mlNumOptFeat = 0;
+    this->mlCriCons = 0;
+    this->mlLpCols = 0;
+    this->mdAreaSelected = 0;
+    this->mdAreaTotal = 0;
 
-	this->muiTimeOut = 60;
-	this->miNumOptions = 0;
-	this->meDVType = NMMosra::NM_MOSO_REAL;
-	this->meScalMeth = NMMosra::NM_MOSO_WSUM;
+    this->muiTimeOut = 60;
+    this->miNumOptions = 0;
+    this->meDVType = NMMosra::NM_MOSO_REAL;
+    this->meScalMeth = NMMosra::NM_MOSO_WSUM;
 
-	this->mmslAreaCons.clear();
-	this->mmslCriCons.clear();
-	this->mmslCriteria.clear();
-	this->mmslEvalFields.clear();
-	this->mmslObjCons.clear();
-	this->mmslObjectives.clear();
+    this->mmslAreaCons.clear();
+    this->mmslCriCons.clear();
+    this->mmslCriteria.clear();
+    this->mmslEvalFields.clear();
+    this->mmslObjCons.clear();
+    this->mmslObjectives.clear();
     this->mmslIncentives.clear();
     this->mIncNamePair.clear();
 
     this->mbBreakAtFirst = false;
-	this->mbCanceled = false;
+    this->mbCanceled = false;
 
     this->msOptFeatures.clear();
     this->mDataSet->reset();
     msDataPath = std::getenv("HOME");
-	mslPerturbItems.clear();
+    mslPerturbItems.clear();
     mlflPerturbUncertainties.clear();
-	mflUncertainties.clear();
-	mlReps=1;
+    mflUncertainties.clear();
+    mlReps=1;
 
     mslPerfSumZones.clear();
 
@@ -1931,17 +1934,17 @@ void NMMosra::reset(void)
 bool
 NMMosra::doBatch()
 {
-	bool ret = false;
+    bool ret = false;
 
-	if (   !msDataPath.isEmpty()
-		&& mslPerturbItems.size() > 0
+    if (   !msDataPath.isEmpty()
+        && mslPerturbItems.size() > 0
         && mlflPerturbUncertainties.size() > 0
-	   )
-	{
-		ret = true;
-	}
+       )
+    {
+        ret = true;
+    }
 
-	return ret;
+    return ret;
 }
 
 
@@ -1971,80 +1974,86 @@ int NMMosra::parseStringSettings(QString strSettings)
 {
     NMDebugCtx(ctxNMMosra, << "...")
 
-	// reset this objects vars
-	this->reset();
+    // reset this objects vars
+    this->reset();
 
     QTextStream str;
     str.setString(&strSettings);
 
-	QString rep;
-	QTextStream sReport(&rep);
-	QString sLine, sVarName, sValueStr;
-	int length, sep;
-	long lnumOpt=0;
-	long numline = 0;
+    QString rep;
+    QTextStream sReport(&rep);
+    QString sLine, sVarName, sValueStr;
+    int length, sep;
+    long lnumOpt=0;
+    long numline = 0;
 
-	enum ParSec {
-		problem,
-		criteria,
+    enum ParSec {
+        problem,
+        criteria,
         incentives,
-		objectives,
-		arealcons,
+        objectives,
+        arealcons,
         featcons,
+        featsetcons,
         zonecons,
-		cricons,
-		objcons,
-		batch,
-		nosection
-	};
+        cricons,
+        objcons,
+        batch,
+        nosection
+    };
 
-	ParSec section = nosection;
+    ParSec section = nosection;
 
     sReport << "Import Report" << endl << endl;
     MosraLogDebug( << "parsing settings file ..." << endl)
-	while (!str.atEnd())
-	{
-		sLine = str.readLine();
+    while (!str.atEnd())
+    {
+        sLine = str.readLine();
 
-		//increment the line number
-		numline++;
+        //increment the line number
+        numline++;
 
-		//eliminate leading and trailing blanks
-		sLine = sLine.simplified();
+        //eliminate leading and trailing blanks
+        sLine = sLine.simplified();
 
-		// skip empty lines and comments
-		if (sLine.isEmpty() || !sLine.left(1).compare(tr("#")))
-			continue;
+        // skip empty lines and comments
+        if (sLine.isEmpty() || !sLine.left(1).compare(tr("#")))
+            continue;
 
-		//detect processing mode
-		if (!sLine.compare(tr("<PROBLEM>"), Qt::CaseInsensitive))
-		{
-			section = problem;
-			continue;
-		}
-		else if (!sLine.compare(tr("<CRITERIA>"), Qt::CaseInsensitive))
-		{
-			section = criteria;
-			continue;
-		}
+        //detect processing mode
+        if (!sLine.compare(tr("<PROBLEM>"), Qt::CaseInsensitive))
+        {
+            section = problem;
+            continue;
+        }
+        else if (!sLine.compare(tr("<CRITERIA>"), Qt::CaseInsensitive))
+        {
+            section = criteria;
+            continue;
+        }
         else if (!sLine.compare(tr("<INCENTIVES>"), Qt::CaseInsensitive))
         {
             section = incentives;
             continue;
         }
         else if (!sLine.compare(tr("<OBJECTIVES>"), Qt::CaseInsensitive))
-		{
-			section = objectives;
-			continue;
-		}
-		else if (!sLine.compare(tr("<AREAL_CONSTRAINTS>"), Qt::CaseInsensitive))
-		{
-			section = arealcons;
-			continue;
-		}
+        {
+            section = objectives;
+            continue;
+        }
+        else if (!sLine.compare(tr("<AREAL_CONSTRAINTS>"), Qt::CaseInsensitive))
+        {
+            section = arealcons;
+            continue;
+        }
         else if (!sLine.compare(tr("<FEATURE_CONSTRAINTS>"), Qt::CaseInsensitive))
         {
             section = featcons;
+            continue;
+        }
+        else if (!sLine.compare(tr("<FEATSET_CONSTRAINTS>"), Qt::CaseInsensitive))
+        {
+            section = featsetcons;
             continue;
         }
         else if (!sLine.compare(tr("<ZONE_CONSTRAINTS>"), Qt::CaseInsensitive))
@@ -2053,81 +2062,81 @@ int NMMosra::parseStringSettings(QString strSettings)
             continue;
         }
         else if (!sLine.compare(tr("<CRITERIA_CONSTRAINTS>"), Qt::CaseInsensitive))
-		{
-			section = cricons;
-			continue;
-		}
-		else if (!sLine.compare(tr("<OBJECTIVE_CONSTRAINTS>"), Qt::CaseInsensitive))
-		{
-			section = objcons;
-			continue;
-		}
-		else if (!sLine.compare(tr("<BATCH_SETTINGS>"), Qt::CaseInsensitive))
-		{
-			section = batch;
-			continue;
-		}
-		else if (!sLine.right(5).compare(tr("_END>"), Qt::CaseInsensitive))
-		{
-			section = nosection;
-			continue;
-		}
+        {
+            section = cricons;
+            continue;
+        }
+        else if (!sLine.compare(tr("<OBJECTIVE_CONSTRAINTS>"), Qt::CaseInsensitive))
+        {
+            section = objcons;
+            continue;
+        }
+        else if (!sLine.compare(tr("<BATCH_SETTINGS>"), Qt::CaseInsensitive))
+        {
+            section = batch;
+            continue;
+        }
+        else if (!sLine.right(5).compare(tr("_END>"), Qt::CaseInsensitive))
+        {
+            section = nosection;
+            continue;
+        }
 
-		//check, if we are dealing with a valid data section
-		if (section == nosection)
-		{
-			sReport << "Line " << numline << " does not belong to a valid data section" << endl;
-			continue;
-		}
+        //check, if we are dealing with a valid data section
+        if (section == nosection)
+        {
+            sReport << "Line " << numline << " does not belong to a valid data section" << endl;
+            continue;
+        }
 
-		//look for an equal sign to indicate data assignment
-		sep = sLine.indexOf('=');
+        //look for an equal sign to indicate data assignment
+        sep = sLine.indexOf('=');
 
-		//if there is no equal sign skip processing of this line
-		if (sep == -1)
-		{
-			sReport << "Line " << numline << " contains invalid data" << endl;
-			continue;
-		}
+        //if there is no equal sign skip processing of this line
+        if (sep == -1)
+        {
+            sReport << "Line " << numline << " contains invalid data" << endl;
+            continue;
+        }
 
-		//split the line string into the variable name and the value string
-		length = sLine.size();
-		sVarName = sLine.left(sep);
-		sValueStr = sLine.right(length-1-sep);
+        //split the line string into the variable name and the value string
+        length = sLine.size();
+        sVarName = sLine.left(sep);
+        sValueStr = sLine.right(length-1-sep);
 
 
-		//process the line depending on the current data section
+        //process the line depending on the current data section
         //----------------------------------------------PROBLEM-------------
-		switch(section)
-		{
-		case problem:
-		{
-			if (sVarName.compare(tr("DVTYPE"), Qt::CaseInsensitive) == 0)
-			{
-				if (sValueStr.indexOf(tr("DVTYPE_BINARY"), Qt::CaseInsensitive) != -1)
-					this->meDVType = NMMosra::NM_MOSO_BINARY;
-				else if (sValueStr.indexOf(tr("DVTYPE_INTEGER"), Qt::CaseInsensitive) != -1)
-					this->meDVType = NMMosra::NM_MOSO_INT;
-				else // DVTYPE_CONTINUOUS
-					this->meDVType = NMMosra::NM_MOSO_REAL;
+        switch(section)
+        {
+        case problem:
+        {
+            if (sVarName.compare(tr("DVTYPE"), Qt::CaseInsensitive) == 0)
+            {
+                if (sValueStr.indexOf(tr("DVTYPE_BINARY"), Qt::CaseInsensitive) != -1)
+                    this->meDVType = NMMosra::NM_MOSO_BINARY;
+                else if (sValueStr.indexOf(tr("DVTYPE_INTEGER"), Qt::CaseInsensitive) != -1)
+                    this->meDVType = NMMosra::NM_MOSO_INT;
+                else // DVTYPE_CONTINUOUS
+                    this->meDVType = NMMosra::NM_MOSO_REAL;
 
                 MosraLogInfo( << "DEVTYPE: " << this->meDVType << endl)
-			}
-			else if (sVarName.compare(tr("CRITERION_LAYER"), Qt::CaseInsensitive) == 0)
-			{
-				this->msLayerName = sValueStr;
+            }
+            else if (sVarName.compare(tr("CRITERION_LAYER"), Qt::CaseInsensitive) == 0)
+            {
+                this->msLayerName = sValueStr;
                 MosraLogInfo( << "LayerName: " << this->msLayerName.toStdString() << endl)
-			}
-			else if (sVarName.compare(tr("LAND_USE_FIELD"), Qt::CaseInsensitive) == 0)
-			{
-				this->msLandUseField = sValueStr;
+            }
+            else if (sVarName.compare(tr("LAND_USE_FIELD"), Qt::CaseInsensitive) == 0)
+            {
+                this->msLandUseField = sValueStr;
                 MosraLogInfo( << "LandUseField: " << this->msLandUseField.toStdString() << endl)
-			}
-			else if (sVarName.compare(tr("AREA_FIELD"), Qt::CaseInsensitive) == 0)
-			{
-				this->msAreaField = sValueStr;
+            }
+            else if (sVarName.compare(tr("AREA_FIELD"), Qt::CaseInsensitive) == 0)
+            {
+                this->msAreaField = sValueStr;
                 MosraLogInfo( << "AreaField: " << this->msAreaField.toStdString() << endl)
-			}
+            }
             else if (sVarName.compare(tr("PERFORMANCE_SUM_ZONES"), Qt::CaseInsensitive) == 0)
             {
                 if (!sValueStr.isEmpty())
@@ -2172,18 +2181,18 @@ int NMMosra::parseStringSettings(QString strSettings)
                     MosraLogInfo(<< "OPT_FEATURES: " << this->msOptFeatures.toStdString() << endl);
                 }
             }
-		}
-		break;
+        }
+        break;
         //---------------------------------------------CRITERIA-----------
-		case criteria:
-		{
-			if (sVarName.compare(tr("NUM_OPTIONS"), Qt::CaseInsensitive) == 0)
-			{
-				bool ok;
-				long lo = sValueStr.toLong(&ok);
-				if (ok)
-					this->miNumOptions = lo;
-				else
+        case criteria:
+        {
+            if (sVarName.compare(tr("NUM_OPTIONS"), Qt::CaseInsensitive) == 0)
+            {
+                bool ok;
+                long lo = sValueStr.toLong(&ok);
+                if (ok)
+                    this->miNumOptions = lo;
+                else
                 {
                     MosraLogError(<< "Line " << numline << " contains an invalid number" << endl;)
                     sReport << "Line " << numline << " contains an invalid number" << endl;
@@ -2191,61 +2200,61 @@ int NMMosra::parseStringSettings(QString strSettings)
 
 
                 MosraLogInfo( << "number of resource options: " << this->miNumOptions << endl)
-			}
-			else if (sVarName.compare(tr("OPTIONS"), Qt::CaseInsensitive) == 0)
-			{
-				QStringList tmpList = sValueStr.split(tr(" "), QString::SkipEmptyParts);
-				if (tmpList.size() == this->miNumOptions)
-				{
-					this->mslOptions.clear();
-					this->mslOptions << tmpList;
-				}
-				else
-				{
+            }
+            else if (sVarName.compare(tr("OPTIONS"), Qt::CaseInsensitive) == 0)
+            {
+                QStringList tmpList = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                if (tmpList.size() == this->miNumOptions)
+                {
+                    this->mslOptions.clear();
+                    this->mslOptions << tmpList;
+                }
+                else
+                {
                     MosraLogError(<< "Line " << numline << " contains an invalid number of options" << endl)
-					sReport << "Line " << numline << " contains an invalid number of options" << endl;
-				}
+                    sReport << "Line " << numline << " contains an invalid number of options" << endl;
+                }
 
                 MosraLogInfo( << "options: " << this->mslOptions.join(tr(" ")).toStdString() << endl)
 
-			}
-			else if (sVarName.indexOf(tr("CRI_"), Qt::CaseInsensitive) != -1)
-			{
-				QStringList criFieldNames = sValueStr.split(tr(" "), QString::SkipEmptyParts);
-				if (criFieldNames.size() == this->miNumOptions + 1)
-				{
-					QString scri = criFieldNames.at(0);
-					criFieldNames.removeAt(0);
-					this->mmslCriteria.insert(scri, criFieldNames);
+            }
+            else if (sVarName.indexOf(tr("CRI_"), Qt::CaseInsensitive) != -1)
+            {
+                QStringList criFieldNames = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                if (criFieldNames.size() == this->miNumOptions + 1)
+                {
+                    QString scri = criFieldNames.at(0);
+                    criFieldNames.removeAt(0);
+                    this->mmslCriteria.insert(scri, criFieldNames);
 
                     MosraLogDebug( << "criterion: " << scri.toStdString() << " " << this->mmslCriteria.find(scri).value().join(tr(" ")).toStdString() << endl);
-				}
-				else
-				{
+                }
+                else
+                {
                     MosraLogError(<< "Line " << numline << " contains an invalid number of criteria" << endl;)
-					sReport << "Line " << numline << " contains an invalid number of criteria" << endl;
-				}
-			}
-			else if (sVarName.indexOf(tr("EVAL_"), Qt::CaseInsensitive) != -1)
-			{
-				QStringList evalFieldNames = sValueStr.split(tr(" "), QString::SkipEmptyParts);
-				if (evalFieldNames.size() == this->miNumOptions + 1)
-				{
-					QString scri = evalFieldNames.at(0);
-					evalFieldNames.removeAt(0);
-					this->mmslEvalFields.insert(scri, evalFieldNames);
+                    sReport << "Line " << numline << " contains an invalid number of criteria" << endl;
+                }
+            }
+            else if (sVarName.indexOf(tr("EVAL_"), Qt::CaseInsensitive) != -1)
+            {
+                QStringList evalFieldNames = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                if (evalFieldNames.size() == this->miNumOptions + 1)
+                {
+                    QString scri = evalFieldNames.at(0);
+                    evalFieldNames.removeAt(0);
+                    this->mmslEvalFields.insert(scri, evalFieldNames);
 
                     MosraLogDebug( << "criterion evaluation fields: " << scri.toStdString() << " " << this->mmslEvalFields.find(scri).value().join(tr(" ")).toStdString() << endl);
-				}
-				else
-				{
+                }
+                else
+                {
                     MosraLogError(<< "Line " << numline << " contains an invalid number of criterion evaluation fields" << endl;)
-					sReport << "Line " << numline << " contains an invalid number of criterion evaluation fields" << endl;
-				}
-			}
+                    sReport << "Line " << numline << " contains an invalid number of criterion evaluation fields" << endl;
+                }
+            }
 
-		}
-		break;
+        }
+        break;
         //----------------------------------------INCENTIVES----------
         case incentives:
         {
@@ -2276,91 +2285,91 @@ int NMMosra::parseStringSettings(QString strSettings)
         }
         break;
         //----------------------------------------OBJECTIVES----------
-		case objectives:
-		{
-			QString sAggrMeth;
-			if (sVarName.compare(tr("AGGR_METHOD"), Qt::CaseInsensitive) == 0)
-			{
-				if (sValueStr.compare(tr("WSUM")) == 0)
-				{
-					this->meScalMeth = NMMosra::NM_MOSO_WSUM;
-					sAggrMeth = tr("Weighted Sum");
-				}
-				else
-				{
-					this->meScalMeth = NMMosra::NM_MOSO_INTERACTIVE;
-					sAggrMeth = tr("Interactive");
-				}
+        case objectives:
+        {
+            QString sAggrMeth;
+            if (sVarName.compare(tr("AGGR_METHOD"), Qt::CaseInsensitive) == 0)
+            {
+                if (sValueStr.compare(tr("WSUM")) == 0)
+                {
+                    this->meScalMeth = NMMosra::NM_MOSO_WSUM;
+                    sAggrMeth = tr("Weighted Sum");
+                }
+                else
+                {
+                    this->meScalMeth = NMMosra::NM_MOSO_INTERACTIVE;
+                    sAggrMeth = tr("Interactive");
+                }
                 MosraLogInfo( << "Scalarisation method is '" << sAggrMeth.toStdString() << "'" << endl)
-			}
-			else if (sVarName.indexOf(tr("OBJ_"), Qt::CaseInsensitive) != -1)
-			{
-				 QStringList objs = sValueStr.split(tr(" "), QString::SkipEmptyParts);
-				 if (objs.size() != 0)
-				 {
-					 QString obj = objs.takeAt(1);
-					 this->mmslObjectives.insert(obj, objs);
+            }
+            else if (sVarName.indexOf(tr("OBJ_"), Qt::CaseInsensitive) != -1)
+            {
+                 QStringList objs = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                 if (objs.size() != 0)
+                 {
+                     QString obj = objs.takeAt(1);
+                     this->mmslObjectives.insert(obj, objs);
                      MosraLogInfo( << "obj: " << obj.toStdString() << ": "
                              << this->mmslObjectives.find(obj).value().join(tr(" ")).toStdString() << endl)
-				 }
-			}
-		}
-		break;
+                 }
+            }
+        }
+        break;
         //-----------------------------------------AREAL_CONS------------
-		case arealcons:
-		{
-			if (sVarName.indexOf(tr("AREAL_CONS_"), Qt::CaseInsensitive) != -1)
-			{
-				QStringList arCons = sValueStr.split(tr(" "), QString::SkipEmptyParts);
-				if (arCons.size() != 0)
-				{
-					this->mmslAreaCons.insert(sVarName, arCons);
+        case arealcons:
+        {
+            if (sVarName.indexOf(tr("AREAL_CONS_"), Qt::CaseInsensitive) != -1)
+            {
+                QStringList arCons = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                if (arCons.size() != 0)
+                {
+                    this->mmslAreaCons.insert(sVarName, arCons);
                     MosraLogDebug( << "areal cons: " << sVarName.toStdString() << ": "
-							<< this->mmslAreaCons.find(sVarName).value().join(tr(" ")).toStdString() << endl);
+                            << this->mmslAreaCons.find(sVarName).value().join(tr(" ")).toStdString() << endl);
 
-					// check, whether we've got a zoning constraint here and if so, initialise the
-					// zones area with 0
-					QString luopt = arCons.at(0);
-					if (luopt.contains(':', Qt::CaseInsensitive))
-					{
-						QStringList luoptlist = luopt.split(tr(":"), QString::SkipEmptyParts);
-						QString zonefield = luoptlist.at(1);
+                    // check, whether we've got a zoning constraint here and if so, initialise the
+                    // zones area with 0
+                    QString luopt = arCons.at(0);
+                    if (luopt.contains(':', Qt::CaseInsensitive))
+                    {
+                        QStringList luoptlist = luopt.split(tr(":"), QString::SkipEmptyParts);
+                        QString zonefield = luoptlist.at(1);
                         // allow for multiple land use options being specified separated by comata
                         // !without whitespace!
                         QStringList options = luoptlist.at(0).split("+", QString::SkipEmptyParts);
 
-						// check, whether we've got already a map created for this zonefield
-						QMap<QString, QMap<QString, double> >::iterator zonesIt;
-						QMap<QString, QMap<QString, int> >::iterator lengthIt;
-						zonesIt = this->mmslZoneAreas.find(zonefield);
-						lengthIt = this->mmslZoneLength.find(zonefield);
-						if (zonesIt == this->mmslZoneAreas.end())
-						{
-							QMap<QString, double> zoneArea;
-							QMap<QString, int> zoneLength;
+                        // check, whether we've got already a map created for this zonefield
+                        QMap<QString, QMap<QString, double> >::iterator zonesIt;
+                        QMap<QString, QMap<QString, int> >::iterator lengthIt;
+                        zonesIt = this->mmslZoneAreas.find(zonefield);
+                        lengthIt = this->mmslZoneLength.find(zonefield);
+                        if (zonesIt == this->mmslZoneAreas.end())
+                        {
+                            QMap<QString, double> zoneArea;
+                            QMap<QString, int> zoneLength;
                             foreach(const QString& opt, options)
                             {
                                 zoneArea.insert(opt, 0);
                                 zoneLength.insert(opt, 0);
                             }
-							this->mmslZoneAreas.insert(zonefield, zoneArea);
-							this->mmslZoneLength.insert(zonefield, zoneLength);
-						}
-						else
-						{
+                            this->mmslZoneAreas.insert(zonefield, zoneArea);
+                            this->mmslZoneLength.insert(zonefield, zoneLength);
+                        }
+                        else
+                        {
                             foreach(const QString& opt, options)
                             {
                                 zonesIt.value().insert(opt, 0);
                                 lengthIt.value().insert(opt, 0);
                             }
-							this->mmslZoneAreas.insert(zonefield, zonesIt.value());
-							this->mmslZoneLength.insert(zonefield, lengthIt.value());
-						}
-					}
-				}
-			}
-		}
-		break;
+                            this->mmslZoneAreas.insert(zonefield, zonesIt.value());
+                            this->mmslZoneLength.insert(zonefield, lengthIt.value());
+                        }
+                    }
+                }
+            }
+        }
+        break;
         //----------------------------------------------FEAT_CONS--------
         case featcons:
         {
@@ -2372,6 +2381,31 @@ int NMMosra::parseStringSettings(QString strSettings)
                     this->mmslFeatCons.insert(sVarName, featCons);
                     MosraLogDebug( << "feature cons: " << sVarName.toStdString() << ": "
                             << this->mmslFeatCons.find(sVarName).value().join(tr(" ")).toStdString() << endl);
+                }
+            }
+        }
+        break;
+        //----------------------------------------------FEATSET_CONS--------
+        case featsetcons:
+        {
+            if (sVarName.indexOf(tr("FEATSET_CONS_"), Qt::CaseInsensitive) != -1)
+            {
+                QStringList featsetCons = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                if (featsetCons.size() != 0)
+                {
+                    QString keyPair = featsetCons.at(0);
+                    QStringList keyPairList = keyPair.split(":", QString::SkipEmptyParts);
+                    QStringList consValueSpec = featsetCons.mid(1, -1);
+                    // just checking whether the length of the keypair list is alright,
+                    // no point to look for valid values as they could LUMASS expressions
+                    // that still need to be evaluated!
+                    if (keyPairList.size() == 2)
+                    {
+                         this->msFeatureSetConsLabel.insert(keyPair, sVarName);
+                         this->mslFeatSetCons.insert(keyPair, consValueSpec);
+                         MosraLogDebug( << "featset_cons: " << sVarName.toStdString() << ": "
+                                          << featsetCons.join(" ").toStdString() << endl);
+                    }
                 }
             }
         }
@@ -2427,79 +2461,79 @@ int NMMosra::parseStringSettings(QString strSettings)
         }
         break;
         //----------------------------------------------ATTR_CONS--------
-		case cricons:
-		{
-			if (sVarName.indexOf(tr("CRI_CONS_"), Qt::CaseInsensitive) != -1)
-			{
+        case cricons:
+        {
+            if (sVarName.indexOf(tr("CRI_CONS_"), Qt::CaseInsensitive) != -1)
+            {
                 MosraLogDebug(<< "\tgonna split raw list: " << sValueStr.toStdString() << endl);
-				QStringList outerList = sValueStr.split(tr(" "), QString::SkipEmptyParts);
-				if (outerList.size() != 0)
-				{
-					QString criLabel = outerList.takeAt(0);
+                QStringList outerList = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                if (outerList.size() != 0)
+                {
+                    QString criLabel = outerList.takeAt(0);
                     MosraLogDebug( << "\tcriLabel is '" << criLabel.toStdString() << "'" << endl);
-					QString luLabel = outerList.takeAt(0);
+                    QString luLabel = outerList.takeAt(0);
                     MosraLogDebug( << "\tland use is '" << luLabel.toStdString() << "'" << endl);
 
-					QMap<QString, QStringList> innerMap;
-					innerMap.insert(luLabel, outerList);
+                    QMap<QString, QStringList> innerMap;
+                    innerMap.insert(luLabel, outerList);
 
-					this->mmslCriCons.insert(criLabel, innerMap);
+                    this->mmslCriCons.insert(criLabel, innerMap);
 
                     MosraLogDebug( << "cri cons: " << criLabel.toStdString() << ": "
-							<< luLabel.toStdString() << ": "
-							<< outerList.join(tr(" ")).toStdString() << endl);
-				}
-			}
-		}
-		break;
+                            << luLabel.toStdString() << ": "
+                            << outerList.join(tr(" ")).toStdString() << endl);
+                }
+            }
+        }
+        break;
         //------------------------------------------------OBJ_CONS-------
-		case objcons:
-		{
-			if (sVarName.indexOf(tr("OBJ_CONS_"), Qt::CaseInsensitive) != -1)
-			{
-				QStringList objCons = sValueStr.split(tr(" "), QString::SkipEmptyParts);
-				if (objCons.size() > 0)
-				{
-					QString objkey = sVarName + QString(tr("_%1")).arg(objCons.value(0));
-					this->mmslObjCons.insert(objkey, objCons);
+        case objcons:
+        {
+            if (sVarName.indexOf(tr("OBJ_CONS_"), Qt::CaseInsensitive) != -1)
+            {
+                QStringList objCons = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                if (objCons.size() > 0)
+                {
+                    QString objkey = sVarName + QString(tr("_%1")).arg(objCons.value(0));
+                    this->mmslObjCons.insert(objkey, objCons);
                     MosraLogInfo( << objkey.toStdString() << ": "
-							<< this->mmslObjCons.find(objkey).value().join(tr(" ")).toStdString() << endl);
-				}
-			}
-		}
-		break;
+                            << this->mmslObjCons.find(objkey).value().join(tr(" ")).toStdString() << endl);
+                }
+            }
+        }
+        break;
         //------------------------------------------------BATCH_SETTINGS-------
-		case batch:
-		{
-			if (sVarName.compare("DATAPATH", Qt::CaseInsensitive) == 0)
-			{
-				this->msDataPath = sValueStr;
+        case batch:
+        {
+            if (sVarName.compare("DATAPATH", Qt::CaseInsensitive) == 0)
+            {
+                this->msDataPath = sValueStr;
                 MosraLogInfo(<< "batch data path: " << this->msDataPath.toStdString() << endl);
-			}
-			else if (sVarName.compare("PERTURB", Qt::CaseInsensitive) == 0)
-			{
-				this->mslPerturbItems = sValueStr.split(" ");
-				if (mslPerturbItems.size() > 0)
-				{
+            }
+            else if (sVarName.compare("PERTURB", Qt::CaseInsensitive) == 0)
+            {
+                this->mslPerturbItems = sValueStr.split(" ");
+                if (mslPerturbItems.size() > 0)
+                {
                     MosraLogInfo(<< "Criteria/constraints to be perturbed: ");
-					foreach(const QString& pc, this->mslPerturbItems)
-					{
-						NMDebug(<< pc.toStdString() << " ");
-					}
-					NMDebug(<< endl);
-				}
-				else
-				{
+                    foreach(const QString& pc, this->mslPerturbItems)
+                    {
+                        NMDebug(<< pc.toStdString() << " ");
+                    }
+                    NMDebug(<< endl);
+                }
+                else
+                {
                     MosraLogInfo(<< "No perturbation criteria provided!" << endl);
-				}
-			}
-			else if (sVarName.compare("UNCERTAINTIES", Qt::CaseInsensitive) == 0)
-			{
-				QStringList lunsure = sValueStr.split(" ");
+                }
+            }
+            else if (sVarName.compare("UNCERTAINTIES", Qt::CaseInsensitive) == 0)
+            {
+                QStringList lunsure = sValueStr.split(" ");
                 bool bok;
-				float val;
-				foreach(const QString& vstr, lunsure)
-				{
+                float val;
+                foreach(const QString& vstr, lunsure)
+                {
                     QStringList levels = vstr.split(",");
                     QList<float> lstUncertainties;
                     foreach(const QString& l, levels)
@@ -2514,10 +2548,10 @@ int NMMosra::parseStringSettings(QString strSettings)
                     {
                         this->mlflPerturbUncertainties.push_back(lstUncertainties);
                     }
-				}
+                }
 
                 if (this->mlflPerturbUncertainties.size() > 0)
-				{
+                {
                     std::stringstream logstr;
                     logstr << "Perturbation levels: ";
                     foreach(const QList<float>& lf, mlflPerturbUncertainties)
@@ -2530,25 +2564,25 @@ int NMMosra::parseStringSettings(QString strSettings)
                     }
                     logstr << endl;
                     MosraLogDebug(<< logstr.str())
-				}
-				else
-				{
+                }
+                else
+                {
                     MosraLogInfo(<< "No uncertainty levels for perturbation provided!" << endl);
-				}
-			}
-			else if (sVarName.compare("REPETITIONS", Qt::CaseInsensitive) == 0)
-			{
-				if (!sValueStr.isEmpty())
-				{
-					bool bok;
-					long reps = sValueStr.toLong(&bok);
-					if (bok)
-					{
-						this->mlReps = reps;
+                }
+            }
+            else if (sVarName.compare("REPETITIONS", Qt::CaseInsensitive) == 0)
+            {
+                if (!sValueStr.isEmpty())
+                {
+                    bool bok;
+                    long reps = sValueStr.toLong(&bok);
+                    if (bok)
+                    {
+                        this->mlReps = reps;
                         MosraLogInfo(<< "Number of perturbations: " << reps << endl);
-					}
-				}
-			}
+                    }
+                }
+            }
             else if (sVarName.compare("TIMEOUT", Qt::CaseInsensitive) == 0)
             {
                 if (!sValueStr.isEmpty())
@@ -2572,19 +2606,19 @@ int NMMosra::parseStringSettings(QString strSettings)
                     }
                 }
             }
-		}
-		break;
-		default:
-			break;
-		}
-	}
+        }
+        break;
+        default:
+            break;
+        }
+    }
 
 
-	NMDebug(<< endl << "Report..." << endl << sReport.readAll().toStdString() << endl);
+    NMDebug(<< endl << "Report..." << endl << sReport.readAll().toStdString() << endl);
 
-	NMDebugCtx(ctxNMMosra, << "done!");
+    NMDebugCtx(ctxNMMosra, << "done!");
 
-	return 1;
+    return 1;
 }
 
 // this function is useful when the optimisation settings
@@ -2594,13 +2628,12 @@ int NMMosra::parseStringSettings(QString strSettings)
 // is set afterwards
 QString NMMosra::getLayerName(void)
 {
-	return this->msLayerName;
+    return this->msLayerName;
 }
 
 int NMMosra::configureProblem(void)
 {
     NMDebugCtx(ctxNMMosra, << "...");
-
     // check, whether all settings are ok
     if (!this->checkSettings())
     {
@@ -2612,7 +2645,6 @@ int NMMosra::configureProblem(void)
     // calc baseline
     this->calcBaseline();
     MosraLogInfo(<< "calculdated baseline alright!");
-
 
     this->makeLp();
 
@@ -2691,6 +2723,16 @@ int NMMosra::configureProblem(void)
         MosraLogInfo(<< "adding internal areal (consistency) constraints - OK")
     }
 
+    if (this->mslFeatSetCons.size() > 0)
+    {
+        if (!this->addFeatureSetConsDb())
+        {
+            NMDebugCtx(ctxNMMosra, << "done!");
+            return 0;
+        }
+        MosraLogInfo(<< "adding feature-set constraints - OK")
+    }
+
     if (this->mbBreakAtFirst)
     {
         this->mLp->SetBreakAtFirst(true);
@@ -2744,6 +2786,12 @@ void NMMosra::solveProblem(void)
 
     this->mLp->Solve();
 
+    if (this->calcOptPerformanceDb() == 0)
+    {
+        MosraLogWarn(<< "Hit trouble calculating the optimal performance!"
+                     << " Please double check results and notification messages!")
+    }
+
     this->createReport();
 
     MosraLogInfo(<< "Optimisation Report ... \n" << this->getReport().toStdString() << endl);
@@ -2753,266 +2801,129 @@ void NMMosra::solveProblem(void)
 
 int NMMosra::solveLp(void)
 {
-//	NMDebugCtx(ctxNMMosra, << "...");
-
-//	// check, whether all settings are ok
-//	if (!this->checkSettings())
-//	{
-//		NMDebugCtx(ctxNMMosra, << "done!");
-//		return 0;
-//	}
-//    MosraLogInfo(<< "checking optimisation settings - OK")
-
-//    // calc baseline
-//    this->calcBaseline();
-//    MosraLogInfo(<< "calculdated baseline alright!");
-
-
-//    this->makeLp();
-
-//	if (!this->addObjFn())
-//	{
-//		NMDebugCtx(ctxNMMosra, << "done!");
-//		return 0;
-//	}
-//    MosraLogInfo(<< "adding objective function - OK")
-
-//	if (this->meScalMeth == NMMosra::NM_MOSO_INTERACTIVE &&
-//			this->mmslObjCons.size() > 0)
-//    {
-//		this->addObjCons();
-//        MosraLogInfo(<< "adding objective constraints - OK")
-//    }
-
-//	// doe we have any additional constraints?
-//	if (this->mmslAreaCons.size() > 0)
-//	{
-//		if (!this->addExplicitAreaCons())
-//		{
-//			NMDebugCtx(ctxNMMosra, << "done!");
-//			return 0;
-//		}
-//        MosraLogInfo(<< "adding allocation constraints - OK")
-//	}
-
-//	if (this->mmslCriCons.size() > 0)
-//	{
-//		if (!this->addCriCons())
-//		{
-//			NMDebugCtx(ctxNMMosra, << "done!");
-//			return 0;
-//		}
-//        MosraLogInfo(<< "adding performance constraints - OK")
-//	}
-
-//    if (this->mmslIncentives.size() > 0)
-//    {
-//        if (!this->addIncentCons())
-//        {
-//            NMDebugCtx(ctxNMMosra, << "done!");
-//            return 0;
-//        }
-//        MosraLogInfo(<< "adding incentives 'constraints' - OK")
-//    }
-
-//    if (this->mslZoneConstraints.size() > 0)
-//    {
-//        if (!this->addZoneCons())
-//        {
-//            NMDebugCtx(ctxNMMosra, << "done!");
-//            return 0;
-//        }
-//        MosraLogInfo(<< "adding zone constraints - OK")
-//    }
-
-
-//    if (this->mmslFeatCons.size() > 0)
-//    {
-//        if (!this->addFeatureCons())
-//        {
-//            NMDebugCtx(ctxNMMosra, << "done!");
-//            return 0;
-//        }
-//        MosraLogInfo(<< "adding feature constraints - OK");
-//    }
-//    else
-//    {
-//        if (!this->addImplicitAreaCons())
-//        {
-//            NMDebugCtx(ctxNMMosra, << "done!");
-//            return 0;
-//        }
-//        MosraLogInfo(<< "adding internal areal (consistency) constraints - OK")
-//    }
-
-//    if (this->mbBreakAtFirst)
-//    {
-//        this->mLp->SetBreakAtFirst(true);
-
-//        MosraLogInfo(<< "solver stops at first feasible solution!" << std::endl);
-//    }
-//    else
-//    {
-//        this->mLp->SetTimeout(this->muiTimeOut);
-
-//        MosraLogInfo(<< "solver times out after " << this->muiTimeOut
-//                << " seconds!" << std::endl);
-//    }
-//    this->mbCanceled = false;
-//    this->mLp->SetAbortFunc((void*)this, NMMosra::callbackIsSolveCanceled);
-//    this->mLp->SetLogFunc((void*)this, NMMosra::lpLogCallback);
-
-//    // if the user wishes, we write out the problem we've just created ...
-//    if (!this->mProblemFilename.isEmpty())
-//    {
-//        if (this->mProblemType == NM_MOSO_LP)
-//        {
-//            this->mLp->WriteLp(this->mProblemFilename.toStdString());
-//        }
-//        else
-//        {
-//            this->mLp->WriteMps(this->mProblemFilename.toStdString());
-//        }
-//    }
-
-//    this->mLp->SetPresolve(PRESOLVE_COLS |
-//                           PRESOLVE_ROWS |
-//                           PRESOLVE_IMPLIEDFREE |
-//                           PRESOLVE_REDUCEGCD |
-//                           PRESOLVE_MERGEROWS |
-//                           PRESOLVE_ROWDOMINATE |
-//                           PRESOLVE_COLDOMINATE |
-//                           PRESOLVE_KNAPSACK |
-//                           PRESOLVE_PROBEFIX);
-
-//    this->mLp->SetScaling(SCALE_GEOMETRIC |
-//                          SCALE_DYNUPDATE);
     if (!this->configureProblem())
     {
         return 0;
     }
 
     this->solveProblem();
-//	this->mLp->Solve();
-
-//	this->createReport();
-
-//    MosraLogInfo(<< "Optimisation Report ... \n" << this->getReport().toStdString() << endl);
-
-//	NMDebugCtx(ctxNMMosra, << "done!");
-	return 1;
+    return 1;
 }
 
 void NMMosra::createReport(void)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...");
 
-	// let's put out some info about the solution, if any
-	QString streamstring;
-	QTextStream sRes(&streamstring);
-	sRes.setRealNumberNotation(QTextStream::SmartNotation);
-	sRes.setRealNumberPrecision(15);
+    // let's put out some info about the solution, if any
+    QString streamstring;
+    QTextStream sRes(&streamstring);
+    sRes.setRealNumberNotation(QTextStream::SmartNotation);
+    sRes.setRealNumberPrecision(15);
 
-	sRes << endl << endl;
-	sRes << tr("\tProblem setting details") << endl;
-	sRes << tr("\t-----------------------") << endl << endl;
-	sRes << this->msSettingsReport << endl;
+    sRes << endl << endl;
+    sRes << "====================================================" << endl;
+    sRes << "\t" << mScenarioName << " -- " << QDateTime::currentDateTime().toString(Qt::ISODate) << endl;
+    sRes << "====================================================" << endl;
+    sRes << endl << endl;
+    sRes << tr("\tProblem setting details") << endl;
+    sRes << tr("\t-----------------------") << endl << endl;
+    sRes << this->msSettingsReport << endl;
 
-	sRes << tr("\n\n\tResults from lp_solve 5.5\n"
-		           "\t-------------------------\n\n"
-		  "Please read the lp_solve documentation for\n"
-		  "further information about optimisation results!\n\n");
+    sRes << tr("\n\n\tResults from lp_solve 5.5\n"
+                   "\t-------------------------\n\n"
+          "Please read the lp_solve documentation for\n"
+          "further information about optimisation results!\n\n");
 
-	//get return value from the solve function
-	int ret = this->mLp->GetLastReturnFromSolve();
+    //get return value from the solve function
+    int ret = this->mLp->GetLastReturnFromSolve();
 
-	sRes << tr("Solver returned: ");
-	switch (ret)
-	{
-	case -2: sRes << tr("NOMEMORY\n"); break;
-	case 0: sRes << tr("OPTIMAL\n"); break;
-	case 1: sRes << tr("SUBOPTIMAL\n"); break;
-	case 2: sRes << tr("INFEASIBLE\n"); break;
-	case 3: sRes << tr("UNBOUNDED\n"); break;
-	case 4: sRes << tr("DEGENERATE\n"); break;
-	case 5: sRes << tr("NUMFAILURE\n"); break;
-	case 6: sRes << tr("USERABORT\n"); break;
-	case 7: sRes << tr("TIMEOUT\n"); break;
-	case 10: sRes << tr("PROCFAIL\n"); break;
-	case 11: sRes << tr("PROCBREAK\n"); break;
-	case 12: sRes << tr("FEASFOUND\n"); break;
-	case 13: sRes << tr("NOFEASFOUND\n"); break;
-	}
+    sRes << tr("Solver returned: ");
+    switch (ret)
+    {
+    case -2: sRes << tr("NOMEMORY\n"); break;
+    case 0: sRes << tr("OPTIMAL\n"); break;
+    case 1: sRes << tr("SUBOPTIMAL\n"); break;
+    case 2: sRes << tr("INFEASIBLE\n"); break;
+    case 3: sRes << tr("UNBOUNDED\n"); break;
+    case 4: sRes << tr("DEGENERATE\n"); break;
+    case 5: sRes << tr("NUMFAILURE\n"); break;
+    case 6: sRes << tr("USERABORT\n"); break;
+    case 7: sRes << tr("TIMEOUT\n"); break;
+    case 10: sRes << tr("PROCFAIL\n"); break;
+    case 11: sRes << tr("PROCBREAK\n"); break;
+    case 12: sRes << tr("FEASFOUND\n"); break;
+    case 13: sRes << tr("NOFEASFOUND\n"); break;
+    }
 
-	if (ret != 0 && ret != 1 && ret != 12)
-	{
-		sRes << "There was neither a sub-optimal\n"
-				"nor an optimal solution found by\n"
-				"lp_solve 5.5!\n"
-				"RETURN CODE = " << ret << " - see lp_solve doc!\n" << endl;
-	}
+    if (ret != 0 && ret != 1 && ret != 12)
+    {
+        sRes << "There was neither a sub-optimal\n"
+                "nor an optimal solution found by\n"
+                "lp_solve 5.5!\n"
+                "RETURN CODE = " << ret << " - see lp_solve doc!\n" << endl;
+    }
 
-	//log the number of solutions
-	sRes << "Number of solutions: " << this->mLp->GetSolutionCount() << endl << endl;
+    //log the number of solutions
+    sRes << "Number of solutions: " << this->mLp->GetSolutionCount() << endl << endl;
 
-	//log the objective function
-	sRes << "Objective function result = " << this->mLp->GetObjective() << endl << endl;
+    //log the objective function
+    sRes << "Objective function result = " << this->mLp->GetObjective() << endl << endl;
 
-	//get the values of the constraints
-	int iNumCons = this->mLp->GetNRows();
-	double *pdCons;
-	this->mLp->GetPtrConstraints(&pdCons);
+    //get the values of the constraints
+    int iNumCons = this->mLp->GetNRows();
+    double *pdCons;
+    this->mLp->GetPtrConstraints(&pdCons);
 
-	//log the objective constraints
-	if (this->meScalMeth == NMMosra::NM_MOSO_INTERACTIVE &&
-			this->mmslObjCons.size() > 0)
-	{
-		sRes << tr("OBJECTIVE CONSTRAINTS\n");
-		QMap<QString, QStringList>::const_iterator oit = this->mmslObjCons.constBegin();
-		for (; oit != this->mmslObjCons.constEnd(); oit++)
-		{
-			int index = this->mLp->GetNameIndex(oit.key().toStdString(), true);
-			if (index >= 0)
-				sRes << oit.key() << " = " << pdCons[index-1] << " ( "
-					<< oit.value().at(1) << " " << oit.value().at(2) << " )" << endl;
-		}
-		sRes << endl;
-	}
+    //log the objective constraints
+    if (this->meScalMeth == NMMosra::NM_MOSO_INTERACTIVE &&
+            this->mmslObjCons.size() > 0)
+    {
+        sRes << tr("OBJECTIVE CONSTRAINTS\n");
+        QMap<QString, QStringList>::const_iterator oit = this->mmslObjCons.constBegin();
+        for (; oit != this->mmslObjCons.constEnd(); oit++)
+        {
+            int index = this->mLp->GetNameIndex(oit.key().toStdString(), true);
+            if (index >= 0)
+                sRes << oit.key() << " = " << pdCons[index-1] << " ( "
+                    << oit.value().at(1) << " " << oit.value().at(2) << " )" << endl;
+        }
+        sRes << endl;
+    }
 
-	//log the explicit areal constraints
-	if (this->mmslAreaCons.size() > 0)
-	{
-		sRes << tr("USER DEFINED AREAL CONSTRAINTS\n");
-		QMap<QString, QStringList>::const_iterator ait =
-				this->mmslAreaCons.constBegin();
-		int totalcount = 0;
-		for (int r=0; ait != this->mmslAreaCons.constEnd(); ++ait, ++r)
-		{
-			QString sACL;
-			QStringList zonespec;
-			int index;
-			double dval;
-			bool ok;
-			int nit = 1;
+    //log the explicit areal constraints
+    if (this->mmslAreaCons.size() > 0)
+    {
+        sRes << tr("USER DEFINED AREAL CONSTRAINTS\n");
+        QMap<QString, QStringList>::const_iterator ait =
+                this->mmslAreaCons.constBegin();
+        int totalcount = 0;
+        for (int r=0; ait != this->mmslAreaCons.constEnd(); ++ait, ++r)
+        {
+            QString sACL;
+            QStringList zonespec;
+            int index;
+            double dval;
+            bool ok;
+            int nit = 1;
             QStringList options;
 
-			if (ait.value().at(0).contains(":", Qt::CaseInsensitive))
-			{
-				zonespec = ait.value().at(0).split(tr(":"), QString::SkipEmptyParts);
+            if (ait.value().at(0).contains(":", Qt::CaseInsensitive))
+            {
+                zonespec = ait.value().at(0).split(tr(":"), QString::SkipEmptyParts);
                 options = zonespec.at(0).split(tr("+"), QString::SkipEmptyParts);
-				//nit = 2;
-			}
+                //nit = 2;
+            }
             else
             {
                 options << ait.value().at(0).split(tr("+"), QString::SkipEmptyParts);
             }
 
-			for (int q=0; q < nit; ++q)
-			{
-				sACL = this->mmslAreaConsLabel.at(totalcount);
-				index = this->mLp->GetNameIndex(sACL.toStdString() , true);
-				if (index >= 0)
-				{
+            for (int q=0; q < nit; ++q)
+            {
+                sACL = this->mmslAreaConsLabel.at(totalcount);
+                index = this->mLp->GetNameIndex(sACL.toStdString() , true);
+                if (index >= 0)
+                {
                     double maxval = 0;
                     foreach(const QString& opt, options)
                     {
@@ -3025,58 +2936,58 @@ void NMMosra::createReport(void)
                         dval = this->convertAreaUnits(dval, ait.value().at(3), ozpec);
                         maxval = dval > maxval ? dval : maxval;
                     }
-					if (q == 1)
+                    if (q == 1)
                         maxval = 0;
 
-					sRes << sACL << " = " << pdCons[index-1] << " ( "
+                    sRes << sACL << " = " << pdCons[index-1] << " ( "
                         << ait.value().at(1) << " " << maxval << " )" << endl;
-				}
-				++totalcount;
-			}
-		}
-		sRes << endl;
-	}
+                }
+                ++totalcount;
+            }
+        }
+        sRes << endl;
+    }
 
-	//log the attributive constraints
-	if (this->mmslCriCons.size() > 0)
-	{
-		sRes << tr("CRITERIA CONSTRAINTS\n");
+    //log the attributive constraints
+    if (this->mmslCriCons.size() > 0)
+    {
+        sRes << tr("CRITERIA CONSTRAINTS\n");
 
-		QMultiMap<QString, QMap<QString, QStringList> >::const_iterator crilabit =
-				this->mmslCriCons.constBegin();
-		QMap<QString, QStringList>::const_iterator criit;
-		for (; crilabit != this->mmslCriCons.constEnd(); ++crilabit)
-		{
-			for (criit = crilabit.value().constBegin(); criit != crilabit.value().constEnd(); ++criit)
-			{
-				QString compOp = criit.value().at(criit.value().size()-2);
-				QString compTypeLabel;
-				if (compOp.compare(tr("<=")) == 0)
-					compTypeLabel = "upper";
-				else if (compOp.compare(tr(">=")) == 0)
-					compTypeLabel = "lower";
-				else if (compOp.compare(tr("=")) == 0)
-					compTypeLabel = "equals";
+        QMultiMap<QString, QMap<QString, QStringList> >::const_iterator crilabit =
+                this->mmslCriCons.constBegin();
+        QMap<QString, QStringList>::const_iterator criit;
+        for (; crilabit != this->mmslCriCons.constEnd(); ++crilabit)
+        {
+            for (criit = crilabit.value().constBegin(); criit != crilabit.value().constEnd(); ++criit)
+            {
+                QString compOp = criit.value().at(criit.value().size()-2);
+                QString compTypeLabel;
+                if (compOp.compare(tr("<=")) == 0)
+                    compTypeLabel = "upper";
+                else if (compOp.compare(tr(">=")) == 0)
+                    compTypeLabel = "lower";
+                else if (compOp.compare(tr("=")) == 0)
+                    compTypeLabel = "equals";
 
-				QString sCL = crilabit.key() + QString(tr("_%1_%2")).arg(criit.key()).arg(compTypeLabel);
-				int index = this->mLp->GetNameIndex(sCL.toStdString().c_str(), true);
+                QString sCL = crilabit.key() + QString(tr("_%1_%2")).arg(criit.key()).arg(compTypeLabel);
+                int index = this->mLp->GetNameIndex(sCL.toStdString().c_str(), true);
 
-				if (index >= 0)
-				{
-					sRes << sCL << " " << compOp << " " << pdCons[index -1] << endl;
-				}
-				else
-				{
-					QString tmplab = crilabit.key() + QString(tr("_%1")).arg(criit.key());
-					sRes << "error reading cirterion constraint for '"
-							<< tmplab << "'!" << endl;
-				}
-			}
-		}
-		sRes << endl;
-	}
+                if (index >= 0)
+                {
+                    sRes << sCL << " " << compOp << " " << pdCons[index -1] << endl;
+                }
+                else
+                {
+                    QString tmplab = crilabit.key() + QString(tr("_%1")).arg(criit.key());
+                    sRes << "error reading cirterion constraint for '"
+                            << tmplab << "'!" << endl;
+                }
+            }
+        }
+        sRes << endl;
+    }
 
-	// DEBUG - we just dump all constraints values here
+    // DEBUG - we just dump all constraints values here
 //    MosraLogDebug( << endl << "just dumping all constraint values .... " << endl);
 //	int nrows = this->mLp->GetNRows();
 //	for (int q=1; q < nrows; ++q)
@@ -3093,23 +3004,23 @@ void NMMosra::createReport(void)
     //NMDebug(<< endl);
 
 
-	sRes << endl;
+    sRes << endl;
 
-	QString platz = tr("\t\t");
-	sRes << "SENSITIVITY - CONSTRAINTS\n\n";
-	sRes << "ROW" << platz << tr("\t") << "DUAL VALUE" << platz << "DUAL FROM" << platz << "DUAL TILL\n";
-	//get some info about sensitivity
-	double *pDuals, *pDualsFrom, *pDualsTill;
-	if (this->mLp->GetPtrSensitivityRHS(&pDuals, &pDualsFrom, &pDualsTill))
-	{
+    QString platz = tr("\t\t");
+    sRes << "SENSITIVITY - CONSTRAINTS\n\n";
+    sRes << "ROW" << platz << tr("\t") << "DUAL VALUE" << platz << "DUAL FROM" << platz << "DUAL TILL\n";
+    //get some info about sensitivity
+    double *pDuals, *pDualsFrom, *pDualsTill;
+    if (this->mLp->GetPtrSensitivityRHS(&pDuals, &pDualsFrom, &pDualsTill))
+    {
         // avoid dumping feature and baseline constraints here, so we're looking for the
         // first occurence (row number) of either of them
         //const int nRowsFeat = this->mLp->GetNameIndex("Feature_0a", true);//this->mLp->GetNRows();
         //const int nRowsBase = this->mLp->GetNameIndex("Baseline_0_1", true);
         const int nRows = this->mLp->GetNRows(); //std::max(std::min(nRowsFeat, nRowsBase), -1);
 
-		for (int r=1; r < nRows; r++)
-		{
+        for (int r=1; r < nRows; r++)
+        {
             const QString consname = this->mLp->GetRowName(r).c_str();
             if (    !consname.startsWith("Feature")
                  && !consname.startsWith("Baseline")
@@ -3119,14 +3030,14 @@ void NMMosra::createReport(void)
                 sRes << consname << platz << tr("\t") <<
                         pDuals[r] << platz << pDualsFrom[r] << platz << pDualsTill[r] << endl;
             }
-		}
-	}
+        }
+    }
 
 
-	this->msReport.clear();
-	this->msReport = sRes.readAll();
+    this->msReport.clear();
+    this->msReport = sRes.readAll();
 
-	NMDebugCtx(ctxNMMosra, << "done!");
+    NMDebugCtx(ctxNMMosra, << "done!");
 
 }
 
@@ -3200,7 +3111,7 @@ NMMosra::writeBaselineReductions(QString filename)
 
 QString NMMosra::getReport(void)
 {
-	return this->msReport;
+    return this->msReport;
 }
 
 void NMMosra::writeProblem(QString filename, NMMosoExportType type)
@@ -3238,16 +3149,16 @@ void NMMosra::writeProblem(QString filename, NMMosoExportType type)
 
 void NMMosra::writeReport(QString fileName)
 {
-	QFile file(fileName);
-	if (!file.open(QIODevice::WriteOnly))
-	{
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly))
+    {
         MosraLogError( << "failed writing file '" << fileName.toStdString() << "'!");
-		return;
-	}
+        return;
+    }
 
-	QByteArray bar(this->msReport.toStdString().c_str());
-	file.write(bar);
-	file.close();
+    QByteArray bar(this->msReport.toStdString().c_str());
+    file.write(bar);
+    file.close();
 
 
     // DEBUG WRITE BASELINE REDUCTION VALUES
@@ -3260,23 +3171,23 @@ void NMMosra::writeReport(QString fileName)
 
 int NMMosra::checkSettings(void)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...");
 
-	QString settrep;
-	QTextStream sstr(&settrep);
+    QString settrep;
+    QTextStream sstr(&settrep);
 
-	sstr << "type of DV (0=REAL | 1=INT | 2=BINARY): " << this->meDVType << endl;
+    sstr << "type of DV (0=REAL | 1=INT | 2=BINARY): " << this->meDVType << endl;
 
-	// get the attributes of the layer
+    // get the attributes of the layer
     MosraLogInfo(<< "Optimisation - Checking settings ...")
 
-	//  get the total area of the layer (summing the provided field's data)
-	if (this->msAreaField.isEmpty())
-	{
+    //  get the total area of the layer (summing the provided field's data)
+    if (this->msAreaField.isEmpty())
+    {
         MosraLogError( << "no area field specified!");
-		NMDebugCtx(ctxNMMosra, << "done!");
-		return 0;
-	}
+        NMDebugCtx(ctxNMMosra, << "done!");
+        return 0;
+    }
 
     bool optfeatures = false;
     if (this->msOptFeatures.isEmpty())
@@ -3296,31 +3207,31 @@ int NMMosra::checkSettings(void)
     }
 
     if (!mDataSet->hasColumn(this->msAreaField.toStdString().c_str()))
-	{
+    {
         MosraLogError( << "specified area field could not be found!");
-		NMDebugCtx(ctxNMMosra, << "done!");
-		return 0;
-	}
+        NMDebugCtx(ctxNMMosra, << "done!");
+        return 0;
+    }
     MosraLogInfo(<< "area field OK" << endl);
 
-	// --------------------------------------------------------------------------------------------------------
+    // --------------------------------------------------------------------------------------------------------
     //MosraLogInfo(<< "calculating area and counting features ..." << endl);
     bool nm_hole = mDataSet->hasColumn("nm_hole");
     int numTuples = mDataSet->getNumRecs();
-	int numFeat = 0;
+    int numFeat = 0;
 
-	QMap<QString, QMap<QString, double> >::iterator zonesIt;
-	QMap<QString, QMap<QString, int> >::iterator zonesLenIt;
-	QMap<QString, double>::iterator optIt;
-	QMap<QString, int>::iterator optLenIt;
+    QMap<QString, QMap<QString, double> >::iterator zonesIt;
+    QMap<QString, QMap<QString, int> >::iterator zonesLenIt;
+    QMap<QString, double>::iterator optIt;
+    QMap<QString, int>::iterator optLenIt;
 
-	double tmpVal;
-	int tmpLen;
-	bool arealCriValid = true;
-	this->mdAreaTotal = 0;
+    double tmpVal;
+    int tmpLen;
+    bool arealCriValid = true;
+    this->mdAreaTotal = 0;
 
     for (int cs=0; cs < numTuples; cs++)
-	{
+    {
         if (nm_hole && mDataSet->getIntValue("nm_hole", cs) == 1)
         {
             continue;
@@ -3331,50 +3242,50 @@ int NMMosra::checkSettings(void)
         }
 
         this->mdAreaTotal += mDataSet->getDblValue(this->msAreaField, cs);
-		numFeat++;
+        numFeat++;
 
-		// iterate over the initialised zones and calc areas
-		zonesIt = this->mmslZoneAreas.begin();
-		zonesLenIt = this->mmslZoneLength.begin();
-		for (; zonesIt != this->mmslZoneAreas.end(); ++zonesIt, ++zonesLenIt)
-		{
+        // iterate over the initialised zones and calc areas
+        zonesIt = this->mmslZoneAreas.begin();
+        zonesLenIt = this->mmslZoneLength.begin();
+        for (; zonesIt != this->mmslZoneAreas.end(); ++zonesIt, ++zonesLenIt)
+        {
             bool zoneAr = mDataSet->hasColumn(zonesIt.key());
 
             if (zoneAr == false)
-			{
-				arealCriValid = false;
+            {
+                arealCriValid = false;
                 MosraLogError( << "specified zone field '" << zonesIt.key().toStdString()
-						<< "' does not exist in the data base!");
-				continue;
-			}
+                        << "' does not exist in the data base!");
+                continue;
+            }
 
-			optIt = zonesIt.value().begin();
-			optLenIt = zonesLenIt.value().begin();
-			for (; optIt != zonesIt.value().end(); ++optIt, ++optLenIt)
-			{
+            optIt = zonesIt.value().begin();
+            optLenIt = zonesLenIt.value().begin();
+            for (; optIt != zonesIt.value().end(); ++optIt, ++optLenIt)
+            {
                 std::string zoneVal = mDataSet->getStrValue(zonesIt.key(), cs).toStdString();
                 if (zoneVal.find(optIt.key().toStdString()) != std::string::npos)
-				{
+                {
                     tmpVal = optIt.value() + mDataSet->getDblValue(this->msAreaField, cs);
-					tmpLen = optLenIt.value() + 1;
-					zonesIt.value().insert(optIt.key(), tmpVal);
-					zonesLenIt.value().insert(optLenIt.key(), tmpLen);
-				}
-			}
-		}
-	}
+                    tmpLen = optLenIt.value() + 1;
+                    zonesIt.value().insert(optIt.key(), tmpVal);
+                    zonesLenIt.value().insert(optLenIt.key(), tmpLen);
+                }
+            }
+        }
+    }
 
-	// report total area to the user
-	this->mlNumOptFeat = numFeat;
-	sstr << "total area from " << this->msAreaField
-			<< "(" << numTuples << " | " << numFeat << ")" << " is " << this->mdAreaTotal << endl;
+    // report total area to the user
+    this->mlNumOptFeat = numFeat;
+    sstr << "total area from " << this->msAreaField
+            << "(" << numTuples << " | " << numFeat << ")" << " is " << this->mdAreaTotal << endl;
 
 
-	// iterate over the initialised zones and report areas
-	zonesIt = this->mmslZoneAreas.begin();
-	zonesLenIt = this->mmslZoneLength.begin();
-	for (; zonesIt != this->mmslZoneAreas.end(); ++zonesIt, ++zonesLenIt)
-	{
+    // iterate over the initialised zones and report areas
+    zonesIt = this->mmslZoneAreas.begin();
+    zonesLenIt = this->mmslZoneLength.begin();
+    for (; zonesIt != this->mmslZoneAreas.end(); ++zonesIt, ++zonesLenIt)
+    {
         bool zoneAr = mDataSet->hasColumn(zonesIt.key());
 
         if (zoneAr == false)
@@ -3382,45 +3293,45 @@ int NMMosra::checkSettings(void)
             continue;
         }
 
-		optIt = zonesIt.value().begin();
-		optLenIt = zonesLenIt.value().begin();
-		for (; optIt != zonesIt.value().end(); ++optIt, ++optLenIt)
-		{
-			sstr << "total area for option '" << optIt.key() << "' with respect to zone field '" << zonesIt.key() <<
-					"' = " << optIt.value() << endl;
-			sstr << "no of features for option '" << optLenIt.key() << "' with respect to zone field '"
-					<< zonesLenIt.key() << "' = " << optLenIt.value() << endl;
-		}
-	}
+        optIt = zonesIt.value().begin();
+        optLenIt = zonesLenIt.value().begin();
+        for (; optIt != zonesIt.value().end(); ++optIt, ++optLenIt)
+        {
+            sstr << "total area for option '" << optIt.key() << "' with respect to zone field '" << zonesIt.key() <<
+                    "' = " << optIt.value() << endl;
+            sstr << "no of features for option '" << optLenIt.key() << "' with respect to zone field '"
+                    << zonesLenIt.key() << "' = " << optLenIt.value() << endl;
+        }
+    }
 
-	// -----------------------------------------------------------------------------------------------------------------
-	// now actually check the areas
-	bool bConv = true;
-	QMap<QString, QStringList>::const_iterator acIt = this->mmslAreaCons.constBegin();
-	double totalConsArea = 0;
-	for (; acIt != this->mmslAreaCons.constEnd(); ++acIt)
-	{
-		// get the user specified area constraint value and add it to the total of all area constraints
-		if (acIt.value().size() < 4)
-		{
+    // -----------------------------------------------------------------------------------------------------------------
+    // now actually check the areas
+    bool bConv = true;
+    QMap<QString, QStringList>::const_iterator acIt = this->mmslAreaCons.constBegin();
+    double totalConsArea = 0;
+    for (; acIt != this->mmslAreaCons.constEnd(); ++acIt)
+    {
+        // get the user specified area constraint value and add it to the total of all area constraints
+        if (acIt.value().size() < 4)
+        {
             MosraLogError( << "areal constraint '" << acIt.key().toStdString()
-					<< ": " << acIt.value().join(" ").toStdString() << "' is invalid! Check number of parameters!");
-			arealCriValid = false;
-			continue;
-		}
+                    << ": " << acIt.value().join(" ").toStdString() << "' is invalid! Check number of parameters!");
+            arealCriValid = false;
+            continue;
+        }
 
-		QString unittype = acIt.value().at(3);
-		QStringList zonespec;
-		double val = this->convertAreaUnits(acIt.value().at(2).toDouble(&bConv), unittype, zonespec);
+        QString unittype = acIt.value().at(3);
+        QStringList zonespec;
+        double val = this->convertAreaUnits(acIt.value().at(2).toDouble(&bConv), unittype, zonespec);
         totalConsArea += val;
 
-		// now check, whether we've got an issue with one of the zonal values
-		QString OptZone = acIt.value().at(0);
-		if (OptZone.contains(":", Qt::CaseInsensitive))
-		{
-			QStringList ozlist = OptZone.split(tr(":"), QString::SkipEmptyParts);
+        // now check, whether we've got an issue with one of the zonal values
+        QString OptZone = acIt.value().at(0);
+        if (OptZone.contains(":", Qt::CaseInsensitive))
+        {
+            QStringList ozlist = OptZone.split(tr(":"), QString::SkipEmptyParts);
             QStringList options = ozlist.at(0).split(tr("+"), QString::SkipEmptyParts);
-			QString zone = ozlist.at(1);
+            QString zone = ozlist.at(1);
 
             double zval = 0;
             foreach(const QString& opt, options)
@@ -3453,9 +3364,9 @@ int NMMosra::checkSettings(void)
                     //	arealCriValid = false;
                 }
             }
-		}
+        }
 
-	}
+    }
     if (arealCriValid)
     {
         MosraLogInfo(<< "areal constraints OK!");
@@ -3463,23 +3374,23 @@ int NMMosra::checkSettings(void)
 
 
 
-	// now check on the total area
+    // now check on the total area
 //	if (totalConsArea > this->mdAreaTotal)
 //	{
 //		MosraLogError( << "the specified area constraints exceed the total available area!");
 //		arealCriValid = false;
 //	}
 
-	// we just don't bother checking it as above, which allows for having constraints like
-	// a >= x
-	// a <= y with y>=x
+    // we just don't bother checking it as above, which allows for having constraints like
+    // a >= x
+    // a <= y with y>=x
 
-	// well we don't bother with the above but if we're missing the unittype, we have to pull out!
-	//arealCriValid = true;
+    // well we don't bother with the above but if we're missing the unittype, we have to pull out!
+    //arealCriValid = true;
 
 
-	// selection
-	// TODO: add some meaningful code for selections
+    // selection
+    // TODO: add some meaningful code for selections
 //	if (this->mLayer->getLayerType() == NMLayer::NM_VECTOR_LAYER)
 //	{
 //		NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this->mLayer);
@@ -3493,29 +3404,29 @@ int NMMosra::checkSettings(void)
 //		  //pixels
 //	}
 
-	// cell id field = vtkPolyData cellId
+    // cell id field = vtkPolyData cellId
 
-	// --------------------------------------------------------------------------------------------------------
+    // --------------------------------------------------------------------------------------------------------
     //sMosraLogInfo(<< "checking performance indicator fields for optimisation criteria ..." << endl);
-	// performance indicator fields
-	QMap<QString, QStringList>::const_iterator criit =
-			this->mmslCriteria.constBegin();
+    // performance indicator fields
+    QMap<QString, QStringList>::const_iterator criit =
+            this->mmslCriteria.constBegin();
 
-	bool criValid = true;
-	for (; criit != this->mmslCriteria.constEnd(); ++criit)
-	{
-		// check each given performance indicator field
-		QStringList fields = criit.value();
-		for (int f=0; f < fields.size(); ++f)
-		{
+    bool criValid = true;
+    for (; criit != this->mmslCriteria.constEnd(); ++criit)
+    {
+        // check each given performance indicator field
+        QStringList fields = criit.value();
+        for (int f=0; f < fields.size(); ++f)
+        {
             if (!mDataSet->hasColumn(fields.at(f)))
-			{
-				criValid = false;
+            {
+                criValid = false;
                 MosraLogError( << "couldn't find performance indicator '"
-						<< fields.at(f).toStdString() << "'!");
-			}
-		}
-	}
+                        << fields.at(f).toStdString() << "'!");
+            }
+        }
+    }
     if (criValid)
     {
         MosraLogInfo( << "optimisation criteria: performance indicator fields OK");
@@ -3523,100 +3434,100 @@ int NMMosra::checkSettings(void)
 
     //    MosraLogInfo(<< "checking fields for evaluating criteria performance ..." << endl);
     //	// performance indicator fields
-	criit = this->mmslEvalFields.constBegin();
+    criit = this->mmslEvalFields.constBegin();
 
-	bool evalValid = true;
-	for (; criit != this->mmslEvalFields.constEnd(); ++criit)
-	{
-		// check each given performance indicator field
-		QStringList fields = criit.value();
-		for (int f=0; f < fields.size(); ++f)
-		{
+    bool evalValid = true;
+    for (; criit != this->mmslEvalFields.constEnd(); ++criit)
+    {
+        // check each given performance indicator field
+        QStringList fields = criit.value();
+        for (int f=0; f < fields.size(); ++f)
+        {
             if (!mDataSet->hasColumn(fields.at(f)))
-			{
-				evalValid = false;
+            {
+                evalValid = false;
                 MosraLogError( << "couldn't find performance evaluation indicator '"
-						<< fields.at(f).toStdString() << "'!");
-			}
-		}
-	}
+                        << fields.at(f).toStdString() << "'!");
+            }
+        }
+    }
     if (evalValid)
     {
         MosraLogInfo(<< "optimisation criteria: performance evaluation fields OK")
     }
 
-	// check the performance indicator fields specified with
-	// criteria constraints
-	bool criConsValid = true;
-	if (this->mmslCriCons.size() > 0)
-	{
+    // check the performance indicator fields specified with
+    // criteria constraints
+    bool criConsValid = true;
+    if (this->mmslCriCons.size() > 0)
+    {
         //MosraLogInfo(<< "checking performance indicator fields for attributive constraints ..." << endl);
-		QMultiMap<QString, QMap<QString, QStringList> >::const_iterator crilabit =
-				this->mmslCriCons.constBegin();
+        QMultiMap<QString, QMap<QString, QStringList> >::const_iterator crilabit =
+                this->mmslCriCons.constBegin();
 
-		for (; crilabit != this->mmslCriCons.end(); ++crilabit)
-		{
-			QMap<QString, QStringList> luFieldList = crilabit.value();
-			criit = luFieldList.begin();
-			for (; criit != luFieldList.end(); ++criit)
-			{
-				QStringList zonespec;
-				QString landuse;
-				QString zone = "";
-				if (criit.key().contains(tr(":"), Qt::CaseInsensitive))
-				{
-					zonespec = criit.key().split(tr(":"), QString::SkipEmptyParts);
-					landuse = zonespec.at(0);
-					zone = zonespec.at(1);
+        for (; crilabit != this->mmslCriCons.end(); ++crilabit)
+        {
+            QMap<QString, QStringList> luFieldList = crilabit.value();
+            criit = luFieldList.begin();
+            for (; criit != luFieldList.end(); ++criit)
+            {
+                QStringList zonespec;
+                QString landuse;
+                QString zone = "";
+                if (criit.key().contains(tr(":"), Qt::CaseInsensitive))
+                {
+                    zonespec = criit.key().split(tr(":"), QString::SkipEmptyParts);
+                    landuse = zonespec.at(0);
+                    zone = zonespec.at(1);
 
-					// check for zone field
+                    // check for zone field
                     if (!mDataSet->hasColumn(zone))
-					{
-						criConsValid = false;
+                    {
+                        criConsValid = false;
                         MosraLogError( << "CRITERIA_CONSTRAINTS: couldn't find zone field '"
-								<< zone.toStdString() << "'!");
-					}
-				}
-				else
-					landuse = criit.key();
+                                << zone.toStdString() << "'!");
+                    }
+                }
+                else
+                    landuse = criit.key();
 
-				QStringList fieldList = criit.value();
-				if (landuse.compare(tr("total"), Qt::CaseInsensitive) == 0)
-				{
-					// look through m_iNumOptions fields
-					for (int f=0; f < this->miNumOptions; ++f)
-					{
+                QStringList fieldList = criit.value();
+                if (landuse.compare(tr("total"), Qt::CaseInsensitive) == 0)
+                {
+                    // look through m_iNumOptions fields
+                    for (int f=0; f < this->miNumOptions; ++f)
+                    {
                         if (!mDataSet->hasColumn(fieldList.at(f)))
-						{
-							criConsValid = false;
+                        {
+                            criConsValid = false;
                             MosraLogError( << "CRITERIA_CONSTRAINTS: couldn't find performance indicator '"
-									<< fieldList.at(f).toStdString() << "'!");
-						}
-					}
-				}
-				else
-				{
-					// check whether the given land use matches one of the specified ones
-					if (!this->mslOptions.contains(landuse))
-					{
-						criConsValid = false;
+                                    << fieldList.at(f).toStdString() << "'!");
+                        }
+                    }
+                }
+                else
+                {
+                    // check whether the given land use matches one of the specified ones
+                    if (!this->mslOptions.contains(landuse))
+                    {
+                        criConsValid = false;
                         MosraLogError( << "CRITERIA_CONSTRAINTS: specified resource '"
-								<< landuse.toStdString() << "' does not match any of "
-								"the previously specified resources!");
-						continue;
-					}
+                                << landuse.toStdString() << "' does not match any of "
+                                "the previously specified resources!");
+                        continue;
+                    }
 
-					// look for the specified performance field of the given land use
+                    // look for the specified performance field of the given land use
                     if (!mDataSet->hasColumn(fieldList.at(0)))
-					{
-						criConsValid = false;
+                    {
+                        criConsValid = false;
                         MosraLogError( << "CRITERIA_CONSTRAINTS: couldn't find performance indicator '"
-								<< fieldList.at(0).toStdString() << "'!");
-					}
-				}
-			}
-		}
-	}
+                                << fieldList.at(0).toStdString() << "'!");
+                    }
+                }
+            }
+        }
+    }
     if (criConsValid)
     {
         MosraLogInfo(<< "performance constraints OK")
@@ -3723,8 +3634,105 @@ int NMMosra::checkSettings(void)
         MosraLogInfo(<< "incentives spec OK")
     }
 
+    // --------------------------------------------------------------------------------------------------------
+    // checking the feature-set constraints
+    bool featsetconsValid = true;
 
-	// --------------------------------------------------------------------------------------------------------
+    NMMosraDataSet::NMMosraDataSetType dstype = this->mDataSet->getDataSetType();
+    if (dstype == NMMosraDataSet::NM_MOSRA_DS_OTBTAB)
+    {
+        if (this->mDataSet->getOtbAttributeTable()->GetTableType() != otb::AttributeTable::ATTABLE_TYPE_SQLITE)
+        {
+            featsetconsValid = false;
+            MosraLogError(<< "Feature-set constraints are currently only supported "
+                          << "by the lumassengine in conjunction with SQLite-based "
+                          << "attribute tables (*.ldb)!");
+        }
+    }
+
+    QMap<QString, QStringList>::ConstIterator fsconsIt = this->mslFeatSetCons.constBegin();
+    while(fsconsIt != this->mslFeatSetCons.constEnd())
+    {
+        QStringList keyPair = fsconsIt.key().split(":", QString::SkipEmptyParts);
+        if (keyPair.size() == 2)
+        {
+            if (    keyPair.at(0).compare(QStringLiteral("total"), Qt::CaseInsensitive) != 0
+                 && !this->mslOptions.contains(keyPair.at(0))
+               )
+            {
+                QStringList uses = keyPair.at(0).split("+", QString::SkipEmptyParts);
+                if (this->mslOptions.size() < uses.size())
+                {
+                    featsetconsValid = false;
+                    MosraLogError(<< "The nubmer of specified options ("
+                                  << uses.size() << ") exceeds the number ("
+                                  << this->mslOptions.size() << ") "
+                                  << "defined options!");
+                }
+
+                foreach (const QString use, uses)
+                {
+                    if (!this->mslOptions.contains(use))
+                    {
+                        featsetconsValid = false;
+                        MosraLogError(<< "The specified option '"
+                                      << use.toStdString() << "' "
+                                      << "is invalid! Please correct your settings!");
+                    }
+                }
+
+                if (!this->mDataSet->hasColumn(keyPair.at(1)))
+                {
+                    featsetconsValid = false;
+                    MosraLogError(<< "The specified column of feature-set identifiers '"
+                                  << keyPair.at(1).toStdString() << "' "
+                                  << "could not be found in the specified dataset!");
+                }
+            }
+        }
+
+        const QStringList& valueSpec = fsconsIt.value();
+        if (valueSpec.size() < 3)
+        {
+            featsetconsValid = false;
+            MosraLogError(<< "The specified criterion and value specification '"
+                          << valueSpec.join(" ").toStdString() << "' "
+                          << "is incomplete!");
+        }
+
+        if (this->mmslCriteria.constFind(valueSpec.at(0)) == this->mmslCriteria.constEnd())
+        {
+            featsetconsValid = false;
+            MosraLogError(<< "The specified criterion '"
+                          << valueSpec.at(0).toStdString() << "' "
+                          << "is invalid!");
+        }
+
+        QStringList compOps;
+        compOps << "<=" << "=" << ">=";
+        if (!compOps.contains(valueSpec.at(1)))
+        {
+            featsetconsValid = false;
+            MosraLogError(<< "The specified comparison operator '"
+                          << valueSpec.at(1).toStdString() << "' "
+                          << "is invalid!");
+
+        }
+
+        if (!this->mDataSet->hasColumn(valueSpec.at(2)))
+        {
+            featsetconsValid = false;
+            MosraLogError(<< "The specified column of RHS vlaues '"
+                          << valueSpec.at(2).toStdString() << "' "
+                          << "could not be found in the specified dataset!");
+        }
+
+
+        ++fsconsIt;
+    }
+
+
+    // --------------------------------------------------------------------------------------------------------
     //MosraLogInfo(<< "calculating size of the optimsation matrix ..." << endl);
     /*
      * structure of the lp matrix  assuming that
@@ -3773,9 +3781,9 @@ int NMMosra::checkSettings(void)
      *                               deprecated
      */
 
-	this->mlNumArealDVar = this->miNumOptions * this->mlNumOptFeat;
-	sstr << "mlNumArealDVar = miNumOptions * mlNumOptFeat = "
-			<< this->mlNumArealDVar << " = " << this->miNumOptions << " * "
+    this->mlNumArealDVar = this->miNumOptions * this->mlNumOptFeat;
+    sstr << "mlNumArealDVar = miNumOptions * mlNumOptFeat = "
+            << this->mlNumArealDVar << " = " << this->miNumOptions << " * "
             << this->mlNumOptFeat << endl;
 
     this->mlNumDVar =  this->mlNumArealDVar;// + this->mlNumOptFeat;
@@ -3799,31 +3807,31 @@ int NMMosra::checkSettings(void)
          << addNumVar;
             //<< " + " << this->mlNumOptFeat << endl;
 
-	// number of columns of the decision matrix
-	this->mlLpCols = this->mlNumDVar + 1;
-	sstr << "mlLpCols = mlNumDvar + 1  = " << this->mlLpCols << endl;
+    // number of columns of the decision matrix
+    this->mlLpCols = this->mlNumDVar + 1;
+    sstr << "mlLpCols = mlNumDvar + 1  = " << this->mlLpCols << endl;
 
-	// Scalarisation method
-	QString sMeth;
-	if (this->meScalMeth == NMMosra::NM_MOSO_WSUM)
-		sMeth = tr("Weighted Sum");
-	else
-		sMeth = tr("Interactive");
-	sstr << "Scalarisation Method: " << sMeth << endl << endl;
+    // Scalarisation method
+    QString sMeth;
+    if (this->meScalMeth == NMMosra::NM_MOSO_WSUM)
+        sMeth = tr("Weighted Sum");
+    else
+        sMeth = tr("Interactive");
+    sstr << "Scalarisation Method: " << sMeth << endl << endl;
 
-	this->msSettingsReport = sstr.readAll();
+    this->msSettingsReport = sstr.readAll();
 
     MosraLogDebug(<< "Optimisation Settings Report ...\n"
                << this->msSettingsReport.toStdString() << endl);
 
-	NMDebugCtx(ctxNMMosra, << "done!");
-    if (!criValid || !criConsValid || !evalValid || !arealCriValid || !incentivesValid)
-	{
+    NMDebugCtx(ctxNMMosra, << "done!");
+    if (!criValid || !criConsValid || !evalValid || !arealCriValid || !incentivesValid || !featsetconsValid)
+    {
         MosraLogError( << "The configuration file contains invalid settings!");
-		return 0;
-	}
-	else
-		return 1;
+        return 0;
+    }
+    else
+        return 1;
 }
 
 int NMMosra::mapLp(void)
@@ -3982,14 +3990,14 @@ NMMosra::mapLpQtSql(void)
 //    QSqlDatabase db = sqlMod->database();
 //    QSqlDriver* drv = db.driver();
 
-	return 0;
+    return 0;
 }
 
 int NMMosra::mapLpTab(void)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...");
 
-	// get the attributes of the layer
+    // get the attributes of the layer
     const bool hole = mDataSet->hasColumn("nm_hole");
     const bool optFeat = mDataSet->hasColumn(this->msOptFeatures);
     const long lNumCells = mDataSet->getNumRecs();
@@ -4007,27 +4015,27 @@ int NMMosra::mapLpTab(void)
 
     // add scoring attributes
     QStringList vValAr;
-	for (int option=0; option < this->miNumOptions; option++)
-	{
-		QString optx_val = QString(tr("OPT%1_VAL")).arg(option+1);
+    for (int option=0; option < this->miNumOptions; option++)
+    {
+        QString optx_val = QString(tr("OPT%1_VAL")).arg(option+1);
         mDataSet->addColumn(optx_val, NMMosraDataSet::NM_MOSRA_DATATYPE_DOUBLE);
         colnames.push_back(optx_val);
         valList.push_back(QVariant(0.0));
         vValAr.push_back(optx_val);
         MosraLogDebug( << "created scoring attribute '" << optx_val.toStdString() << "'" << endl);
-	}
+    }
     mDataSet->endTransaction();
 
-	// get the decision vars
-	double * pdVars;
-	this->mLp->GetPtrVariables(&pdVars);
+    // get the decision vars
+    double * pdVars;
+    this->mLp->GetPtrVariables(&pdVars);
 
-	// some more vars
-	QString sColName, sOptStr;
-	double dVal;
-	int iValIndex;
-	const int iOffset = this->miNumOptions;
-	long lNonHoleCounter = 0;
+    // some more vars
+    QString sColName, sOptStr;
+    double dVal;
+    int iValIndex;
+    const int iOffset = this->miNumOptions;
+    long lNonHoleCounter = 0;
 
     QVariantList getValues;
     QStringList getNames;
@@ -4048,9 +4056,9 @@ int NMMosra::mapLpTab(void)
 
 
     //MosraLogDebug( << "extracting results ..." << endl);
-	// -------------------------------------------------------------------for each feature
-	for (int f=0; f < lNumCells; f++)
-	{
+    // -------------------------------------------------------------------for each feature
+    for (int f=0; f < lNumCells; f++)
+    {
         if (    (hole || optFeat)
             &&  !mDataSet->getRowValues(getValues, f)
            )
@@ -4065,19 +4073,19 @@ int NMMosra::mapLpTab(void)
         if (    (hole && getValues[0] == 1)
              || (optFeat && getValues[getValues.size()-1] == 0)
            )
-		{
+        {
             //mDataSet->setStrValue("OPT_STR", f, "");
             valList[0] = QVariant(QVariant::String);
 
-			for (int option=0; option < this->miNumOptions; option++)
+            for (int option=0; option < this->miNumOptions; option++)
             {
                 //mDataSet->setDblValue(vValAr.at(option), f, 0.0);
                 valList[option+1] = QVariant(0.0);
             }
 
-			// leap frog
+            // leap frog
             //continue;
-		}
+        }
         else
         {
             // -----------------------------------------------------------------for each option
@@ -4114,44 +4122,44 @@ int NMMosra::mapLpTab(void)
             return 0;
         }
 
-		if (f % 100 == 0)
+        if (f % 100 == 0)
             NMDebug(<< ".");
 
-		// increment the valid feature counter
-		lNonHoleCounter++;
-	}
+        // increment the valid feature counter
+        lNonHoleCounter++;
+    }
 
     mDataSet->endTransaction();
 
     MosraLogDebug(<< "extracted results!" << endl);
 
-	NMDebugCtx(ctxNMMosra, << "done!");
-	return 1;
+    NMDebugCtx(ctxNMMosra, << "done!");
+    return 1;
 }
 
 int NMMosra::makeLp(void)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...");
 
-	if (this->mLp == 0)
-		return 0;
+    if (this->mLp == 0)
+        return 0;
 
-	/*
-	 * structure of the lp matrix  assuming that
-	 * we've got two options (land uses)
-	 *
+    /*
+     * structure of the lp matrix  assuming that
+     * we've got two options (land uses)
+     *
      * i : feature index  (0-based)
      * r : land use index (1-based) note: 0 represents the whole parcel (s. incentives below)
-	 *
-	 * X_i_r: area share of land-use r allocated to feature i
+     *
+     * X_i_r: area share of land-use r allocated to feature i
      * NOT USED! b_i  : binary conditional variable we need to model that
      *           a feature has to be either completely covered by
      *           any combination of the land use options or not at all
-	 *
-	 * note: row-0 contains the objective function and cell 0,0 contains
-	 *       the objective function value; row-1 and beyond contain the
-	 *       constraints of the model
-	 *
+     *
+     * note: row-0 contains the objective function and cell 0,0 contains
+     *       the objective function value; row-1 and beyond contain the
+     *       constraints of the model
+     *
      *colindex:     0     1       2       3       4       5
      *row-0           | X_0_1 | X_0_2 | X_1_1 | X_1_2 | X_2_1 ...
      *row-1
@@ -4173,24 +4181,24 @@ int NMMosra::makeLp(void)
      *                             (not used at the moment)
      * ......................................................................
      * DEPRECATED
-	 *colindex:     0     1       2      3      4       5
-	 *row-0           | X_0_1 | X_0_2 | b_0 | X_1_1 | X_1_2 | b_1 | ...
-	 *row-1 (constraint #1: i.e. coefficients for decision variables)
-	 *row-2 (constraint #2)
-	 *row-3  etc.
+     *colindex:     0     1       2      3      4       5
+     *row-0           | X_0_1 | X_0_2 | b_0 | X_1_1 | X_1_2 | b_1 | ...
+     *row-1 (constraint #1: i.e. coefficients for decision variables)
+     *row-2 (constraint #2)
+     *row-3  etc.
      *etc.                               ^
      *                                   |
      *                               deprecated
-	 */
+     */
 
-	// create the LP structure (i.e. columns (i.e. decision vars),
-	// column names and column types; note: the default type is REAL
+    // create the LP structure (i.e. columns (i.e. decision vars),
+    // column names and column types; note: the default type is REAL
     int lNumCells = mDataSet->getNumRecs();
     bool hole = mDataSet->hasColumn("nm_hole");
     int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
 
-	this->mLp->MakeLp(0,this->mlLpCols);
-	long colPos = 1;
+    this->mLp->MakeLp(0,this->mlLpCols);
+    long colPos = 1;
     int featCount = 0;
 
     // we name the decision variables such that the feature index
@@ -4198,7 +4206,7 @@ int NMMosra::makeLp(void)
     // would have trouble mapping the final results back to the
     // right features!
     for (int of=0; of < lNumCells; ++of)//, ++colPos)
-	{
+    {
         if (    (hole && mDataSet->getIntValue("nm_hole", of) == 1)
              || (optFeatIdx != -1 && mDataSet->getIntValue(this->msOptFeatures, of) == 0)
            )
@@ -4207,24 +4215,24 @@ int NMMosra::makeLp(void)
         }
 
         QString colname;
-		for (int opt=1; opt <= this->miNumOptions; ++opt, ++colPos)
-		{
-			colname = QString(tr("X_%1_%2")).arg(of).arg(opt);
-			this->mLp->SetColName(colPos, colname.toStdString());
+        for (int opt=1; opt <= this->miNumOptions; ++opt, ++colPos)
+        {
+            colname = QString(tr("X_%1_%2")).arg(of).arg(opt);
+            this->mLp->SetColName(colPos, colname.toStdString());
 
             //MosraLogInfo(<< "#" << colPos << ": " << colname.toStdString() << std::endl);
 
-			// set variable type for areal decision variables
-			switch(this->meDVType)
-			{
-			case NMMosra::NM_MOSO_BINARY:
-				this->mLp->SetBinary(colPos, true);
-				break;
-			case NMMosra::NM_MOSO_INT:
-				this->mLp->SetInt(colPos, true);
-				break;
-			}
-		}
+            // set variable type for areal decision variables
+            switch(this->meDVType)
+            {
+            case NMMosra::NM_MOSO_BINARY:
+                this->mLp->SetBinary(colPos, true);
+                break;
+            case NMMosra::NM_MOSO_INT:
+                this->mLp->SetInt(colPos, true);
+                break;
+            }
+        }
 
         // add vars for incentivsed reduction (depending on x_i_r)
         for (int inc=1; inc <= this->mmslIncentives.size(); ++inc)
@@ -4248,7 +4256,7 @@ int NMMosra::makeLp(void)
         //  ++colPos;
 
         ++featCount;
-	}
+    }
 
     if (featCount != this->mlNumOptFeat)
     {
@@ -4272,8 +4280,8 @@ int NMMosra::makeLp(void)
 //	this->mLp->SetObjFnEx(1, &row, &colno);
 //	this->mLp->SetAddRowmode(false);
 
-	NMDebugCtx(ctxNMMosra, << "done!");
-	return 1;
+    NMDebugCtx(ctxNMMosra, << "done!");
+    return 1;
 }
 
 vtkSmartPointer<vtkTable>
@@ -4287,16 +4295,16 @@ bool
 NMMosra::perturbCriterion(const QString& criterion,
         const QList<float>& percent)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...");
 
-	// check, whether the dataset has been set yet
+    // check, whether the dataset has been set yet
     if (   this->mDataSet == 0
         || mDataSet->getDataSetType() == NMMosraDataSet::NM_MOSRA_DS_NONE
        )
-	{
+    {
         MosraLogError( << "Input dataset has not been set!");
         return false;
-	}
+    }
 
     int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
 
@@ -4350,11 +4358,11 @@ NMMosra::perturbCriterion(const QString& criterion,
             const QString incSpec = metaList.at(m).trimmed();
             const QStringList incDetails = incSpec.split(":", QString::SkipEmptyParts);
 
-			QString incField;
-			if (incDetails.size() >= 2)
-			{
-				incField = this->mmslIncentives[incDetails.at(1)].at(0);
-			}
+            QString incField;
+            if (incDetails.size() >= 2)
+            {
+                incField = this->mmslIncentives[incDetails.at(1)].at(0);
+            }
 
             if (incField.isEmpty() || !this->mDataSet->hasColumn(incField))
             {
@@ -4458,9 +4466,9 @@ NMMosra::perturbCriterion(const QString& criterion,
         }
 
         mDataSet->endTransaction();
-	}
+    }
 
-	NMDebugCtx(ctxNMMosra, << "done!");
+    NMDebugCtx(ctxNMMosra, << "done!");
     return true;
 }
 
@@ -4468,37 +4476,37 @@ bool
 NMMosra::varyConstraint(const QString& constraint,
                         float percent)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...");
 
-	// identifying the constraint
-	QStringList identlist = constraint.split(":");
+    // identifying the constraint
+    QStringList identlist = constraint.split(":");
     if (identlist.size() < 2)
-	{
+    {
         MosraLogError( << "Invalid pertubation item specified: "
-				<< constraint.toStdString() << std::endl);
-		NMDebugCtx(ctxNMMosra, << "done!");
+                << constraint.toStdString() << std::endl);
+        NMDebugCtx(ctxNMMosra, << "done!");
 
-		//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
-		//e.setDescription("Invalid pertubation item specified!");
-		//throw e;
+        //NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
+        //e.setDescription("Invalid pertubation item specified!");
+        //throw e;
 
         return false;
-	}
+    }
 
-	// read information
-	QString type = identlist.at(0);
-	QString label = identlist.at(1);
+    // read information
+    QString type = identlist.at(0);
+    QString label = identlist.at(1);
     QString use = "";
-	QString zone = "";
+    QString zone = "";
     if (identlist.size() >= 3)
         use = identlist.at(2);
-	if (identlist.size() == 4)
-		zone = identlist.at(3);
+    if (identlist.size() == 4)
+        zone = identlist.at(3);
 
     if (    type.compare("CRI", Qt::CaseInsensitive) == 0
         &&  !use.isEmpty()
        )
-	{
+    {
         // construct the 'key' we're looking for
         QString tident = use;
         if (!zone.isEmpty())
@@ -4506,87 +4514,87 @@ NMMosra::varyConstraint(const QString& constraint,
             tident = QString("%1:%2").arg(use).arg(zone);
         }
 
-		// since we could have more than one constraint with the same
-		// label, we just go through and check the use
-		QMap<QString, QStringList> lufm;
-		QMultiMap<QString, QMap<QString, QStringList> >::iterator it =
-				mmslCriCons.begin();
-		while(it != mmslCriCons.end())
-		{
-			if (it.key().compare(label) == 0)
-			{
+        // since we could have more than one constraint with the same
+        // label, we just go through and check the use
+        QMap<QString, QStringList> lufm;
+        QMultiMap<QString, QMap<QString, QStringList> >::iterator it =
+                mmslCriCons.begin();
+        while(it != mmslCriCons.end())
+        {
+            if (it.key().compare(label) == 0)
+            {
                 if (it.value().find(tident) != it.value().end())
                 {
                     lufm = mmslCriCons.take(it.key());
                     break;
                 }
-			}
+            }
 
-			++it;
-		}
+            ++it;
+        }
 
 
-		if (lufm.isEmpty())
-		{
+        if (lufm.isEmpty())
+        {
             MosraLogError( << "Land use field map is empty!");
-			NMDebugCtx(ctxNMMosra, << "done!");
-			//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
-			//e.setDescription("Land use field map is empty!");
-			//throw e;
+            NMDebugCtx(ctxNMMosra, << "done!");
+            //NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
+            //e.setDescription("Land use field map is empty!");
+            //throw e;
             return false;
-		}
+        }
 
-		// get the field list + the operator + cap
+        // get the field list + the operator + cap
         QStringList fieldvaluelist = lufm.value(tident);
-		if (fieldvaluelist.empty())
-		{
+        if (fieldvaluelist.empty())
+        {
             MosraLogError( << "Field value list is empty!");
-			NMDebugCtx(ctxNMMosra, << "done!");
-			//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
-			//e.setDescription("field value list is empty!");
-			//throw e;
+            NMDebugCtx(ctxNMMosra, << "done!");
+            //NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
+            //e.setDescription("field value list is empty!");
+            //throw e;
             return false;
-		}
+        }
 
         fieldvaluelist = lufm.take(tident);
 
-		bool bok;
-		double cap = fieldvaluelist.last().toDouble(&bok);
-		if (!bok)
-		{
+        bool bok;
+        double cap = fieldvaluelist.last().toDouble(&bok);
+        if (!bok)
+        {
             MosraLogError( << "Constraint threshold is not a number!")
-			NMDebugCtx(ctxNMMosra, << "done!");
-			//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
-			//e.setDescription("Land use field map is empty!");
-			//throw e;
+            NMDebugCtx(ctxNMMosra, << "done!");
+            //NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
+            //e.setDescription("Land use field map is empty!");
+            //throw e;
             return false;
-		}
+        }
 
         MosraLogDebug(<< "old value for " << constraint.toStdString()
-				<< " = " << cap << endl);
+                << " = " << cap << endl);
 
 
-		// adjust the cap value by adding the percentage of change
-		cap += (cap * percent/100.0);
+        // adjust the cap value by adding the percentage of change
+        cap += (cap * percent/100.0);
 
         MosraLogDebug(<< "new value for " << constraint.toStdString()
-				<< " = " << cap << endl);
+                << " = " << cap << endl);
 
-		// vary the constraint value (cap)
-		QString strVal = QString("%1").arg(cap);
-		fieldvaluelist.replace(fieldvaluelist.size()-1, strVal);
+        // vary the constraint value (cap)
+        QString strVal = QString("%1").arg(cap);
+        fieldvaluelist.replace(fieldvaluelist.size()-1, strVal);
 
-		// put the multi-map back together again
+        // put the multi-map back together again
         lufm.insert(tident, fieldvaluelist);
-		mmslCriCons.insert(label, lufm);
+        mmslCriCons.insert(label, lufm);
 
-	}
-	else if (type.compare("AREA", Qt::CaseInsensitive) == 0)
-	{
-		//ToDo
-	}
-	else if (type.compare("OBJ", Qt::CaseInsensitive) == 0)
-	{
+    }
+    else if (type.compare("AREA", Qt::CaseInsensitive) == 0)
+    {
+        //ToDo
+    }
+    else if (type.compare("OBJ", Qt::CaseInsensitive) == 0)
+    {
         // look for the objective contraint label (not key!) and
         // vary the contraint
         QMap<QString, QStringList>::iterator oconsIt =
@@ -4606,24 +4614,24 @@ NMMosra::varyConstraint(const QString& constraint,
 
             ++oconsIt;
         }
-	}
+    }
 
-	NMDebugCtx(ctxNMMosra, << "done!");
+    NMDebugCtx(ctxNMMosra, << "done!");
     return true;
 }
 
 int NMMosra::addObjFn(void)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...");
 
-	// get the hole array
+    // get the hole array
     bool hole = mDataSet->hasColumn("nm_hole");
     int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
 
-	// some vars we need
+    // some vars we need
 
-	// init some mem for the row and column objects of the
-	// problem
+    // init some mem for the row and column objects of the
+    // problem
     const long dvars = this->mlNumDVar;
     double* pdRow = new double[dvars];
     int* piColno = new int[dvars];
@@ -4638,19 +4646,19 @@ int NMMosra::addObjFn(void)
 
     const long lNumCells = mDataSet->getNumRecs();
     double dCoeff, dWeight = 1;
-	bool convOK;
+    bool convOK;
 
     QString s1Maxmin = this->mmslObjectives.begin().value().at(0).left(3);
     QString sxMaxmin;
 
-	// ------------------------------------------------------------------for each objective
-	// set coefficients of areal decision variables
-	QMap<QString, QStringList>::const_iterator it =
-			this->mmslObjectives.constBegin();
+    // ------------------------------------------------------------------for each objective
+    // set coefficients of areal decision variables
+    QMap<QString, QStringList>::const_iterator it =
+            this->mmslObjectives.constBegin();
 
-	unsigned int objcount = 0;
-	for (; it != this->mmslObjectives.constEnd(); ++it, ++objcount)
-	{
+    unsigned int objcount = 0;
+    for (; it != this->mmslObjectives.constEnd(); ++it, ++objcount)
+    {
         // need to check whether we've got to account for incentives or not
         bool bIncentivise = false;
         if (numIncentives > 0)
@@ -4672,39 +4680,39 @@ int NMMosra::addObjFn(void)
             }
         }
 
-		// get field indices for the performance indicators
+        // get field indices for the performance indicators
         MosraLogDebug( << "objective '" << it.key().toStdString() << "' ..." << endl);
 
         MosraLogDebug( << "criterion / option: <performance indi field> <field index> ... " << endl);
-		for (int option=0; option < this->miNumOptions; option++)
-		{
-			// field name of performance indicator for
-			// current criterion and option
-			QString sCriterion = it.key();
-			QStringList criFieldList = this->mmslCriteria.value(sCriterion);
-			QString sField = "";
-			if (option <= criFieldList.size()-1)
-				sField = criFieldList.at(option);
+        for (int option=0; option < this->miNumOptions; option++)
+        {
+            // field name of performance indicator for
+            // current criterion and option
+            QString sCriterion = it.key();
+            QStringList criFieldList = this->mmslCriteria.value(sCriterion);
+            QString sField = "";
+            if (option <= criFieldList.size()-1)
+                sField = criFieldList.at(option);
 
             plFieldIndices[option] = mDataSet->getColumnIndex(sField);
             if (plFieldIndices[option] == -1)
-			{
+            {
                 MosraLogError( << "failed to get performance indicator '"
-						<< sField.toStdString() << "' for option '"
-						<< this->mslOptions.at(option).toStdString() << "'!");
+                        << sField.toStdString() << "' for option '"
+                        << this->mslOptions.at(option).toStdString() << "'!");
 
-				// free some memory
-				delete[] pdRow;
-				delete[] piColno;
-				delete[] plFieldIndices;
+                // free some memory
+                delete[] pdRow;
+                delete[] piColno;
+                delete[] plFieldIndices;
 
-				NMDebugCtx(ctxNMMosra, << "done!");
-				return 0;
-			}
+                NMDebugCtx(ctxNMMosra, << "done!");
+                return 0;
+            }
 
             MosraLogDebug( << sCriterion.toStdString() << " / " << this->mslOptions.at(option).toStdString()
-					<< ": " << sField.toStdString() << " " << plFieldIndices[option] << endl);
-		}
+                    << ": " << sField.toStdString() << " " << plFieldIndices[option] << endl);
+        }
 
         MosraLogDebug( << "incentive: <incentive field> <field index> ..." << std::endl);
         QMap<QString, QStringList>::ConstIterator incIt = this->mmslIncentives.constBegin();
@@ -4734,15 +4742,15 @@ int NMMosra::addObjFn(void)
         }
 
 
-		// maximise or minimise ?
-		sxMaxmin = it.value().at(0).left(3);
+        // maximise or minimise ?
+        sxMaxmin = it.value().at(0).left(3);
 
-		// align optimisation task with that of objective 1
-		bool bMalMinusEins = false;
-		if (s1Maxmin.compare(sxMaxmin, Qt::CaseInsensitive) != 0)
-			bMalMinusEins = true;
+        // align optimisation task with that of objective 1
+        bool bMalMinusEins = false;
+        if (s1Maxmin.compare(sxMaxmin, Qt::CaseInsensitive) != 0)
+            bMalMinusEins = true;
 
-		// get the weight for this objective
+        // get the weight for this objective
         dWeight = 1.0;
         if (it.value().size() == 2)
         {
@@ -4751,17 +4759,17 @@ int NMMosra::addObjFn(void)
         MosraLogDebug( << "sxMaxmin: " << sxMaxmin.toStdString() << " | adjust task: " << bMalMinusEins << " | weight: " << dWeight << endl);
 
         MosraLogDebug( << "processing individual features now" << endl);
-		// --------------------------------------------------for each feature
+        // --------------------------------------------------for each feature
         long colPos = 1;
-		long arpos = 0;
-		for (int f=0; f < lNumCells; ++f)
-		{
+        long arpos = 0;
+        for (int f=0; f < lNumCells; ++f)
+        {
             // leap over holes
             if (    (hole && mDataSet->getIntValue(holeidx, f) == 1)
                  || (optFeatIdx != -1 && mDataSet->getIntValue(this->msOptFeatures, f) == 0)
                )
             {
-				continue;
+                continue;
             }
 
             /*
@@ -4775,26 +4783,26 @@ int NMMosra::addObjFn(void)
             }
             */
 
-			// ----------------------------------------------for each option
-			for (int option=0; option < this->miNumOptions; option++, arpos++, colPos++)
-			{
-				// get performance indicator for current feature and
-				// criterion and option
+            // ----------------------------------------------for each option
+            for (int option=0; option < this->miNumOptions; option++, arpos++, colPos++)
+            {
+                // get performance indicator for current feature and
+                // criterion and option
                 dCoeff = mDataSet->getDblValue(plFieldIndices[option], f);
 
-				// DEBUG
-				//if (f < 100)
+                // DEBUG
+                //if (f < 100)
                 //	MosraLogDebug( << lCounter << " : " << this->mslOptions.at(option).toStdString()
-				//			<< " : " << da->GetName() << " : " << dCoeff << endl);
+                //			<< " : " << da->GetName() << " : " << dCoeff << endl);
 
-				// adjust according to MinMax of objective 1
-				dCoeff = bMalMinusEins ? dCoeff * -1 : dCoeff;
+                // adjust according to MinMax of objective 1
+                dCoeff = bMalMinusEins ? dCoeff * -1 : dCoeff;
 
-				// apply objective weight if applicable
-				if (this->meScalMeth == NMMosra::NM_MOSO_WSUM)
-					dCoeff *= dWeight;
+                // apply objective weight if applicable
+                if (this->meScalMeth == NMMosra::NM_MOSO_WSUM)
+                    dCoeff *= dWeight;
 
-				// do we have binary decision variables?
+                // do we have binary decision variables?
                 //              double area = mDataSet->getDblValue(this->msAreaField, f);
                 //				QString sArea = QString(tr("%1")).arg(area, 0, 'g');
                 //				bool bok;
@@ -4810,16 +4818,16 @@ int NMMosra::addObjFn(void)
                 //				}
 
 
-				// write coefficient into row array
-				if (objcount)
-					pdRow[arpos] += dCoeff;
-				else
-					pdRow[arpos] = dCoeff;
-				piColno[arpos] = colPos;
+                // write coefficient into row array
+                if (objcount)
+                    pdRow[arpos] += dCoeff;
+                else
+                    pdRow[arpos] = dCoeff;
+                piColno[arpos] = colPos;
 
-				//NMDebug(<< this->mLp->GetColName(colPos) << "=" << pdRow[arpos] << "  ");
+                //NMDebug(<< this->mLp->GetColName(colPos) << "=" << pdRow[arpos] << "  ");
 
-			}
+            }
 
             if (bIncentivise)
             {
@@ -4859,98 +4867,98 @@ int NMMosra::addObjFn(void)
                 colPos += skipIncentivesOffset;
             }
 
-			// increment the column number counter to the next areal decision variable
-			// (leaping one binary deciscion var associated with each areal decision variable)
+            // increment the column number counter to the next areal decision variable
+            // (leaping one binary deciscion var associated with each areal decision variable)
             //colPos++;
 
-			if (f % 500 == 0)
-				NMDebug(<< ".");
-		}
+            if (f % 500 == 0)
+                NMDebug(<< ".");
+        }
 
-		NMDebug(<< " finished!" << endl);
-	}
+        NMDebug(<< " finished!" << endl);
+    }
 
     //int ncols = this->mLp->GetNColumns();
     //MosraLogDebug( << "num cols: " << ncols << " | NumArealDVar: " << this->mlNumArealDVar << endl);
 
 
-	// set the objective function
-	this->mLp->SetAddRowmode(true);
+    // set the objective function
+    this->mLp->SetAddRowmode(true);
     this->mLp->SetObjFnEx(this->mlNumDVar, pdRow, piColno);
-	this->mLp->SetAddRowmode(false);
+    this->mLp->SetAddRowmode(false);
 
-	// set the optimisation task
-	if (s1Maxmin.compare(tr("min"), Qt::CaseInsensitive) == 0)
-		this->mLp->SetMinim();
-	else
-		this->mLp->SetMaxim();
+    // set the optimisation task
+    if (s1Maxmin.compare(tr("min"), Qt::CaseInsensitive) == 0)
+        this->mLp->SetMinim();
+    else
+        this->mLp->SetMaxim();
 
-	// free some memory
+    // free some memory
     delete[] pdRow;
     delete[] piColno;
-	delete[] plFieldIndices;
+    delete[] plFieldIndices;
     delete[] piIncFieldIdx;
 
-	NMDebugCtx(ctxNMMosra, << "done!");
+    NMDebugCtx(ctxNMMosra, << "done!");
 
-	return 1;
+    return 1;
 }
 
 int NMMosra::addObjCons(void)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...");
 
-	// get data set attributes
-	// get the hole array
+    // get data set attributes
+    // get the hole array
     bool hole = mDataSet->hasColumn("nm_hole");
     long lNumCells = mDataSet->getNumRecs();
     int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
 
-	// create vectors holding the constraint types
-	// and objective constraint labels
-	std::vector<unsigned int> vnConsType;
-	std::vector<QString> vsObjConsLabel;
-	QMap<QString, QStringList>::const_iterator it = this->mmslObjCons.constBegin();
+    // create vectors holding the constraint types
+    // and objective constraint labels
+    std::vector<unsigned int> vnConsType;
+    std::vector<QString> vsObjConsLabel;
+    QMap<QString, QStringList>::const_iterator it = this->mmslObjCons.constBegin();
 
     MosraLogDebug( << "reading props" << endl);
-	for (; it != this->mmslObjCons.constEnd(); it++)
-	{
-		// add the operator
-		if (it.value().at(1).compare(tr("<=")) == 0)
-			vnConsType.push_back(1);
-		else if (it.value().at(1).compare(tr(">=")) == 0)
-			vnConsType.push_back(2);
-		else // =
-			vnConsType.push_back(3);
+    for (; it != this->mmslObjCons.constEnd(); it++)
+    {
+        // add the operator
+        if (it.value().at(1).compare(tr("<=")) == 0)
+            vnConsType.push_back(1);
+        else if (it.value().at(1).compare(tr(">=")) == 0)
+            vnConsType.push_back(2);
+        else // =
+            vnConsType.push_back(3);
 
-		// add the key i.e. objective as label
-		vsObjConsLabel.push_back(it.key());
+        // add the key i.e. objective as label
+        vsObjConsLabel.push_back(it.key());
 
         MosraLogDebug( << it.key().toStdString() << ": " << it.value().join(tr(" ")).toStdString() << endl);
-	}
+    }
 
-	// allocate the required memory
+    // allocate the required memory
     double* pdRow = nullptr; //new double[this->mlNumArealDVar];
     int* piColno = nullptr; //new int[this->mlNumArealDVar];
-	int* piFieldIndices = new int[this->miNumOptions];
+    int* piFieldIndices = new int[this->miNumOptions];
 
     // check whether we've got to account for incentives
     const int iNumIncentives = this->mmslIncentives.size();
     int* piIncFieldIdx = iNumIncentives > 0 ? new int[iNumIncentives] : nullptr;
 
 
-	// some more vars
-	double dConsVal;
-	double dCoeff;
+    // some more vars
+    double dConsVal;
+    double dCoeff;
 
-	// turn on row mode
-	this->mLp->SetAddRowmode(true);
-	long lRowCounter = this->mLp->GetNRows();
+    // turn on row mode
+    this->mLp->SetAddRowmode(true);
+    long lRowCounter = this->mLp->GetNRows();
 
-	it = this->mmslObjCons.constBegin();
-	// ------------------------------------------------for each objective
-	for (int obj=0; it != this->mmslObjCons.constEnd(); it++, obj++)
-	{
+    it = this->mmslObjCons.constBegin();
+    // ------------------------------------------------for each objective
+    for (int obj=0; it != this->mmslObjCons.constEnd(); it++, obj++)
+    {
         // need to check whether we've got to account for incentives or not
         bool bIncentivise = false;
         if (iNumIncentives > 0)
@@ -4985,43 +4993,43 @@ int NMMosra::addObjCons(void)
 
 
         // get the constraint value
-		bool bConvOK;
-		double dVal =
-		dVal = it.value().at(2).toDouble(&bConvOK);
-		if (bConvOK)
-			dConsVal = dVal;
-		else
+        bool bConvOK;
+        double dVal =
+        dVal = it.value().at(2).toDouble(&bConvOK);
+        if (bConvOK)
+            dConsVal = dVal;
+        else
             MosraLogError( << "couldn't convert " << it.value().at(2).toStdString() << " into a double!" << endl);
 
         MosraLogDebug( << it.key().toStdString() << endl);
 
         MosraLogDebug( << "criterion / option: <performance indi field> <field index> ... " << endl);
-		for (int option=0; option < this->miNumOptions; option++)
-		{
-			// field name of performance indicator for
-			// current criterion and option
-			QString sCriterion = it.value().at(0);
-			QString sField = this->mmslCriteria.value(sCriterion).at(option);
+        for (int option=0; option < this->miNumOptions; option++)
+        {
+            // field name of performance indicator for
+            // current criterion and option
+            QString sCriterion = it.value().at(0);
+            QString sField = this->mmslCriteria.value(sCriterion).at(option);
 
             piFieldIndices[option] = mDataSet->getColumnIndex(sField);
 
             if (piFieldIndices[option] == -1)
-			{
+            {
                 MosraLogError( << "failed to get performance indicator '"
-						<< sField.toStdString() << "'!");
+                        << sField.toStdString() << "'!");
 
-				// free some memory
-				delete[] pdRow;
-				delete[] piColno;
-				delete[] piFieldIndices;
+                // free some memory
+                delete[] pdRow;
+                delete[] piColno;
+                delete[] piFieldIndices;
 
-				NMDebugCtx(ctxNMMosra, << "done!");
-				return 0;
-			}
+                NMDebugCtx(ctxNMMosra, << "done!");
+                return 0;
+            }
 
             MosraLogDebug( << sCriterion.toStdString() << " / " << this->mslOptions.at(option).toStdString()
-					<< ": " << sField.toStdString() << " " << piFieldIndices[option] << endl);
-		}
+                    << ": " << sField.toStdString() << " " << piFieldIndices[option] << endl);
+        }
 
         MosraLogDebug( << "incentive: <incentive field> <field index> ..." << std::endl);
         QMap<QString, QStringList>::ConstIterator incIt = this->mmslIncentives.constBegin();
@@ -5051,25 +5059,25 @@ int NMMosra::addObjCons(void)
         }
 
 
-		// ------------------------------------------------------------for each spatial alternative
+        // ------------------------------------------------------------for each spatial alternative
         const int skipIncentivesOffset = iNumIncentives * miNumOptions + iNumIncentives;
         long lCounter = 0;
         long colpos = 1;
-		for (int f=0; f < lNumCells; f++)
-		{
-			// leap frog holes in polygons
+        for (int f=0; f < lNumCells; f++)
+        {
+            // leap frog holes in polygons
             if (    (hole && mDataSet->getIntValue("nm_hole", f) == 1)
                  || (optFeatIdx != -1 && mDataSet->getIntValue(optFeatIdx, f) == 0)
                )
             {
-				continue;
+                continue;
             }
 
-			for (int option=0; option < this->miNumOptions; option++)
-			{
+            for (int option=0; option < this->miNumOptions; option++)
+            {
                 dCoeff = mDataSet->getDblValue(piFieldIndices[option], f);
 
-				// do we have binary decision variables?
+                // do we have binary decision variables?
                 //              double area = mDataSet->getDblValue(this->msAreaField, f);
                 //				QString sArea = QString(tr("%1")).arg(area, 0, 'g');
                 //				bool bok;
@@ -5084,15 +5092,15 @@ int NMMosra::addObjCons(void)
                 //					break;
                 //				}
 
-				pdRow[lCounter] = dCoeff;
-				piColno[lCounter] = colpos;
+                pdRow[lCounter] = dCoeff;
+                piColno[lCounter] = colpos;
 
-				// increment the counter
-				lCounter++;
-				colpos++;
+                // increment the counter
+                lCounter++;
+                colpos++;
 
 
-			}
+            }
 
             if (bIncentivise)
             {
@@ -5121,25 +5129,25 @@ int NMMosra::addObjCons(void)
                 colpos += skipIncentivesOffset;
             }
 
-			// leap frog the binary decision variable for this feature
+            // leap frog the binary decision variable for this feature
             //colpos++;
 
-			if (f % 100 == 0)
-				NMDebug(<< ".");
+            if (f % 100 == 0)
+                NMDebug(<< ".");
 
         } // end cell iteration
 
-		NMDebug(<< " finished!" << endl);
+        NMDebug(<< " finished!" << endl);
 
-		// add the constraint to the matrix
+        // add the constraint to the matrix
         this->mLp->AddConstraintEx(iNumIncentives > 0 ? this->mlNumDVar : this->mlNumArealDVar,
                                    pdRow, piColno, vnConsType.at(obj), dConsVal);
 
-		// increment the row counter
-		lRowCounter++;
+        // increment the row counter
+        lRowCounter++;
 
-		// add the label for this constraint
-		this->mLp->SetRowName(lRowCounter, vsObjConsLabel.at(obj).toStdString());
+        // add the label for this constraint
+        this->mLp->SetRowName(lRowCounter, vsObjConsLabel.at(obj).toStdString());
 
         delete[] pdRow;
         delete[] piColno;
@@ -5147,14 +5155,273 @@ int NMMosra::addObjCons(void)
     } // end objective constraint iteration
 
 
-	this->mLp->SetAddRowmode(false);
+    this->mLp->SetAddRowmode(false);
 
-	// free some memory
-	delete[] piFieldIndices;
+    // free some memory
+    delete[] piFieldIndices;
 
-	NMDebugCtx(ctxNMMosra, << "done!");
+    NMDebugCtx(ctxNMMosra, << "done!");
 
-	return 1;
+    return 1;
+}
+
+
+int NMMosra::addFeatureSetConsDb(void)
+{
+    /// ToDo: add incentives support for constraining criteria that benefit from incentives!!!
+
+    NMDebugCtx(ctxNMMosra, << "...");
+    MosraLogInfo(<<"adding feature-set constraints ...");
+
+    // get a list of feature-set ids
+    otb::SQLiteTable::Pointer sqltab = static_cast<otb::SQLiteTable*>(
+                this->mDataSet->getOtbAttributeTable().GetPointer());
+
+    if (sqltab.IsNull())
+    {
+        MosraLogError(<< "Failed fetching the SQLite-based attribute table (*.ldb)!");
+        NMDebugCtx(ctxNMMosra, << "done!");
+        return 0;
+    }
+
+
+
+    // ==============================================================================================
+    // process individual feature-set constraints
+    // key: <option1[+option2[+option3[+...]]] | total>:<id_column_name>
+    //               0                 1               2
+    // value: <criterion_label> < <= | = | >= > <rhs_column_name>
+    this->mLp->SetAddRowmode(true);
+    long lRowCounter = this->mLp->GetNRows();
+
+    QMap<QString, QStringList>::ConstIterator fsIt = this->mslFeatSetCons.constBegin();
+    while (fsIt != this->mslFeatSetCons.constEnd())
+    {
+        MosraLogInfo(<< "   -> " << this->msFeatureSetConsLabel[fsIt.key()].toStdString() << "...");
+        // extract the options & feature-set id column index
+        QStringList optColPair = fsIt.key().split(":", QString::SkipEmptyParts);
+        QStringList optraw = optColPair.at(0).split("+", QString::SkipEmptyParts);
+        QStringList options;
+        if (optraw.size() == 1)
+        {
+            if (this->mslOptions.contains(optraw.at(0)))
+            {
+                options << optraw.at(0);
+            }
+            else if (optraw.at(0).compare(QStringLiteral("total"), Qt::CaseInsensitive) == 0)
+            {
+                for (int i=0; i < this->mslOptions.size(); ++i)
+                {
+                    options << this->mslOptions.at(i);
+                }
+            }
+        }
+        else
+        {
+            for (int r=0; r < optraw.size(); ++r)
+            {
+                if (this->mslOptions.contains(optraw.at(r)))
+                {
+                    options << optraw.at(r);
+                }
+            }
+        }
+
+        // workout operator
+        int operatorId = -1;
+        QString compOp = fsIt.value().at(1);
+        QString compTypeLabel;
+        if (compOp.compare(tr("<=")) == 0)
+        {
+            operatorId = 1;
+            compTypeLabel = "upper";
+        }
+        else if (compOp.compare(tr(">=")) == 0)
+        {
+            operatorId = 2;
+            compTypeLabel = "lower";
+        }
+        else if (compOp.compare(tr("=")) == 0)
+        {
+            operatorId = 3;
+            compTypeLabel = "equals";
+        }
+
+        // -----------------------------------------------------------------------------
+        // fetch a table of unique feature set ids and the associated threshold values
+        // EXAMPLE: select distinct cat_n, TN_MAL from luopt_hl2_1 where optFeat == 1 and cat_n > 0;
+
+        //SQLiteTable::TableDataFetch(std::vector<std::vector<ColumnValue> > &restab,
+        //                            const std::vector<TableColumnType> &coltypes,
+        //                            const std::string &query)
+
+        QString criterion = fsIt.value().at(0);
+        std::string idColName = optColPair.at(1).toStdString();
+        std::string rhsColName = fsIt.value().at(2).toStdString();
+
+        bool bOptFeat = false;
+        std::string optfeatColName = "";
+        if (!this->msOptFeatures.isEmpty())
+        {
+            bOptFeat = true;
+            optfeatColName = this->msOptFeatures.toStdString();
+        }
+
+        std::vector< std::vector< otb::AttributeTable::ColumnValue > > fsids;
+        std::vector<otb::AttributeTable::TableColumnType> types;
+        types.push_back(otb::AttributeTable::ATTYPE_INT);
+        types.push_back(otb::AttributeTable::ATTYPE_DOUBLE);
+
+        std::stringstream q_fstable;
+        q_fstable << "SELECT distinct \"" << idColName << "\", "
+                  << "\"" << rhsColName << "\" from \"" << sqltab->GetTableName() << "\" "
+                  << "where \"" << idColName << "\" > 0";
+        if (bOptFeat)
+        {
+            q_fstable << " and \"" << optfeatColName << "\" == 1";
+        }
+        q_fstable << ";";
+
+        //MosraLogInfo(<< "   -> query:" << q_fstable.str() << std::endl);
+
+        if (!sqltab->TableDataFetch(fsids, types, q_fstable.str()))
+        {
+            MosraLogError(<< "NMMosra::addFeatureSetCons() - " << sqltab->getLastLogMsg());
+            return 0;
+        }
+
+        // get option index/position within option set / criterion score field sets
+        std::vector<int> optionIdx;
+        for (int k=0; k < options.size(); ++k)
+        {
+            optionIdx.push_back(this->mslOptions.indexOf(options[k]));
+        }
+
+        // -------------------------------------------------------------------------------
+        // iterate over individual feature-sets and add a constraint for each
+        for (int fs=0; fs < fsids.size(); ++fs)
+        {
+            long long id = fsids[fs][0].ival;
+            //MosraLogDebug(<< "      ID: " << id << "(" << fs+1 << "/" << fsids.size() << ")...");
+            const double rhsValue = fsids[fs][1].dval;
+
+            // .....................................................
+            // select option_criterion_score_column1, ...2, ...3, ....,
+            // from table_name where cat_n == and optFeat == 1
+            // EXAMPLE: select rowid, n_dai, n_snb, n_for from luopt_hl2_1 where optFeat == 1 and cat_n == 13068931;
+
+            std::vector< std::vector< otb::AttributeTable::ColumnValue > > scoretab;
+            std::vector< otb::AttributeTable::TableColumnType > scoretypes(options.size()+2, otb::AttributeTable::ATTYPE_DOUBLE);
+            scoretypes[0] = otb::AttributeTable::ATTYPE_INT;
+
+            std::stringstream q_scores;
+
+            q_scores << "SELECT rowid, \"" << this->msAreaField.toStdString() << "\", ";
+            for (int sc=0; sc < optionIdx.size(); ++sc)
+            {
+                q_scores << "\"" << this->mmslCriteria[criterion][optionIdx[sc]].toStdString() << "\"";
+                if (sc < optionIdx.size()-1)
+                {
+                    q_scores << ",";
+                }
+            }
+
+            q_scores << " from \"" << sqltab->GetTableName() << "\" where ";
+            if (bOptFeat)
+            {
+                q_scores << "\"" << optfeatColName << "\" == 1 and ";
+            }
+
+            q_scores << "\"" << idColName << "\" == " << id << ";";
+
+            if (!sqltab->TableDataFetch(scoretab, scoretypes, q_scores.str()))
+            {
+                MosraLogError(<< "NMMosra::addFeatureSetCons() - " << sqltab->getLastLogMsg());
+                return 0;
+            }
+
+
+            // ..........................................................................
+            // adding the constraint for this feature set
+            /// WARNING: use rowid-1 for colpos!
+            //const int skipIncentiveFeatOffset = this->mmslIncentives.size() * miNumOptions + mmslIncentives.size();
+            const int bsize = optionIdx.size() * scoretab.size();
+            //MosraLogInfo(<< "       SCORETAB: " << optionIdx.size() << " x " << scoretab.size() << " = " << bsize);
+
+
+            double* pdRow = new double[bsize];
+            int* piColno = new int[bsize];
+            long arpos = 0;
+
+            for (int sr=0; sr < scoretab.size(); ++sr)
+            {
+                // get 1-based rowid / feature id from db
+                const long long rowid = scoretab[sr][0].ival;
+
+                //MosraLogInfo(<< "         FEAT: " << rowid << "(" << sr+1 << "/" << scoretab.size() << ")...");
+
+                // calc 1-based column position within the optimsation matrix pointing at the first option
+                // for a given feature (cf. makeLp() for details)
+                //const int colPos = static_cast<int>(rowid-1) * (miNumOptions + skipIncentiveFeatOffset) + 1;
+                std::stringstream colname;
+                colname << "X_" << rowid-1 << "_1";
+                const int colPos = this->mLp->GetNameIndex(colname.str(), false);
+                if (colPos < 0)
+                {
+                    MosraLogError(<< "Serious ERROR! Invalid column index detected!");
+                    return 0;
+                }
+
+
+                for (int opt=0; opt < optionIdx.size(); ++opt, ++arpos)
+                {
+                    double coeff = 0.0;
+                    switch(this->meDVType)
+                    {
+                    case NMMosra::NM_MOSO_BINARY:
+                        // add + 2 because the first column in scoretab is 'rowid',
+                        // the second is 'AreaHa' [1]!
+                        coeff = scoretab[sr][opt+2].dval * scoretab[sr][1].dval;
+                        break;
+                    default:
+                        coeff = scoretab[sr][opt+2].dval;
+                        break;
+                    }
+
+                    pdRow[arpos] = coeff;
+                    // add the option offset (index) to the current colPos
+                    piColno[arpos] = colPos + optionIdx[opt];
+                }
+            }
+
+            // add constraint & constraint name
+            this->mLp->AddConstraintEx(bsize, pdRow, piColno, operatorId, rhsValue);
+
+            ++lRowCounter;
+
+            QString rowlabel = QString("%1_%2_%3_%4")
+                    .arg(this->msFeatureSetConsLabel[fsIt.key()])
+                    .arg(fsIt.key())
+                    .arg(id)
+                    .arg(compTypeLabel);
+
+            this->mLp->SetRowName(lRowCounter, rowlabel.toStdString());
+            MosraLogDebug(<< "      Added constraint: " << rowlabel.toStdString() << "!"
+                          << std::endl << std::endl);
+
+            delete[] pdRow;
+            delete[] piColno;
+            pdRow = nullptr;
+            piColno = nullptr;
+        }
+        MosraLogInfo(<< "   -> " << this->msFeatureSetConsLabel[fsIt.key()].toStdString() << " done!");
+        ++fsIt;
+    }
+
+    this->mLp->SetAddRowmode(false);
+
+    NMDebugCtx(ctxNMMosra, << "done!");
+    return 1;
 }
 
 int NMMosra::addZoneCons(void)
@@ -5575,56 +5842,56 @@ int NMMosra::addFeatureCons(void)
 
 int NMMosra::addExplicitAreaCons(void)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...");
 
-	// get the hole array
+    // get the hole array
     const bool hole = mDataSet->hasColumn("nm_hole");
     const int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
 
-	std::vector<QString> vsConsLabel;
-	std::vector<int> vnZoneLength;
-	std::vector<QString> vsZoneField;
+    std::vector<QString> vsConsLabel;
+    std::vector<int> vnZoneLength;
+    std::vector<QString> vsZoneField;
     std::vector<std::vector<unsigned int> > vvnOptionIndex;
-	std::vector<unsigned int> vnConsType;
-	std::vector<double> vdRHS;
+    std::vector<unsigned int> vnConsType;
+    std::vector<double> vdRHS;
 
     long lNumCells = mDataSet->getNumRecs();
-	double dUserVal;
-	double dUserArea = 0.0;
+    double dUserVal;
+    double dUserArea = 0.0;
 //    double dAreaTotal = this->mdAreaTotal;
 //    double dAreaSelected = this->mdAreaSelected <= 0 ? this->mdAreaTotal : this->mdAreaSelected;
 
-	QMap<QString, QStringList>::const_iterator it =
-			this->mmslAreaCons.constBegin();
+    QMap<QString, QStringList>::const_iterator it =
+            this->mmslAreaCons.constBegin();
 
     MosraLogDebug( << this->mmslAreaCons.size() << " cons to process" << endl);
 
-	// ----------------------------------------------------for each constraint
-	for(int iConsCounter=1; it != this->mmslAreaCons.constEnd(); it++, iConsCounter++)
-	{
+    // ----------------------------------------------------for each constraint
+    for(int iConsCounter=1; it != this->mmslAreaCons.constEnd(); it++, iConsCounter++)
+    {
         MosraLogDebug( << it.key().toStdString() << " "
-				<< it.value().join(tr(" ")).toStdString() << " - reading props" << endl);
+                << it.value().join(tr(" ")).toStdString() << " - reading props" << endl);
 
-		// set the constraint label
-		QString sConsLabel = it.key() + QString(tr("_%1")).arg(it.value().at(0));
-		vsConsLabel.push_back(sConsLabel);
+        // set the constraint label
+        QString sConsLabel = it.key() + QString(tr("_%1")).arg(it.value().at(0));
+        vsConsLabel.push_back(sConsLabel);
 
-		// look for a 'zoned' constraint
-		QString zone;
-		QStringList optzones;
+        // look for a 'zoned' constraint
+        QString zone;
+        QStringList optzones;
         QStringList options;
-		if (it.value().at(0).contains(tr(":"), Qt::CaseInsensitive))
-		{
-			optzones = it.value().at(0).split(tr(":"), QString::SkipEmptyParts);
+        if (it.value().at(0).contains(tr(":"), Qt::CaseInsensitive))
+        {
+            optzones = it.value().at(0).split(tr(":"), QString::SkipEmptyParts);
             options = optzones.at(0).split(tr("+"), QString::SkipEmptyParts);
-			zone = optzones.at(1);
-		}
-		else
-		{
+            zone = optzones.at(1);
+        }
+        else
+        {
             options = it.value().at(0).split(tr("+"), QString::SkipEmptyParts);
-			zone = "";
-		}
-		vsZoneField.push_back(zone);
+            zone = "";
+        }
+        vsZoneField.push_back(zone);
 
 
         // set the user value
@@ -5635,7 +5902,7 @@ int NMMosra::addExplicitAreaCons(void)
 
         int maxzonelen = 0;
 
-		// set the option index
+        // set the option index
         // and the right hand side value
         std::vector<unsigned int> noptidx;
         for(int no=0; no < options.size(); ++no)
@@ -5672,18 +5939,18 @@ int NMMosra::addExplicitAreaCons(void)
 
         dUserArea += dtval;
 
-		// set the constraint type
-		if (it.value().at(1).compare(tr("<=")) == 0)
-			vnConsType.push_back(1);
-		else if (it.value().at(1).compare(tr(">=")) == 0)
-			vnConsType.push_back(2);
-		else
-			vnConsType.push_back(3);
+        // set the constraint type
+        if (it.value().at(1).compare(tr("<=")) == 0)
+            vnConsType.push_back(1);
+        else if (it.value().at(1).compare(tr(">=")) == 0)
+            vnConsType.push_back(2);
+        else
+            vnConsType.push_back(3);
         MosraLogDebug( << "constraint type (1: <= | 2: >= | 3: =): " << vnConsType.at(iConsCounter-1) << endl);
 
-	}
+    }
 
-	// todo: we need to account for selected areas at one stage
+    // todo: we need to account for selected areas at one stage
 
     //	if (dUserArea > dAreaSelected)
     //	{
@@ -5695,16 +5962,16 @@ int NMMosra::addExplicitAreaCons(void)
     double* pdRow = 0;
     int* piColno = 0;
 
-	long lId;
-	double dCoeff;
+    long lId;
+    double dCoeff;
 
-	// set add row mode
-	this->mLp->SetAddRowmode(true);
-	long lRowCounter = this->mLp->GetNRows();
+    // set add row mode
+    this->mLp->SetAddRowmode(true);
+    long lRowCounter = this->mLp->GetNRows();
 
-	// calc the offset required to jump from one feature-option-column to the next
-	// one; since we've got one binary conditional decision variable for each feature
-	// we've got to add 1 to the offset;
+    // calc the offset required to jump from one feature-option-column to the next
+    // one; since we've got one binary conditional decision variable for each feature
+    // we've got to add 1 to the offset;
     //int iOffset = this->miNumOptions + 1;
     int iOffset = this->miNumOptions;
 
@@ -5714,51 +5981,51 @@ int NMMosra::addExplicitAreaCons(void)
     // adjust option offset
     iOffset += iSkipIncentivesOffset;
 
-	it = this->mmslAreaCons.constBegin();
-	// ------------------------------------------------ for each constraint
-	for (int r=0; it != this->mmslAreaCons.constEnd(); ++it, ++r)
-	{
+    it = this->mmslAreaCons.constBegin();
+    // ------------------------------------------------ for each constraint
+    for (int r=0; it != this->mmslAreaCons.constEnd(); ++it, ++r)
+    {
         MosraLogDebug( << vsConsLabel.at(r).toStdString() << " - adding constraint" << endl);
 
-		// array defining zones for this constraints
-		bool bZoneCons = false;
-		QString inLabel = vsConsLabel.at(r);
+        // array defining zones for this constraints
+        bool bZoneCons = false;
+        QString inLabel = vsConsLabel.at(r);
 
         const long numOptions = vvnOptionIndex.at(r).size();
         pdRow = new double[vnZoneLength.at(r) * numOptions];
         piColno = new int[vnZoneLength.at(r) * numOptions];
 
-		if (!vsZoneField.at(r).isEmpty())
-		{
-			bZoneCons = true;
+        if (!vsZoneField.at(r).isEmpty())
+        {
+            bZoneCons = true;
 
             inLabel = QString(tr("%1")).arg(vsConsLabel.at(r));
-		}
+        }
 
-		// determine the initial offset for the current option (i.e. the first column number
-		// of the lp-matrix); since the option index is 0-based, but the columns are 1-based
-		// we've got to add 1!
+        // determine the initial offset for the current option (i.e. the first column number
+        // of the lp-matrix); since the option index is 0-based, but the columns are 1-based
+        // we've got to add 1!
         std::vector<long> vlCounter;
         for(int no=0; no < numOptions; ++no)
         {
             vlCounter.push_back(vvnOptionIndex.at(r).at(no) + 1);
         }
 
-		long nonHoleCounter = 0;
+        long nonHoleCounter = 0;
         long coeffCounter = 0;
-		// ---------------------------------------------for each feature
-		for (int f=0; f < lNumCells; f++)
-		{
-			// skip holes
+        // ---------------------------------------------for each feature
+        for (int f=0; f < lNumCells; f++)
+        {
+            // skip holes
             if (    (hole && mDataSet->getIntValue("nm_hole", f) == 1)
                  || (optFeatIdx != -1 && mDataSet->getIntValue(optFeatIdx, f) == 0)
                )
             {
-				continue;
+                continue;
             }
 
             dCoeff = mDataSet->getDblValue(this->msAreaField, f);
-			QString sConsVal = QString(tr("%1")).arg(dCoeff, 0, 'g');
+            QString sConsVal = QString(tr("%1")).arg(dCoeff, 0, 'g');
 
 
             //const unsigned int& optidx = vvnOptionIndex.at(r).at(no);
@@ -5823,115 +6090,115 @@ int NMMosra::addExplicitAreaCons(void)
                 NMDebug(<< ".");
             }
 
-			// increment the counter for valid cells (i.e. valid spatial opt features
-			++nonHoleCounter;
-		}
+            // increment the counter for valid cells (i.e. valid spatial opt features
+            ++nonHoleCounter;
+        }
 
         NMDebug(<< " finished!" << endl);
 
-		// add the constraint
+        // add the constraint
         this->mLp->AddConstraintEx((vnZoneLength.at(r) * numOptions),
-				pdRow, piColno, vnConsType.at(r),
-				vdRHS.at(r));
+                pdRow, piColno, vnConsType.at(r),
+                vdRHS.at(r));
 
-		// increment the row counter
-		++lRowCounter;
+        // increment the row counter
+        ++lRowCounter;
 
-		// assign a label for this constraint and store label for
-		// retrieval of post-optimisation constraint values
-		this->mLp->SetRowName(lRowCounter, inLabel.toStdString());
-		this->mmslAreaConsLabel.append(inLabel);
+        // assign a label for this constraint and store label for
+        // retrieval of post-optimisation constraint values
+        this->mLp->SetRowName(lRowCounter, inLabel.toStdString());
+        this->mmslAreaConsLabel.append(inLabel);
 
         // free memory
         delete[] pdRow;
         delete[] piColno;
-	}
+    }
 
 
-	// turn off rowmode
-	this->mLp->SetAddRowmode(false);
+    // turn off rowmode
+    this->mLp->SetAddRowmode(false);
 
     NMDebugCtx(ctxNMMosra, << "done!");
-	return 1;
+    return 1;
 }
 
 int NMMosra::addImplicitAreaCons(void)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...");
 
-	// allocate memory for arrays
-	// we cover each feature separately, so we need miNumOptions coefficients
-	// plus the binary conditional to realise the either zero or all area
-	// constraint for each feature
+    // allocate memory for arrays
+    // we cover each feature separately, so we need miNumOptions coefficients
+    // plus the binary conditional to realise the either zero or all area
+    // constraint for each feature
     double* pdRow = new double[this->miNumOptions];
     int* piColno = new int[this->miNumOptions];
 
-	// get the hole array
+    // get the hole array
     const bool hole = mDataSet->hasColumn("nm_hole");
     const int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
 
     const long lNumCells = mDataSet->getNumRecs();
     //long lId;
-	double dConsVal;
+    double dConsVal;
     //double dFeatID;
     //double dVal;
 
     const int iNumIncentives = this->mmslIncentives.size();
     const int skipIncentivesOffset = iNumIncentives * miNumOptions + iNumIncentives;
 
-	// set add_row_mode for adding constraints
-	this->mLp->SetAddRowmode(true);
+    // set add_row_mode for adding constraints
+    this->mLp->SetAddRowmode(true);
 
-	long lRowCounter = this->mLp->GetNRows();
-	long colpos = 1;
-	// --------------------------------------------for each feature
-	for (int f=0; f < lNumCells; f++)
-	{
-		// leap over holes!
+    long lRowCounter = this->mLp->GetNRows();
+    long colpos = 1;
+    // --------------------------------------------for each feature
+    for (int f=0; f < lNumCells; f++)
+    {
+        // leap over holes!
         if (    (hole && mDataSet->getIntValue("nm_hole", f) == 1)
                 || (optFeatIdx != -1 && mDataSet->getIntValue(optFeatIdx, f) == 0)
            )
         {
-			continue;
+            continue;
         }
 
-		// get the area of the current feature
+        // get the area of the current feature
         dConsVal = mDataSet->getDblValue(this->msAreaField, f);
 
-		// round value when dealing with integer decision variables
-		if (this->meDVType == NMMosra::NM_MOSO_INT)
-			dConsVal = vtkMath::Floor(dConsVal);
+        // round value when dealing with integer decision variables
+        if (this->meDVType == NMMosra::NM_MOSO_INT)
+            dConsVal = vtkMath::Floor(dConsVal);
 
-		// can't really comprehend this dirty hack again
-		// but it its meaning in the original LUMASS version ...
-		QString sConsVal = QString(tr("%1")).arg(dConsVal, 0, 'g');
+        // can't really comprehend this dirty hack again
+        // but it its meaning in the original LUMASS version ...
+        QString sConsVal = QString(tr("%1")).arg(dConsVal, 0, 'g');
 
-		//-----------------------------------------for each option
-		for (int option=0; option < this->miNumOptions; option++, colpos++)
-		{
-			// set the coefficient
-			switch(this->meDVType)
-			{
-			case NMMosra::NM_MOSO_BINARY:
-				pdRow[option] = ::atof(sConsVal.toStdString().c_str());
-				break;
-			default: // i.e. for all other DV  types (real, integer)
-				pdRow[option] = 1;
-				break;
-			}
+        //-----------------------------------------for each option
+        for (int option=0; option < this->miNumOptions; option++, colpos++)
+        {
+            // set the coefficient
+            switch(this->meDVType)
+            {
+            case NMMosra::NM_MOSO_BINARY:
+                pdRow[option] = ::atof(sConsVal.toStdString().c_str());
+                break;
+            default: // i.e. for all other DV  types (real, integer)
+                pdRow[option] = 1;
+                break;
+            }
 
-			// set the column number
-			piColno[option] = colpos;
+            // set the column number
+            piColno[option] = colpos;
 
             //MosraLogInfo( << "feat cons: option | colps = " << option << " | " << lCounter+1 << endl);
 
-		}
+        }
         colpos += skipIncentivesOffset;
 
-		// ......................................................................................
-		// add the first constraint: SUM(x_i_r) - A_i * b_i >= 0
+        // ......................................................................................
+        // add the first constraint: SUM(x_i_r) - A_i * b_i >= 0
 
-		// set the coefficient for the binary decision variable for the current feature
+        // set the coefficient for the binary decision variable for the current feature
         //		pdRow[this->miNumOptions] = ::atof(sConsVal.toStdString().c_str()) * -1;
         //		piColno[this->miNumOptions] = colpos;
 
@@ -5942,12 +6209,12 @@ int NMMosra::addImplicitAreaCons(void)
                 piColno, 1, ::atof(sConsVal.toStdString().c_str()));
 
 
-		// increment row (constraint) counter
-		lRowCounter++;
+        // increment row (constraint) counter
+        lRowCounter++;
 
-		// label the currently added constraint
-		QString sRowName = QString(tr("Feature_%1a")).arg(f);
-		this->mLp->SetRowName(lRowCounter, sRowName.toStdString());
+        // label the currently added constraint
+        QString sRowName = QString(tr("Feature_%1a")).arg(f);
+        this->mLp->SetRowName(lRowCounter, sRowName.toStdString());
 
         // ......................................................................................
         // add the second constraint: SUM(x_i_r) - A_i * b_i <= 0
@@ -5960,63 +6227,63 @@ int NMMosra::addImplicitAreaCons(void)
         //		sRowName = QString(tr("Feature_%1b")).arg(f);
         //		this->mLp->SetRowName(lRowCounter, sRowName.toStdString());
 
-		// ........................................................................................
-		// column position counter
+        // ........................................................................................
+        // column position counter
         //colpos++;
 
-		if (f % 500 == 0)
-			NMDebug(<< ".");
-	}
-	NMDebug(<< " finished!" << endl);
+        if (f % 500 == 0)
+            NMDebug(<< ".");
+    }
+    NMDebug(<< " finished!" << endl);
 
-	// turn off row mode
-	this->mLp->SetAddRowmode(false);
+    // turn off row mode
+    this->mLp->SetAddRowmode(false);
 
-	// free memory
-	delete[] pdRow;
-	delete[] piColno;
+    // free memory
+    delete[] pdRow;
+    delete[] piColno;
 
-	NMDebugCtx(ctxNMMosra, << "done!");
-	return 1;
+    NMDebugCtx(ctxNMMosra, << "done!");
+    return 1;
 }
 
 int NMMosra::addCriCons(void)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...");
 
-	// extract relevant information for building constraints
-	// this could have been incorporated into the actual "value loop"
-	// but it is much more readable like this, at least to me, and
-	// it doesn't hurt the performance too much because there are
-	// usually not too many constraints
+    // extract relevant information for building constraints
+    // this could have been incorporated into the actual "value loop"
+    // but it is much more readable like this, at least to me, and
+    // it doesn't hurt the performance too much because there are
+    // usually not too many constraints
 
-	QVector<QString> vLabels;
+    QVector<QString> vLabels;
     // one land use per constraint (or 'total'=all land uses)
-	QVector<QString> vLandUses;
+    QVector<QString> vLandUses;
     // vector of zones (may be an empty string though, if no zone was specified for a particular
-	// constraint
-	QVector<QString> vZones;
-	// vector of vector of field names per constraint (only when 'total' is given more than one)
-	QVector<QVector<QString> > vvFieldNames;
+    // constraint
+    QVector<QString> vZones;
+    // vector of vector of field names per constraint (only when 'total' is given more than one)
+    QVector<QVector<QString> > vvFieldNames;
 
     // vector of incentive criterion field names
     // need to have the incentive benefit criterion as constraint name
     QVector<QVector<QString> > vvIncCriterionFieldNames;
 
 
-	// vector of vector of land use indices (i.e. position in mslOptions and thus
-	// relative position within the optimisation matrix per feature)
-	QVector<QVector<unsigned int> > vvIdxLandUses;
-	// vector of comparison operator-id (one per constraint)
-	QVector<int> vOperators;
-	// vector of values of the right hand side
-	QVector<double> vRHS;
+    // vector of vector of land use indices (i.e. position in mslOptions and thus
+    // relative position within the optimisation matrix per feature)
+    QVector<QVector<unsigned int> > vvIdxLandUses;
+    // vector of comparison operator-id (one per constraint)
+    QVector<int> vOperators;
+    // vector of values of the right hand side
+    QVector<double> vRHS;
 
     QMap<QString, QStringList>::ConstIterator incIt;
     QMultiMap<QString, QMap<QString, QStringList> >::const_iterator crilabit;
-	QMap<QString, QStringList>::const_iterator criit;
-	for (crilabit = this->mmslCriCons.begin(); crilabit != this->mmslCriCons.end(); ++crilabit)
-	{
+    QMap<QString, QStringList>::const_iterator criit;
+    for (crilabit = this->mmslCriCons.begin(); crilabit != this->mmslCriCons.end(); ++crilabit)
+    {
         // test whether we've got incentives for this criterion
         QVector<QString> vIncCriterionFieldNames;
         incIt = this->mmslIncentives.constBegin();
@@ -6034,115 +6301,115 @@ int NMMosra::addCriCons(void)
         vvIncCriterionFieldNames.push_back(vIncCriterionFieldNames);
 
 
-		QMap<QString, QStringList> luFieldList = crilabit.value();
-		for (criit = luFieldList.begin(); criit != luFieldList.end(); ++criit)
-		{
-			QString compOp = criit.value().at(criit.value().size()-2);
-			QString compTypeLabel;
-			if (compOp.compare(tr("<=")) == 0)
-			{
-				vOperators.push_back(1);
-				compTypeLabel = "upper";
-			}
-			else if (compOp.compare(tr(">=")) == 0)
-			{
-				vOperators.push_back(2);
-				compTypeLabel = "lower";
-			}
-			else if (compOp.compare(tr("=")) == 0)
-			{
-				vOperators.push_back(3);
-				compTypeLabel = "equals";
-			}
-			else
-			{
+        QMap<QString, QStringList> luFieldList = crilabit.value();
+        for (criit = luFieldList.begin(); criit != luFieldList.end(); ++criit)
+        {
+            QString compOp = criit.value().at(criit.value().size()-2);
+            QString compTypeLabel;
+            if (compOp.compare(tr("<=")) == 0)
+            {
+                vOperators.push_back(1);
+                compTypeLabel = "upper";
+            }
+            else if (compOp.compare(tr(">=")) == 0)
+            {
+                vOperators.push_back(2);
+                compTypeLabel = "lower";
+            }
+            else if (compOp.compare(tr("=")) == 0)
+            {
+                vOperators.push_back(3);
+                compTypeLabel = "equals";
+            }
+            else
+            {
                 MosraLogError( << "CRITERIA_CONSTRAINTS: " << crilabit.key().toStdString()
-						<< "_" << criit.key().toStdString() <<	": invalid comparison operator '"
-						<< compOp.toStdString() << "'!");
-				return 0;
-			}
+                        << "_" << criit.key().toStdString() <<	": invalid comparison operator '"
+                        << compOp.toStdString() << "'!");
+                return 0;
+            }
 
-			// construct the label for each constraint
-			QString label = crilabit.key() + QString(tr("_%1_%2")).arg(criit.key()).arg(compTypeLabel);
-			vLabels.push_back(label);
-			vLandUses.push_back(criit.key());
+            // construct the label for each constraint
+            QString label = crilabit.key() + QString(tr("_%1_%2")).arg(criit.key()).arg(compTypeLabel);
+            vLabels.push_back(label);
+            vLandUses.push_back(criit.key());
 
-			bool convertable;
-			QString sRhs = criit.value().last();
-			double rhs = sRhs.toDouble(&convertable);
-			if (!convertable)
-			{
+            bool convertable;
+            QString sRhs = criit.value().last();
+            double rhs = sRhs.toDouble(&convertable);
+            if (!convertable)
+            {
                 MosraLogError( << "CRITERIA_CONSTRAINTS: " << label.toStdString() << ": invalid value '"
-						<< sRhs.toStdString() << "'!");
-				return 0;
-			}
-			vRHS.push_back(rhs);
+                        << sRhs.toStdString() << "'!");
+                return 0;
+            }
+            vRHS.push_back(rhs);
 
-			// ......................................................................
-			// extract field names and land use indices
+            // ......................................................................
+            // extract field names and land use indices
 
-			// first of all, account for zoning
-			QStringList zonespec;
-			QString opt;
-			QString zone;
+            // first of all, account for zoning
+            QStringList zonespec;
+            QString opt;
+            QString zone;
 
-			if (criit.key().contains(tr(":"), Qt::CaseInsensitive))
-			{
-				zonespec = criit.key().split(tr(":"), QString::SkipEmptyParts);
-				opt = zonespec.at(0);
-				zone = zonespec.at(1);
-			}
-			else
-			{
-				opt = criit.key();
-				zone = "";
-			}
-			vZones.push_back(zone);
+            if (criit.key().contains(tr(":"), Qt::CaseInsensitive))
+            {
+                zonespec = criit.key().split(tr(":"), QString::SkipEmptyParts);
+                opt = zonespec.at(0);
+                zone = zonespec.at(1);
+            }
+            else
+            {
+                opt = criit.key();
+                zone = "";
+            }
+            vZones.push_back(zone);
 
-			// now look for resource indices and criterion field names
-			QVector<QString> vCriterionFieldNames;
-			QVector<unsigned int> vCriterionLandUseIdx;
-			QStringList fieldList = criit.value();
-			if (opt.compare(tr("total"), Qt::CaseInsensitive) == 0)
-			{
-				// look through m_iNumOptions fields
-				for (int f=0; f < this->miNumOptions; ++f)
-				{
-					vCriterionFieldNames.push_back(fieldList.at(f));
-					vCriterionLandUseIdx.push_back(f);
-				}
-			}
-			else
-			{
-				vCriterionLandUseIdx.push_back(
-						this->mslOptions.indexOf(
-								QRegExp(opt, Qt::CaseInsensitive, QRegExp::FixedString)));
-				vCriterionFieldNames.push_back(fieldList.at(0));
-			}
-			vvFieldNames.push_back(vCriterionFieldNames);
-			vvIdxLandUses.push_back(vCriterionLandUseIdx);
-		}
-	}
+            // now look for resource indices and criterion field names
+            QVector<QString> vCriterionFieldNames;
+            QVector<unsigned int> vCriterionLandUseIdx;
+            QStringList fieldList = criit.value();
+            if (opt.compare(tr("total"), Qt::CaseInsensitive) == 0)
+            {
+                // look through m_iNumOptions fields
+                for (int f=0; f < this->miNumOptions; ++f)
+                {
+                    vCriterionFieldNames.push_back(fieldList.at(f));
+                    vCriterionLandUseIdx.push_back(f);
+                }
+            }
+            else
+            {
+                vCriterionLandUseIdx.push_back(
+                        this->mslOptions.indexOf(
+                                QRegExp(opt, Qt::CaseInsensitive, QRegExp::FixedString)));
+                vCriterionFieldNames.push_back(fieldList.at(0));
+            }
+            vvFieldNames.push_back(vCriterionFieldNames);
+            vvIdxLandUses.push_back(vCriterionLandUseIdx);
+        }
+    }
 
-	// get the hole array
+    // get the hole array
     bool hole = mDataSet->hasColumn("nm_hole");
     int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
     long lNumCells = mDataSet->getNumRecs();
 
-	// iterate over constraints and process them one at a time
-	// (or should we process them while looping over all features)?
+    // iterate over constraints and process them one at a time
+    // (or should we process them while looping over all features)?
 
     const int skipIncentiveFeatOffset = this->mmslIncentives.size() * miNumOptions + mmslIncentives.size();
 
-	this->mLp->SetAddRowmode(true);
-	long lRowCounter = this->mLp->GetNRows();
+    this->mLp->SetAddRowmode(true);
+    long lRowCounter = this->mLp->GetNRows();
 
-	for (int labelidx = 0; labelidx < vLabels.size(); ++labelidx)
-	{
+    for (int labelidx = 0; labelidx < vLabels.size(); ++labelidx)
+    {
         MosraLogDebug(<< "preparing constraint " << vLabels[labelidx].toStdString() << endl);
 
-		// get the performance indicator fields, land use indices
-		// and allocate the constraint buffers
+        // get the performance indicator fields, land use indices
+        // and allocate the constraint buffers
         const QVector<unsigned int> landUseIdxs = vvIdxLandUses[labelidx];
         const QVector<QString> fieldNames = vvFieldNames[labelidx];
         const int numCriOptions = fieldNames.size();
@@ -6156,55 +6423,55 @@ int NMMosra::addCriCons(void)
         double* pdRow = new double[varspace];
         int* piColno = new int[varspace];
 
-		long arpos = 0;
-		long colPos = 1;
-		for (long f=0; f < lNumCells; ++f)
-		{
-			//leap over holes
+        long arpos = 0;
+        long colPos = 1;
+        for (long f=0; f < lNumCells; ++f)
+        {
+            //leap over holes
             if (    (hole && mDataSet->getIntValue("nm_hole", f) == 1)
                  || (optFeatIdx != -1 && mDataSet->getIntValue(optFeatIdx, f) == 0)
                )
             {
-				continue;
+                continue;
             }
 
             for(int i=0; i < numCriOptions; ++i)
-			{
+            {
                 const int optIdx = landUseIdxs[i];
                 const int performanceIndicatorIdx = mDataSet->getColumnIndex(fieldNames[i]);
 
-				double coeff = 0.0;
-				bool bAddCoeff = true;
+                double coeff = 0.0;
+                bool bAddCoeff = true;
 
-				// check whether, we've got zoning and whether the criterion constraint
-				// for the current land use option shall be restricted to this zone
-				if (!vZones.at(labelidx).isEmpty())
-				{
+                // check whether, we've got zoning and whether the criterion constraint
+                // for the current land use option shall be restricted to this zone
+                if (!vZones.at(labelidx).isEmpty())
+                {
                     const std::string zoneArVal = mDataSet->getStrValue(vZones.at(labelidx), f).toStdString();
                     if (zoneArVal.find(this->mslOptions.at(optIdx).toStdString()) == std::string::npos)
                     {
                         bAddCoeff = false;
                     }
-				}
+                }
 
-				if (bAddCoeff)
-				{
-					switch(this->meDVType)
-					{
-					case NMMosra::NM_MOSO_BINARY:
+                if (bAddCoeff)
+                {
+                    switch(this->meDVType)
+                    {
+                    case NMMosra::NM_MOSO_BINARY:
                         coeff = mDataSet->getDblValue(this->msAreaField, f) * mDataSet->getDblValue(performanceIndicatorIdx, f);
-						break;
-					default:
+                        break;
+                    default:
                         coeff = mDataSet->getDblValue(performanceIndicatorIdx, f);
-						break;
-					}
+                        break;
+                    }
                 }
 
                 //debug
                 //int criPos = colPos + optIdx;
 
-				pdRow[arpos] = coeff;
-				piColno[arpos] = colPos + optIdx;
+                pdRow[arpos] = coeff;
+                piColno[arpos] = colPos + optIdx;
                 ++arpos;
 
                 // account for incentives, if applicable
@@ -6238,7 +6505,7 @@ int NMMosra::addCriCons(void)
                     //
                     piColno[arpos] = colPos + optIdx + (inc+1) * miNumOptions + 1 + inc;
                 }
-			}
+            }
 
             // jump to the first option of the next feature
             //          DEPRECATED(keep in mind that we've got one binary decision var (i.e. column) per feature, hence the +1
@@ -6247,33 +6514,33 @@ int NMMosra::addCriCons(void)
             if (f % 200 == 0)
                 NMDebug(<< ".");
 
-		}
-		NMDebug(<< " finished!" << std::endl);
+        }
+        NMDebug(<< " finished!" << std::endl);
 
-		// add constraint
+        // add constraint
         MosraLogDebug(<< "adding constraint to LP ..." << std::endl);
         this->mLp->AddConstraintEx(varspace, pdRow, piColno, vOperators[labelidx], vRHS[labelidx]);
 
-		// increment the row counter
-		++lRowCounter;
+        // increment the row counter
+        ++lRowCounter;
 
 
-		//  set the constraint label
+        //  set the constraint label
         MosraLogDebug(<< "labeling constraint ..." << std::endl);
-		this->mLp->SetRowName(lRowCounter, vLabels[labelidx].toStdString().c_str());
+        this->mLp->SetRowName(lRowCounter, vLabels[labelidx].toStdString().c_str());
 
-		delete[] pdRow;
-		delete[] piColno;
+        delete[] pdRow;
+        delete[] piColno;
         pdRow = nullptr;
         piColno = nullptr;
 
-	}
+    }
 
-	// turn off rowmode
-	this->mLp->SetAddRowmode(false);
+    // turn off rowmode
+    this->mLp->SetAddRowmode(false);
 
-	NMDebugCtx(ctxNMMosra, << "done!");
-	return 1;
+    NMDebugCtx(ctxNMMosra, << "done!");
+    return 1;
 }
 
 int
@@ -6560,7 +6827,170 @@ NMMosra::calcBaselineTab(void)
             mDataSet->setDblValue(colname, cell, scoreha * area);
         }
     }
-	return 1;
+    return 1;
+}
+
+int NMMosra::calcOptPerformanceDb(void)
+{
+    int ret = 0;
+
+
+    //get return value from the solve function
+    int lastresult = this->mLp->GetLastReturnFromSolve();
+
+    //sRes << tr("Solver returned: ");
+    //switch (ret)
+    //{
+    //case -2: sRes << tr("NOMEMORY\n"); break;
+    //case 0: sRes << tr("OPTIMAL\n"); break;
+    //case 1: sRes << tr("SUBOPTIMAL\n"); break;
+    //case 2: sRes << tr("INFEASIBLE\n"); break;
+    //case 3: sRes << tr("UNBOUNDED\n"); break;
+    //case 4: sRes << tr("DEGENERATE\n"); break;
+    //case 5: sRes << tr("NUMFAILURE\n"); break;
+    //case 6: sRes << tr("USERABORT\n"); break;
+    //case 7: sRes << tr("TIMEOUT\n"); break;
+    //case 10: sRes << tr("PROCFAIL\n"); break;
+    //case 11: sRes << tr("PROCBREAK\n"); break;
+    //case 12: sRes << tr("FEASFOUND\n"); break;
+    //case 13: sRes << tr("NOFEASFOUND\n"); break;
+    //}
+
+    if (lastresult < 0 || lastresult > 1)
+    {
+        MosraLogDebug(<< "No (sub)optimal solution found -  "
+                      << "so no point evaluating the optimal performance!")
+        return 1;
+    }
+
+    otb::SQLiteTable::Pointer sqltab = dynamic_cast<otb::SQLiteTable*>(
+                this->mDataSet->getOtbAttributeTable().GetPointer());
+    if (sqltab.IsNull())
+    {
+        MosraLogInfo(<< "Not evaluating optimal performance for non-SQLite datasets! "
+                     << "Please refer to summary results provided as *.csv files!");
+        return 1;
+    }
+
+    const std::string idColName = sqltab->GetPrimaryKey();
+
+    // ========================================================================================
+
+    // getnames: [0 , 1]: rowid, OPT_STR,
+    //           [2 , (numCrit * numOptions - 1)]: n_daiA, n_daiB, ..., p_daiA, p_daiB, ...,
+    //           [(numCrit * numOptions + 2) , ((numCrit * numOptions + 2) + numOptions - 1)]: OPT1_VAL, OPT2_VAL, ...
+    std::vector<std::string> getnames;
+    getnames.push_back(idColName);
+    getnames.push_back("OPT_STR");
+
+    std::vector<otb::AttributeTable::ColumnValue> getvalues;
+    otb::AttributeTable::ColumnValue idval, optstrval;
+    getvalues.push_back(idval);
+    getvalues.push_back(optstrval);
+
+
+    // setnames: [0 , (numCrit-1)]: crit1_OPT, crit2_OPT, ...
+    std::vector<std::string> setnames;
+    std::vector<otb::AttributeTable::ColumnValue> setvalues;
+
+    QStringList slCrit = this->mmslCriteria.keys();
+    for (int c=0; c < slCrit.size(); ++c)
+    {
+
+        // prepare the setnames and set values
+        std::string optcol = slCrit.at(c).toStdString() + "_OPT";
+        setnames.push_back(optcol);
+
+        otb::AttributeTable::ColumnValue setval;
+        setval.type = otb::AttributeTable::ATTYPE_DOUBLE;
+        setval.dval = 0;
+        setvalues.push_back(setval);
+
+        // add 'setvalue columns' to attribute table
+        if (!sqltab->AddColumn(optcol, otb::AttributeTable::ATTYPE_DOUBLE))
+        {
+            MosraLogInfo(<< "NMMosra::calcOptPerformanceDb() - Failed adding column '"
+                         << optcol << "' to table '" << sqltab->GetTableName() << "': "
+                         << sqltab->getLastLogMsg());
+        }
+
+        for (int r=0; r < this->mslOptions.size(); ++r)
+        {
+            getnames.push_back(this->mmslCriteria[slCrit[c]][r].toStdString());
+            otb::AttributeTable::ColumnValue getval;
+            getval.type = otb::AttributeTable::ATTYPE_DOUBLE;
+            getval.dval = 0;
+            getvalues.push_back(getval);
+        }
+    }
+
+    // need to add the 'get' fields holding allocated areas for each option
+    for (int r=0; r < this->mslOptions.size(); ++r)
+    {
+        std::stringstream fn;
+        fn << "OPT" << r+1 << "_VAL";
+        getnames.push_back(fn.str());
+
+        otb::AttributeTable::ColumnValue getval;
+        getval.type = otb::AttributeTable::ATTYPE_DOUBLE;
+        getval.dval = 0;
+        getvalues.push_back(getval);
+    }
+
+    // ===============================================================================
+
+    // iterate over optFeat==1 set and calc opt performance
+    // and write into db
+    sqltab->PrepareBulkGet(getnames, "where optFeat == 1");
+    sqltab->PrepareBulkSet(setnames, false);
+    sqltab->BeginTransaction();
+    bool brow = sqltab->DoBulkGet(getvalues);
+    if (!brow)
+    {
+        MosraLogWarn(<< "NMMosra::calcOptPerformanceDb() - Failed fetching a single row from "
+                     << "the database! Double check your OPT_FEATURES setting and table values!");
+        sqltab->EndTransaction();
+        return 0;
+    }
+
+    do
+    {
+        const long long rowid = getvalues[0].ival;
+        const std::string opt_str = getvalues[1].tval;
+
+        for (int k=0; k < slCrit.size(); ++k)
+        {
+            double dScore = 0.0;
+            for (int i=0; i < this->miNumOptions; ++i)
+            {
+                if (opt_str.find(this->mslOptions[i].toStdString()) != std::string::npos)
+                {
+                    const int scoreOffset = k * this->miNumOptions + 2 + i;
+                    const int areaOffset = slCrit.size() * this->miNumOptions + 2 + i;
+                    dScore += getvalues[scoreOffset].dval * getvalues[areaOffset].dval;
+                }
+            }
+            setvalues[k].dval = dScore;
+        }
+
+
+        if (!sqltab->DoBulkSet(setvalues, rowid))
+        {
+            MosraLogError(<< "NMMosra::calcOptPerformanceDb() - Failed setting values for "
+                          << idColName << "==" << rowid << "!");
+            sqltab->EndTransaction();
+            return 0;
+        }
+        brow = sqltab->DoBulkGet(getvalues);
+
+    } while (brow);
+
+    sqltab->EndTransaction();
+
+
+
+    ret = 1;
+    return ret;
 }
 
 int NMMosra::calcBaselineDb(void)
@@ -6668,10 +7098,10 @@ int NMMosra::calcBaselineDb(void)
 
 vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeMatrix)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...");
 
     MosraLogDebug(<< "getting input arrays (attributes) ..." << std::endl);
-	// get hold of the input attributes we need
+    // get hold of the input attributes we need
 
 //    int luArIdx = mDataSet->getColumnIndex(this->msLandUseField);
 //    int areaArIdx = mDataSet->getColumnIndex(this->msAreaField);
@@ -6702,22 +7132,22 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
      *                          CREATE PERFORMANCE SUMMARY TABLE
      * ################################################################################## */
 
-	/* create the vtkTable, which will hold the summarised optimisation results
+    /* create the vtkTable, which will hold the summarised optimisation results
      * - the column sequence is area and then the individual criteria and for each of those categories we've
-	 *   got in turn four columns: current (CUR), optimised (OPT), difference (DIFF), relative
-	 *   difference (REL) (i.e. percent);
-	 * - the row sequence equals the sequence of land use options (resources) as specified by
-	 *   the user by the OPTIONS specifier in the parameter file (*.los)
+     *   got in turn four columns: current (CUR), optimised (OPT), difference (DIFF), relative
+     *   difference (REL) (i.e. percent);
+     * - the row sequence equals the sequence of land use options (resources) as specified by
+     *   the user by the OPTIONS specifier in the parameter file (*.los)
      * - after the land use options, we've got a row of total values, i.e. across all land-use options
      * - the above pattern may be repeated m times for m different spatial (performance)zones
-	 *
-	 *  Resource   | Area_CUR | Area_OPT | Area_DIFF | Area_REL | CRI1_CUR | CRI1_OPT | ... | CONS1_CUR | CONS1_OPT ...
-	 *  -----------+----------+--------------------------------------------------------------------------------------
-	 *  resource_1 |          |
-	 *  resource_2 |		  |
-	 *  ...        |
-	 *  resource_n |
-	 *  total      |
+     *
+     *  Resource   | Area_CUR | Area_OPT | Area_DIFF | Area_REL | CRI1_CUR | CRI1_OPT | ... | CONS1_CUR | CONS1_OPT ...
+     *  -----------+----------+--------------------------------------------------------------------------------------
+     *  resource_1 |          |
+     *  resource_2 |		  |
+     *  ...        |
+     *  resource_n |
+     *  total      |
      *  zone1:res_1|
      *  zone1:res_2|
      *  ...
@@ -6768,7 +7198,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
      * 25: hole       nm_hole
      * 26: msOptFeatures    OPT_FEATURES identifier
      *
-	 */
+     */
 
     MosraLogDebug(<< "creating the results table..." << std::endl);
 
@@ -6791,11 +7221,11 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
         colvalues << QVariant::Double;
     }
 
-	// determine the number of rows and columns
-	//int resNumCols = (this->mmslCriteria.size() + this->mmslCriCons.size()) * 3 +1;
+    // determine the number of rows and columns
+    //int resNumCols = (this->mmslCriteria.size() + this->mmslCriCons.size()) * 3 +1;
 
-	// we sum over each resource option (land use), all mixed landuses (mixed) and
-	// the overall total
+    // we sum over each resource option (land use), all mixed landuses (mixed) and
+    // the overall total
     int resNumRows = this->miNumOptions + 1;   // without mixed
 
     // note: each zone defines an <zone>:IN and <zone>:OUT zone
@@ -6890,14 +7320,14 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
 
     const long ncells = mDataSet->getNumRecs();
 
-	vtkSmartPointer<vtkTable> restab = vtkSmartPointer<vtkTable>::New();
-	restab->SetNumberOfRows(resNumRows);
+    vtkSmartPointer<vtkTable> restab = vtkSmartPointer<vtkTable>::New();
+    restab->SetNumberOfRows(resNumRows);
 
-	// add the row header array (land use options) + total
-	vtkSmartPointer<vtkStringArray> rowheads = vtkSmartPointer<vtkStringArray>::New();
-	rowheads->SetName("Resource");
-	rowheads->SetNumberOfComponents(1);
-	rowheads->SetNumberOfTuples(resNumRows);
+    // add the row header array (land use options) + total
+    vtkSmartPointer<vtkStringArray> rowheads = vtkSmartPointer<vtkStringArray>::New();
+    rowheads->SetName("Resource");
+    rowheads->SetNumberOfComponents(1);
+    rowheads->SetNumberOfTuples(resNumRows);
 
     int rowCount = 0;
     QString rowHead;
@@ -6939,42 +7369,42 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
     //rowheads->SetValue(resNumRows-1, "Total");
     restab->AddColumn(rowheads);
 
-	// the series to the table
+    // the series to the table
 
-	QStringList colsuffix;
-	colsuffix << "CUR" << "OPT" << "DIFF" << "REL";
+    QStringList colsuffix;
+    colsuffix << "CUR" << "OPT" << "DIFF" << "REL";
 
-	// add the area results
-	for (int s=0; s < colsuffix.size(); ++s)
-	{
-		QString colname = QString(tr("%1_%2")).arg(this->msAreaField).
-				arg(colsuffix.at(s));
-		vtkSmartPointer<vtkDoubleArray> aar = vtkSmartPointer<vtkDoubleArray>::New();
+    // add the area results
+    for (int s=0; s < colsuffix.size(); ++s)
+    {
+        QString colname = QString(tr("%1_%2")).arg(this->msAreaField).
+                arg(colsuffix.at(s));
+        vtkSmartPointer<vtkDoubleArray> aar = vtkSmartPointer<vtkDoubleArray>::New();
         aar->SetName(colname.toLatin1());
-		aar->SetNumberOfComponents(1);
-		aar->SetNumberOfTuples(resNumRows);
-		aar->FillComponent(0, 0);
+        aar->SetNumberOfComponents(1);
+        aar->SetNumberOfTuples(resNumRows);
+        aar->FillComponent(0, 0);
 
-		restab->AddColumn(aar);
-	}
+        restab->AddColumn(aar);
+    }
 
 
-	// add the criterion related columns
-	QMap<QString, QStringList>::const_iterator criit = this->mmslCriteria.constBegin();
-	for (; criit != this->mmslCriteria.constEnd(); ++criit)
-	{
-		for (int s=0; s < colsuffix.size(); ++s)
-		{
+    // add the criterion related columns
+    QMap<QString, QStringList>::const_iterator criit = this->mmslCriteria.constBegin();
+    for (; criit != this->mmslCriteria.constEnd(); ++criit)
+    {
+        for (int s=0; s < colsuffix.size(); ++s)
+        {
             QString colname = QString(tr("%1_%2")).arg(criit.key()).arg(colsuffix[s]);
-			vtkSmartPointer<vtkDoubleArray> da = vtkSmartPointer<vtkDoubleArray>::New();
+            vtkSmartPointer<vtkDoubleArray> da = vtkSmartPointer<vtkDoubleArray>::New();
             da->SetName(colname.toLatin1());
-			da->SetNumberOfComponents(1);
-			da->SetNumberOfTuples(resNumRows);
-			da->FillComponent(0, 0);
+            da->SetNumberOfComponents(1);
+            da->SetNumberOfTuples(resNumRows);
+            da->FillComponent(0, 0);
 
-			restab->AddColumn(da);
-		}
-	}
+            restab->AddColumn(da);
+        }
+    }
 
     //	// add columns for attribute constraints
     //	QMultiMap< QString, QMap< QString, QStringList > >::const_iterator constrit =
@@ -7054,9 +7484,9 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
     int rec = 0;
     int zoneCounter = 0;
     // loop over the data set and sequentially process (update) all target columns
-	// only after the final iteration, the table holds correct values;
-	for (long cell=0; cell < ncells; ++cell)
-	{
+    // only after the final iteration, the table holds correct values;
+    for (long cell=0; cell < ncells; ++cell)
+    {
         mDataSet->getRowValues(colvalues, cell);
 
         // don't tumble into holes
@@ -7064,15 +7494,15 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
              || (optFeat && colvalues.at(valOffsets[this->msOptFeatures]).toInt() == 0)
            )
         {
-			continue;
+            continue;
         }
 
-		// read the current and optimised resource
+        // read the current and optimised resource
         QString curResource = colvalues.at(valOffsets["curLU"]).toString();
-		// make sure, we're not fooled by any leading or trailing white spaces
-		curResource = curResource.simplified();
+        // make sure, we're not fooled by any leading or trailing white spaces
+        curResource = curResource.simplified();
         QString optResource = colvalues.at(valOffsets["optLU"]).toString();
-		QStringList optResList = optResource.split(tr(" "), QString::SkipEmptyParts);
+        QStringList optResList = optResource.split(tr(" "), QString::SkipEmptyParts);
         const double curArea = colvalues.at(valOffsets["cellArea"]).toDouble();
 
         // ===============================================================================
@@ -7332,10 +7762,10 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
         {
             NMDebug(<< ".");
         }
-	}
+    }
     mDataSet->endTransaction();
 
-	NMDebug(<< " finished!" << std::endl);
+    NMDebug(<< " finished!" << std::endl);
 
     // ===============================================================================
     //                  CALCULATE PERFORMANCE TOTALS
@@ -7416,8 +7846,8 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
     }
 
 
-	NMDebugCtx(ctxNMMosra, << "done!");
-	return restab;
+    NMDebugCtx(ctxNMMosra, << "done!");
+    return restab;
 }
 
 //QStandardItemModel* NMMosra::prepareResChartModel(vtkTable* restab)
@@ -7470,16 +7900,16 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
 
 HLpHelper* NMMosra::getLp()
 {
-	return this->mLp;
+    return this->mLp;
 }
 
 int NMMosra::callbackIsSolveCanceled(lprec *lp, void *userhandle)
 {
-	if (userhandle == 0)
-		return 1;
+    if (userhandle == 0)
+        return 1;
 
     NMMosra *mosra = static_cast<NMMosra*>(userhandle);
-	return mosra->isSolveCanceled();
+    return mosra->isSolveCanceled();
 }
 
 void
@@ -7499,87 +7929,87 @@ void NMMosra::forwardLpLog(const char* log)
 
 int NMMosra::isSolveCanceled()
 {
-	return this->mbCanceled;
+    return this->mbCanceled;
 }
 
 double NMMosra::convertAreaUnits(double dUserVal, AreaUnitType otype)
 {
-	bool bConvOK;
-	double dtval;
-	switch (otype)
-	{
-	case NMMosra::NM_MOSO_PERCENT_TOTAL:
+    bool bConvOK;
+    double dtval;
+    switch (otype)
+    {
+    case NMMosra::NM_MOSO_PERCENT_TOTAL:
 //		if (this->meDVType == NMMosra::NM_MOSO_INT)
 //			dtval = vtkMath::Floor(this->mdAreaTotal * dUserVal/100.0);
 //		else
-			dtval = this->mdAreaTotal * dUserVal/100.0;
-		break;
-	case NMMosra::NM_MOSO_PERCENT_SELECTED:
+            dtval = this->mdAreaTotal * dUserVal/100.0;
+        break;
+    case NMMosra::NM_MOSO_PERCENT_SELECTED:
 
 //		if (this->meDVType == NMMosra::NM_MOSO_INT)
 //			dtval = vtkMath::Floor(this->mdAreaSelected * dUserVal/100.0);
 //		else
-			dtval = this->mdAreaSelected * dUserVal/100.0;
-		break;
-	default:
+            dtval = this->mdAreaSelected * dUserVal/100.0;
+        break;
+    default:
 //		if (this->meDVType == NMMosra::NM_MOSO_INT)
 //			dtval = vtkMath::Floor(dUserVal);
 //		else
-			dtval = dUserVal;
-		break;
-	}
+            dtval = dUserVal;
+        break;
+    }
 
-	return dtval;
+    return dtval;
 }
 
 double NMMosra::convertAreaUnits(double dUserVal, const QString& otype, const QStringList& zoneSpec)
 {
-	bool bConvOK;
-	double dtval;
+    bool bConvOK;
+    double dtval;
 
-	if (otype.compare(tr("percent_of_total"), Qt::CaseInsensitive) == 0)
-	{
+    if (otype.compare(tr("percent_of_total"), Qt::CaseInsensitive) == 0)
+    {
 //		if (this->meDVType == NMMosra::NM_MOSO_INT)
 //			dtval = vtkMath::Floor(this->mdAreaTotal * dUserVal/100.0);
 //		else
-			dtval = this->mdAreaTotal * dUserVal/100.0;
-	}
-	else if (otype.compare(tr("percent_of_selected"), Qt::CaseInsensitive) == 0)
-	{
+            dtval = this->mdAreaTotal * dUserVal/100.0;
+    }
+    else if (otype.compare(tr("percent_of_selected"), Qt::CaseInsensitive) == 0)
+    {
 
 //		if (this->meDVType == NMMosra::NM_MOSO_INT)
 //			dtval = vtkMath::Floor(this->mdAreaSelected * dUserVal/100.0);
 //		else
-			dtval = this->mdAreaSelected * dUserVal/100.0;
-	}
-	else if (otype.compare(tr("percent_of_zone"), Qt::CaseInsensitive) == 0)
-	{
-		// if there is no zone spec given, we interpret it as percent_of_total
-		if (zoneSpec.size() == 0)
-		{
+            dtval = this->mdAreaSelected * dUserVal/100.0;
+    }
+    else if (otype.compare(tr("percent_of_zone"), Qt::CaseInsensitive) == 0)
+    {
+        // if there is no zone spec given, we interpret it as percent_of_total
+        if (zoneSpec.size() == 0)
+        {
 //			if (this->meDVType == NMMosra::NM_MOSO_INT)
 //				dtval = vtkMath::Floor(this->mdAreaTotal * dUserVal/100.0);
 //			else
-				dtval = this->mdAreaTotal * dUserVal/100.0;
+                dtval = this->mdAreaTotal * dUserVal/100.0;
 
-			// todo: issue a warning message, that a percent_of_total is used instead
-		}
-		else
-		{
-			double zonearea = this->mmslZoneAreas.find(zoneSpec.at(1)).value().find(zoneSpec.at(0)).value();
+            // todo: issue a warning message, that a percent_of_total is used instead
+        }
+        else
+        {
+            double zonearea = this->mmslZoneAreas.find(zoneSpec.at(1)).value().find(zoneSpec.at(0)).value();
 //			if (this->meDVType == NMMosra::NM_MOSO_INT)
 //				dtval = vtkMath::Floor(zonearea * dUserVal/100.0);
 //			else
-				dtval = zonearea * dUserVal/100.0;
-		}
-	}
-	else
-	{ // -> "map_units"
+                dtval = zonearea * dUserVal/100.0;
+        }
+    }
+    else
+    { // -> "map_units"
 //		if (this->meDVType == NMMosra::NM_MOSO_INT)
 //			dtval = vtkMath::Floor(dUserVal);
 //		else
-			dtval = dUserVal;
-	}
+            dtval = dUserVal;
+    }
 
-	return dtval;
+    return dtval;
 }

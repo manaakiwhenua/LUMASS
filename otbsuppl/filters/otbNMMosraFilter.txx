@@ -30,13 +30,18 @@
 
 #include "otbNMMosraFilter.h"
 #include "otbNMTableReader.h"
+#include "vtkSmartPointer.h"
+#include "vtkDataSet.h"
+#include "vtkTable.h"
+#include "NMvtkDelimitedTextWriter.h"
 
 namespace otb
 {
 
 template< class TInputImage, class TOutputImage >
 NMMosraFilter< TInputImage, TOutputImage >::NMMosraFilter()
-    : m_TimeOut(-1), m_Workspace(""), m_CompName("")
+    : m_TimeOut(-1), m_Workspace(""), m_CompName(""),
+      m_GenerateReports(false)
 {
     m_DataSet = new NMMosraDataSet();
 
@@ -166,8 +171,8 @@ void NMMosraFilter< TInputImage, TOutputImage >
     this->UpdateProgress(0.05);
 
     NMMosra* mosra = new NMMosra();
+    mosra->setScenarioName(m_ScenarioName.c_str());
     mosra->setItkProcessObject(this);
-//    mosra->loadSettings(m_LosFileName.c_str());
     mosra->parseStringSettings(m_LosSettings.c_str());
     mosra->setDataSet(m_DataSet->getOtbAttributeTable());
     if (m_TimeOut >= 0)
@@ -199,23 +204,62 @@ void NMMosraFilter< TInputImage, TOutputImage >
             timeinfo->tm_sec);
 
     // write report and lp file (i.e. equations) into
-    // lumass workspace
+    // lumass workspace or into data folder, if m_GenerateReports has been set
+    if (m_GenerateReports)
+    {
+        m_Workspace = mosra->getDataPath().toStdString();
+    }
+    std::string descriptor = m_CompName;
+    if (!m_ScenarioName.empty())
+    {
+        descriptor = m_ScenarioName;
+    }
+
     std::stringstream fns;
-    fns << m_Workspace << "/report_" << m_CompName << "_" << curTime << ".txt";
+    fns << m_Workspace << "/report_" << descriptor << "_" << curTime << ".txt";
     std::string reportFN = fns.str();
+
     fns.str("");
-    fns << m_Workspace << "/lp_" << m_CompName << "_" << curTime << ".lp";
+    fns << m_Workspace << "/lp_" << descriptor << "_" << curTime << ".lp";
     std::string lpFN = fns.str();
+
+    fns.str("");
+    fns << m_Workspace << "/los_" << descriptor << "_" << curTime << ".txt";
+    std::string losFN = fns.str();
+
+    QFile losFile(losFN.c_str());
+    if (losFile.open(QIODevice::WriteOnly))
+    {
+        QByteArray bar(m_LosSettings.c_str());
+        losFile.write(bar);
+        losFile.close();
+    }
+
+
 
     // this will write the problem before it's attampted to being solved
     mosra->writeProblem(lpFN.c_str(), NMMosra::NM_MOSO_LP);
 
     // solve the problem
     this->UpdateProgress(0.2);
+    static char solveTime[128];
     if (mosra->solveLp())
     {
+        time(&timestamp);
+        timeinfo = localtime(&timestamp);
+        sprintf(solveTime, "%.2d-%.2d-%.2dT%.2d-%.2d-%.2d",
+            timeinfo->tm_year + 1900,
+            timeinfo->tm_mon + 1,
+            timeinfo->tm_mday,
+            timeinfo->tm_hour,
+            timeinfo->tm_min,
+            timeinfo->tm_sec);
+
         this->SetProgress(0.8);
-        mosra->mapLp();
+        if (mosra->mapLp() && this->m_GenerateReports)
+        {
+            this->GenerateReportData(mosra, solveTime);
+        }
     }
     else
     {
@@ -227,6 +271,53 @@ void NMMosraFilter< TInputImage, TOutputImage >
 
     this->SetProgress(1.0);
     delete mosra;
+}
+
+template< class TInputImage, class TOutputImage >
+void NMMosraFilter< TInputImage, TOutputImage >
+::GenerateReportData(NMMosra* mosra, char* theTime)
+{
+    if (mosra == nullptr)
+    {
+        return;
+    }
+
+    QString path = mosra->getDataPath();
+    if (path.isEmpty())
+    {
+        path = this->m_Workspace.c_str();
+    }
+    QString losName, tabName, resName, chgName, relName, totName;
+
+    QString scen = m_ScenarioName.empty() ? "" : QString("_%1").arg(m_ScenarioName.c_str());
+
+    //losName = QString("%1/los%2_%3.txt").arg(path).arg(scen).arg(theTime);
+    tabName = QString("%1/tab%2_%3.csv").arg(path).arg(scen).arg(theTime);
+    resName = QString("%1/res%2_%3.csv").arg(path).arg(scen).arg(theTime);
+    chgName = QString("%1/chg%2_%3.csv").arg(path).arg(scen).arg(theTime);
+    relName = QString("%1/rel%2_%3.csv").arg(path).arg(scen).arg(theTime);
+    totName = QString("%1/rel%2_%3.csv").arg(path).arg(scen).arg(theTime);
+
+    vtkSmartPointer<vtkTable> tab = mosra->getDataSetAsTable();
+
+    vtkSmartPointer<vtkTable> chngmatrix;
+    vtkSmartPointer<vtkTable> sumres = mosra->sumResults(chngmatrix);
+
+    NMvtkDelimitedTextWriter* writer = NMvtkDelimitedTextWriter::New();
+    writer->SetFieldDelimiter(",");
+
+    writer->SetInputData(tab);
+    writer->SetFileName(tabName.toStdString().c_str());
+    writer->Update();
+
+    writer->SetInputData(sumres);
+    writer->SetFileName(resName.toStdString().c_str());
+    writer->Update();
+
+    writer->SetInputData(chngmatrix);
+    writer->SetFileName(chgName.toStdString().c_str());
+    writer->Update();
+
 }
 
 

@@ -40,12 +40,13 @@
 /*! Internal templated helper class linking to the core otb/itk filter
  *  by static methods.
  */
-template<class TInputImage, class TOutputImage, unsigned int Dimension>
+//template<class TInputImage, class TOutputImage, unsigned int Dimension>
+template<class TInputImage, unsigned int Dimension>
 class NMMosraFilterWrapper_Internal
 {
 public:
     typedef otb::Image<TInputImage, Dimension>  InImgType;
-    typedef otb::Image<TOutputImage, Dimension> OutImgType;
+    typedef otb::Image<TInputImage, Dimension> OutImgType;
     typedef typename otb::NMMosraFilter<InImgType, OutImgType>      FilterType;
     typedef typename FilterType::Pointer        FilterTypePointer;
 
@@ -59,15 +60,15 @@ public:
     typedef typename OutImgType::PointValueType   OutPointValueType;
     typedef typename OutImgType::SizeValueType    SizeValueType;
 
-	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands)
-	{
-		FilterTypePointer f = FilterType::New();
-		otbFilter = f;
-	}
+    static void createInstance(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands)
+    {
+        FilterTypePointer f = FilterType::New();
+        otbFilter = f;
+    }
 
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
+                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
         InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
@@ -75,15 +76,15 @@ public:
     }
 
 
-	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, unsigned int idx)
-	{
-		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
-	}
+    static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int numBands, unsigned int idx)
+    {
+        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
+    }
 
     static otb::AttributeTable::Pointer getRAT(
-        itk::ProcessObject::Pointer& procObj, 
+        itk::ProcessObject::Pointer& procObj,
         unsigned int numBands, unsigned int idx)
     {
         FilterType *f = dynamic_cast<FilterType*>(procObj.GetPointer());
@@ -92,7 +93,7 @@ public:
 
 
     static void setRAT(
-        itk::ProcessObject::Pointer& procObj, 
+        itk::ProcessObject::Pointer& procObj,
         unsigned int numBands, unsigned int idx,
         otb::AttributeTable::Pointer& rat)
     {
@@ -103,27 +104,27 @@ public:
 
 
     static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, NMProcess* proc,
-			unsigned int step, const QMap<QString, NMModelComponent*>& repo)
-	{
-		NMDebugCtx("NMMosraFilterWrapper_Internal", << "...");
+            unsigned int numBands, NMProcess* proc,
+            unsigned int step, const QMap<QString, NMModelComponent*>& repo)
+    {
+        NMDebugCtx("NMMosraFilterWrapper_Internal", << "...");
 
-		FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		NMMosraFilterWrapper* p =
-				dynamic_cast<NMMosraFilterWrapper*>(proc);
+        FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+        NMMosraFilterWrapper* p =
+                dynamic_cast<NMMosraFilterWrapper*>(proc);
 
-		// make sure we've got a valid filter object
-		if (f == 0)
-		{
-			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        // make sure we've got a valid filter object
+        if (f == 0)
+        {
+            NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
             e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
-			throw e;
-			return;
-		}
+            throw e;
+            return;
+        }
 
-		/* do something reasonable here */
-		bool bok;
-		int givenStep = step;
+        /* do something reasonable here */
+        bool bok;
+        int givenStep = step;
 
         QString workspace;
         QVariant varWS = p->getModelController()->getSetting("Workspace");
@@ -197,61 +198,92 @@ public:
             p->addRunTimeParaProvN(timeOutProvN);
         }
 
-	    step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());				
-	    std::vector<std::string> userIDs;                                                                       
-	    QStringList currentInputs;                                                                              
-	    if (step < p->mInputComponents.size())                                                                  
-	    {                                                                                                       
-		    currentInputs = p->mInputComponents.at(step);                                                   
-		    int cnt=0;                                                                                      
-		    foreach (const QString& input, currentInputs)                                                   
-		    {                                                                                               
-		        std::stringstream uid;                                                                      
-		        uid << "L" << cnt;                                                                          
+        QVariant curScenarioNameVar = p->getParameter("ScenarioName");
+        QString curScenarioName;
+        if (curScenarioNameVar.isValid())
+        {
+            curScenarioName = curScenarioNameVar.toString();
+            QString OutString = p->getModelController()->processStringParameter(p, curScenarioName);
+            f->SetScenarioName(OutString.toStdString());
+
+            QString ScenarioNameProvN = QString("nm:ScenarioName=\"%1\"").arg(curScenarioName.toStdString().c_str());
+            p->addRunTimeParaProvN(ScenarioNameProvN);
+        }
+
+        QVariant curGenerateReportsVar = p->getParameter("GenerateReports");
+        bool curGenerateReports;
+        if (curGenerateReportsVar.isValid())
+        {
+            curGenerateReports = curGenerateReportsVar.toBool();
+            f->SetGenerateReports(curGenerateReports);
+
+            QString provNVal = curGenerateReports ? "true" : "false";
+            QString GenerateReportsProvN = QString("nm:GenerateReports=\"%1\"").arg(provNVal);
+            p->addRunTimeParaProvN(GenerateReportsProvN);
+        }
+
+
+        step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());
+        std::vector<std::string> userIDs;
+        QStringList currentInputs;
+        if (step < p->mInputComponents.size())
+        {
+            currentInputs = p->mInputComponents.at(step);
+            int cnt=0;
+            foreach (const QString& input, currentInputs)
+            {
+                std::stringstream uid;
+                uid << "L" << cnt;
                 QString inputCompName = p->getModelController()->getComponentNameFromInputSpec(input);
                 NMModelComponent* comp = p->getModelController()->getComponent(inputCompName);
-		        if (comp != 0)                                                                              
-		        {                                                                                           
-			        if (comp->getUserID().isEmpty())                                                        
-			        {                                                                                       
-				        userIDs.push_back(uid.str());                                                   
-			        }                                                                                       
-			        else                                                                                    
-			        {                                                                                       
-				        userIDs.push_back(comp->getUserID().toStdString());                             
-			        }                                                                                       
-		        }                                                                                           
-		        else                                                                                        
-		        {                                                                                           
-			        userIDs.push_back(uid.str());                                                           
-		        }                                                                                           
-		        ++cnt;                                                                                      
-		    }                                                                                               
-	    }                                                                                                       
-	    f->SetImageNames(userIDs);
+                if (comp != 0)
+                {
+                    if (comp->getUserID().isEmpty())
+                    {
+                        userIDs.push_back(uid.str());
+                    }
+                    else
+                    {
+                        userIDs.push_back(comp->getUserID().toStdString());
+                    }
+                }
+                else
+                {
+                    userIDs.push_back(uid.str());
+                }
+                ++cnt;
+            }
+        }
+        f->SetImageNames(userIDs);
 
 
-		NMDebugCtx("NMMosraFilterWrapper_Internal", << "done!");
-	}
+        NMDebugCtx("NMMosraFilterWrapper_Internal", << "done!");
+    }
 };
 
 /*$<HelperClassInstantiation>$*/
 
-InstantiateObjectWrap( NMMosraFilterWrapper, NMMosraFilterWrapper_Internal )
-SetNthInputWrap( NMMosraFilterWrapper, NMMosraFilterWrapper_Internal )
-GetOutputRATWrap( NMMosraFilterWrapper, NMMosraFilterWrapper_Internal )
-LinkInternalParametersWrap( NMMosraFilterWrapper, NMMosraFilterWrapper_Internal )
-GetRATWrap( NMMosraFilterWrapper, NMMosraFilterWrapper_Internal )
-
-SetRATWrap( NMMosraFilterWrapper, NMMosraFilterWrapper_Internal )
+InstantiateInputTypeObjectWrap( NMMosraFilterWrapper, NMMosraFilterWrapper_Internal )
+SetInputTypeNthInputWrap( NMMosraFilterWrapper, NMMosraFilterWrapper_Internal )
+GetInputTypeOutputRATWrap( NMMosraFilterWrapper, NMMosraFilterWrapper_Internal )
+LinkInputTypeInternalParametersWrap( NMMosraFilterWrapper, NMMosraFilterWrapper_Internal )
+GetInputTypeRATWrap( NMMosraFilterWrapper, NMMosraFilterWrapper_Internal )
+SetInputTypeRATWrap( NMMosraFilterWrapper, NMMosraFilterWrapper_Internal )
 
 
 NMMosraFilterWrapper
 ::NMMosraFilterWrapper(QObject* parent)
 {
-	this->setParent(parent);
-	this->setObjectName("NMMosraFilterWrapper");
-	this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->setParent(parent);
+    this->setObjectName("NMMosraFilterWrapper");
+    this->mParameterHandling = NMProcess::NM_USE_UP;
+
+    mUserProperties.clear();
+    mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("PixelType"));
+    mUserProperties.insert(QStringLiteral("LosFileName"), QStringLiteral("LosFileName"));
+    mUserProperties.insert(QStringLiteral("TimeOut"), QStringLiteral("TimeOut"));
+    mUserProperties.insert(QStringLiteral("ScenarioName"), QStringLiteral("ScenarioName"));
+    mUserProperties.insert(QStringLiteral("GenerateReports"), QStringLiteral("GenerateReports"));
 }
 
 NMMosraFilterWrapper

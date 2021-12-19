@@ -37,51 +37,59 @@
 
 #include "nmmosrafilterwrapper_export.h"
 
-template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
+//template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
+template<class TInputImage, unsigned int Dimension=2>
 class NMMosraFilterWrapper_Internal;
 
 class NMMOSRAFILTERWRAPPER_EXPORT
 NMMosraFilterWrapper
-		: public NMProcess
+        : public NMProcess
 {
-	Q_OBJECT
+    Q_OBJECT
 
     Q_PROPERTY(QStringList LosFileName READ getLosFileName WRITE setLosFileName)
     Q_PROPERTY(QStringList TimeOut READ getTimeOut WRITE setTimeOut)
+    Q_PROPERTY(QStringList ScenarioName READ getScenarioName WRITE setScenarioName)
+    Q_PROPERTY(bool GenerateReports READ getGenerateReports WRITE setGenerateReports)
 
 public:
 
-    
+
     NMPropertyGetSet( LosFileName, QStringList )
     NMPropertyGetSet( TimeOut, QStringList )
+    NMPropertyGetSet( ScenarioName, QStringList)
+    NMPropertyGetSet( GenerateReports, bool )
 
 public:
     NMMosraFilterWrapper(QObject* parent=0);
     virtual ~NMMosraFilterWrapper();
 
-    template<class TInputImage, class TOutputImage, unsigned int Dimension>
+    //template<class TInputImage, class TOutputImage, unsigned int Dimension>
+    template<class TInputImage, unsigned int Dimension>
     friend class NMMosraFilterWrapper_Internal;
 
     QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper, const QString& name);
 
     QSharedPointer<NMItkDataObjectWrapper> getRAT(unsigned int idx);
 
 
-    void setRAT(unsigned int idx, 
+    void setRAT(unsigned int idx,
         QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
 
 protected:
     void linkParameters(unsigned int step,
-    		const QMap<QString, NMModelComponent*>& repo);
+            const QMap<QString, NMModelComponent*>& repo);
 
-    
+
     QStringList mLosFileName;
     QStringList mTimeOut;
+    QStringList mScenarioName;
+    bool mGenerateReports;
 
 };
 

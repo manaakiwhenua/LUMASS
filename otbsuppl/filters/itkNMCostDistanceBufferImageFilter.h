@@ -88,7 +88,7 @@ public:
 
   /** Type for the size of the input image. */
   typedef typename RegionType::SizeType   SizeType;
-  
+
   /** The dimension of the input and output images. */
   itkStaticConstMacro(InputImageDimension, unsigned int,
                       InputImageType::ImageDimension);
@@ -106,39 +106,39 @@ public:
   typedef typename OutputImageType::PixelType OutPixelType;
 
   /** Set if image spacing should be used in computing distances. */
-  itkSetMacro( UseImageSpacing, bool );
+  itkSetMacro( UseImageSpacing, bool )
 
   /** Get whether spacing is used. */
-  itkGetConstReferenceMacro( UseImageSpacing, bool );
+  itkGetConstReferenceMacro( UseImageSpacing, bool )
 
   /** Set On/Off whether spacing is used. */
-  itkBooleanMacro( UseImageSpacing );
+  itkBooleanMacro( UseImageSpacing )
 
-  itkSetMacro( ProcessDownward, bool);
-  itkBooleanMacro( ProcessDownward );
+  itkSetMacro( ProcessDownward, bool)
+  itkBooleanMacro( ProcessDownward )
 
-  itkSetMacro( ProcessUpward, bool);
-  itkBooleanMacro( ProcessUpward );
+  itkSetMacro( ProcessUpward, bool)
+  itkBooleanMacro( ProcessUpward )
 
   void SetCategories(std::vector<double> cats);
 
   /** Set the maximum allowed distance measure */
-  itkSetMacro( MaxDistance, double);
+  itkSetMacro( MaxDistance, double)
 
   /** Get the currently set maximum distance */
-  itkGetMacro( MaxDistance, double);
+  itkGetMacro( MaxDistance, double)
 
   /** Set a buffer zone indicator */
-  itkSetMacro( BufferZoneIndicator, int);
+  itkSetMacro( BufferZoneIndicator, int)
 
   /** Get the currently set BufferZoneIndicator */
-  itkGetMacro( BufferZoneIndicator, int);
+  itkGetMacro( BufferZoneIndicator, int)
 
   /** */
-  itkSetMacro( CreateBuffer, bool);
+  itkSetMacro( CreateBuffer, bool)
 
   /** Set on/off buffer creation */
-  itkBooleanMacro( CreateBuffer );
+  itkBooleanMacro( CreateBuffer )
 
   /** reset the number of execution */
   void resetExecCounter(void);
@@ -148,10 +148,12 @@ public:
   OutputImageType * GetDistanceMap(void);
 
   /** set the required input data*/
-  void GenerateInputRequestedRegion(void);
+  //void GenerateInputRequestedRegion(void);
+
+  //void GenerateOutputInformation();
 
   /** Set the output requested region to the largest possible region */
-  void EnlargeOutputRequestedRegion(DataObject* data);
+  //void EnlargeOutputRequestedRegion(DataObject* data);
 
 
 #ifdef ITK_USE_CONCEPT_CHECKING
@@ -176,31 +178,31 @@ protected:
   void PrintSelf(std::ostream& os, Indent indent) const;
 
   /** calculate the output distance map*/
-  void GenerateData();  
+  void GenerateData();
 
 
   void initPixel(OutPixelType* obuf,
-		  	     InPixelType* ibuf,
-		  	     OutPixelType& maxDist,
-		  	     int& cidx);
+                 InPixelType* ibuf,
+                 OutPixelType& maxDist,
+                 int& cidx);
 
   void calcPixelDistance(OutPixelType* obuf,
-		                 InPixelType* ibuf,
-		                 InPixelType* cbuf,
-		                 double* colDist,
-		                 double* rowDist,
-		                 int** noff,
-		                 bool& bleftright,
-		                 bool& binit,
-		                 int& row,
-		                 int& ncols,
-		                 int& nrows,
-		                 int& bufrow,
-			             OutPixelType& maxDist,
-			             OutPixelType& userDist,
-		                 SpacingType& spacing);
+                         InPixelType* ibuf,
+                         InPixelType* cbuf,
+                         double* colDist,
+                         double* rowDist,
+                         int** noff,
+                         bool& bleftright,
+                         bool& binit,
+                         int& row,
+                         int& ncols,
+                         //int& nrows,
+                         int& bufrow,
+                         OutPixelType& maxDist,
+                         OutPixelType& userDist,
+                         SpacingType& spacing);
 
-private:   
+private:
   NMCostDistanceBufferImageFilter(const Self&);
   void operator=(const Self&);
 
@@ -236,36 +238,36 @@ template <class TInputImage, class TOutputImage>
 inline void
 NMCostDistanceBufferImageFilter<TInputImage, TOutputImage>
 ::initPixel(OutPixelType* obuf,
-			InPixelType* ibuf,
-			OutPixelType& maxDist,
-			int& cidx)
+            InPixelType* ibuf,
+            OutPixelType& maxDist,
+            int& cidx)
 {
-	if (m_NumCategories)
-	{
-		bool bObj = false;
-		for (int e=0; e < this->m_NumCategories; ++e)
-		{
-			if (static_cast<double>(ibuf[cidx]) == m_Categories[e])
-			{
-				obuf[cidx] = 0;
-				bObj = true;
-				break;
-			}
-		}
+    if (m_NumCategories)
+    {
+        bool bObj = false;
+        for (int e=0; e < this->m_NumCategories; ++e)
+        {
+            if (static_cast<double>(ibuf[cidx]) == m_Categories[e])
+            {
+                obuf[cidx] = 0;
+                bObj = true;
+                break;
+            }
+        }
 
-		if (!bObj)
-		{
-			obuf[cidx] = maxDist;
-		}
-	}
-	else if (ibuf[cidx] > 0)
-	{
-		obuf[cidx] = 0;
-	}
-	else
-	{
-		obuf[cidx] = maxDist;
-	}
+        if (!bObj)
+        {
+            obuf[cidx] = maxDist;
+        }
+    }
+    else if (ibuf[cidx] > 0)
+    {
+        obuf[cidx] = 0;
+    }
+    else
+    {
+        obuf[cidx] = maxDist;
+    }
 }
 
 
@@ -274,156 +276,161 @@ template <class TInputImage,class TOutputImage>
 inline void
 NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 ::calcPixelDistance(OutPixelType* obuf,
-		            InPixelType* ibuf,
-		            InPixelType* cbuf,
-		            double* colDist,
-		            double* rowDist,
-		            int** noff,
-	                bool& bleftright,
-	                bool& binit,
-	                int& row,
-	                int& ncols,
-	                int& nrows,
-	                int& bufrow,
-	                OutPixelType& maxDist,
-	                OutPixelType& userDist,
-	                SpacingType& spacing)
+                    InPixelType* ibuf,
+                    InPixelType* cbuf,
+                    double* colDist,
+                    double* rowDist,
+                    int** noff,
+                    bool& bleftright,
+                    bool& binit,
+                    int& row,
+                    int& ncols,
+                    //int& nrows,
+                    int& bufrow,
+                    OutPixelType& maxDist,
+                    OutPixelType& userDist,
+                    SpacingType& spacing)
 {
-	int col;
-	int step;
-	int end;
-	if (bleftright)
-	{
-		col = 0;
-		step = 1;
-		end = ncols;
-	}
-	else
-	{
-		col = ncols - 1;
-		step = -1;
-		end = -1;
-	}
+    int col;
+    int step;
+    int end;
+    if (bleftright)
+    {
+        col = 0;
+        step = 1;
+        end = ncols;
+    }
+    else
+    {
+        col = ncols - 1;
+        step = -1;
+        end = -1;
+    }
 
-	double voff[3][2];
-	double minDist;
-	double tmpDist;
-	double x,y;
+    double voff[3][2];
+    double minDist;
+    double tmpDist;
+    double x,y;
+    const double userDistDbl = static_cast<double>(userDist);
 
-	for (; col != end; col += step)
-	{
-		int cidx = col + row * ncols;
-		int bidx = (col + 1 + (bufrow * (ncols + 2)));
+    for (; col != end; col += step)
+    {
+        int cidx = col + row * ncols;
+        //int bidx = (col + 1 + (bufrow * (ncols + 2)));
 
-		// we only call this when we visit the
-		// pixel for the first time
-		if (binit)
-		{
-			initPixel(obuf,ibuf,maxDist,cidx);
-		}
+        // we only call this when we visit the
+        // pixel for the first time
+        if (binit)
+        {
+            initPixel(obuf,ibuf,maxDist,cidx);
+        }
 
-		if (obuf[cidx] == 0)
-		{
-			// just make sure, we re-set the distance buffer
-			// for 'object' pixels to zero again, since
-			// we're re-using the same buffer over and over
-			// again
-			colDist[(col+1) + (bufrow * (ncols + 2))] = 0;
-			rowDist[(col+1) + (bufrow * (ncols + 2))] = 0;
-			continue;
-		}
+        if (obuf[cidx] == 0)
+        {
+            // just make sure, we re-set the distance buffer
+            // for 'object' pixels to zero again, since
+            // we're re-using the same buffer over and over
+            // again
+            colDist[(col+1) + (bufrow * (ncols + 2))] = 0;
+            rowDist[(col+1) + (bufrow * (ncols + 2))] = 0;
+            continue;
+        }
 
-		minDist = maxDist;
-		int ch = -9;
-		for (int c=0; c < 3; ++c)
-		{
-			int dnidx = (col + 1 + noff[c][0]) + ((bufrow + noff[c][1]) * (ncols + 2));
-			x = colDist[dnidx];
-			if (x == -9)
-				continue;
+        minDist = static_cast<double>(maxDist);
+        int ch = -9;
+        for (int c=0; c < 3; ++c)
+        {
+            int dnidx = (col + 1 + noff[c][0]) + ((bufrow + noff[c][1]) * (ncols + 2));
+            x = colDist[dnidx];
+            if (x == -9)
+                continue;
 
-			if (cbuf)
-			{
-				if (c)
-				{
-					tmpDist = cbuf[cidx]
-					          + obuf[(col + noff[c][0])
-								     + ((row + noff[c][1]) * ncols)];
-				}
-				else
-				{
+            if (cbuf)
+            {
+                if (c)
+                {
+                    tmpDist = cbuf[cidx]
+                              + obuf[(col + noff[c][0])
+                                     + ((row + noff[c][1]) * ncols)];
+                }
+                else
+                {
                     tmpDist = (cbuf[cidx] * sqrt(spacing[0]*spacing[0]+spacing[1]*spacing[1]))
-								+ obuf[(col + noff[c][0])
-								       + ((row + noff[c][1]) * ncols)];
-				}
-			}
-			else
-			{
-				y = rowDist[dnidx];
-				// make sure we only work on pixel inside the buffer
-				switch(c)
-				{
-				case 0: // diagonal
-					x += spacing[0];
-					y += spacing[1];
-					break;
+                                + obuf[(col + noff[c][0])
+                                       + ((row + noff[c][1]) * ncols)];
+                }
+            }
+            else
+            {
+                y = rowDist[dnidx];
+                // make sure we only work on pixel inside the buffer
+                switch(c)
+                {
+                case 0: // diagonal
+                    x += spacing[0];
+                    y += spacing[1];
+                    break;
 
-				case 1: // y-direction
-					y += spacing[1];
-					break;
+                case 1: // y-direction
+                    y += spacing[1];
+                    break;
 
-				case 2: // x-direction
-					x += spacing[0];
-					break;
+                case 2: // x-direction
+                    x += spacing[0];
+                    break;
 
-				default:
-					continue;
-					break;
-				}
+                default:
+                    continue;
+                    break;
+                }
 
-				tmpDist = (x * x) + (y * y);
-			}
+                tmpDist = (x * x) + (y * y);
+            }
 
-			// we're only interested in the minimum distance to the
-			// source object
-			if (tmpDist < minDist)
-			{
-				minDist = tmpDist;
-				voff[c][0] = x;
-				voff[c][1] = y;
-				ch = c;
-			}
-		}
-		if (ch != -9)
-		{
-			if (cbuf)
-			{
-				if (minDist < obuf[cidx])
-					obuf[cidx] = minDist;
-			}
-			else if (this->m_CreateBuffer)
-			{
-				if (vcl_sqrt(minDist) <= userDist)
-				{
-					obuf[cidx] = this->m_BufferZoneIndicator;
-					colDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][0];
-					rowDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][1];
-				}
-				else if (minDist < (obuf[cidx] * obuf[cidx]))
-				{
-					obuf[cidx] = vcl_sqrt(minDist);
-					colDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][0];
-					rowDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][1];
-				}
-			}
-			else if (minDist < (obuf[cidx] * obuf[cidx]))
-			{
-				obuf[cidx] = vcl_sqrt(minDist);
-				colDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][0];
-				rowDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][1];
-			}
-		}
-	}
+            // we're only interested in the minimum distance to the
+            // source object
+            if (tmpDist < minDist)
+            {
+                minDist = tmpDist;
+                voff[c][0] = x;
+                voff[c][1] = y;
+                ch = c;
+            }
+        }
+        if (ch != -9)
+        {
+            const double obuf_cidx = static_cast<double>(obuf[cidx]);
+            const double userDist_2 = userDistDbl * userDistDbl;
+            if (cbuf)
+            {
+                if (minDist < obuf_cidx)
+                    obuf[cidx] = static_cast<OutPixelType>(minDist);
+            }
+            else if (minDist <= userDist_2)
+            {
+                if (this->m_CreateBuffer)
+                {
+                    obuf[cidx] = static_cast<OutPixelType>(this->m_BufferZoneIndicator);
+                    colDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][0];
+                    rowDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][1];
+                }
+                else if (minDist < obuf_cidx * obuf_cidx)
+                {
+                    obuf[cidx] = static_cast<OutPixelType>(vcl_sqrt(minDist));
+                    colDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][0];
+                    rowDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][1];
+                }
+            }
+            else if (   minDist > userDist_2
+                     && obuf_cidx > userDistDbl
+                    )
+            {
+                obuf[cidx] = maxDist;
+                colDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][0];
+                rowDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][1];
+            }
+        }
+    }
 }
 
 } //end namespace itk

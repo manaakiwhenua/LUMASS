@@ -568,9 +568,9 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     QAction* actStartWebSockets = new QAction(QStringLiteral("Start Websocket Server"), ui->menuSettings);
     QAction* actStopWebSockets   = new QAction(QStringLiteral("Stop WebSocket Server"), ui->menuSettings);
 
-    ui->menuSettings->addSeparator();
-    ui->menuSettings->addAction(actStartWebSockets);
-    ui->menuSettings->addAction(actStopWebSockets);
+    //ui->menuSettings->addSeparator();
+    //ui->menuSettings->addAction(actStartWebSockets);
+    //ui->menuSettings->addAction(actStopWebSockets);
 
     connect(actStartWebSockets, SIGNAL(triggered()), this, SLOT(startWebSocketServer()));
     connect(actStopWebSockets, SIGNAL(triggered()), this, SLOT(stopWebSocketServer()));

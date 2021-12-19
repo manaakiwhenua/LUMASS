@@ -724,7 +724,9 @@ NMSqlTableView::plotScatter()
     plot->SetInputData(table.GetPointer(), 0,1);
 
     plot->SetColor(0.7, 0.7, 0.7);
+    plot->SetMarkerStyle(vtkPlotPoints::SQUARE);
     plot->SetMarkerSize(-8);
+
 
     chart->AddPlot(plot.GetPointer());
     chart->GetAxis(0)->SetUnscaledRange(minX, maxX);

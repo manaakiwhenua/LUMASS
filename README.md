@@ -6,6 +6,10 @@
 
 [https://manaakiwhenua.github.io/LUMASS/](https://manaakiwhenua.github.io/LUMASS/)
 
+## Latest Version
+
+[**LUMASS v0.9.66-rc21a**](https://github.com/manaakiwhenua/LUMASS/releases/tag/0.9.66-rc21a)
+
 ## Documentation
 
 [https://manaakiwhenua.github.io/LUMASS/docs/Documentation](https://manaakiwhenua.github.io/LUMASS/docs/Documentation)

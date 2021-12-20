@@ -11,31 +11,11 @@ author_profile: true
 
 LUMASS is designed to provide support for two high level aspects of land management: i) land use impact assessment and ii) spatial planning. The former aspect is supported by its [**spatial system dynamics modelling framework**](https://youtu.be/aN2H-izUyCE) and the latter by its [**spatial optimisation framework**]({{ "/assets/material/OptimisationHowTo_1.2.zip" | relative_url }}). 
 
-LUMASS is mainly focused on processing and displaying raster data. However, it also provides selected functionality of displaying (polygon) vector data and 3D point clouds. Spatial optimisation scenarios can also be run on polygon vector layers. Download the [LUMASS User Guide]({{ "/assets/material/LUMASS_UserGuide_v0.3.pdf" | relative_url }}) and find out more yourself!  
+LUMASS is mainly focused on processing and displaying raster data. However, it also provides selected functionality for displaying vector data. Check out our [**documentation**]({{ "docs/Documentation" | relative_url }}) section for more information.  
 
-## Features and Architecture
-
-For an overview of LUMASS' features and its architecture, watch our [**presentation**](https://vimeo.com/236776954) at FOSS4G 2017 or have a look [here]({{ "/assets/material/LUMASS_AtAGlance.pdf" | relative_url }}). If you're keen to find out a little bit more about how LUMASS looks like under the hood, you may want to read this [paper](http://www.mssanz.org.au/modsim2013/C8/herzig.pdf). 
-
-<!--
-------------------------------------------
-# [Projects](https://bitbucket.org/landcareresearch/lumass/wiki/Projects)
-
-An overview of recent projects where LUMASS played a key role. 
-
-# [References](https://bitbucket.org/landcareresearch/lumass/wiki/References)
-
-Links and references to LUMASS related papers, reports, and presentations. 
-
-# [Conferences](https://bitbucket.org/landcareresearch/lumass/wiki/Conferences)
-
-Selected conference and workshop material. 
--->
 ## Downloads
 
-[***LUMASS 0.9.59** for Windows (64 bit)](https://github.com/manaakiwhenua/LUMASS/releases/download/0.9.59/lumass-0.9.59.zip)
-
-<!-- ({{ "/assets/material/lumass-0.9.59.zip" | relative_url }}) -->
+**LUMASS v0.9.66-rc21a** [Linux](https://github.com/manaakiwhenua/LUMASS/releases/download/0.9.66-rc21a/lumass-0.9.66-rc21a-x86_64.AppImage) \| [Windows](https://github.com/manaakiwhenua/LUMASS/releases/download/0.9.66-rc21a/lumass-0.9.66-rc21a.7z)
 
 [LUMASS User Guide v0.3]({{ "/assets/material/LUMASS_UserGuide_v0.3.pdf" | relative_url }})
 

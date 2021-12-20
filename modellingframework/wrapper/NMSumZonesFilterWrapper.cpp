@@ -86,6 +86,24 @@ public:
                     filter->SetInput(name.toLower().toStdString(), dataObj);
                 }
             }
+            else if (idx == 0)
+            {
+                OutImgType* img = dynamic_cast<OutImgType*>(dataObj);
+                if (img != nullptr)
+                {
+                    filter->SetZoneImage(img);
+                    filter->SetInput(name.toLower().toStdString(), dataObj);
+                }
+            }
+            else if (idx == 1)
+            {
+                InImgType* img = dynamic_cast<InImgType*>(dataObj);
+                if (img != nullptr)
+                {
+                    filter->SetValueImage(img);
+                    filter->SetInput(name.toLower().toStdString(), dataObj);
+                }
+            }
         }
         else
         {

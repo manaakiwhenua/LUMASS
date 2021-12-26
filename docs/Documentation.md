@@ -25,9 +25,9 @@ permalink: "/docs/Documentation"
 - [Dynamic Model Parameters]({{ "/docs/mod_dynamic_parameters" | relative_url }})
 - [Empty Model Parameters]({{ "/docs/mod_empty_parameters" | relative_url }})
 - [Multiple Inputs and Outputs]({{ "/docs/mod_multiple_inoutputs" | relative_url }})
+- [Creating and Executing Models]({{ "/docs/mod_createpipeline" | relative_url }})
 
 <!-- 
-- [Creating Models]({{ "/docs/mod_createpipeline" | relative_url }})
 - [Organising Pipelines: Aggregate Components]({{ "/docs/mod_aggregate_components" | relative_url }})
 - [Model Configuration]({{ "/docs/mod_model_configuration" | relative_url }}) 
 -->

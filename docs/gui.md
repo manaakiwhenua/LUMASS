@@ -5,7 +5,7 @@ permalink: "/docs/gui"
 
 [![Graphical_User_Interface]({{ "/assets/images/docs/gui_v0966_enumerated.png" | relative_url }})]({{ "/assets/images/docs/gui_v0966_enumerated.png" | relative_url }})<br>
 
-1. **Main Tool Bar** (s. below)
+1. **Main Toolbar** (s. below)
 2. **User Tools**: Tools created from LUMASS models
 3. **Model Config & Search**: Model file load and save, model configuration, and component search
 4. **Model View**: Visual modelling environment
@@ -23,7 +23,7 @@ LUMASS provides a typical desktop user-interface that embraces the use of drag a
 The user interface can be adjusted to best suit the current task at hand (i.e. mapping, or modelling). For example, the main views (GUI: 1,2) can be individually hidden and displayed (Tool bar: 12,13), adjusted in their size (by using their separating slider), or stacked vertically or horizontally (Tool bar: 14, 15). The display areas left and right of the main views (Layers & Components and Attributes and Properties, GUI: 5-9), as well as the notification area (GUI: 10) are dockable windows and can be arbitrarily positioned around the centred main views or float on top of the main user interface. Layer attribute tables and stand-alone tables (GUI: 13) are displayed in their own top level window independent of the main user interface.
 The individual content and property display areas (GUI: 5-9) can be collapsed and unfolded individually by clicking on their respective title button showing their name (e.g. Table Objects, GUI: 7). The View menu provides the presets 'Map View Mode' and 'Model View Mode', which configure the associated display areas for mapping and modelling tasks respectively. 
 
-## Main Tool Bar
+## Main Toolbar
 
 [![Tool_bar]({{ "/assets/images/docs/main_tool_bar_enumerated.png" | relative_url }})]({{ "/assets/images/docs/main_tool_bar_enumerated.png" | relative_url }})<br>
 

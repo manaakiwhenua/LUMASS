@@ -74,15 +74,17 @@ void SQLiteProcessor< TInputImage, TOutputImage >
         &&  tab->GetTableType() == AttributeTable::ATTABLE_TYPE_SQLITE
        )
     {
-        SQLiteTable::Pointer sqltab = static_cast<SQLiteTable*>(tab.GetPointer());
+        SQLiteTable* tabptr = static_cast<SQLiteTable*>(tab.GetPointer());
+        if (tabptr != nullptr)
+        {
+            SQLiteTable::Pointer sqltab = tabptr;
+            m_vRAT.resize(idx + 1);
+            m_vRAT[idx] = sqltab;
+            return;
+        }
+    }
 
-        m_vRAT.resize(idx+1);
-        m_vRAT[idx] = sqltab;
-    }
-    else
-    {
-        NMProcWarn(<< "NULL-table or non-SQLite-table provided!")
-    }
+    itkExceptionMacro(<< "Input table #" << idx << " is not a valid SQLite database!")
 }
 
 template< class TInputImage, class TOutputImage >
@@ -171,6 +173,17 @@ void SQLiteProcessor< TInputImage, TOutputImage >
     // =========================================================================
     // now we do all the table processing here
 
+    if (m_vRAT.size() == 0)
+    {
+        itkExceptionMacro(<< "Please provide at least ONE valid SQLite database as input!")
+        return;
+    }
+    else if (m_vRAT.at(0).GetPointer() == nullptr)
+    {
+        itkExceptionMacro(<< "Input table #0 is not valid SQLite database!")
+        return;
+    }
+
     if (m_SQLStatement.empty())
     {
         itkExceptionMacro(<< "SQL statement is empy!")
@@ -185,7 +198,7 @@ void SQLiteProcessor< TInputImage, TOutputImage >
 
     for (int i=1; i < m_vRAT.size(); ++i)
     {
-        if (!m_vRAT.at(0)->AttachDatabase(m_vRAT.at(i)->GetDbFileName(),
+        if (m_vRAT.at(i).GetPointer() != nullptr && m_vRAT.at(0)->AttachDatabase(m_vRAT.at(i)->GetDbFileName(),
                                           m_ImageNames.at(i)))
         {
             if (m_vRAT.at(0)->getLastLogMsg().find("already attached") != std::string::npos)
@@ -200,6 +213,12 @@ void SQLiteProcessor< TInputImage, TOutputImage >
                 return;
 
             }
+        }
+        else
+        {
+            itkExceptionMacro(<< "Failed attaching input databases - "
+                << m_vRAT.at(0)->getLastLogMsg());
+            return;
         }
     }
 

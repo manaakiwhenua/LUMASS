@@ -191,9 +191,32 @@ public:
             {
                 std::stringstream uid;
                 uid << "L" << cnt;
+
+                // double check whether name is provided as part inputspec
+                std::string inputname;
+                QStringList nameparts = input.split(":", QString::SkipEmptyParts);
+                if (nameparts.size() == 2)
+                {
+                    QVariant npvar = QVariant::fromValue(nameparts.at(1));
+
+                    bool bOK = true;
+                    int npnum = npvar.toInt(&bOK);
+
+                    if (bOK == false)
+                    {
+                        inputname = npvar.toString().toStdString();
+                    }
+                }
+
+                // in case the name is not provided with the inputspec, use the UserID instead
                 QString inputCompName = p->getModelController()->getComponentNameFromInputSpec(input);
                 NMModelComponent* comp = p->getModelController()->getComponent(inputCompName);
-                if (comp != 0)
+
+                if (!inputname.empty())
+                {
+                    userIDs.push_back(inputname);
+                }
+                else if (comp != 0)
                 {
                     if (comp->getUserID().isEmpty())
                     {

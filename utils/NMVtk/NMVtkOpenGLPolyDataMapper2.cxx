@@ -268,51 +268,6 @@ void NMVtkOpenGLPolyDataMapper2::ClearAllShaderReplacements()
   this->Modified();
 }
 
-void NMVtkOpenGLPolyDataMapper2::SetVertexShaderCode(const char* code)
-{
-  VTK_LEGACY_REPLACED_BODY(NMVtkOpenGLPolyDataMapper2::SetVertexShaderCode, "VTK 9.0",
-    vtkOpenGLShaderProperty::SetVertexShaderCode);
-  this->GetLegacyShaderProperty()->SetVertexShaderCode(code);
-  this->Modified();
-}
-
-char* NMVtkOpenGLPolyDataMapper2::GetVertexShaderCode()
-{
-  VTK_LEGACY_REPLACED_BODY(NMVtkOpenGLPolyDataMapper2::GetVertexShaderCode, "VTK 9.0",
-    vtkOpenGLShaderProperty::GetVertexShaderCode);
-  return this->GetLegacyShaderProperty()->GetVertexShaderCode();
-}
-
-void NMVtkOpenGLPolyDataMapper2::SetFragmentShaderCode(const char* code)
-{
-  VTK_LEGACY_REPLACED_BODY(NMVtkOpenGLPolyDataMapper2::SetFragmentShaderCode, "VTK 9.0",
-    vtkOpenGLShaderProperty::SetFragmentShaderCode);
-  this->GetLegacyShaderProperty()->SetFragmentShaderCode(code);
-  this->Modified();
-}
-
-char* NMVtkOpenGLPolyDataMapper2::GetFragmentShaderCode()
-{
-  VTK_LEGACY_REPLACED_BODY(NMVtkOpenGLPolyDataMapper2::GetFragmentShaderCode, "VTK 9.0",
-    vtkOpenGLShaderProperty::GetFragmentShaderCode);
-  return this->GetLegacyShaderProperty()->GetFragmentShaderCode();
-}
-
-void NMVtkOpenGLPolyDataMapper2::SetGeometryShaderCode(const char* code)
-{
-  VTK_LEGACY_REPLACED_BODY(NMVtkOpenGLPolyDataMapper2::SetGeometryShaderCode, "VTK 9.0",
-    vtkOpenGLShaderProperty::SetGeometryShaderCode);
-  this->GetLegacyShaderProperty()->SetGeometryShaderCode(code);
-  this->Modified();
-}
-
-char* NMVtkOpenGLPolyDataMapper2::GetGeometryShaderCode()
-{
-  VTK_LEGACY_REPLACED_BODY(NMVtkOpenGLPolyDataMapper2::GetGeometryShaderCode, "VTK 9.0",
-    vtkOpenGLShaderProperty::GetGeometryShaderCode);
-  return this->GetLegacyShaderProperty()->GetGeometryShaderCode();
-}
-
 // Create the shader property if it doesn't exist
 vtkOpenGLShaderProperty* NMVtkOpenGLPolyDataMapper2::GetLegacyShaderProperty()
 {
@@ -3525,7 +3480,7 @@ void NMVtkOpenGLPolyDataMapper2::BuildIBO(vtkRenderer* /* ren */, vtkActor* act,
       }
       else // SURFACE
       {
-        this->Primitives[PrimitiveTris].IBO->CreateTriangleIndexBuffer(prims[2], poly->GetPoints());
+        this->Primitives[PrimitiveTris].IBO->CreateTriangleIndexBuffer(prims[2], poly->GetPoints(), nullptr, nullptr);
         this->Primitives[PrimitiveTriStrips].IBO->CreateStripIndexBuffer(prims[3], false);
       }
     }
@@ -3575,11 +3530,6 @@ void NMVtkOpenGLPolyDataMapper2::ShallowCopy(vtkAbstractMapper* mapper)
     this->SetCompositeIdArrayName(m->GetCompositeIdArrayName());
     this->SetProcessIdArrayName(m->GetProcessIdArrayName());
     this->SetCellIdArrayName(m->GetCellIdArrayName());
-#ifndef VTK_LEGACY_REMOVE
-    this->SetVertexShaderCode(m->GetVertexShaderCode());
-    this->SetGeometryShaderCode(m->GetGeometryShaderCode());
-    this->SetFragmentShaderCode(m->GetFragmentShaderCode());
-#endif
   }
 
   // Now do superclass

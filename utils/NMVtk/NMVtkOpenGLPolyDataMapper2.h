@@ -175,12 +175,12 @@ public:
    *
    * @deprecated Replaced By vtkShaderProperty::Get*ShaderCode as of VTK 9.0.
    */
-  VTK_LEGACY(virtual void SetVertexShaderCode(const char* code);)
-  VTK_LEGACY(virtual char* GetVertexShaderCode();)
-  VTK_LEGACY(virtual void SetFragmentShaderCode(const char* code);)
-  VTK_LEGACY(virtual char* GetFragmentShaderCode();)
-  VTK_LEGACY(virtual void SetGeometryShaderCode(const char* code);)
-  VTK_LEGACY(virtual char* GetGeometryShaderCode();)
+  //VTK_LEGACY(virtual void SetVertexShaderCode(const char* code);)
+  //VTK_LEGACY(virtual char* GetVertexShaderCode();)
+  //VTK_LEGACY(virtual void SetFragmentShaderCode(const char* code);)
+  //VTK_LEGACY(virtual char* GetFragmentShaderCode();)
+  //VTK_LEGACY(virtual void SetGeometryShaderCode(const char* code);)
+  //VTK_LEGACY(virtual char* GetGeometryShaderCode();)
   //@}
 #endif
 

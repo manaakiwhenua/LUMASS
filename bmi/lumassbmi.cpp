@@ -59,6 +59,7 @@ void bmilog(int ilevel, const char* msg)
 
 void cleanup()
 {
+    nmengine->shutdown();
     delete nmengine;
 }
 

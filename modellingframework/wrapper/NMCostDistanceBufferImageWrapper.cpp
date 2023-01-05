@@ -414,6 +414,7 @@ public:
         lprio.SetIndex(1, lpr.GetIndex()[1]);
 
         writer->SetForcedLargestPossibleRegion(lprio);
+        writer->SetStreamingMethod("NO_STREAMING");
 
         typename DistanceFilterType::OutputImageRegionType distOutLPR;
         distOutLPR.SetSize(0,  lpr.GetSize()[0]);

@@ -39,6 +39,10 @@
     #include "RasdamanConnector.hh"
 #endif
 
+#ifndef _WIN32
+#   include <mpi.h>
+#endif
+
 #include "otbAttributeTable.h"
 #include "otbImageIOBase.h"
 #include "itkImageToImageFilter.h"
@@ -244,9 +248,9 @@ public:
   itkGetConstReferenceMacro(IORegion, itk::ImageIORegion)
 
   /** Set the compression On or Off */
-  itkSetMacro(UseCompression, bool);
-  itkGetConstReferenceMacro(UseCompression, bool);
-  itkBooleanMacro(UseCompression);
+  itkSetMacro(UseCompression, bool)
+  itkGetConstReferenceMacro(UseCompression, bool)
+  itkBooleanMacro(UseCompression)
 
   /** By default the MetaDataDictionary is taken from the input image and
    *  passed to the ImageIO. In some cases, however, a user may prefer to
@@ -254,9 +258,9 @@ public:
    *  the ImageSeriesWriter. This flag defined whether the MetaDataDictionary
    *  to use will be the one from the input image or the one already set in
    *  the ImageIO object. */
-  itkSetMacro(UseInputMetaDataDictionary, bool);
-  itkGetConstReferenceMacro(UseInputMetaDataDictionary, bool);
-  itkBooleanMacro(UseInputMetaDataDictionary);
+  itkSetMacro(UseInputMetaDataDictionary, bool)
+  itkGetConstReferenceMacro(UseInputMetaDataDictionary, bool)
+  itkBooleanMacro(UseInputMetaDataDictionary)
 
   void SetImageIO(otb::ImageIOBase* imgIO);
   otb::ImageIOBase* GetImageIO(void);
@@ -265,9 +269,9 @@ public:
   /**
    * Enable/disable writing of a .geom file with the ossim keyword list along with the written image
    */
-  itkSetMacro(WriteGeomFile, bool);
-  itkGetMacro(WriteGeomFile, bool);
-  itkBooleanMacro(WriteGeomFile);
+  itkSetMacro(WriteGeomFile, bool)
+  itkGetMacro(WriteGeomFile, bool)
+  itkBooleanMacro(WriteGeomFile)
 
   /** Sets the input raster attribute table */
   void SetInputRAT(AttributeTable* rat, unsigned int idx=0);
@@ -277,14 +281,20 @@ public:
    *  allowing externally driven streaming as well as updating
    *  parts of existing images
    */
-  itkSetMacro(UpdateMode, bool);
-  itkGetMacro(UpdateMode, bool);
-  itkBooleanMacro(UpdateMode);
+  itkSetMacro(UpdateMode, bool)
+  itkGetMacro(UpdateMode, bool)
+  itkBooleanMacro(UpdateMode)
 
 
-  itkSetMacro(WriteImage, bool);
-  itkGetMacro(WriteImage, bool);
-  itkBooleanMacro(WriteImage);
+  itkSetMacro(WriteImage, bool)
+  itkGetMacro(WriteImage, bool)
+  itkBooleanMacro(WriteImage)
+
+  itkSetMacro(ParallelIO, bool)
+  itkGetMacro(ParallelIO, bool)
+
+  itkSetMacro(MpiComm, MPI_Comm)
+  itkGetMacro(MpiComm, MPI_Comm)
 
   /** introduce a rasdaman mode to run this writer explicitly with
    *  with an RasdamanImageIO; this seems to be a dirty hack and violates
@@ -320,6 +330,10 @@ protected:
   StreamingRATImageFileWriter();
   virtual ~StreamingRATImageFileWriter();
   void PrintSelf(std::ostream& os, itk::Indent indent) const;
+
+  std::string printRegion(const itk::ImageIORegion& ioreg);
+  std::string printRegion(const OutputImageRegionType& reg);
+
 
   void VerifyInputInformation();
   void GenerateOutputInformation();
@@ -378,6 +392,9 @@ private:
                                      // input or not.
 
   bool m_WriteGeomFile;              // Write a geom file to store the kwl
+  bool m_ParallelIO;
+
+  MPI_Comm m_MpiComm;
 
   StreamingManagerPointerType m_StreamingManager;
 

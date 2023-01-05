@@ -28,14 +28,15 @@
 
 #include "NMAggregateComponentItem.h"
 #include "nmlog.h"
+#include "NMGlobalHelper.h"
 
 
 //#include "valgrind/callgrind.h"
 
 const std::string NMAggregateComponentItem::ctx = "NMAggregateComponentItem";
 
-NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
-    : mProgress(0), mIsExecuting(false), mIsCollapsed(false), mIsActive(true), mModelParent(0)
+NMAggregateComponentItem::NMAggregateComponentItem(bool bParallel, QGraphicsItem* parent)
+    : mProgress(0), mIsExecuting(false), mIsCollapsed(false), mIsActive(true), mModelParent(0), mIsParallel(bParallel)
 {
 	this->setParentItem(parent);
     this->mTimeLevel = 0;
@@ -529,40 +530,46 @@ NMAggregateComponentItem::paint(QPainter* painter,
     QRectF wr = QRectF(l+10, t+12, bnd.width()-20,
                        mDash.height());
 
+    QColor dashColour = mIsParallel ? QColor(100,100,100,255) : QColor(255,255,255,255);
+
     if (mIsExecuting)
     {
         painter->setBrush(QColor(255,240,240,255));
     }
     else
     {
-        painter->setBrush(QColor(255,255,255,255));
+        painter->setBrush(dashColour);
     }
     painter->drawRoundedRect(wr, 5, 5);
 
     // ------------------------------------------------
     // DRAW THE DASH
     // ------------------------------------------------
+    Qt::PenStyle penStyle = mIsParallel ? Qt::DashLine : Qt::SolidLine;
+    QBrush dashOutline = mIsParallel ? QBrush(Qt::white) : QBrush(Qt::darkGray);
 
     painter->setBrush(Qt::NoBrush);
     if (mIsExecuting)
     {
-        painter->setPen(QPen(QBrush(Qt::darkRed), 1, Qt::SolidLine));
+        painter->setPen(QPen(QBrush(Qt::darkRed), 1, penStyle));
     }
     else
     {
-        painter->setPen(QPen(QBrush(Qt::darkGray), 1, Qt::SolidLine));
+        painter->setPen(QPen(dashOutline, 1, penStyle));
     }
 
     painter->drawRoundedRect(mDash, 5, 5);
 
     // the clock icon
-    painter->setPen(QPen(QBrush(Qt::black), 0.8, Qt::SolidLine));
+    QBrush dashControls = mIsExecuting ? QBrush(Qt::black) : mIsParallel ? QBrush(Qt::white) : QBrush(Qt::black);
+
+    painter->setPen(QPen(dashControls, 0.8, Qt::SolidLine));
     painter->drawEllipse(mClockRect);
     painter->drawLine(mPointer1);
     painter->drawLine(mPointer2);
 
     // the time level
-    painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
+    painter->setPen(QPen(dashControls, 2, Qt::SolidLine));
 
     mFont.setBold(false);
     painter->setFont(mFont);
@@ -570,7 +577,7 @@ NMAggregateComponentItem::paint(QPainter* painter,
     this->renderText(mTimeLevelRect, Qt::AlignLeft, QString("%1").arg(mTimeLevel), *painter);
 
     // the iteration icon
-    painter->setPen(QPen(QBrush(Qt::black), 0.8, Qt::SolidLine));
+    painter->setPen(QPen(dashControls, 0.8, Qt::SolidLine));
     //painter->drawPath(mIterSymbol);
     //painter->drawArc(mIterSymbolRect, mStartAngle, mSpanAngle);
     painter->drawEllipse(mIterSymbolRect);
@@ -593,7 +600,7 @@ NMAggregateComponentItem::paint(QPainter* painter,
         }
         else
         {
-            painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
+            painter->setPen(QPen(dashControls, 2, Qt::SolidLine));
             this->renderText(mNumIterRect, Qt::AlignLeft, QString("%1").arg(mNumIterations), *painter);
         }
     }
@@ -618,11 +625,11 @@ NMAggregateComponentItem::paint(QPainter* painter,
 	{
         if (mIsExecuting)
         {
-            painter->setPen(QPen(QBrush(Qt::red), 4, Qt::SolidLine));
+            painter->setPen(QPen(QBrush(Qt::red), 4, penStyle));
         }
         else
         {
-            painter->setPen(QPen(QBrush(Qt::red), 2, Qt::SolidLine));
+            painter->setPen(QPen(QBrush(Qt::red), 2, penStyle));
         }
         QPainterPath selRect;
         selRect.addRoundedRect(bnd.adjusted(3,3,-3,-3), 5, 5);
@@ -732,12 +739,34 @@ QDataStream& operator>>(QDataStream& data, QGraphicsTextItem& item)
 
 QDataStream& operator<<(QDataStream &data, const NMAggregateComponentItem &item)
 {
-	NMAggregateComponentItem& i = const_cast<NMAggregateComponentItem&>(item);
-	data << i.getTitle();
+    // need to establish the LmvFileVersion to use for serialization
+    qreal lmvVersion = NMGlobalHelper::getLUMASSVersion();
+
+    QString strVersion = NMGlobalHelper::getUserSetting("LmvFileVersion");
+    if (!strVersion.isEmpty())
+    {
+        bool bOK;
+        const double dblVersion = strVersion.toDouble(&bOK);
+        if (bOK)
+        {
+            lmvVersion = static_cast<qreal>(dblVersion);
+        }
+    }
+
+    NMAggregateComponentItem& i = const_cast<NMAggregateComponentItem&>(item);
+    data << i.getTitle();
     data << i.scenePos();
-	data << i.getColor();
-    data << i.isCollapsed();
-    //data << i.iconRect();
+    data << i.getColor();
+
+    if (lmvVersion >= 0.95)
+    {
+        data << i.isCollapsed();
+    }
+
+    if (lmvVersion >= 0.97)
+    {
+        data << i.isParallel();
+    }
 
     //	QList<QGraphicsItem*> kids = i.childItems();
     QList<QGraphicsItem*> kids = i.getModelChildren();

@@ -41,7 +41,7 @@ class NMAggregateComponentItem: public QObject, public QGraphicsItemGroup
     //Q_INTERFACES(QGraphicsItemGroup)
 
 public:
-	NMAggregateComponentItem(QGraphicsItem* parent=0);
+    NMAggregateComponentItem(bool bParallel, QGraphicsItem* parent=0);
 	virtual ~NMAggregateComponentItem();
 
 	// UserType is 65536
@@ -67,6 +67,8 @@ public:
 	bool containsComponent(QString name);
     bool isCollapsed(){return mIsCollapsed;}
     //void setIsCollapsed(const bool& bCollapsed){mIsCollapsed = bCollapsed;}
+
+    bool isParallel(){return mIsParallel;}
 
     QRectF boundingRect(void) const;
 
@@ -154,6 +156,8 @@ private:
     bool mIsExecuting;
     bool mIsCollapsed;
     bool mIsActive;
+
+    bool mIsParallel;
 
     QRectF mItemBnd;
     QRectF mDash;

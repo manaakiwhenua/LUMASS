@@ -198,20 +198,23 @@ void SQLiteProcessor< TInputImage, TOutputImage >
 
     for (int i=1; i < m_vRAT.size(); ++i)
     {
-        if (m_vRAT.at(i).GetPointer() != nullptr && m_vRAT.at(0)->AttachDatabase(m_vRAT.at(i)->GetDbFileName(),
-                                          m_ImageNames.at(i)))
+        if (m_vRAT.at(i).GetPointer() != nullptr)
         {
-            if (m_vRAT.at(0)->getLastLogMsg().find("already attached") != std::string::npos)
+            if (!m_vRAT.at(0)->AttachDatabase(m_vRAT.at(i)->GetDbFileName(),
+                                              m_ImageNames.at(i)))
             {
-                NMProcInfo(<< "Database '" << m_vRAT.at(i)->GetDbFileName() << "' "
-                    << "is already attached.");
-            }
-            else
-            {
-                itkExceptionMacro(<< "Failed attaching input databases - "
-                    << m_vRAT.at(0)->getLastLogMsg());
-                return;
+                if (m_vRAT.at(0)->getLastLogMsg().find("already attached") != std::string::npos)
+                {
+                    NMProcInfo(<< "Database '" << m_vRAT.at(i)->GetDbFileName() << "' "
+                        << "is already attached.");
+                }
+                else
+                {
+                    itkExceptionMacro(<< "Failed attaching input databases - "
+                        << m_vRAT.at(0)->getLastLogMsg());
+                    return;
 
+                }
             }
         }
         else
@@ -221,6 +224,7 @@ void SQLiteProcessor< TInputImage, TOutputImage >
             return;
         }
     }
+
 
     this->UpdateProgress(0.2);
     if (!m_vRAT.at(0)->SqlExec(m_SQLStatement))

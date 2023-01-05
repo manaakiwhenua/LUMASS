@@ -12,8 +12,6 @@
 #include <QScopedPointer>
 
 #include "nmlog.h"
-#include "NMMosra.h"
-#include "MOSORunnable.h"
 
 #include "vtkSmartPointer.h"
 #include "vtkPolyDataReader.h"
@@ -25,7 +23,8 @@
 
 #include "otbSQLiteTable.h"
 
-//#include "lumassengine.h"
+#include "NMMosra.h"
+#include "MOSORunnable.h"
 
 MOSORunnable::MOSORunnable()
 	: mLogger(nullptr)

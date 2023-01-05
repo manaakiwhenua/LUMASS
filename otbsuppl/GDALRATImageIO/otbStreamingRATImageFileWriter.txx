@@ -55,7 +55,7 @@
 #endif
 
 #include "itkMetaDataObject.h"
-#include "otbImageKeywordlist.h"
+//#include "otbImageKeywordlist.h"
 #include "otbMetaDataKey.h"
 
 #include "otbConfigure.h"
@@ -92,6 +92,8 @@ StreamingRATImageFileWriter<TInputImage>
     m_ResamplingType = "NEAREST";
     m_StreamingMethod = "STRIPPED";
     m_StreamingSize = 512;
+    m_ParallelIO = false;
+    m_MpiComm = MPI_COMM_NULL;
 
     m_UseCompression = true;
     m_RATHaveBeenWritten = false;
@@ -431,6 +433,7 @@ void
 StreamingRATImageFileWriter<TInputImage>
 ::SetForcedLargestPossibleRegion(const itk::ImageIORegion& forcedReg)
 {
+
     if (m_ForcedLargestPossibleRegion != forcedReg)
     {
         m_ForcedLargestPossibleRegion = forcedReg;
@@ -438,6 +441,79 @@ StreamingRATImageFileWriter<TInputImage>
         this->Modified();
     }
 }
+
+template<class TInputImage>
+std::string
+StreamingRATImageFileWriter<TInputImage>
+::printRegion(const itk::ImageIORegion& reg)
+{
+    std::stringstream strregstr;
+    strregstr << "idx(";
+    for (unsigned int k=0; k < TInputImage::ImageDimension; ++k)
+    {
+        strregstr << reg.GetIndex()[k];
+        if (k < TInputImage::ImageDimension-1)
+        {
+            strregstr << ", ";
+        }
+        else
+        {
+            strregstr << ") ";
+        }
+    }
+
+    strregstr << "size(";
+    for (unsigned int k=0; k < TInputImage::ImageDimension; ++k)
+    {
+        strregstr << reg.GetSize()[k];
+        if (k < TInputImage::ImageDimension-1)
+        {
+            strregstr << ", ";
+        }
+        else
+        {
+            strregstr << ") ";
+        }
+    }
+    return strregstr.str();
+}
+
+template<class TInputImage>
+std::string
+StreamingRATImageFileWriter<TInputImage>
+::printRegion(const OutputImageRegionType &reg)
+{
+    std::stringstream strregstr;
+    strregstr << "idx(";
+    for (unsigned int k=0; k < TInputImage::ImageDimension; ++k)
+    {
+        strregstr << reg.GetIndex()[k];
+        if (k < TInputImage::ImageDimension-1)
+        {
+            strregstr << ", ";
+        }
+        else
+        {
+            strregstr << ") ";
+        }
+    }
+
+    strregstr << "size(";
+    for (unsigned int k=0; k < TInputImage::ImageDimension; ++k)
+    {
+        strregstr << reg.GetSize()[k];
+        if (k < TInputImage::ImageDimension-1)
+        {
+            strregstr << ", ";
+        }
+        else
+        {
+            strregstr << ") ";
+        }
+    }
+    return strregstr.str();
+}
+
 
 template<class TInputImage>
 void
@@ -471,9 +547,17 @@ StreamingRATImageFileWriter<TInputImage>
         this->m_UpdateRegion = updateRegion;
         this->m_UseUpdateRegion = true;
         this->Modified();
+
     }
     else
     {
+        std::string updRegStr = printRegion(updateRegion);
+        std::string flpr = printRegion(this->m_ForcedLargestPossibleRegion);
+
+        NMDebugAI(<< "ImageWriter::SetUpdateRegion(): " << updRegStr
+                  << " does not fit into " << flpr << "!" << std::endl;)
+
+
         NMProcWarn(<< "The provided update region does not fit into the configured 'forced largest possible region'!");
         this->m_UseUpdateRegion = false;
     }
@@ -650,9 +734,31 @@ StreamingRATImageFileWriter<TInputImage>
             if (m_FileNames[io].find(".nc") != std::string::npos)
             {
                 NetCDFIO::Pointer nioPtr = NetCDFIO::New();
-                if (nioPtr.IsNotNull() && nioPtr->CanWriteFile(m_FileNames[io].c_str()))
+                if (nioPtr.IsNotNull())
                 {
                     nioPtr->SetFileName(m_FileNames[io].c_str());
+                    if (this->m_ParallelIO)
+                    {
+                       // std::string haveComm = m_MpiComm == MPI_COMM_NULL ? "no" : "yes";
+                        NMDebugAI(<< "+++++ StreamWriter: about to initiate parallel IO!"
+                                << " haveComm=" << m_MpiComm << std::endl);
+                        //MPI_Comm comm = MPI_COMM_WORLD;
+                        MPI_Info info = MPI_INFO_NULL;
+                        MPI_Barrier(m_MpiComm);
+                        if (!nioPtr->InitParallelIO(m_MpiComm, info, true))
+                        {
+                           itkExceptionMacro(<< "Initiation of parallel IO failed for '"
+                                             << m_FileNames[io].c_str() << "'!");
+                        }
+                    }
+                    else
+                    {
+                        if (!nioPtr->CanWriteFile(m_FileNames[io].c_str()))
+                        {
+                            itkExceptionMacro(<< "Cannot write image file '"
+                                              << m_FileNames[io].c_str() << "'!");
+                        }
+                    }
 
                     if (!nioPtr->CanStreamWrite())
                     {
@@ -750,10 +856,9 @@ StreamingRATImageFileWriter<TInputImage>
 #endif
         }
 
-
-
         // update and forcedLPR mode only considered for single
         // image writing
+        /*
         if (m_NumberOfInputs == 1 && m_UpdateMode)
         {   if (nio != nullptr)
             {
@@ -770,11 +875,13 @@ StreamingRATImageFileWriter<TInputImage>
             }
 #endif
         }
+        */
 
         /* in case we want to make the image bigger than the we've currently data for
          * (e.g. for externally driven sequential writing with intertwined reading),
          */
-        if (m_NumberOfInputs == 1 && m_UseForcedLPR)
+        //if (m_NumberOfInputs == 1 && m_UseForcedLPR)
+        if (m_UseForcedLPR)
         {   if (nio != nullptr)
             {
                 nio->SetForcedLPR(m_ForcedLargestPossibleRegion);
@@ -798,7 +905,8 @@ StreamingRATImageFileWriter<TInputImage>
     OutputImageRegionType outputRegion = this->GetOutput(0)->GetLargestPossibleRegion();
 
     //if (m_NumberOfInputs == 1 && m_UpdateMode && m_UseUpdateRegion)
-    if (m_NumberOfInputs == 1 && m_UseUpdateRegion)
+    //if (m_NumberOfInputs == 1 && m_UseUpdateRegion)
+    if (m_UseUpdateRegion)
     {
         if (this->m_ImageIOs[0].IsNull() || !this->m_ImageIOs[0]->CanStreamWrite())
         {
@@ -815,11 +923,27 @@ StreamingRATImageFileWriter<TInputImage>
         }
     }
 
+    //DEBUG
+    std::string outregstr = printRegion(outputRegion);
+    NMDebugAI(<< "ImageWriter: adj. output region: " << outregstr << std::endl);
+    //DEBUG
+
+
    /**
     * Grab the input
     */
     InputImagePointer inputPtr =
             const_cast<InputImageType *>(this->GetInput(0));
+    if (m_UseForcedLPR)
+    {
+        InputImageRegionType iir = inputPtr->GetLargestPossibleRegion();
+        for (int d=0; d < InputImageType::ImageDimension; ++d)
+        {
+            iir.SetIndex(d, m_ForcedLargestPossibleRegion.GetIndex()[d]);
+            iir.SetSize(d, m_ForcedLargestPossibleRegion.GetSize()[d]);
+        }
+        inputPtr->SetLargestPossibleRegion(iir);
+    }
 
    /**
     * Set the user's streaming preferences; for multi-input output
@@ -857,7 +981,7 @@ StreamingRATImageFileWriter<TInputImage>
     {
         this->SetNumberOfDivisionsStrippedStreaming(1);
     }
-    else if (m_StreamingMethod.compare("NO_STREAMING") == 0 || this->m_UseForcedLPR)
+    else if (m_StreamingMethod.compare("NO_STREAMING") == 0)// || this->m_UseForcedLPR)
     {
         this->SetNumberOfDivisionsStrippedStreaming(1);
     }
@@ -930,7 +1054,6 @@ StreamingRATImageFileWriter<TInputImage>
         //outputRegion.Print(std::cout, itk::Indent(nmlog::nmindent + 4));
 
         m_ImageIOs[ni]->WriteImageInformation();
-
     }
 
     // Notify START event observers
@@ -955,6 +1078,12 @@ StreamingRATImageFileWriter<TInputImage>
         //m_StreamingManager->GetSplitter()->GetSplit(m_CurrentDivision, m_NumberOfDivisions, streamRegion);
         InputImageRegionType streamRegion = outputRegion;
         m_StreamingManager->GetSplitter()->GetSplit(m_CurrentDivision, m_NumberOfDivisions, streamRegion);
+
+        //DEBUG
+        std::string strregstr = printRegion(streamRegion);
+        NMDebugAI(<< "ImageWriter: stream region: " << strregstr << std::endl);
+        //DEBUG
+
 
         if (m_UseForcedLPR)
         {
@@ -1025,6 +1154,7 @@ StreamingRATImageFileWriter<TInputImage>
                 NMProcDebug(<< "writing ONLY RAT!");
                 gio->WriteRAT(m_InputRATs[inimg]);
             }
+
             //if (m_InputRATs[inimg]->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
             //{
             //    otb::SQLiteTable* sqltab = static_cast<otb::SQLiteTable*>(m_InputRATs[inimg].GetPointer());
@@ -1033,6 +1163,15 @@ StreamingRATImageFileWriter<TInputImage>
             //        sqltab->CloseTable();
             //    }
             //}
+        }
+
+
+        // finalize parallel io
+        otb::NetCDFIO* nio = dynamic_cast<otb::NetCDFIO*>(m_ImageIOs[inimg].GetPointer());
+        if (nio != nullptr && nio->GetParallelIO())
+        {
+            MPI_Barrier(this->m_MpiComm);
+            nio->FinaliseParallelIO();
         }
     }
 
@@ -1180,10 +1319,17 @@ StreamingRATImageFileWriter<TInputImage>
 
     if (m_WriteGeomFile)
     {
-        ImageKeywordlist otb_kwl;
-        itk::MetaDataDictionary dict = this->GetInput(m_CurrentWriteImage)->GetMetaDataDictionary();
-        itk::ExposeMetaData<ImageKeywordlist>(dict, MetaDataKey::OSSIMKeywordlistKey, otb_kwl);
-        WriteGeometry(otb_kwl, this->m_FileNames[m_CurrentWriteImage]);
+        //ImageKeywordlist otb_kwl;
+        const ImageMetadata& imd = this->GetInput(m_CurrentWriteImage)->GetImageMetadata();
+        //if (imd->)
+        {
+            this->GetOutput(m_CurrentWriteImage)->SetImageMetadata(imd);
+        }
+
+        //itk::MetaDataDictionary dict = this->GetInput(m_CurrentWriteImage)->GetMetaDataDictionary();
+        //itk::ExposeMetaData<ImageKeywordlist>(dict, MetaDataKey::OSSIMKeywordlistKey, otb_kwl);
+        //WriteGeometry(otb_kwl, this->m_FileNames[m_CurrentWriteImage]);
+
     }
 
     //this->ReleaseInputs();

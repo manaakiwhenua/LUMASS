@@ -25,6 +25,10 @@
 #include "otbAttributeTable.h"
 #include "netcdfio_export.h"
 
+#ifndef _WIN32
+#   include <mpi.h>
+#endif
+
 namespace otb
 {
 
@@ -57,6 +61,17 @@ public:
     void InternalWriteImageInformation();
 
     virtual void Write(const void* buffer);
+
+    /*!
+     * \brief Set/GetParallelIO
+     * \param pio true | false
+     */
+    bool InitParallelIO(MPI_Comm& comm, MPI_Info& info, bool write=true);
+
+    bool GetParallelIO(void)
+    {return this->m_bParallelIO;}
+
+    void FinaliseParallelIO(void);
 
     /** Set/Get the band map to be read/written by this IO */
     void SetBandMap(std::vector<int> map)
@@ -128,7 +143,6 @@ public:
     const netCDF::NcType getVarType(std::string vname);
 
 
-
     std::vector<double> getUpperLeftCorner(void)
     {return m_UpperLeftCorner;}
 
@@ -165,6 +179,7 @@ protected:
 
     bool m_bCanRead;
     bool m_bCanWrite;
+    bool m_bParallelIO;
 
     // this var is for internal use and indicates the
     // second stage of the creation of a new image
@@ -228,6 +243,10 @@ private:
     /** Nombre d'octets par pixel */
     int m_BytePerPixel;
 
+    netCDF::NcFile mFile;
+
+    MPI_Comm m_MPIComm;
+    MPI_Info m_MPIInfo;
 
     bool m_CreatedNotWritten;
     bool m_FlagWriteImageInformation;

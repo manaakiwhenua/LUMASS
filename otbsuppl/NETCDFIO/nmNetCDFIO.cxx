@@ -186,6 +186,7 @@ NetCDFIO::NetCDFIO(void)
     // we don't have any info about the image so far ...
     m_bCanRead = false;
     m_bCanWrite = false;
+    m_bParallelIO = false;
 
     m_bImageSpecParsed = false;
     m_bWasWriteCalled = false;
@@ -210,17 +211,26 @@ NetCDFIO::NetCDFIO(void)
 
 NetCDFIO::~NetCDFIO()
 {
+    NMDebugCtx("NetCDFIO", << "...")
+//    if (m_bParallelIO)
+//    {
+//        //MPI_Barrier(m_MPIComm);
+//        mFile.close();
+//    }
+    NMDebugCtx("NetCDFIO", << "done!")
 }
 
 // --------------------------- PUBLIC METHODS
 
 void NetCDFIO::SetFileName(const char* filename)
 {
+    NMDebugCtx("NetCDFIO", << "...")
     if (    this->m_FileName.compare(filename) == 0
          && (this->m_bCanRead || this->m_bCanWrite)
         )
     {
-        NMLogDebug(<< "file name is set and we've checked accessibility already!");
+        NMDebugAI(<< "file name is set and we've checked accessibility already!");
+        NMDebugCtx("NetCDFIO", << "done!")
         return;
     }
 
@@ -232,6 +242,7 @@ void NetCDFIO::SetFileName(const char* filename)
     {
         this->m_FileName = "";
     }
+    NMDebugCtx("NetCDFIO", << "done!")
 }
 
 void
@@ -244,18 +255,30 @@ NetCDFIO::SetForcedLPR(const itk::ImageIORegion& forcedLPR)
 
 bool NetCDFIO::CanReadFile(const char* filename)
 {
+    NMDebugCtx("NetCDFIO", << "...")
     if (!this->parseImageSpec(filename))
     {
         this->m_bCanRead = false;
+        NMDebugCtx("NetCDFIO", << "done!")
         return this->m_bCanRead;
+    }
+
+    if (this->m_bCanRead)
+    {
+        return true;
     }
 
     try
     {
-        NcFile nc(this->m_FileContainerName, NcFile::read);
-        if (nc.isNull())
+        if (!m_bParallelIO)
+        {
+            mFile.open(this->m_FileContainerName, NcFile::read);
+        }
+
+        if (mFile.isNull())
         {
             this->m_bCanRead = false;
+            NMDebugCtx("NetCDFIO", << "done!")
             return this->m_bCanRead;
         }
 
@@ -265,7 +288,7 @@ bool NetCDFIO::CanReadFile(const char* filename)
             if (n == 0)
             {
                 // this may include the root group name '/'
-                curGrp = nc.getGroup(m_GroupNames.at(n), netCDF::NcGroup::AllGrps);
+                curGrp = mFile.getGroup(m_GroupNames.at(n), netCDF::NcGroup::AllGrps);
             }
             else
             {
@@ -277,6 +300,7 @@ bool NetCDFIO::CanReadFile(const char* filename)
                            << filename << "': Invalid group '"
                            << m_GroupNames.at(n) << "'!");
                 this->m_bCanRead = false;
+                NMDebugCtx("NetCDFIO", << "done!")
                 return m_bCanRead;
             }
             m_GroupIDs.push_back(curGrp.getId());
@@ -286,7 +310,7 @@ bool NetCDFIO::CanReadFile(const char* filename)
         if (m_GroupIDs.empty())
         {
             //m_GroupNames.push_back("/");
-            m_GroupIDs.push_back(nc.getId());
+            m_GroupIDs.push_back(mFile.getId());
         }
 
         NcGroup theGroup(m_GroupIDs.back());
@@ -299,11 +323,13 @@ bool NetCDFIO::CanReadFile(const char* filename)
         {
             if (theGroup.getVarCount() == 0)
             {
+                NMDebugCtx("NetCDFIO", << "done!")
                 NMProcErr(<< "Failed reading image! Couldn't find"
                            << " any variable in this group!");
             }
             else
             {
+                NMDebugCtx("NetCDFIO", << "done!")
                 NMProcErr(<< "Sorry, we're not reading any multi-band "
                            << "images at this stage ..., but it'll come!");
             }
@@ -315,6 +341,7 @@ bool NetCDFIO::CanReadFile(const char* filename)
             NcVar var = theGroup.getVar(m_NcVarName);
             if (var.isNull())
             {
+                NMDebugCtx("NetCDFIO", << "done!")
                 NMProcErr(<< "Failed reading image '"
                            << filename << "': Invalid variable '"
                            << m_NcVarName << "'!");
@@ -323,6 +350,10 @@ bool NetCDFIO::CanReadFile(const char* filename)
             m_ncType = var.getType().getTypeClass();
         }
 
+        if (!m_bParallelIO)
+        {
+            mFile.close();
+        }
 
         // check whether we've got the right info we need ...
         // TBD:
@@ -331,23 +362,35 @@ bool NetCDFIO::CanReadFile(const char* filename)
     }
     catch(exceptions::NcException& e)
     {
+        NMDebugCtx("NetCDFIO", << "done!")
         NMProcErr(<< "ERROR reading file '"
                    << filename << "': " << e.what());
         this->m_bCanRead = false;
     }
+    catch(std::exception& se)
+    {
+        NMDebugCtx("NetCDFIO", << "done!")
+        NMProcErr(<< "ERROR reading file '"
+                   << filename << "': " << se.what());
+        this->m_bCanRead = false;
+    }
 
+    NMDebugCtx("NetCDFIO", << "done!")
     return this->m_bCanRead;
 }
 
 void NetCDFIO::ReadImageInformation()
 {
+    NMDebugCtx("NetCDFIO", << "...")
     if (m_ImgInfoHasBeenRead)
     {
+        NMDebugCtx("NetCDFIO", << "done!")
         return;
     }
 
     if (!this->CanReadFile(this->GetFileName()))
     {
+        NMDebugCtx("NetCDFIO", << "done!")
         return;
     }
 
@@ -372,21 +415,28 @@ void NetCDFIO::ReadImageInformation()
 
     try
     {
-        NcFile nc(m_FileContainerName, NcFile::read);
-        if (nc.isNull())
+        if (!m_bParallelIO)
         {
+            mFile.open(m_FileContainerName, NcFile::read);
+        }
+
+        if (mFile.isNull())
+        {
+
             NMProcErr(<< "Failed opening file '"
                        << m_FileContainerName
                        << "' for reading!");
+            NMDebugCtx("NetCDFIO", << "done!")
             return;
         }
 
-        const int grpId = m_GroupIDs.size() > 0 ? m_GroupIDs.back() : nc.getId();
+        const int grpId = m_GroupIDs.size() > 0 ? m_GroupIDs.back() : mFile.getId();
         NcGroup grp(grpId);
         NcVar var = grp.getVar(m_NcVarName);
         if (var.isNull())
         {
             NMProcErr(<< "Sorry, not dealing in possible multi-valued data at this stage!");
+            NMDebugCtx("NetCDFIO", << "done!")
             return;
         }
 
@@ -469,11 +519,17 @@ void NetCDFIO::ReadImageInformation()
 
                 double vidx1 = 0.0;
                 coorVar.getVar(idx0, len, &vMinMaxVal[0]);
-                coorVar.getVar(idx1, len, &vidx1);
                 coorVar.getVar(idxMax, len, &vMinMaxVal[1]);
 
-                m_Spacing[a] = std::abs(vidx1 - vMinMaxVal[0]);
-                m_LPRSpacing[a] = m_Spacing[a];
+                // if we've got just one value in this dimension,
+                // we cannot calculate the spacing, so leave with
+                // the default of 1 (s. above)
+                if (m_LPRDimensions.back() > 1)
+                {
+                    coorVar.getVar(idx1, len, &vidx1);
+                    m_Spacing[a] = std::abs(vidx1 - vMinMaxVal[0]);
+                    m_LPRSpacing[a] = m_Spacing[a];
+                }
             }
 
             // account for potential (y) dimension (dis-)order
@@ -540,10 +596,15 @@ void NetCDFIO::ReadImageInformation()
 
         this->SetFileTypeToBinary();
 
+        if (!m_bParallelIO)
+        {
+            mFile.close();
+        }
     }
     catch(exceptions::NcException& e)
     {
         NMProcErr(<< "Whoopsie - something went wrong: " << e.what());
+        NMDebugCtx("NetCDFIO", << "done!")
         return;
     }
 
@@ -584,16 +645,19 @@ void NetCDFIO::ReadImageInformation()
 
     // DONE
     this->m_ImgInfoHasBeenRead = true;
+    NMDebugCtx("NetCDFIO", << "done!")
 }
 
 
 std::vector<size_t>
 NetCDFIO::getDimMap(std::string varName, std::string dimVarName)
 {
+    NMDebugCtx("NetCDFIO", << "...")
     std::vector<size_t> imap;
 
     if (!m_bImageSpecParsed)
     {
+        NMDebugCtx("NetCDFIO", << "done!")
         return imap;
     }
 
@@ -607,6 +671,7 @@ NetCDFIO::getDimMap(std::string varName, std::string dimVarName)
         if (dimVar.isNull())
         {
             NMProcErr(<< "Couldn't find '" << dimVarName << "'!");
+            NMDebugCtx("NetCDFIO", << "done!")
             return imap;
         }
 
@@ -614,6 +679,7 @@ NetCDFIO::getDimMap(std::string varName, std::string dimVarName)
         if (imgVar.isNull())
         {
             NMProcErr(<< "Couldn't find '" << varName << "'!");
+            NMDebugCtx("NetCDFIO", << "done!")
             return imap;
         }
 
@@ -634,24 +700,30 @@ NetCDFIO::getDimMap(std::string varName, std::string dimVarName)
                 }
             }
         }
+
+        nc.close();
     }
     catch(const exceptions::NcException& nce)
     {
         NMLogError(<< "Reading var '" << vname << "' failed: "
                    << nce.what());
+        NMDebugCtx("NetCDFIO", << "done!")
         return imap;
     }
 
+    NMDebugCtx("NetCDFIO", << "done!")
     return imap;
 }
 
 const NcType
 NetCDFIO::getVarType(std::string vname)
 {
+    NMDebugCtx("NetCDFIO", << "...")
     netCDF::NcType rtype;
 
     if (!m_bImageSpecParsed)
     {
+        NMDebugCtx("NetCDFIO", << "done!")
         return rtype;
     }
 
@@ -664,13 +736,17 @@ NetCDFIO::getVarType(std::string vname)
         NcVar imgVar = imgGrp.getVar(vname);
         if (!imgVar.isNull())
         {
+            NMDebugCtx("NetCDFIO", << "done!")
             return imgVar.getType();
         }
+
+        nc.close();
     }
     catch(const exceptions::NcException& nce)
     {
         NMProcErr(<< "Reading var '" << vname << "' failed: "
                    << nce.what());
+        NMDebugCtx("NetCDFIO", << "done!")
         return rtype;
     }
 
@@ -682,10 +758,12 @@ NetCDFIO::getVar(std::string vname,
                  std::vector<size_t> idx,
                  std::vector<size_t> len, NcType targetType, void* buf)
 {
+    NMDebugCtx("NetCDFIO", << "...")
     bool ret = false;
 
     if (!m_bImageSpecParsed)
     {
+        NMDebugCtx("NetCDFIO", << "done!")
         return ret;
     }
 
@@ -698,6 +776,7 @@ NetCDFIO::getVar(std::string vname,
         NcVar imgVar = imgGrp.getVar(vname);
         if (imgVar.isNull())
         {
+            NMDebugCtx("NetCDFIO", << "done!")
             return ret;
         }
 
@@ -742,15 +821,18 @@ NetCDFIO::getVar(std::string vname,
             break;
         }
 
+        nc.close();
         ret = true;
     }
     catch(const exceptions::NcException& nce)
     {
         NMProcErr(<< "Reading var '" << vname << "' failed: "
                    << nce.what());
+        NMDebugCtx("NetCDFIO", << "done!")
         return ret;
     }
 
+    NMDebugCtx("NetCDFIO", << "done!")
     return ret;
 
 }
@@ -779,8 +861,11 @@ void NetCDFIO::Read(void* buffer)
 
     try
     {
-        NcFile nc(this->m_FileContainerName, NcFile::read);
-        const int imgGrpId = m_GroupIDs.size() > 0 ? m_GroupIDs.back() : nc.getId();
+        if (!m_bParallelIO)
+        {
+            mFile.open(this->m_FileContainerName, NcFile::read);
+        }
+        const int imgGrpId = m_GroupIDs.size() > 0 ? m_GroupIDs.back() : mFile.getId();
         NcGroup imgGrp(imgGrpId);
 
         std::stringstream readImgName;
@@ -813,31 +898,117 @@ void NetCDFIO::Read(void* buffer)
                        << readImgName.str() << "' in group '"
                        << readGrp.getName() << "' of file '"
                        << m_FileContainerName << "'!");
+            NMDebugCtx("NetCDFIO", << "done!")
             return;
         }
 
         var.getVar(start, len, buffer);
+
+        if (!m_bParallelIO)
+        {
+            mFile.close();
+        }
     }
     catch(exceptions::NcException& e)
     {
+        NMDebugCtx("NetCDFIO", << "done!")
         NMProcErr(<< e.what());
     }
+    NMDebugCtx("NetCDFIO", << "done!")
+}
+
+bool NetCDFIO::InitParallelIO(MPI_Comm &comm, MPI_Info &info, bool write)
+{
+    NMDebugCtx("NetCDFIO", << "...")
+
+    if (this->m_FileName.empty())
+    {
+        this->m_bParallelIO = false;
+        return false;
+    }
+
+    //if (!mFile.isNull())
+    //{
+    //    mFile.close();
+    //}
+
+    int mrank;
+    try
+    {
+        MPI_Comm_rank(comm, &mrank);
+        NMDebugAI(<< "proc #" << mrank << "::InitIOBarrier" << std::endl);
+        MPI_Barrier(comm);
+
+        NcFile::FileMode fileMode = NcFile::read;
+        if (write)
+        {
+            fileMode = NcFile::write;
+        }
+        mFile.open(comm, info, this->m_FileContainerName, fileMode);
+
+        NMDebugAI(<< "proc #" << mrank << ": opened file '" << this->m_FileContainerName
+                  << "' with write=" << write << std::endl);
+        if (write)
+        {
+            this->m_bCanWrite = true;
+        }
+    }
+    catch(exceptions::NcException& ne)
+    {
+        std::string nestr = ne.what();
+        std::string nsfod = "No such file or directory";
+        NMDebugAI(<< "InitParallelIO::CatchException's ne.what(): " << ne.what());
+        if (write && nestr.find(nsfod) != std::string::npos)
+        {
+            try
+            {
+                mFile.open(comm, info, this->m_FileContainerName, NcFile::newFile);
+                NMDebugAI(<< "proc #" << mrank << ": opened file '" << this->m_FileContainerName << "'" << std::endl);
+                this->m_bCanWrite = true;
+            }
+            catch(exceptions::NcException& ofe)
+            {
+                NMDebugCtx("NetCDFIO", << "done!")
+                itkExceptionMacro(<< ne.what());
+            }
+        }
+        else
+        {
+            NMDebugCtx("NetCDFIO", << "done!")
+            itkExceptionMacro(<< ne.what());
+        }
+    }
+
+    this->m_MPIComm = comm;
+    this->m_MPIInfo = info;
+    this->m_bParallelIO = true;
+    return true;
+
+    NMDebugCtx("NetCDFIO", << "done!")
 }
 
 bool NetCDFIO::CanWriteFile(const char* filename)
 {
-    if (!this->parseImageSpec(filename))
+    NMDebugCtx("NetCDFIO", << "...");
+    if (this->m_bCanWrite)
+    {
+        NMDebugCtx("NetCDFIO", << "done!")
+        return true;
+    }
+    else if (!this->parseImageSpec(filename))
     {
         this->m_bCanWrite = false;
+        NMDebugCtx("NetCDFIO", << "done!")
         return this->m_bCanWrite;
     }
 
     NcFile nc;
     try
     {
-        // assue file exists and try opening it for writing ...
+        // assume file exists and try opening it for writing ...
         nc.open(this->m_FileContainerName, NcFile::write);
         this->m_bCanWrite = true;
+        nc.close();
     }
     catch(...)
     {
@@ -848,6 +1019,7 @@ bool NetCDFIO::CanWriteFile(const char* filename)
             // ... this will fail if the file already exists
             nc.open(this->m_FileContainerName, NcFile::newFile);
             this->m_bCanWrite = true;
+            nc.close();
         }
         catch (...)
         {
@@ -855,13 +1027,30 @@ bool NetCDFIO::CanWriteFile(const char* filename)
         }
     }
 
+    NMDebugCtx("NetCDFIO", << "done!")
     return this->m_bCanWrite;
+}
+
+void NetCDFIO::FinaliseParallelIO(void)
+{
+    if (!mFile.isNull())
+    {
+        mFile.close();
+    }
 }
 
 void NetCDFIO::BuildOverviews(const std::string &method)
 {
+    NMDebugCtx("NetCDFIO", << "...")
+    if (m_bParallelIO)
+    {
+        NMDebugCtx("NetCDFIO", << "done!")
+        return;
+    }
+
     if (!m_bImageSpecParsed)
     {
+        NMDebugCtx("NetCDFIO", << "done!")
         return;
     }
 
@@ -979,46 +1168,54 @@ void NetCDFIO::BuildOverviews(const std::string &method)
             break;
     }
     m_NbOverviews = m_OvvSize.size();
+    NMDebugCtx("NetCDFIO", << "done!")
 }
 
 std::vector<unsigned int>
 NetCDFIO::GetOverviewSize(int ovv)
 {
+    NMDebugCtx("NetCDFIO", << "...")
     std::vector<unsigned int> ret;
     if (ovv >=0 && ovv < this->m_NbOverviews)
     {
         ret = m_OvvSize[ovv];
     }
 
+    NMDebugCtx("NetCDFIO", << "done!")
     return ret;
 }
 
 void NetCDFIO::SetZSliceIdx(int slindex)
 {
+    NMDebugCtx("NetCDFIO", << "...")
     const int dim = static_cast<int>(this->GetDimensions(2));
     if (slindex >= 0 && slindex < dim)
     {
         this->m_ZSliceIdx = slindex;
     }
+    NMDebugCtx("NetCDFIO", << "done!")
 }
 
 void NetCDFIO::SetOverviewIdx(int idx)
 {
+    NMDebugCtx("NetCDFIO", << "...")
     if (idx >= -1 && idx < this->m_NbOverviews)
     {
         this->m_OverviewIdx = idx;
         this->updateOverviewInfo();
     }
-
+    NMDebugCtx("NetCDFIO", << "done!")
 }
 
 void NetCDFIO::updateOverviewInfo()
 {
+    NMDebugCtx("NetCDFIO", << "...")
     // we just bail out if no img info is avail as yet
     // (i.e. the data set hasn't been initialised)
     if (!m_ImgInfoHasBeenRead)
     {
         this->ReadImageInformation();
+        NMDebugCtx("NetCDFIO", << "done!")
         return;
     }
 
@@ -1040,6 +1237,7 @@ void NetCDFIO::updateOverviewInfo()
         m_Spacing[0] = m_LPRSpacing[0];
         m_Spacing[1] = m_LPRSpacing[1];
     }
+    NMDebugCtx("NetCDFIO", << "done!")
 }
 
 
@@ -1051,8 +1249,10 @@ void NetCDFIO::WriteImageInformation()
 
 void NetCDFIO::InternalWriteImageInformation()
 {
+    NMDebugCtx("NetCDFIO", << "...")
     if (!this->m_bCanWrite || !m_bImageInfoNeedsToBeWritten)
     {
+        NMDebugCtx("NetCDFIO", << "done!")
         return;
     }
 
@@ -1065,27 +1265,43 @@ void NetCDFIO::InternalWriteImageInformation()
     {
         NMProcErr(<< "Failed accessing Origin and Spacing "
                    << "information for the image to be written!");
+        NMDebugCtx("NetCDFIO", << "done!")
         return;
     }
 
     try
     {
-        NcFile nc(this->m_FileContainerName, NcFile::write, NcFile::nc4);
-        if (nc.isNull())
+        if (!m_bParallelIO)
+        {
+            mFile.open(this->m_FileContainerName, NcFile::write, NcFile::nc4);
+        }
+
+        if (m_bParallelIO)
+        {
+            MPI_Barrier(m_MPIComm);
+        }
+
+        if (mFile.isNull())
         {
             NMProcErr(<< "Failed writing image information to '"
                        << this->m_FileContainerName << "'!");
+            NMDebugCtx("NetCDFIO", << "done!")
             return;
         }
 
         // creating the group structure
-        NcGroup grp = nc.getId();
+        NcGroup grp = mFile.getId();
         for (int g=0; g < this->m_GroupNames.size(); ++g)
         {
             NcGroup curGrp = grp.getGroup(m_GroupNames.at(g));
             if (curGrp.isNull())
             {
                 curGrp = grp.addGroup(m_GroupNames.at(g));
+                if (m_bParallelIO)
+                {
+                    MPI_Barrier(m_MPIComm);
+                }
+
                 if (!curGrp.isNull())
                 {
                     this->m_GroupIDs.push_back(curGrp.getId());
@@ -1094,6 +1310,7 @@ void NetCDFIO::InternalWriteImageInformation()
                 {
                     NMProcErr(<< "Failed creating group '" << m_GroupNames.at(g)
                                << "' in '" << this->m_FileContainerName << "'!");
+                    NMDebugCtx("NetCDFIO", << "done!")
                     return;
                 }
             }
@@ -1107,7 +1324,7 @@ void NetCDFIO::InternalWriteImageInformation()
         if (m_GroupIDs.empty())
         {
             m_GroupNames.clear();
-            m_GroupIDs.push_back(nc.getId());
+            m_GroupIDs.push_back(mFile.getId());
         }
 
         const NcType::ncType vtype = this->getNetCDFComponentType(
@@ -1189,6 +1406,10 @@ void NetCDFIO::InternalWriteImageInformation()
                         // add unlimited dimension
                         aDim = grp.addDim(dname.str());
                     }
+                    if (this->m_bParallelIO)
+                    {
+                        MPI_Barrier(m_MPIComm);
+                    }
                 }
                 else
                 {
@@ -1199,6 +1420,7 @@ void NetCDFIO::InternalWriteImageInformation()
                         NMProcErr(<< m_NcVarName << ": " << dname.str()
                                   << "-axis size incompatible with existing " << dname.str()
                                   << "-axis!");
+                        NMDebugCtx("NetCDFIO", << "done!")
                         return;
                     }
                  }
@@ -1210,7 +1432,15 @@ void NetCDFIO::InternalWriteImageInformation()
                 if (dimVar.isNull())
                 {
                     dimVar = grp.addVar(dname.str(), NcType::nc_DOUBLE, aDim);
-                    dimVar.setCompression(true, true, m_CompressionLevel);
+                    if (m_bParallelIO)
+                    {
+                        MPI_Barrier(m_MPIComm);
+                    }
+
+                    if (!m_bParallelIO)
+                    {
+                        dimVar.setCompression(true, true, m_CompressionLevel);
+                    }
 
                     std::vector<double> dimVals(dsize, 0.0);
                     for (unsigned int dimIdx=0; dimIdx < dsize; ++dimIdx)
@@ -1220,7 +1450,9 @@ void NetCDFIO::InternalWriteImageInformation()
 
                     std::vector<size_t> startp = {0};
                     std::vector<size_t> countp = {dsize};
+
                     dimVar.putVar(startp, countp, &dimVals[0]);
+
                 }
                 else
                 {
@@ -1231,8 +1463,17 @@ void NetCDFIO::InternalWriteImageInformation()
 
             // now add the actual variable we want to write
             valVar = grp.addVar(this->m_NcVarName, vtype, dims);
-            valVar.setCompression(true, true, m_CompressionLevel);
-            valVar.setFill(true, 0);
+            if (m_bParallelIO)
+            {
+                MPI_Barrier(m_MPIComm);
+            }
+
+            if (!m_bParallelIO)
+            {
+                valVar.setCompression(true, true, m_CompressionLevel);
+                valVar.setFill(true, 0);
+            }
+
         }
         // ========================================================
         //                 ADJUST VAR's DIMENSION
@@ -1288,11 +1529,19 @@ void NetCDFIO::InternalWriteImageInformation()
                 }
             }
         }
+
+        if (!m_bParallelIO)
+        {
+            mFile.close();
+        }
+
     }
     catch(exceptions::NcException& e)
     {
         NMProcErr(<< e.what());
+        NMDebugCtx("NetCDFIO", << "done!")
     }
+    NMDebugCtx("NetCDFIO", << "done!")
 }
 
 void NetCDFIO::WriteRAT(otb::AttributeTable* tab,
@@ -1302,6 +1551,7 @@ void NetCDFIO::WriteRAT(otb::AttributeTable* tab,
 
 void NetCDFIO::Write(const void* buffer)
 {
+    NMDebugCtx("NetCDFIO", << "...")
     // call "WriteImageInformation" when this function is called the first time
     // (necessary for stream writing)
     // this dirty hack is needed because the right component type is only
@@ -1323,26 +1573,33 @@ void NetCDFIO::Write(const void* buffer)
     // the image's number of dimensions
     if (!this->m_bCanWrite)
     {
+        NMDebugCtx("NetCDFIO", << "done!")
         return;
     }
 
     try
     {
-        NcFile nc(this->m_FileContainerName, NcFile::write);
-        if (nc.isNull())
+        if (!m_bParallelIO)
+        {
+            mFile.open(this->m_FileContainerName, NcFile::write);
+        }
+
+        if (mFile.isNull())
         {
             NMProcErr(<< "Failed opening file '"
                        << m_FileContainerName << "' for writing!");
+            NMDebugCtx("NetCDFIO", << "done!")
             return;
         }
 
-        const int grpId = m_GroupIDs.size() > 0 ? m_GroupIDs.back() : nc.getId();
+        const int grpId = m_GroupIDs.size() > 0 ? m_GroupIDs.back() : mFile.getId();
         NcGroup grp(grpId);
         if (grp.isNull())
         {
             NMProcErr(<< "Failed accessing group '"
                        << grp.getName(true) << "' in file '"
                        << m_FileContainerName << "'!");
+            NMDebugCtx("NetCDFIO", << "done!")
             return;
         }
 
@@ -1413,12 +1670,20 @@ void NetCDFIO::Write(const void* buffer)
             break;
         }
 
-        nc.sync();
+        mFile.sync();
+
+        if (!m_bParallelIO)
+        {
+            mFile.close();
+        }
+
     }
     catch(exceptions::NcException& e)
     {
+        NMDebugCtx("NetCDFIO", << "done!")
         itkExceptionMacro(<< e.what());
     }
+    NMDebugCtx("NetCDFIO", << "done!")
 }
 
 otb::AttributeTable::Pointer NetCDFIO::getRasterAttributeTable(int band)
@@ -1429,16 +1694,22 @@ otb::AttributeTable::Pointer NetCDFIO::getRasterAttributeTable(int band)
 
 bool NetCDFIO::parseImageSpec(const std::string imagespec)
 {
+    NMDebugCtx("NetCDFIO", << "...")
     if (m_bImageSpecParsed && imagespec.compare(m_FileName) == 0)
     {
         NMLogInfo(<< "We know already that we can read '" << imagespec << "'!");
+        NMDebugCtx("NetCDFIO", << "done!")
         return true;
     }
 
     NMLogDebug(<< "user specified imagespec: " << imagespec << std::endl);
 
     // correct image specification string we are looking for:
-    //      $ FilePathName:/[GrpName1/[GrpName2/[...]]VarName
+    //      FilePathName:/[<GrpName1>/[<GrpName2>/[...]]]VarName
+    //
+    // extension for initiating z-axis size for parallel write
+    //      FilePathName:/[<GrpName1>/[<GrpName2>/[...]]]VarName[:<z-axis size>]
+    //
     // The GrpNameX is optional and only required if the
     // image contains multiple groups; if ommitted, it is
     // assumed that the relevant image variable VarName
@@ -1449,6 +1720,7 @@ bool NetCDFIO::parseImageSpec(const std::string imagespec)
 
     if (imagespec.empty())
     {
+        NMDebugCtx("NetCDFIO", << "done!")
         itkExceptionMacro(<< "empty imagespec!");
         return false;
     }
@@ -1460,6 +1732,7 @@ bool NetCDFIO::parseImageSpec(const std::string imagespec)
     std::string partspec;
     std::string::size_type lastpos = std::string::npos;
     std::string::size_type pos = imagespec.rfind(":", lastpos);
+
 
 #ifdef _WIN32
     if (pos >= 3)
@@ -1502,7 +1775,7 @@ bool NetCDFIO::parseImageSpec(const std::string imagespec)
     }
 
     m_bImageSpecParsed = true;
-
+    NMDebugCtx("NetCDFIO", << "done!")
     return true;
 }
 

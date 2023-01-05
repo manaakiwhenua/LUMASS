@@ -37,40 +37,23 @@
 class NMMODFRAMECORE_EXPORT NMSequentialIterComponent: public NMIterableComponent
 {
 	Q_OBJECT
-    Q_PROPERTY(unsigned int NumIterations READ getNumIterations WRITE setNumIterations NOTIFY NMModelComponentChanged)
-    Q_PROPERTY(QStringList NumIterationsExpression READ getNumIterationsExpression WRITE setNumIterationsExpression NOTIFY NMModelComponentChanged)
 
 
 public:
 	signals:
         void NMModelComponentChanged(void);
-        void NumIterationsChanged(unsigned int numiter);
-        void NumIterationsExpressionChanged(void);
 
 public:
 	NMSequentialIterComponent(QObject* parent=0);
 	virtual ~NMSequentialIterComponent(void);
 
-    //NMPropertyGetSet(NumIterationsExpression, QStringList)
-    void setNumIterationsExpression(QStringList _arg);
-    QStringList getNumIterationsExpression(void)
-        {return mNumIterationsExpression;}
+    virtual void setProcess(NMProcess *proc);
 
-    //NMPropertyGetSet(NumIterations, unsigned int)
-    void setNumIterations(unsigned int numiter);
-    unsigned int getNumIterations(void)
-        {return this->mNumIterations;}
+    //virtual void linkComponents(unsigned int step,
+    //               const QMap<QString, NMModelComponent*>& repo);
 
-    virtual void linkComponents(unsigned int step,
-                   const QMap<QString, NMModelComponent*>& repo);
-
-    // note: step is 1-based as mIterationStep && mIterationStepRun!
-    unsigned int evalNumIterationsExpression(const unsigned int& step);
 
 protected:
-	unsigned int mNumIterations;
-    unsigned int mOldIterations;
-    QStringList mNumIterationsExpression;
 
     void iterativeComponentUpdate(const QMap<QString, NMModelComponent*>& repo,
     		unsigned int minLevel, unsigned int maxLevel);

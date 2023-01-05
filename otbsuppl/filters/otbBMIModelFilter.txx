@@ -389,6 +389,12 @@ BMIModelFilter<TInputImage, TOutputImage>
     this->ConnectData(outputRegion);
 
     // run the model
+    if (this->m_BMIModule.get() == nullptr)
+    {
+        NMProcErr(<< "BMI module is NULL!");
+        return;
+    }
+
     this->m_BMIModule->Update();
 
     // fetch  the output data from the m_BMIModule

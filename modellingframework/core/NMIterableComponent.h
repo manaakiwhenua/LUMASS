@@ -133,6 +133,11 @@ class NMMODFRAMECORE_EXPORT NMIterableComponent : public NMModelComponent
     Q_OBJECT
 
     Q_PROPERTY(unsigned int IterationStep READ getIterationStep WRITE setIterationStep)
+    Q_PROPERTY(unsigned int NumIterations READ getNumIterations WRITE setNumIterations NOTIFY NMModelComponentChanged)
+    Q_PROPERTY(QStringList NumIterationsExpression READ getNumIterationsExpression WRITE setNumIterationsExpression NOTIFY NMModelComponentChanged)
+
+
+
     //Q_PROPERTY(QString IterationStepExpression READ getIterationStepExpression WRITE setIterationStepExpression)
 
 public:
@@ -209,7 +214,7 @@ public:
     QStringList getOutputNames(void);
 
     virtual void changeTimeLevel(int diff);
-    virtual void setProcess(NMProcess* proc);
+    virtual void setProcess(NMProcess* proc)=0;
     virtual NMProcess* getProcess(void)
         {return this->mProcess;}
 
@@ -231,6 +236,16 @@ public:
     unsigned int getIterationStep(void);
     void setIterationStep(unsigned int step);
 
+    void setNumIterationsExpression(QStringList _arg);
+    QStringList getNumIterationsExpression(void)
+        {return mNumIterationsExpression;}
+
+    void setNumIterations(unsigned int numiter);
+    unsigned int getNumIterations(void)
+        {return this->mNumIterations;}
+
+    // note: step is 1-based as mIterationStep && mIterationStepRun!
+    unsigned int evalNumIterationsExpression(const unsigned int& step);
 
     bool isSubComponent(NMModelComponent* comp);
 
@@ -268,6 +283,8 @@ signals:
     void signalProgress(float);
     void signalExecutionStarted();
     void signalExecutionStopped();
+    void NumIterationsChanged(unsigned int numiter);
+    void NumIterationsExpressionChanged(void);
 
 
 protected:
@@ -283,6 +300,8 @@ protected:
     unsigned int mIterationStep;
     unsigned int mIterationStepRun;
 
+    unsigned int mNumIterations;
+    QStringList mNumIterationsExpression;
 
     NMIterableComponent(QObject* parent=0);
     NMIterableComponent(const NMIterableComponent& modelComp){}

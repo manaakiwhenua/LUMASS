@@ -39,6 +39,10 @@
 #include <QDateTime>
 #include <QFile>
 
+#ifndef _WIN32
+#include <mpi.h>
+#endif
+
 #include "NMObject.h"
 #include "otbAttributeTable.h"
 
@@ -371,6 +375,21 @@ public slots:
 
     void registerPythonRequest(const QString& compName);
 
+    // parallel processing
+    int getRank(void){return mRank;}
+    int getRank(const QString& comp);
+    void setRank(int rank){mRank = rank;}
+    int getNumProcs(void){return mNumProcs;}
+    int getNumProcs(const QString& comp);
+    void setNumProcs(int procs){mNumProcs = procs;}
+
+    void registerParallelGroup(const QString& compName,
+            MPI_Comm comm);
+    void deregisterParallelGroup(
+            const QString& compName);
+
+    MPI_Comm getNextUpstrMPIComm(const QString& compName);
+
 signals:
 	/*! Signals whether any of the process components controlled
 	 *  by this controller is currently running or not */
@@ -420,6 +439,14 @@ protected:
     QString mProvFileName;
     QMap<QString, QMap<QString, int> > mMapProvIdConRev;
 
+    // parallel processing
+    int mRank;
+    int mNumProcs;
+    //int mUsedProcs;
+
+    // maps communicator for pipeline/AggrComp for each rank
+    QMap<QString, MPI_Comm> mAlphaComps;
+    //QMap<QString, QPair<int, MPI_Comm> > mAlphaComps;
 
 private:
 	static const std::string ctx;

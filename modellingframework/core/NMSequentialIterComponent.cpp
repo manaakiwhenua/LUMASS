@@ -37,115 +37,59 @@
 const std::string NMSequentialIterComponent::ctx = "NMSequentialIterComponent";
 
 NMSequentialIterComponent::NMSequentialIterComponent(QObject* parent)
-    : mNumIterations(1), mOldIterations(1)
 {
 	this->setParent(parent);
     NMIterableComponent::initAttributes();
-    this->mNumIterationsExpression.clear();
 }
 
 NMSequentialIterComponent::~NMSequentialIterComponent()
 {
 }
 
-void
-NMSequentialIterComponent::setNumIterations(unsigned int numiter)
+void NMSequentialIterComponent::setProcess(NMProcess* proc)
 {
-    if (this->mNumIterations != numiter && numiter > 0)
+//	NMDebugCtx(ctx, << "...");
+
+    this->mProcess = proc;
+    this->mProcessChainPointer = nullptr;
+    this->mProcessChainStart = nullptr;
+    if (this->mProcess)
     {
-        this->mNumIterations = numiter;
-        emit NumIterationsChanged(numiter);
-    }
-}
-
-void
-NMSequentialIterComponent::setNumIterationsExpression(QStringList iterExpr)
-{
-    this->mNumIterationsExpression = iterExpr;
-    emit NumIterationsExpressionChanged();
-}
-
-unsigned int
-NMSequentialIterComponent::evalNumIterationsExpression(const unsigned int& step)
-{
-    unsigned int niter = mNumIterations;
-
-    // note: step is 1-based as mIterationStep
-    if (step >= 1
-        && this->mNumIterationsExpression.size() != 0)
-    {
-        // emploly the NM_USE_UP (and continue to use the last one) parameter policy
-        int exprIdx = step-1;
-        if (exprIdx >= this->mNumIterationsExpression.size())
+        if (mLogger)
         {
-            exprIdx = this->mNumIterationsExpression.size()-1;
+            this->mProcess->setLogger(mLogger);
         }
-
-        QString numIterStr = this->getModelController()->processStringParameter(this,
-                                                                         mNumIterationsExpression.at(exprIdx));
-
-        // we don't interprete an empty string as error but as
-        // a non set parameter
-        if (numIterStr.isEmpty())
-        {
-            return mNumIterations;
-        }
-
-
-        bool bok = false;
-        unsigned int titer = numIterStr.toUInt(&bok);
-        if (bok)
-        {
-            niter = titer;
-        }
-
-        if (!bok || numIterStr.startsWith("ERROR"))
-        {
-            std::stringstream msg;
-            NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-            me.setSource(this->objectName().toStdString());
-            if (!bok)
-            {
-                msg << this->objectName().toStdString()
-                    << "::iterativeComponentUpdate(): ERROR "
-                    << "- invalid NumIterationsExpression '" << numIterStr.toStdString()
-                    << "'!" << std::endl;
-            }
-            else
-            {
-                msg << numIterStr.toStdString() << std::endl;
-            }
-
-            me.setDescription(msg.str());
-            emit signalExecutionStopped();
-            this->mIsUpdating = false;
-            throw me;
-        }
+        this->mProcess->setParent(0);
+        this->mProcess->moveToThread(this->thread());
+        this->mProcess->setParent(this);
+        this->mProcess->setModelController(this->getModelController());
     }
 
-    return niter;
+//	NMDebugCtx(ctx, << "done!");
+
+    emit NMModelComponentChanged();
 }
 
-void
-NMSequentialIterComponent::linkComponents(unsigned int step, const QMap<QString, NMModelComponent *> &repo)
-{
-    NMDebugCtx(this->objectName().toStdString(), << "...");
-
-    this->processUserID();
-    //mOldIterations = mNumIterations;
-    mNumIterations = this->evalNumIterationsExpression(mIterationStep);
-    //NMDebugAI(<< getUserID().toStdString() << ": pre-loop: IterStep=" << getIterationStep() << " niter=" << mNumIterations;)
-    //NMLogDebug(<< getUserID().toStdString() << ": pre-loop: IterStep=" << getIterationStep() << " niter=" << mNumIterations);
-
-    if (this->mProcess != 0)
-    {
-        this->mProcess->linkInPipeline(step, repo);
-        NMDebugCtx(this->objectName().toStdString(), << "done!");
-        return;
-    }
-
-    NMDebugCtx(this->objectName().toStdString(), << "done!");
-}
+//void
+//NMSequentialIterComponent::linkComponents(unsigned int step, const QMap<QString, NMModelComponent *> &repo)
+//{
+//    NMDebugCtx(this->objectName().toStdString(), << "...");
+//
+//    this->processUserID();
+//    //mOldIterations = mNumIterations;
+//    mNumIterations = this->evalNumIterationsExpression(mIterationStep);
+//    //NMDebugAI(<< getUserID().toStdString() << ": pre-loop: IterStep=" << getIterationStep() << " niter=" << mNumIterations;)
+//    //NMLogDebug(<< getUserID().toStdString() << ": pre-loop: IterStep=" << getIterationStep() << " niter=" << mNumIterations);
+//
+//    if (this->mProcess != 0)
+//    {
+//        this->mProcess->linkInPipeline(step, repo);
+//        NMDebugCtx(this->objectName().toStdString(), << "done!");
+//        return;
+//    }
+//
+//    NMDebugCtx(this->objectName().toStdString(), << "done!");
+//}
 
 void
 NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelComponent*>& repo,
@@ -170,13 +114,12 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
         emit signalProgress(mIterationStepRun);
         this->componentUpdateLogic(repo, minLevel, maxLevel, i);
         niter = evalNumIterationsExpression(mIterationStepRun+1);
-        NMDebugAI(<< getUserID().toStdString() << ": in-loop: IterStep=" << getIterationStep()
-                                                << " i=" << i << " niter=" << niter;)
+        NMDebugAI(<< this->objectName().toStdString() << ": in-loop: IterStep=" << getIterationStep()
+                                                << " i=" << i << " niter=" << niter << std::endl);
         this->setNumIterations(niter);
         ++mIterationStepRun;
     }
     mIterationStepRun = mIterationStep;
-    //this->setNumIterations(mOldIterations);
     emit signalProgress(mIterationStep);
 }
 

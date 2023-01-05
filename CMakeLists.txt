@@ -32,9 +32,8 @@ SET(CMAKE_INCLUDE_CURRENT_DIR ON)
 SET(CMAKE_CXX_STANDARD 14)
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-
 #====================================================================
-# OpenMPI
+# MPI
 #====================================================================
 OPTION(LUMASS_MPI_SUPPORT "Build LUMASS with MPI parallel processing support?" ON)
 
@@ -157,14 +156,24 @@ endif (testvar_in STREQUAL testvar_target)
 find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
 SET(LUMASS_VERSION_MINOR 9)
-SET(LUMASS_VERSION_REVISION 66)
-SET(LUMASS_VERSION_SUFFIX "-rc21")
+SET(LUMASS_VERSION_REVISION 70)
+SET(LUMASS_VERSION_SUFFIX "-b4")
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
 
 message(STATUS "building LUMASS ${LUMASS_VERSION_MAJOR}.${LUMASS_VERSION_MINOR}.${LUMASS_VERSION_REVISION} (${CMAKE_BUILD_TYPE})"
                " - commit ${GIT_SHA1} from ${LUMASS_COMMIT_DATE}")
+
+#====================================================================
+# avoid 'missing Threads_FOUND' trouble ...
+#====================================================================
+
+set(CMAKE_THREAD_LIBS_INIT "-lpthread")
+set(CMAKE_HAVE_THREADS_LIBRARY 1)
+set(CMAKE_USE_WIN32_THREADS_INIT 0)
+set(CMAKE_USE_PTHREADS_INIT 1)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 #====================================================================
 # QT 5
@@ -206,7 +215,7 @@ message(STATUS "OpenGL's GLU library: ${OPENGL_glu_LIBRARY}")
 # Find boost
 #====================================================================
 
-FIND_PACKAGE(Boost COMPONENTS filesystem)
+FIND_PACKAGE(Boost COMPONENTS filesystem serialization)
 if (NOT Boost_FOUND)
     message(FATAL_ERROR "Please install the Boost::filesystem library!")
 else()
@@ -241,13 +250,13 @@ endif ()
 
 message(STATUS "ITK_VERSION: ${LUMASS_ITK_VERSION}")
 message(STATUS "ITK_LIBRARY_DIRS: ${ITK_LIBRARY_DIRS}")
-message(STATUS "ITK_INCLUDE_DIRS: ${ITK_INCLUDE_DIRS}")
-message(STATUS "ITK_LIBRARIES: ${ITK_LIBRARIES}")
+#message(STATUS "ITK_INCLUDE_DIRS: ${ITK_INCLUDE_DIRS}")
+#message(STATUS "ITK_LIBRARIES: ${ITK_LIBRARIES}")
 message(STATUS "ITK_LINK_DIR: ${ITK_LINK_DIR}")
 message(STATUS "OTB_VERSION: ${LUMASS_OTB_VERSION}")
 message(STATUS "OTB_LIBRARY_DIRS: ${OTB_LIBRARY_DIRS}")
-message(STATUS "OTB_INCLUDE_DIRS: ${OTB_INCLUDE_DIRS}")
-message(STATUS "OTB_LIBRARIES: ${OTB_LIBRARIES}")
+#message(STATUS "OTB_INCLUDE_DIRS: ${OTB_INCLUDE_DIRS}")
+#message(STATUS "OTB_LIBRARIES: ${OTB_LIBRARIES}")
 message(STATUS "OTB_LINK_DIR: ${OTB_LINK_DIR}")
 
 #====================================================================
@@ -272,7 +281,7 @@ else()
 #        include("${VTK_DIR}/vtk-config.cmake")
         set(VTK_VERSION_STRING "${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}.${VTK_BUILD_VERSION}")
         message(STATUS "found VTK ${VTK_VERSION_STRING} at ${VTK_DIR}")
-        message(STATUS "found VTK Components: ${VTK_AVAILABLE_COMPONENTS}")
+        #message(STATUS "found VTK Components: ${VTK_AVAILABLE_COMPONENTS}")
 
 #        if (${VTK_VERSION_STRING} VERSION_LESS "8.2")
 #            message(FATAL_ERROR "LUMASS >= 0.9.60 requires VTK >= 8.2")
@@ -379,21 +388,41 @@ if (WIN32)
                 SET(LUMASS_NCXX4_VERSION "4.3.1")
 
 else()
+        set(NC_CONFIG_PATH "" CACHE STRING "Please specify the path to the netcdf nc-config file." )
+        set(NCXX4_CONFIG_PATH "" CACHE STRING "Please specify the path to the netcdf-cxx4 ncxx4-config file.")
+        
+        if(NOT NC_CONFIG_PATH OR NOT NCXX4_CONFIG_PATH)
+            message(FATAL_ERROR "Please specify the path to the nc-config (NC_CONFIG_PATH) and ncxx4-config (NCXX4_CONFIG_PATH) files.")
+        endif()
+
         find_package(LUMASSNetCDF)
-                SET(LUMASS_NETCDF_VERSION ${NETCDF_VERSION})
-                SET(LUMASS_NCXX4_VERSION ${NCXX4_VERSTION})
+        SET(LUMASS_NETCDF_VERSION ${NETCDF_VERSION})
+        SET(LUMASS_NCXX4_VERSION ${NCXX4_VERSTION})
+
+        find_package(HDF5 COMPONENTS C HL REQUIRED)
+
 endif()
 
 message(STATUS "NetCDF-C version: ${LUMASS_NETCDF_VERSION}")
-message(STATUS "NetCDF-CXX4 version: ${LUMASS_NCXX4_VERSION}")
 message(STATUS "NETCDF_INCLUDE_DIR=${NETCDF_INCLUDE_DIR}")
+message(STATUS "NETCDF_LIB_DIR=${NETCDF_LIB_DIR}")
+message(STATUS "NETCDF_LIBRARY=${NETCDF_LIBRARY}")
+message(STATUS "NetCDF-CXX4 version: ${LUMASS_NCXX4_VERSION}")
 message(STATUS "NCXX4_INCLUDE_DIR=${NCXX4_INCLUDE_DIR}")
+message(STATUS "NCXX4_LIB_DIR=${NCXX4_LIB_DIR}")
+message(STATUS "NCXX4_LIBRARY=${NCXX4_LIBRARY}")
+
+if(HDF5_FOUND)
+  message(STATUS "HDF5_VERSION=${HDF5_VERSION}")
+  message(STATUS "HDF5_INCLUDE_DIRS=${HDF5_INCLUDE_DIRS}")
+  message(STATUS "HDF5_LIBRARIES=${HDF5_LIBRARIES}")
+endif()
 
 #====================================================================
 # FIND PYBIND11
 #====================================================================
 
-OPTION(PYTHONSUPPORT "Build LUMASS with Python support?" OFF )
+OPTION(PYTHONSUPPORT "Build LUMASS with Python support?" ON )
 
 if (PYTHONSUPPORT)
 

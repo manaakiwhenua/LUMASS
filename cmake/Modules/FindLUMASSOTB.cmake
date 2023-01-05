@@ -53,6 +53,7 @@ IF(NOT OTB_DIR)
       /opt/otb
       /opt/otb-bin
       /opt/*
+      /opt/OTB-8.1-bin/install/lib/cmake
       /usr/lib/cmake
       /usr/lib/x86_64-linux-gnu
       C:/build/OTB-debug
@@ -82,6 +83,7 @@ IF(NOT OTB_DIR)
         OTB-6.6
         OTB-7.0
         OTB-7.1
+        OTB-8.1
         cmake/OTB-5.0
         cmake/OTB-4.4
         cmake/OTB-5.1
@@ -96,6 +98,7 @@ IF(NOT OTB_DIR)
         cmake/OTB-6.6
         cmake/OTB-7.0
         cmake/OTB-7.1
+        cmake/OTB-8.1
         OTB/build
     PATHS
     # Look for an environment variable OTB_DIR.

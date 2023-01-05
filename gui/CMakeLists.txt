@@ -122,6 +122,7 @@ INCLUDE_DIRECTORIES(
     ${VisIt_BINARY_DIR}
     ${NCXX4_INCLUDE_DIR}
     ${NETCDF_INCLUDE_DIR}
+    "/opt/netcdf-c-4.8.1/install/include"
     ${NETCDFIO_BINARY_DIR}
     ${pybind11_INCLUDE_DIRS}
     ${bmi_SOURCE_DIR}
@@ -156,7 +157,7 @@ LINK_DIRECTORIES(
         ${VisIt_BINARY_DIR}
         ${NMVtk_BINARY_DIR}
         ${NETCDF_LIB_DIR}
-        ${NCXX_LIB_DIR}
+        ${NCXX4_LIB_DIR}
         ${NETCDFIO_BINARY_DIR}
 )
 
@@ -208,10 +209,10 @@ set(LUMASS_LINKLIBS
     SQLite
     VisItTesselator
     #netcdf-cxx4 netcdf
-    ${NETCDF_LIBRARY} ${NCXX4_LIBRARY}
-    NetCDFIO
+    #${NETCDF_LIBRARY} ${NCXX4_LIBRARY}
+    #NetCDFIO
     ${YAML_CPP_LIBRARIES}
-    ${MPI_CXX_LIBRARIES}
+    #${MPI_CXX_LIBRARIES}
 )
 
 #if (${CMAKE_VERSION} VERSION_LESS_EQUAL "3.11.0")

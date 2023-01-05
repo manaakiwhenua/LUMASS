@@ -20,7 +20,7 @@
 #include "NMModelController.h"
 
 NMModelObject::NMModelObject()
-    : mController(0)
+    : mController(nullptr)
 {
 }
 

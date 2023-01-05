@@ -48,7 +48,7 @@
 #include "otbMacro.h"
 #include "otbSystem.h"
 #include "otbImageIOFactory.h"
-#include "otbImageKeywordlist.h"
+//#include "otbImageKeywordlist.h"
 #include "otbMetaDataKey.h"
 #include "otbCurlHelper.h"
 

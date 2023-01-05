@@ -16,15 +16,47 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 /*
- * lumassengine.h
+ * NMParallelIterComponent.h
  *
- *  Created on: 22/06/2013
+ *  Created on: 2022-05-15
  *      Author: alex
  */
 
-#ifndef LUMASSENGINE_H_
-#define LUMASSENGINE_H_
+#ifndef NMPARALLELITERCOMPONENT_H_
+#define NMPARALLELITERCOMPONENT_H_
 
-bool isFileAccessible(const QString& fileName);
+#include "nmlog.h"
+#include "NMMacros.h"
 
-#endif /* LUMASSENGINE_H_ */
+#include "NMIterableComponent.h"
+
+#include <QMap>
+
+#include "nmmodframecore_export.h"
+
+class NMMODFRAMECORE_EXPORT NMParallelIterComponent: public NMIterableComponent
+{
+	Q_OBJECT
+
+
+public:
+	signals:
+        void NMModelComponentChanged(void);
+
+public:
+    NMParallelIterComponent(QObject* parent=0);
+    virtual ~NMParallelIterComponent(void);
+
+    virtual void setProcess(NMProcess* proc){}
+
+protected:
+
+    void iterativeComponentUpdate(const QMap<QString, NMModelComponent*>& repo,
+    		unsigned int minLevel, unsigned int maxLevel);
+
+private:
+	static const std::string ctx;
+
+};
+
+#endif /* NMPARALLELITERCOMPONENT_H_ */

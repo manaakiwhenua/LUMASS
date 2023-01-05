@@ -42,11 +42,19 @@ MultiParser::MultiParser()
     m_InternalMultiParser.DefineConst( "euler",  CONST_EULER );
 
     // init the random number generator fun
-    srand(time(0));
+    //srand(time(0));
     m_InternalMultiParser.DefineFun("rand", (mu::fun_type2)MultiParser::rnum, false);
 
     // init fmod function
     m_InternalMultiParser.DefineFun("fmod", (mu::fun_type2)MultiParser::calcMod);
+
+    m_InternalMultiParser.DefineFun("unifdist_int", (mu::fun_type2)MultiParser::unifdist_int);
+    m_InternalMultiParser.DefineFun("unifdist_real", (mu::fun_type2)MultiParser::unifdist_real);
+
+    m_InternalMultiParser.DefineFun("lndist", (mu::fun_type2)MultiParser::lndist, false);
+    m_InternalMultiParser.DefineFun("normdist", (mu::fun_type2)MultiParser::normdist, false);
+
+
 }
 
 MultiParser::~MultiParser()

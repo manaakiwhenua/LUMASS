@@ -360,31 +360,20 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 
             // 'partaking' of an input process in a pipeline
             //  can be conditioned with the NumIterationsExpression
-            NMSequentialIterComponent* sic = ic != nullptr ? qobject_cast<NMSequentialIterComponent*>(ic) : nullptr;
-            if (    sic != nullptr
-                 && sic->evalNumIterationsExpression(instep+1) == 0
-               )
+            if (ic->evalNumIterationsExpression(instep+1) == 0)
             {
                 bGoUp = false;
             }
 
             if (bGoUp)
             {
-                if (ic != nullptr && ic->getProcess() != nullptr)           // && ic->getProcess()->getInternalProc() != 0)
+                if (ic != nullptr && ic->getProcess() != nullptr)
                 {
                     if (ic->getProcess()->getInternalProc() == nullptr)
                     {
                         ic->getProcess()->instantiateObject();
                     }
 
-                        //}
-
-
-                    //if (    ic != nullptr
-                    //     && ic->getProcess() != nullptr
-                    //     && ic->getProcess()->getInternalProc() != nullptr
-                    //   )
-                    //{
                     // add the process component to the pipeline, and
                     // investigate its inputs using the passed step parameter
                     // of the calling component

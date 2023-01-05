@@ -253,8 +253,38 @@ namespace bmi
     void PythonBMI::
         Finalize()
     {
-        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
-        pymod.attr("finalize")();
+        auto it = lupy::ctrlPyObjects.find(mBMIWrapperName);
+        if (it != lupy::ctrlPyObjects.end())
+        {
+            if (!it->second.is_none())
+            {
+                it->second.attr("finalize")();
+                it->second.dec_ref();
+
+                lupy::ctrlPyObjects.erase(it);
+            }
+        }
+
+        auto itmod = lupy::ctrlPyModules.find(mBMIWrapperName);
+        if (itmod != lupy::ctrlPyModules.end())
+        {
+            if (!itmod->second.is_none())
+            {
+                it->second.dec_ref();
+
+                lupy::ctrlPyModules.erase(itmod);
+            }
+        }
+
+        //py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
+        //pymod.attr("finalize")();
+
+        // clean up python objects
+        //lupy::ctrlPyObjects[mBMIWrapperName].dec_ref();
+        //lupy::ctrlPyObjects.erase(mBMIWrapperName);
+        //
+        //lupy::ctrlPyModules[mBMIWrapperName].dec_ref();
+        //lupy::ctrlPyModules.erase(mBMIWrapperName);
     }
 
 

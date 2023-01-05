@@ -176,7 +176,6 @@ public:
     virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(const QString& name)
         {QSharedPointer<NMItkDataObjectWrapper> dw; return dw;}
     virtual void update(void);
-    void reset(void);
 
 //    void setInputNames(QStringList inputNames) {mInputNames = inputNames;}
     virtual QStringList getInputNames(void);// {return mInputNames;}
@@ -272,6 +271,7 @@ public slots:
 
     virtual void setRAT(unsigned idx,
                         QSharedPointer<NMItkDataObjectWrapper> imgWrapper) {}
+    virtual void reset(void);
 signals:
         void NMProcessChanged();
         void nmChanged();

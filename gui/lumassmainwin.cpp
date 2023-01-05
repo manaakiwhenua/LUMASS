@@ -28,10 +28,6 @@
 #include <map>
 #include "math.h"
 
-#ifndef _WIN32
-#   include <mpi.h>
-#endif
-
 // GDAL support
 #include "gdal.h"
 #include "gdal_priv.h"
@@ -239,6 +235,7 @@
 #include "vtkDataArray.h"
 #include "vtkDataSet.h"
 #include "vtkDataSetAttributes.h"
+#include "vtkDelimitedTextReader.h"
 #include "vtkDelimitedTextWriter.h"
 #include "vtkDoubleArray.h"
 #include "vtkCommand.h"
@@ -379,8 +376,6 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     mSettings["Workspace"] = QVariant::fromValue(QString("%1").arg(homepath));
     mSettings["UserModels"] = QVariant::fromValue(QString("%1").arg(homepath));
     mSettings["LUMASSPath"] = qApp->applicationDirPath();
-
-
 
     // **********************************************************************
     // *                    INIT SOME ON-DEMAND GUI ELEMENTS
@@ -1601,7 +1596,7 @@ LUMASSMainWin::setImageLayerZSliceIdx(int delta)
     int slindex = il->getZSliceIndex();
     int newslindex = std::max(0, slindex + (delta/120));
     il->setZSliceIndex(newslindex);
-    this->updateCoords(this->ui->qvtkWidget->GetRenderWindow()->GetInteractor());
+    this->updateCoords(ui->qvtkWidget->renderWindow()->GetInteractor());
 }
 
 void
@@ -4107,92 +4102,60 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
-    QString fn_org = "/home/herziga/tmp/test/dem_sqr-o.kea";
-    QString fn_test = "/home/herziga/tmp/test/dem_sqr-t.kea";
+//    NMModelController* ctrl = this->ui->modelViewWidget->getModelController();
 
-    QCryptographicHash hash_org(QCryptographicHash::Md5);
-    QCryptographicHash hash_test(QCryptographicHash::Md5);
+//    auto repo = ctrl->getRepository();
+//    for (auto it = repo.cbegin(); it != repo.cend(); ++it)
+//    {
+//        NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(it.value());
+//        if (ic != nullptr)
+//        {
+//            NMLogInfo(<< it.key().toStdString() << " is an ic, and more precisely an " << it.value()->metaObject()->className());
+//        }
+//        else
+//        {
+//            NMLogInfo(<< it.key().toStdString() << " is a " << it.value()->metaObject()->className() << endl);
+//        }
+//    }
 
-    QFile orgFile(fn_org);
-    QFile testFile(fn_test);
+    QString fileName = "/home/users/herziga/crunch/STEC/Manawatu/output2/para_opt/landslide2/lsopt.ldb";
 
-    if (!orgFile.open(QFile::ReadOnly))
+    otb::SQLiteTable::Pointer tab = otb::SQLiteTable::New();
+    tab->SetDbFileName(fileName.toStdString());
+    tab->SetOpenReadOnly(true);
+    if (!tab->openConnection())
     {
-        NMLogError(<< "failed opening org file");
+        NMErr("STEC par opt", << "Sumthing went wrong and we're cross now!" );
         return;
     }
 
-    if (!testFile.open(QFile::ReadOnly))
+    tab->SetTableName("lsopt");
+    if (!tab->PopulateTableAdmin())
     {
-        NMLogError(<< "failed opening test file");
+        NMErr("STEC par opt", << "Couldn't populate the table's admin structures!");
         return;
     }
 
-    hash_org.addData(orgFile.readAll());
-    hash_test.addData(testFile.readAll());
-
-    NMLogInfo(<< "org hash:  " << hash_org.result().toHex().toStdString());
-    NMLogInfo(<< "test hash: " << hash_test.result().toHex().toStdString());
-
-    if (hash_org.result().compare(hash_test.result()) == 0)
-    {
-        NMLogInfo(<< "identical");
-    }
-    else
-    {
-        NMLogInfo(<< "different");
-    }
-
-
-
-return;
-
-    std::string dbfn = "/home/herziga/crunch/OLW_HL/data/Scenarios/v8/Can_p4z/luopt_hl2.ldb";
-    std::string tabname = "luopt_hl2_1";
-    std::string losfn = "/home/herziga/tmp/los.los";
-
-    otb::SQLiteTable::Pointer db = otb::SQLiteTable::New();
-    db->SetDbFileName(dbfn);
-    db->SetOpenReadOnly(false);
-    if (!db->openConnection())
-    {
-        NMLogError(<< "DB connection failed!");
-        return;
-    }
-    db->SetTableName(tabname);
-    db->PopulateTableAdmin();
+//    auto tabMap = this->getTableList();
+//    NMSqlTableView* tview = tabMap.begin().value().second.data();
+//    NMSqlTableModel* tmodel = qobject_cast<NMSqlTableModel*>(tview->getModel());
+//    QString dbname = tmodel->getDatabaseName();
 
     QScopedPointer<NMMosra> mosra(new NMMosra());
     mosra->setLogger(this->getLogger());
-    mosra->setScenarioName("testBaseline");
-    mosra->loadSettings(losfn.c_str());
-    mosra->setDataSet(static_cast<otb::AttributeTable*>(db.GetPointer()));
-    mosra->configureProblem();
-//    mosra->calcBaseline();
+    mosra->setScenarioName("STEC-Landslide_Calibration_multi");
+    //mosra->setScenarioName("STEC-Landslide_Calibration_single");
+    mosra->setDataSet(tab.GetPointer());
 
 
 
-// -----------------------------------------------------
-//    MPI_Init(nullptr, nullptr);
+   //           static_cast<otb::AttributeTable*>(
+   //               tabMap.begin().value().first.GetPointer())
+   //           );
 
-//    int nproc;
-//    int err = MPI_Comm_size(MPI_COMM_WORLD, &nproc);
-//    NMLogInfo(<< "err-code: " << err);
+    //mosra->makeSTECLp(0);
+    mosra->makeSTECLp2(0);
 
-//    NMLogInfo(<< "we've got " << nproc << " processors available!");
-
-//    int rank;
-//    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-//    NMLogInfo(<< "LUMASS's main rank: " << rank);
-
-//    char procname[MPI_MAX_PROCESSOR_NAME];
-//    int nameLen;
-//    MPI_Get_processor_name(procname, &nameLen);
-
-//    NMLogInfo(<< "XHive's processor name: " << procname);
-
-//    MPI_Finalize();
 }
 
 
@@ -7396,13 +7359,13 @@ LUMASSMainWin::configureSettings()
     dlg->exec();
     dlg->deleteLater();
     delete bro;
-    mSettingsBrowser = 0;
+    mSettingsBrowser = nullptr;
 }
 
 void
 LUMASSMainWin::populateSettingsBrowser(void)
 {
-    if (mSettingsBrowser == 0)
+    if (mSettingsBrowser == nullptr)
     {
         return;
     }
@@ -7430,7 +7393,7 @@ LUMASSMainWin::populateSettingsBrowser(void)
 void
 LUMASSMainWin::updateSettings(QtProperty *prop, const QVariant &val)
 {
-    if (prop == 0)
+    if (prop == nullptr)
     {
         return;
     }
@@ -8789,6 +8752,23 @@ void LUMASSMainWin::readSettings()
     settings.endGroup();
 
     // ================================================================
+    //              Capabilities
+    // ================================================================
+    settings.beginGroup("Capabilities");
+    val = settings.value("LmvFileVersion");
+    if (val.isValid())
+    {
+        mSettings["LmvFileVersion"] = val.toString();
+        emit settingsUpdated("LmvFileVersion", val);
+    }
+    else
+    {
+        mSettings["LmvFileVersion"] = QVariant(NMGlobalHelper::getLUMASSVersion());
+    }
+
+    settings.endGroup();
+
+    // ================================================================
     //              re scan user models
     // ================================================================
     scanUserModels();
@@ -8945,6 +8925,16 @@ void LUMASSMainWin::writeSettings(void)
     settings.setValue("UserModels", mSettings["UserModels"]);
 
     settings.endGroup();
+
+    // ================================================================
+    //              Capabilities
+    // ================================================================
+    settings.beginGroup("Capabilities");
+
+    settings.setValue("LmvFileVersion", mSettings["LmvFileVersion"]);
+
+    settings.endGroup();
+
 
     // ================================================================
     //              User TOOLS

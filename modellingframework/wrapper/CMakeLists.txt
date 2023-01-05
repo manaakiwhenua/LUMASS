@@ -32,10 +32,12 @@ INCLUDE_DIRECTORIES(
     ${NMVtk_SOURCE_DIR}
     ${NCXX4_INCLUDE_DIR}
     ${NETCDF_INCLUDE_DIR}
+    "/opt/netcdf-c-4.8.1/install/include"
     ${pybind11_INCLUDE_DIRS}
     ${bmi_SOURCE_DIR}
     ${bmi_BINARY_DIR}
     ${YAML_CPP_INCLUDE_DIR}
+    ${MPI_CXX_INCLUDE_DIRS}
 )
 
 LINK_DIRECTORIES(
@@ -49,8 +51,8 @@ LINK_DIRECTORIES(
     ${OSGEO4W_ROOT}/lib
 #    ${SPATIALITE_LIB_DIR}
 #    ${SPATIALITE_LIBLIB_DIR}
-#    ${NCXX_LIB_DIR}
-#    ${NETCDF_LIB_DIR}
+    ${NCXX4_LIB_DIR}
+    ${NETCDF_LIB_DIR}
 #    ${bmi_BINARY_DIR}
 )
 

@@ -566,9 +566,12 @@ NMRATBandMathImageFilterWrapper
             }
 
             // is this component taking part in this 'round'?
-            NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(comp);
-            if (    sic != nullptr
-                 && sic->evalNumIterationsExpression(step+1) == 0
+            //NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(comp);
+            NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
+            if (    //s
+                    ic != nullptr
+                 && //s
+                    ic->evalNumIterationsExpression(step+1) == 0
                )
             {
                 NMLogDebug(<< ctx << inputCompName.toStdString() << "::NumIterationExpression = 0 : we're skipping it!" );

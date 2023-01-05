@@ -33,8 +33,9 @@ INCLUDE_DIRECTORIES(
     ${GDALRATImageIO_BINARY_DIR}
     ${NETCDFIO_SOURCE_DIR}
     ${NETCDFIO_BINARY_DIR}
-        ${NETCDF_INCLUDE_DIR}
-        ${NCXX4_INCLUDE_DIR}
+    ${NETCDF_INCLUDE_DIR}
+    ${NCXX4_INCLUDE_DIR}
+    "/opt/netcdf-c-4.8.1/install/include"
 #    ${rimageio_SOURCE_DIR}
     ${filters_SOURCE_DIR}
     ${filters_BINARY_DIR}
@@ -45,6 +46,7 @@ INCLUDE_DIRECTORIES(
     ${OTB_INCLUDE_DIRS}
     ${pybind11_INCLUDE_DIRS}
     ${shared_BINARY_DIR}
+    ${MPI_CXX_INCLUDE_DIRS}
 )
 
 LINK_DIRECTORIES(
@@ -59,8 +61,8 @@ LINK_DIRECTORIES(
     ${OSGEO4W_ROOT}/lib
     ${SPATIALITE_LIB_DIR}
     ${SPATIALITE_LIBLIB_DIR}
-    #${NETCDF_LIB_DIR}
-    #${NCXX_LIB_DIR}
+    ${NETCDF_LIB_DIR}
+    ${NCXX4_LIB_DIR}
 )
 
 file(GLOB MFW_CORE_CPP
@@ -71,6 +73,8 @@ file(GLOB MFW_CORE_CPP
    ${shared_SOURCE_DIR}/NMLogger.cpp
    ${shared_SOURCE_DIR}/NMObject.cpp
 )
+
+LIST(REMOVE_ITEM MFW_CORE_CPP ${mfw_core_SOURCE_DIR}/NMConditionalIterComponent.cpp)
 
 file(GLOB MFW_CORE_H
    ${mfw_core_SOURCE_DIR}/*.h

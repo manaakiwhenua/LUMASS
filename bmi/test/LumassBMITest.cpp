@@ -21,34 +21,30 @@
 #include <iostream>
 #include <sstream>
 
-#ifdef LUMASS_PYTHON
-#include "Python_wrapper.h"
-#endif
-
 /* ErrorExit is based on these sources	https://docs.microsoft.com/en-nz/windows/desktop/Debug/retrieving-the-last-error-code 	https://stackoverflow.com/questions/1387064/how-to-get-the-error-message-from-the-error-code-returned-by-getlasterror*/
 
 #ifdef _WIN32
 std::string GetErrorMsg(void)
 {
-	DWORD errorID = GetLastError();
-	LPSTR lpMsgBuf;
+    DWORD errorID = GetLastError();
+    LPSTR lpMsgBuf;
 
-	size_t size = FormatMessage(
-					FORMAT_MESSAGE_ALLOCATE_BUFFER |
-					FORMAT_MESSAGE_FROM_SYSTEM |
-					FORMAT_MESSAGE_IGNORE_INSERTS,
-					NULL,
-					errorID,
-					MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-					(LPSTR)&lpMsgBuf,
-					0, NULL);
+    size_t size = FormatMessage(
+                    FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                    FORMAT_MESSAGE_FROM_SYSTEM |
+                    FORMAT_MESSAGE_IGNORE_INSERTS,
+                    NULL,
+                    errorID,
+                    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                    (LPSTR)&lpMsgBuf,
+                    0, NULL);
 
-	std::string msg(lpMsgBuf, size);
-	std::stringstream sstr;
-	sstr << "ERROR " << errorID << ": " << msg << std::endl;
-	
-	LocalFree(lpMsgBuf);
-	return sstr.str();
+    std::string msg(lpMsgBuf, size);
+    std::stringstream sstr;
+    sstr << "ERROR " << errorID << ": " << msg << std::endl;
+
+    LocalFree(lpMsgBuf);
+    return sstr.str();
 }
 
 #define GET_LIB_PTR( libpath ) HMODULE lumassbmi = LoadLibraryA((LPCSTR) libpath );
@@ -132,21 +128,21 @@ int BMIInit(const char* libpath)
 
 void log(int i, const char* msg)
 {
-	std::stringstream rep;
-	const int alevel = i;
-	std::string level;
-	switch (alevel)
-	{
-	case 0: level = "ALL"; break;
-	case 1: level = "DEBUG"; break;
-	case 2: level = "INFO"; break;
-	case 3: level = "WARNING"; break;
+    std::stringstream rep;
+    const int alevel = i;
+    std::string level;
+    switch (alevel)
+    {
+    case 0: level = "ALL"; break;
+    case 1: level = "DEBUG"; break;
+    case 2: level = "INFO"; break;
+    case 3: level = "WARNING"; break;
     case 4: level = "ERROR"; CLOSE_LUMASSBMI; break;
     case 5: level = "FATAL"; CLOSE_LUMASSBMI; break;
-	default: level = "NONE";
-	}
+    default: level = "NONE";
+    }
 
-	std::cout << "--" << level << "-- " << msg << std::endl;
+    std::cout << "--" << level << "-- " << msg << std::endl;
 }
 
 /*  test application for the BMI-ENABLED LUMASS ENGINE
@@ -172,47 +168,40 @@ int main(int argc, char** argv)
     const char* libpath = argv[1];
     const char* config = argv[2];
 
-	std::stringstream msg;
+    std::stringstream msg;
     if (BMIInit(libpath))
     {
         msg << "Initialization of LUMASS BMI interface failed!"
                   << std::endl;
-		log(4, msg.str().c_str());
+        log(4, msg.str().c_str());
         return EXIT_FAILURE;
     }
 
-	bmi_set_logger(log);
+    bmi_set_logger(log);
 
     if (bmi_init(config) != 0)
     {
-		msg << "bmi_init failed!" << std::endl;
-		log(4, msg.str().c_str());
+        msg << "bmi_init failed!" << std::endl;
+        log(4, msg.str().c_str());
         return EXIT_FAILURE;
     }
 
     if (bmi_update(0) != 0)
     {
-		msg << "bmi_update failed!" << std::endl;
-		log(4, msg.str().c_str());
+        msg << "bmi_update failed!" << std::endl;
+        log(4, msg.str().c_str());
         return EXIT_FAILURE;
     }
 
     if (bmi_finalize() != 0)
     {
-		msg << "bmi_finalize failed!" << std::endl;
-		log(4, msg.str().c_str());
+        msg << "bmi_finalize failed!" << std::endl;
+        log(4, msg.str().c_str());
         return EXIT_FAILURE;
     }
 
-#ifdef LUMASS_PYTHON
-    if (Py_IsInitialized())
-    {
-        pybind11::finalize_interpreter();
-    }
-#endif
-
     msg << "LumassBMITest successfully completed!" << std::endl;
-	log(2, msg.str().c_str());
+    log(2, msg.str().c_str());
     CLOSE_LUMASSBMI;
     return EXIT_SUCCESS;
 }

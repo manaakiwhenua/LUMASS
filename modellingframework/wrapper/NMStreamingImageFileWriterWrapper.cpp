@@ -16,11 +16,39 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 /*
+ * Copyright (C) 2005-2020 Centre National d'Etudes Spatiales (CNES)
+ *
+ * This file is part of Orfeo Toolbox
+ *
+ *     https://www.orfeo-toolbox.org/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/*
  * NMStreamingImageFileWriterWrapper.cpp
  *
  *  Created on: 17/05/2012
  *      Author: alex
+ *
+ *  ... (many more updates in between)
+ *
+ *  Updated on: 10/01/2022
+ *      Author: Alex Herzig
+ *
+ *  - added parallel IO
+ *
  */
+
 
 
 #include "NMMacros.h"
@@ -36,12 +64,19 @@
 #include "itkProcessObject.h"
 #include "otbAttributeTable.h"
 #include "otbStreamingRATImageFileWriter.h"
+//#include "itkNMImageRegionSplitterMaxSize.h"
+//#include "otbImageRegionTileMapSplitter.h"
+#include "itkImageRegionSplitter.h"
 #include "NMModelController.h"
 #include "NMMfwException.h"
 
 #ifdef BUILD_RASSUPPORT
     #include "RasdamanConnector.hh"
     #include "otbRasdamanImageIO.h"
+#endif
+
+#ifndef _WIN32
+#   include <mpi.h>
 #endif
 
 
@@ -64,6 +99,9 @@ public:
     typedef typename RGBFilterType::Pointer             RGBFilterTypePointer;
     typedef typename FilterType::Pointer 				FilterTypePointer;
     typedef typename VecFilterType::Pointer 			VecFilterTypePointer;
+
+    //using SplitterType = otb::ImageRegionTileMapSplitter<Dimension>;
+    using SplitterType = itk::ImageRegionSplitter<Dimension>;
 
     static void createInstance(itk::ProcessObject::Pointer& otbFilter,
             unsigned int numBands, bool rgbMode)
@@ -102,6 +140,137 @@ public:
             {
                 VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
                 filter->SetUpdateMode(updateMode);
+            }
+        }
+
+    static void setParallelIO(itk::ProcessObject::Pointer& otbFilter,
+                              unsigned int numBands, bool parallelIO, bool rgbMode, MPI_Comm comm)
+        {
+            if (numBands == 1)
+            {
+                FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+                filter->SetParallelIO(parallelIO);
+                filter->SetMpiComm(comm);
+            }
+            else if (numBands == 3 && rgbMode)
+            {
+                RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
+                filter->SetParallelIO(parallelIO);
+                filter->SetMpiComm(comm);
+            }
+            else
+            {
+                VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
+                filter->SetParallelIO(parallelIO);
+                filter->SetMpiComm(comm);
+            }
+        }
+
+    static void ParallelIOUpdate(itk::ProcessObject::Pointer& otbFilter,
+                                 unsigned int numBands, bool rgbMode,
+                                 int nprocs, int rank, MPI_Comm comm)
+        {
+            if (numBands == 1)
+            {
+                FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+                filter->UpdateOutputInformation();
+
+                ImgType* img = filter->GetOutput(0);
+                typename ImgType::RegionType lpr = img->GetLargestPossibleRegion();
+                itk::ImageIORegion fior(ImgType::ImageDimension);
+                for (int d=0; d < ImgType::ImageDimension; ++d)
+                {
+                    fior.SetIndex(d, lpr.GetIndex()[d]);
+                    fior.SetSize(d, lpr.GetSize()[d]);
+                }
+                filter->SetForcedLargestPossibleRegion(fior);
+
+                typename SplitterType::Pointer splitter = SplitterType::New();
+
+                itk::ImageIORegion pioRegion;
+                itk::ImageIORegion nullRegion;
+
+                typename ImgType::RegionType curSplitRegion;
+
+
+                std::vector<itk::ImageIORegion> paraRegions;
+
+                int numSplits = splitter->GetNumberOfSplits(lpr, nprocs);
+                int subtract=1;
+                while (numSplits > nprocs)
+                {
+                    numSplits = splitter->GetNumberOfSplits(lpr, (nprocs-subtract));
+                    ++subtract;
+                }
+
+
+                unsigned long totalNumPix = lpr.GetNumberOfPixels();
+                unsigned long pixPerRegion = totalNumPix / numSplits;
+
+                if (rank == 0)
+                {
+                    NMDebugAI(<< std::endl << ">>>>>> ParallelIOUPdate <<<<<<<<<<<<" << std::endl
+                              << "totalNumPix=" << totalNumPix << " pixPerRegion=" << pixPerRegion
+                              << " numSplits=" << numSplits << std::endl);
+                }
+
+                NMDebugAI(<< "proc#" << rank << " arriving at barrier ... " << std::endl);
+                MPI_Barrier(comm);
+                NMDebugAI(<< "proc#" << rank << " stepped past the barrier!" << std::endl);
+
+                int ri=0, sp=0;
+                for (; sp < numSplits; ++sp, ++ri)
+                {
+                    if (ri >= nprocs)
+                    {
+                        ri = 0;
+                    }
+
+                    // init ImageIORegion and ImageRegion to largest possible region
+                    pioRegion = fior;
+                    curSplitRegion = lpr;
+
+                    // populate ImageRegion with current image split
+                    curSplitRegion = splitter->GetSplit(sp, numSplits, lpr);
+
+                    // copy ImageRegion to ImageIORegion
+                    // (required by Writer::SetUpdateRegion)
+                    for (int d=0; d < Dimension; ++d)
+                    {
+                        pioRegion.SetIndex(d, curSplitRegion.GetIndex()[d]);
+                        pioRegion.SetSize(d, curSplitRegion.GetSize()[d]);
+                    }
+
+                    paraRegions.push_back(pioRegion);
+
+                    if (rank == 0)
+                    {
+                        NMDebugAI(<< "sp=" << sp << " ri=" << ri << " : "
+                                  << pioRegion.GetIndex()[0] << "," << pioRegion.GetIndex()[1]
+                                  << " " << pioRegion.GetSize()[0] << "," << pioRegion.GetSize()[1]
+                                  << std::endl);
+                    }
+                }
+
+                for (int round=0; round < paraRegions.size(); ++round)
+                {
+                    if (round == rank)
+                    {
+                        filter->SetUpdateRegion(paraRegions[round]);
+                        filter->Update();
+                    }
+                }
+
+            }
+            else if (numBands == 3 && rgbMode)
+            {
+                RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
+                // not implemented for now
+            }
+            else
+            {
+                VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
+                // not implemented for now
             }
         }
 
@@ -386,6 +555,43 @@ public:
     }\
 }
 
+#define callSetParallelIO( imgType, wrapName ) \
+{ \
+    if (this->mOutputNumDimensions == 1) \
+    { \
+        wrapName< imgType, imgType, 1 >::setParallelIO( \
+                this->mOtbProcess, this->mOutputNumBands, this->mParallelIO, mRGBMode, comm); \
+    } \
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        wrapName< imgType, imgType, 2 >::setParallelIO( \
+                this->mOtbProcess, this->mOutputNumBands, this->mParallelIO, mRGBMode, comm); \
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        wrapName< imgType, imgType, 3 >::setParallelIO( \
+                this->mOtbProcess, this->mOutputNumBands, this->mParallelIO, mRGBMode, comm); \
+    }\
+}
+
+
+#define callParallelIOUpdate( imgType, wrapName ) \
+    if (this->mOutputNumDimensions == 1) \
+    { \
+        wrapName< imgType, imgType, 1 >::ParallelIOUpdate( \
+                this->mOtbProcess, this->mOutputNumBands, mRGBMode, nprocs, rank, comm); \
+    } \
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        wrapName< imgType, imgType, 2 >::ParallelIOUpdate( \
+                this->mOtbProcess, this->mOutputNumBands, mRGBMode, nprocs, rank, comm); \
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        wrapName< imgType, imgType, 3 >::ParallelIOUpdate( \
+                this->mOtbProcess, this->mOutputNumBands, mRGBMode, nprocs, rank, comm); \
+    }\
+
 #define callSetResamplingType( imgType, wrapName ) \
 { \
     if (this->mOutputNumDimensions == 1) \
@@ -503,6 +709,8 @@ public:
 //InstantiateObjectWrap( NMStreamingImageFileWriterWrapper, NMStreamingImageFileWriterWrapper_Internal )
 //SetNthInputWrap( NMStreamingImageFileWriterWrapper, NMStreamingImageFileWriterWrapper_Internal )
 
+
+
 NMStreamingImageFileWriterWrapper
 ::NMStreamingImageFileWriterWrapper(QObject* parent)
 {
@@ -519,8 +727,10 @@ NMStreamingImageFileWriterWrapper
     this->mWriteImage = true;
     this->mUpdateMode = false;
     this->mRGBMode = false;
+    this->mParallelIO = false;
 
     this->mStreamingSize = 512;
+    this->mWriteProcs = 1;
 
     this->mPyramidResamplingType = QString(tr("NEAREST"));
     mPyramidResamplingEnum.clear();
@@ -550,6 +760,8 @@ NMStreamingImageFileWriterWrapper
     mUserProperties.insert(QStringLiteral("StreamingMethodType"), QStringLiteral("StreamingMethod"));
     mUserProperties.insert(QStringLiteral("StreamingSize"), QStringLiteral("PipelineMemoryFootprint"));
     mUserProperties.insert(QStringLiteral("PyramidResamplingType"), QStringLiteral("PyramidResampling"));
+    //mUserProperties.insert(QStringLiteral("ParallelIO"), QStringLiteral("ParallelIO"));
+    mUserProperties.insert(QStringLiteral("WriteProcs"), QStringLiteral("WriteProcs"));
 
 #ifdef BUILD_RASSUPPORT
     this->mRasConnector = 0;
@@ -576,8 +788,10 @@ NMStreamingImageFileWriterWrapper
     this->mWriteTable = true;
     this->mUpdateMode = false;
     this->mRGBMode = false;
+    this->mParallelIO = false;
 
     this->mStreamingSize = 512;
+    this->mWriteProcs = 1;
 
     this->mPyramidResamplingType = QString(tr("NEAREST"));
     mPyramidResamplingEnum.clear();
@@ -607,6 +821,8 @@ NMStreamingImageFileWriterWrapper
     mUserProperties.insert(QStringLiteral("StreamingMethodType"), QStringLiteral("StreamingMethod"));
     mUserProperties.insert(QStringLiteral("StreamingSize"), QStringLiteral("PipelineMemoryFootprint"));
     mUserProperties.insert(QStringLiteral("PyramidResamplingType"), QStringLiteral("PyramidResampling"));
+    //mUserProperties.insert(QStringLiteral("ParallelIO"), QStringLiteral("ParallelIO"));
+    mUserProperties.insert(QStringLiteral("WriteProcs"), QStringLiteral("WriteProcs"));
 
 
 #ifdef BUILD_RASSUPPORT
@@ -618,6 +834,21 @@ NMStreamingImageFileWriterWrapper
 
 NMStreamingImageFileWriterWrapper::~NMStreamingImageFileWriterWrapper()
 {
+}
+
+void NMStreamingImageFileWriterWrapper
+::setWriteProcs(int procs)
+{
+    if (procs >= 1)
+    {
+        this->mWriteProcs = procs;
+    }
+    else
+    {
+        this->mWriteProcs = 1;
+    }
+
+    emit nmChanged();
 }
 
 void
@@ -787,6 +1018,7 @@ void
 NMStreamingImageFileWriterWrapper
 ::linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 {
+    NMDebugCtx(ctxNMStreamWriter, << "...");
     //if (step > this->mFileNames.size()-1)
     //	step = 0;
 //    step = this->mapHostIndexToPolicyIndex(step, mFileNames.size());
@@ -825,6 +1057,21 @@ NMStreamingImageFileWriterWrapper
         bJustStreaming = true;
     }
 
+    int rank = mController->getRank(this->parent()->objectName());
+    int procs = mController->getNumProcs(this->parent()->objectName());
+    MPI_Comm comm = mController->getNextUpstrMPIComm(this->parent()->objectName());
+
+    bool bParallel = false;
+    if (this->getWriteProcs() > 1 && procs > 1)
+    {
+        bParallel = true;
+    }
+    else
+    {
+        rank = 0;
+    }
+
+    bool bWriteable = false;
 
     if (nbInputs == 1)
     {
@@ -833,17 +1080,53 @@ NMStreamingImageFileWriterWrapper
         {
             if (!bJustStreaming)
             {
-                if (!this->isOutputFileNameWriteable(param.toString()))
+                bWriteable = false;
+                if (rank == 0)
+                {
+                   NMDebugAI(<< "testing whether " << param.toString().toStdString()
+                             << " is writable." << endl);
+                   bWriteable = this->isOutputFileNameWriteable(param.toString());
+                }
+
+                if (bParallel && comm != MPI_COMM_NULL)
+                {
+                    NMDebugAI(<< "broadcasting writeability to fellow ranks ... " << endl);
+
+                    int errc = MPI_Bcast(&bWriteable, 1, MPI_CXX_BOOL, 0, comm);
+                    NMDebugAI(<< "Bcast: " << (errc == 0 ? "successful" : "failed") << endl);
+
+                    MPI_Barrier(comm);
+                }
+
+                NMDebugAI(<< "lr" << rank << ": " << param.toString().toStdString()
+                          << "'s writable? " << (bWriteable ? "yes" : "no") << endl);
+
+                if (!bWriteable)
                 {
                     errtxt.str("");
                     errtxt << "The filename '" << param.toString().toStdString()
                            << "' is not writable!";
-                    NMErr("NMStreamingImageFileWriterWrapper", << errtxt.str());
-                    NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                    e.setDescription(errtxt.str());
-                    throw e;
+                    if (bParallel)
+                    {
+                        if (rank == 0)
+                        {
+                            NMErr("NMStreamingImageFileWriterWrapper", << errtxt.str());
+                        }
+                        NMDebugCtx(ctxNMStreamWriter, << "done!");
+                        MPI_Finalize();
+                        exit(1);
+                    }
+                    else
+                    {
+                        NMDebugCtx(ctxNMStreamWriter, << "done!");
+                        NMErr("NMStreamingImageFileWriterWrapper", << errtxt.str());
+                        NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                        e.setDescription(errtxt.str());
+                        throw e;
+                    }
                 }
                 this->setInternalFileNames(QStringList(param.toString()));
+                this->mProcessedFileNames = QStringList(param.toString());
             }
             fnProvNAttr = QString("nm:FileNames=\"%1\"")
                                   .arg(param.toString());
@@ -864,21 +1147,57 @@ NMStreamingImageFileWriterWrapper
         {
             QString pstr = this->mController->processStringParameter(this, fn);
 
-            if (!this->isOutputFileNameWriteable(pstr))
+            bWriteable = false;
+            if (rank == 0)
+            {
+                bWriteable = this->isOutputFileNameWriteable(pstr);
+            }
+
+            if (bParallel && comm != MPI_COMM_NULL)
+            {
+                NMDebugAI(<< "broadcasting writeability (" << bWriteable
+                          << ") to fellow ranks ... " << endl);
+
+                int errc = MPI_Bcast(&bWriteable, 1, MPI_CXX_BOOL, 0, comm);
+                NMDebugAI(<< "Bcast: " << (errc == 0 ? "successful" : "failed") << endl);
+
+                MPI_Barrier(comm);
+            }
+
+
+            //if (!this->isOutputFileNameWriteable(pstr))
+            if (!bWriteable)
             {
                 errtxt.str("");
                 errtxt << "The filename '" << pstr.toStdString()
-                           << "' is not writable!";
-                NMErr("NMStreamingImageFileWriterWrapper", << errtxt.str());
-                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                e.setDescription(errtxt.str());
-                throw e;
+                       << "' is not writable!";
+                if (bParallel)
+                {
+                    if (rank == 0)
+                    {
+                        NMErr("NMStreamingImageFileWriterWrapper", << errtxt.str());
+                    }
+                    NMDebugCtx(ctxNMStreamWriter, << "done!");
+                    MPI_Finalize();
+                    exit(1);
+                }
+                else
+                {
+                    NMDebugCtx(ctxNMStreamWriter, << "done!");
+                    errtxt.str("");
+                    errtxt << "The filename '" << pstr.toStdString()
+                               << "' is not writable!";
+                    NMErr("NMStreamingImageFileWriterWrapper", << errtxt.str());
+                    NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                    e.setDescription(errtxt.str());
+                    throw e;
+                }
             }
-
 
             procFNs << pstr;
         }
         this->setInternalFileNames(procFNs);
+        this->mProcessedFileNames = procFNs;
         fnProvNAttr = QString("nm:FileNames=\"%1\"")
                               .arg(procFNs.join(" "));
 
@@ -985,6 +1304,56 @@ NMStreamingImageFileWriterWrapper
                           .arg(mStreamingSize);
     this->addRunTimeParaProvN(streamSizeProvNAttr);
 
+    this->setInternalParallelIO();
+
+    NMDebugCtx(ctxNMStreamWriter, << "done!");
+}
+
+void
+NMStreamingImageFileWriterWrapper
+::setInternalParallelIO(void)
+{
+    NMDebugCtx(ctxNMStreamWriter, << "...");
+
+    if (!this->mbIsInitialised)
+        return;
+
+    //MPI_Comm comm = MPI_COMM_WORLD;
+    //int rank, procs;
+    //MPI_Comm_size(comm,&procs);
+    //MPI_Comm_rank(comm,&rank);
+
+
+    if (this->mWriteProcs > 1 && mController->getNumProcs(this->parent()->objectName()) > 1)
+    {
+        this->mParallelIO = true;
+        NMDebugAI(<< ctxNMStreamWriter << ": mWriteProcs=" << mWriteProcs << " -> ParallelIO=true!" << std::endl);
+        NMDebugAI(<< ctxNMStreamWriter << ": #procs=" << mController->getNumProcs(this->parent()->objectName()) << std::endl);
+    }
+    else
+    {
+        this->mParallelIO = false;
+        NMDebugAI(<< ctxNMStreamWriter << ": mWriteProcs=" << mWriteProcs << " -> ParallelIO=false!" << std::endl);
+        NMDebugAI(<< ctxNMStreamWriter << ": #procs=" << mController->getNumProcs(this->parent()->objectName()) << std::endl);
+    }
+
+    MPI_Comm comm = mController->getNextUpstrMPIComm(this->parent()->objectName());
+    if (comm == MPI_COMM_NULL)
+    {
+        NMDebugAI(<< ctxNMStreamWriter << ": No valid MPI_Comm communicator registered for this component!"
+                  << " So will do good old squential processing instead!" << std::endl);
+        this->mParallelIO = false;
+        return;
+    }
+
+
+    switch(this->mOutputComponentType)
+    {
+    MacroPerType( callSetParallelIO, NMStreamingImageFileWriterWrapper_Internal )
+    default:
+        break;
+    }
+    NMDebugCtx(ctxNMStreamWriter, << "done!");
 }
 
 void
@@ -1000,6 +1369,128 @@ NMStreamingImageFileWriterWrapper
     default:
         break;
     }
+}
+
+void
+NMStreamingImageFileWriterWrapper
+::internalParallelIO_Update()
+{
+    NMDebugCtx(ctxNMStreamWriter, << "...");
+    if (!this->mbIsInitialised)
+        return;
+
+    const int nprocs = std::min(mController->getNumProcs(this->parent()->objectName()), this->mWriteProcs);
+    const int rank =   mController->getRank(this->parent()->objectName());
+    MPI_Comm comm =    mController->getNextUpstrMPIComm(this->parent()->objectName());
+
+    //MPI_Comm comm = MPI_COMM_WORLD;
+    //int nprocs, rank;
+    //MPI_Comm_rank(comm, &rank);
+    //MPI_Comm_size(comm, &nprocs);
+
+    if (comm == MPI_COMM_NULL)
+    {
+        NMLogError(<< " assigned MPI_Comm is NULL!");
+        return;
+    }
+
+    NMDebugAI("MPI rank= " << rank << " | MPI procs=" << nprocs )
+
+    switch(this->mOutputComponentType)
+    {
+    MacroPerType( callParallelIOUpdate, NMStreamingImageFileWriterWrapper_Internal )
+    default:
+        break;
+    }
+    NMDebugCtx(ctxNMStreamWriter, << "done!");
+}
+
+void
+NMStreamingImageFileWriterWrapper
+::update()
+{
+    NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
+
+    // remove debug below
+    int rank = mController->getRank(this->parent()->objectName());
+    std::stringstream msg;
+    msg << "lr" << rank << ": writes " << this->mProcessedFileNames.join(" ").toStdString();
+    NMDebugCtx(this->parent()->objectName().toStdString(), << msg.str());
+    // remove debug above
+
+    QDateTime startTime;
+
+    if (this->mbIsInitialised && this->mOtbProcess.IsNotNull())
+    {
+        try
+        {
+            startTime = QDateTime::currentDateTime();
+            QString startString = startTime.toString("dd.MM.yyyy hh:mm:ss.zzz");
+            NMDebugAI(<< this->parent()->objectName().toStdString()
+                      << ": started at: " << startString.toStdString() << std::endl);
+
+            if (mParallelIO)
+            {
+                bool bPio_cnt = true;
+                foreach(const QString& fn, mProcessedFileNames)
+                {
+                    //QFileInfo pifo(fn);
+                    //if (pifo.suffix().compare("nc", Qt::CaseInsensitive) != 0)
+                    if (!fn.contains(".nc"))
+                    {
+                        bPio_cnt = false;
+                        exit;
+                    }
+                }
+
+                if (mInputNumBands > 1)
+                {
+                    bPio_cnt = false;
+                }
+
+                if (bPio_cnt)
+                {
+                    //MPI_Barrier(MPI_COMM_WORLD);
+                    internalParallelIO_Update();
+                }
+                else
+                {
+                    this->mOtbProcess->Update();
+                }
+            }
+            else
+            {
+                this->mOtbProcess->Update();
+            }
+        }
+        catch (...)
+        {
+            emit signalProgress(0);
+
+            throw;
+        }
+
+        this->mMTime = QDateTime::currentDateTime();
+        QString tstring = mMTime.toString("dd.MM.yyyy hh:mm:ss.zzz");
+        int msec = startTime.msecsTo(this->mMTime);
+        int min = msec / 60000;
+        double sec = (msec % 60000) / 1000.0;
+        QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
+        NMDebugAI(<< this->parent()->objectName().toStdString()
+                  << ": modified at " << tstring.toStdString() << std::endl);
+        NMDebugAI(<< this->parent()->objectName().toStdString()
+                  << ": ::Update() took (min:sec) " << elapsedTime.toStdString() << std::endl);
+    }
+    else
+    {
+        NMLogError(<< this->parent()->objectName().toStdString()
+                << ": Update failed! Either the process object is not initialised or"
+                << " itk::ProcessObject is NULL and ::update() is not re-implemented!");
+    }
+    this->mbLinked = false;
+
+    //NMDebugAI(<< "update value for: mParamPos=" << this->mParamPos << endl);
+    NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
 }
 
 void

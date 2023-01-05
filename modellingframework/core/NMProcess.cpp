@@ -414,10 +414,15 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
     step = this->mapHostIndexToPolicyIndex(inputstep, this->mInputComponents.size());
 
     NMIterableComponent* parentComp = qobject_cast<NMIterableComponent*>(this->parent());
-    NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(this->parent());
+    //NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(this->parent());
     int parentIter = 2;
-    if (sic != 0)
-        parentIter = sic->getNumIterations();
+    //if (sic != 0)
+    //    parentIter = sic->getNumIterations();
+    if (parentComp != nullptr)
+    {
+        parentIter = parentComp->getNumIterations();
+    }
+
     QString targetName = parentComp->objectName();
 
     // set the input images
@@ -472,11 +477,15 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 
 
                 // double check, whether the input is meant to be linked in as input for this run
-                NMSequentialIterComponent* seqComp = qobject_cast<NMSequentialIterComponent*>(it.value());
-                if (seqComp != nullptr)
+                //NMSequentialIterComponent* seqComp = qobject_cast<NMSequentialIterComponent*>(it.value());
+                NMIterableComponent* iterComp = qobject_cast<NMIterableComponent*>(it.value());
+                //if (seqComp != nullptr)
+                if (iterComp != nullptr)
                 {
-                    if (    seqComp->getNumIterations() == 0
-                         || seqComp->evalNumIterationsExpression(step+1) == 0
+                    if (    //seqComp
+                            iterComp->getNumIterations() == 0
+                         || //seqComp
+                            iterComp->evalNumIterationsExpression(step+1) == 0
                        )
                     {
                         NMLogDebug(<< "'" << inputCompName.toStdString() << "' skipped as input for this run!")

@@ -838,8 +838,8 @@ void ModelComponentList::addLayer(NMLayer* layer)
     vtkRenderer* scaleRen = const_cast<vtkRenderer*>(mwin->getScaleRenderer());
     scaleRen->SetLayer(nlayers+1);
 
-    qvtk->GetRenderWindow()->AddRenderer(ren);
-    qvtk->GetRenderWindow()->Render();
+    qvtk->renderWindow()->AddRenderer(ren);
+    qvtk->renderWindow()->Render();
 
     this->reset();
     NMDebugCtx(ctx, << "done!");

@@ -89,6 +89,8 @@ protected:
     void linkParameters(unsigned int step,
             const QMap<QString, NMModelComponent*>& repo);
 
+    void reset(void);
+
     void parseYamlConfig();
     void initialiseBMILibrary();
 

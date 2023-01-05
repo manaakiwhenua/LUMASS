@@ -81,7 +81,6 @@
 #include "otbImage.h"
 #include "otbBMIModelFilter.h"
 
-
 #include "nmbmiwrapper_export.h"
 
 /*! Internal templated helper class linking to the core otb/itk filter
@@ -309,6 +308,10 @@ public:
         p->addRunTimeParaProvN(outputNamesProvN);
 
 
+        NMModelController* ctrl = p->getModelController();
+        p->connect(ctrl, &NMModelController::signalModelStopped,
+                   p, &NMBMIWrapper::reset);
+
         NMDebugCtx("NMBMIWrapper_Internal", << "done!");
     }
 };
@@ -411,7 +414,8 @@ NMBMIWrapper::initialiseBMILibrary()
             if (!lumass_python::ctrlPyObjects[compName].is_none())
             {
                 lumass_python::ctrlPyObjectSinkMap[compName] = mIsSink;
-                NMLogInfo(<< "Successfully initialised '" << mPtrBMILib->GetComponentName() << "'!");
+                //NMLogInfo(<< "Successfully initialised '" << mPtrBMILib->GetComponentName() << "'!");
+
             }
             else
             {
@@ -436,6 +440,18 @@ NMBMIWrapper::initialiseBMILibrary()
             NMLogInfo(<< "Oopsi - can't handle native libs yet :-(")
         }
     }
+}
+
+void
+NMBMIWrapper
+::reset(void)
+{
+    if (this->mPtrBMILib != nullptr)
+    {
+        this->mPtrBMILib->Finalize();
+    }
+
+    NMProcess::reset();
 }
 
 NMBMIWrapper

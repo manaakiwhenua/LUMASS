@@ -42,8 +42,9 @@
 #include "NMDataComponent.h"
 #include "NMParameterTable.h"
 #include "NMIterableComponent.h"
-#include "NMConditionalIterComponent.h"
+//#include "NMConditionalIterComponent.h"
 #include "NMSequentialIterComponent.h"
+#include "NMParallelIterComponent.h"
 #include "NMHoverEdit.h"
 
 

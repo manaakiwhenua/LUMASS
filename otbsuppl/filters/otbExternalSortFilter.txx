@@ -204,6 +204,7 @@ void ExternalSortFilter<TInputImage, TOutputImage>
         }
 #endif
         iw->SetForcedLargestPossibleRegion(wior);
+        iw->SetStreamingMethod("NO_STREAMING");
         writers.push_back(iw);
     }
 
@@ -215,6 +216,7 @@ void ExternalSortFilter<TInputImage, TOutputImage>
     }
 #endif
     idxWriter->SetForcedLargestPossibleRegion(wior);
+    idxWriter->SetStreamingMethod("NO_STREAMING");
 
     // =======================================================
     // PRE-SORT CHUNKS

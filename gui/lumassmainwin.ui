@@ -50,7 +50,7 @@
      <x>0</x>
      <y>0</y>
      <width>1001</width>
-     <height>35</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuObject">
@@ -164,6 +164,12 @@
    </property>
   </widget>
   <widget class="QDockWidget" name="componentsWidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
    <property name="floating">
     <bool>false</bool>
    </property>
@@ -181,7 +187,7 @@
    </attribute>
    <widget class="QWidget" name="compDock">
     <property name="sizePolicy">
-     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
       <horstretch>0</horstretch>
       <verstretch>0</verstretch>
      </sizepolicy>
@@ -197,8 +203,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>80</width>
-          <height>581</height>
+          <width>68</width>
+          <height>615</height>
          </rect>
         </property>
         <property name="acceptDrops">
@@ -211,6 +217,12 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="componentInfoDock">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
    <property name="windowTitle">
     <string>Att&amp;ributes and Properties</string>
    </property>
@@ -219,7 +231,7 @@
    </attribute>
    <widget class="QWidget" name="infoDock">
     <property name="sizePolicy">
-     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
       <horstretch>0</horstretch>
       <verstretch>0</verstretch>
      </sizepolicy>
@@ -235,8 +247,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>80</width>
-          <height>581</height>
+          <width>68</width>
+          <height>615</height>
          </rect>
         </property>
        </widget>

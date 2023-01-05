@@ -19,12 +19,13 @@
 #ifndef NMLUMASSENGINE_H_
 #define NMLUMASSENGINE_H_
 
+#include <string>
 #include <QString>
 #include <QFile>
 #include <yaml-cpp/yaml.h>
 
 #include "NMLogger.h"
-#include "lumassbmi_export.h"
+//#include "lumassbmi_export.h"
 
 
 /*
@@ -42,27 +43,31 @@
 class NMMosra;
 class NMModelController;
 
-class LUMASSBMI_EXPORT NMLumassEngine : public QObject
+//class LUMASSBMI_EXPORT NMLumassEngine : public QObject
+class NMLumassEngine : public QObject
 {
     Q_OBJECT
 
 public:
 
     using LumassEngineMode = enum _LumassEngineMode {
-		NM_ENGINE_MODE_MODEL = 1,
-		NM_ENGINE_MODE_MOSO = 2,
-		NM_ENGINE_MODE_UNKNOWN = 3
-	};
+        NM_ENGINE_MODE_MODEL = 1,
+        NM_ENGINE_MODE_MOSO = 2,
+        NM_ENGINE_MODE_UNKNOWN = 3
+    };
 
-	using BMILog = void(*)(int, const char*);
-	
+    using BMILog = void(*)(int, const char*);
+
     NMLumassEngine(QObject* parent = nullptr);
     virtual ~NMLumassEngine();
 
-	void setBMILogFunc(BMILog logger) { mBMILogger = logger; }
-    NMLogger* getLogger() const;
+    void setBMILogFunc(BMILog logger) { mBMILogger = logger; }
+    NMLogger* getLogger() const {return mLogger;}
     void setLogFileName(const QString& fn);
+    QString getLogFileName(void) {return mLogFileName;}
     void about(void);
+
+    void shutdown(void);
 
 public slots:
     /*! passes a message to the internal logger associcated with this engine*/
@@ -70,43 +75,43 @@ public slots:
 
     /*! writes a message to the log file */
     void writeLogMsg(const QString& msg);
-    
-	/*! passes a !global! string parameter to the controller for processing
-	    of LUMASS expressions
-	*/
-	std::string processStringParameter(const QString& param);
 
-	/*! loads the LUMASS model (*.lmx) given by the pathname modelfile */
-	int loadModel(const QString& modelfile);
+    /*! passes a !global! string parameter to the controller for processing
+        of LUMASS expressions
+    */
+    std::string processStringParameter(const QString& param);
 
-	/*! allows for configuring the loaded(!) model passing the 
-	 *  passing a LumassBMI ModelConfig yaml node
-	 */
-	int configureModel(const YAML::Node& modelConfig);
+    /*! loads the LUMASS model (*.lmx) given by the pathname modelfile */
+    int loadModel(const QString& modelfile);
 
-
-	/*! load optimisation settings file*/
-	int loadOptimisationSettings(const QString& losFileName);
-
-	/*! configure a LUMASS optimisation scenario using a 
-	 *  YAML file
-	 */
-	int configureOptimisation(const YAML::Node& modelConfig);
-
-	/*! parase optimisation settings (*.los) specified in the 
-	 *  file given by logFileName and run the optimisation
-	 */
-	int runOptimisation(void);
+    /*! allows for configuring the loaded(!) model
+     *  passing a LumassBMI ModelConfig yaml node
+     */
+    int configureModel(const YAML::Node& modelConfig);
 
 
-	/*!
-	 *  run a model
-	*/
-	int runModel(double fromTimeStep, double toTimeStep);
-  
+    /*! load optimisation settings file*/
+    int loadOptimisationSettings(const QString& losFileName);
 
-	/*! updates a NMModelController setting given by the key value pair */
-	void setSetting(const QString& key, const QString& value);
+    /*! configure a LUMASS optimisation scenario using a
+     *  YAML file
+     */
+    int configureOptimisation(const YAML::Node& modelConfig);
+
+    /*! parse optimisation settings (*.los) specified in the
+     *  file given by logFileName and run the optimisation
+     */
+    int runOptimisation(void);
+
+
+    /*!
+     *  run a model
+    */
+    int runModel(double fromTimeStep, double toTimeStep);
+
+
+    /*! updates a NMModelController setting given by the key value pair */
+    void setSetting(const QString& key, const QString& value);
 
     /*! set whether LUMASS should log data provenance during model execution;
      *  Please note that this setting only applies to system dynamics models.
@@ -115,7 +120,10 @@ public slots:
      */
     void setLogProvenance(bool logProv);
 
-	LumassEngineMode getEngineMode(void) { return mMode; }
+    LumassEngineMode getEngineMode(void) { return mMode; }
+
+    void doMOSO(const QString& losFileName);
+    void doModel(const QString& userFile, QString& workspace, QString& enginePath, bool bLogProv);
 
 
 protected:
@@ -130,13 +138,17 @@ protected:
 private:
     NMModelController* mController;
     NMLogger* mLogger;
-	QString mLogFileName;
+    QString mLogFileName;
     QFile mLogFile;
-	NMMosra* mMosra;
-	BMILog mBMILogger;
+    NMMosra* mMosra;
+    BMILog mBMILogger;
+
+    bool mbMPICleanUp;
 
 
-	LumassEngineMode mMode;
+    LumassEngineMode mMode;
+
+    static const std::string ctx;
 };
 
 

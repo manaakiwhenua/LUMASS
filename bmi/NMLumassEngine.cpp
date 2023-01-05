@@ -29,59 +29,158 @@
 #include <QThreadPool>
 #include <QScopedPointer>
 
+#include <sqlite3.h>
+#include "gdal.h"
+#include "gdal_priv.h"
+
 #include "NMLumassEngine.h"
 #include "NMModelController.h"
 #include "NMModelSerialiser.h"
 #include "NMModelComponent.h"
 #include "NMSequentialIterComponent.h"
+
+#ifdef LUMASS_PYTHON
+#include "Python_wrapper.h"
+#endif
+
+#ifndef _WIN32
+#   include <mpi.h>
+#endif
+
 #include "NMMosra.h"
 #include "MOSORunnable.h"
+
+////////////////////////////////////////
+/// some MPI HELPERS
+////////////////////////////////////////
+#define NM_MPIGUARD( rank )  \
+if (m_Rank != rank )         \
+{                            \
+    return;                  \
+}
+
+// store who we are and how many of us there are
+int m_Rank;
+int m_Nproc;
+int m_ThreadSupport;
+QString m_ThreadSupportStr;
+
+const std::string NMLumassEngine::ctx = "NMLumassEngine";
 
 NMLumassEngine::NMLumassEngine(QObject* parent)
     : QObject(parent),
       mController(nullptr),
-	  mMosra(nullptr), 
-	  mBMILogger(nullptr),
-	  mMode(NM_ENGINE_MODE_UNKNOWN)
+      mMosra(nullptr),
+      mBMILogger(nullptr),
+      mMode(NM_ENGINE_MODE_UNKNOWN),
+      mbMPICleanUp(false)
 {
+    NMDebugCtx(ctx, << "...");
     mLogger = new NMLogger(this);
     mLogger->setHtmlMode(false);
 
+    // init mpi
+    int mpierr = 0;
+    int mpiinit = 0;
+    MPI_Initialized(&mpiinit);
+
+    QString mpiEnv;
+    if (!mpiinit)
+    {
+        MPI_Init_thread(nullptr, nullptr, MPI_THREAD_FUNNELED, &m_ThreadSupport);
+
+        switch(m_ThreadSupport)
+        {
+        case 0:  m_ThreadSupportStr = QStringLiteral("MPI_THREAD_SINGLE"); break;
+        case 1:  m_ThreadSupportStr = QStringLiteral("MPI_THREAD_FUNNELED"); break;
+        case 2:  m_ThreadSupportStr = QStringLiteral("MPI_THREAD_SERIALIZED"); break;
+        case 3:  m_ThreadSupportStr = QStringLiteral("MPI_THREAD_MULTIPLE"); break;
+        default: m_ThreadSupportStr = QStringLiteral("NO_CLUE_WHATSOEVER"); break;
+        }
+
+        // Letzter macht das Licht aus!
+        mbMPICleanUp = true;
+    }
+    else
+    {
+        NMDebugAI(<< "MPI parallel processing failed to initialize correctly!" << endl);
+    }
+
+    MPI_Comm_size(MPI_COMM_WORLD, &m_Nproc);
+    MPI_Comm_rank(MPI_COMM_WORLD, &m_Rank);
+
+    if (m_Rank == 0)
+    {
+        mpiEnv = QString("MPI Environment: \nMPI_COMM_WORLD=%1\nMPI_COMM_NULL=%2\n"
+                         "MPI_GROUP_NULL=%6\nMPI_GROUP_EMPTY=%7\nMPI_UNDEFINED=%3\n"
+                         "#proc=%4\nthread support=%5\n")
+                .arg(MPI_COMM_WORLD).arg(MPI_COMM_NULL).arg(MPI_UNDEFINED)
+                .arg(m_Nproc).arg(m_ThreadSupportStr).arg(MPI_GROUP_NULL).arg(MPI_GROUP_EMPTY);
+
+        NMDebugAI(<< mpiEnv.toStdString() << endl);
+        mLogger->sendLogMsg(mpiEnv);
+    }
+
     mController = new NMModelController(this);
     mController->setLogger(mLogger);
+    mController->setRank(m_Rank);
+    mController->setNumProcs(m_Nproc);
 
     NMSequentialIterComponent* root = new NMSequentialIterComponent();
     root->setObjectName("root");
     root->setDescription("Top level model component managed by the ModelController");
     mController->addComponent(root);
+
+    NMDebugCtx(ctx, << "done!");
 }
 
 NMLumassEngine::~NMLumassEngine()
+{
+}
+
+void
+NMLumassEngine::shutdown(void)
 {
     if (mLogFile.isOpen())
     {
         mLogFile.flush();
         mLogFile.close();
     }
+
+#ifdef LUMASS_PYTHON
+    if (Py_IsInitialized())
+    {
+        pybind11::finalize_interpreter();
+    }
+#endif
+
+    // clean up mpi
+    int mpiInit;
+    int mpierr = MPI_Initialized(&mpiInit);
+    if (mpierr == 0 && mpiInit && mbMPICleanUp)
+    {
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Finalize();
+    }
 }
 
 int NMLumassEngine::runModel(double fromTimeStep, double toTimeStep)
 {
-	// for now we're ignoring any fancy from and to time steps!
+    // for now we're ignoring any fancy from and to time steps!
 
-	NMLogDebug(<< "Running a model ... ");
-	
+    NMLogDebug(<< "Running a model ... ");
+
     mController->executeModel("root");
-	
-	return 0;
+
+    return 0;
 }
 
 void
 NMLumassEngine::setSetting(const QString &key, const QString &value)
 {
 
-	NMLogDebug(<< "::setSetting(" << key.toStdString() << ", " << value.toStdString() << ")");
-	mController->updateSettings(key, value);
+    NMLogDebug(<< "::setSetting(" << key.toStdString() << ", " << value.toStdString() << ")");
+    mController->updateSettings(key, value);
 }
 
 void
@@ -106,6 +205,234 @@ std::string NMLumassEngine::processStringParameter(const QString& param)
     return ret;
 }
 
+void
+NMLumassEngine::doModel(const QString& userFile, QString &workspace, QString& enginePath, bool bLogProv)
+{
+    NMDebugCtx(ctx, << "...");
+
+    // ==============================================
+    //  import the model
+    // ==============================================
+    bool bYaml = false;
+    QString modelFile;
+    QString yamlWorkspace;
+    QString yamlLogfileName;
+    bool byamlLogProv;
+
+    QFileInfo ufinfo(userFile);
+    YAML::Node configFile;
+    if (    ufinfo.suffix().compare(QString("yaml"), Qt::CaseInsensitive) == 0
+         || ufinfo.suffix().compare(QString("yml"), Qt::CaseInsensitive) == 0
+       )
+    {
+        // read yaml configuration file
+        try
+        {
+            configFile = YAML::LoadFile(userFile.toStdString());
+            YAML::Node engineConfig;
+            if (configFile["EngineConfig"])
+            {
+                engineConfig = configFile["EngineConfig"];
+            }
+            else
+            {
+                NMErr(ctx, << "No 'EngineConfig' found in YAML file!");
+                return;
+            }
+
+            if (engineConfig["modelfile"])
+            {
+                modelFile = engineConfig["modelfile"].as<std::string>().c_str();
+            }
+
+            if (engineConfig["workspace"])
+            {
+                yamlWorkspace = engineConfig["workspace"].as<std::string>().c_str();
+            }
+
+            if (engineConfig["logfile"])
+            {
+                yamlLogfileName = engineConfig["logfile"].as<std::string>().c_str();
+            }
+
+            if (engineConfig["logprovenance"])
+            {
+                byamlLogProv = engineConfig["logprovenance"].IsDefined() ?
+                    engineConfig["logprovenance"].as<bool>() : false;
+            }
+
+            bYaml = true;
+        }
+        catch (YAML::BadConversion& bc)
+        {
+            std::stringstream msg;
+            msg << "ERROR: " << bc.what();
+            NMErr("NMLumassEngine", << msg.str().c_str());
+            //std::cout << "cout: " << msg.str() << std::endl;
+            return;
+        }
+        catch (YAML::ParserException& pe)
+        {
+            std::stringstream msg;
+            msg << "ERROR: " << pe.what();
+            NMErr(ctx, << msg.str().c_str());
+            //std::cout << "cout: " << msg.str() << std::endl;
+            return;
+        }
+        catch (std::exception& se)
+        {
+            std::stringstream msg;
+            msg << "ERROR: " << se.what();
+            NMErr(ctx, << msg.str().c_str());
+            //std::cout << "cout: " << msg.str() << std::endl;
+            return;
+        }
+    }
+    else
+    {
+        modelFile = userFile;
+    }
+
+    //QScopedPointer<NMModelController> ctrl(new NMModelController());
+    //ctrl->setLogger(NMLoggingProvider::This()->getLogger());
+    NMModelController* ctrl = mController;
+    ctrl->updateSettings("LUMASSPath", enginePath);
+    ctrl->updateSettings("TimeFormat", "yyyy-MM-ddThh:mm:ss.zzz");
+
+    // if no appropriate command line settings were passed,
+    // use as much as possible the yaml configuration settings
+    if (bYaml)
+    {
+        ctrl->updateSettings("ConfigPath", ufinfo.canonicalPath());
+        modelFile = ctrl->processStringParameter(nullptr, modelFile);
+
+        if (workspace.isEmpty())
+        {
+            workspace = ctrl->processStringParameter(nullptr, yamlWorkspace);
+        }
+
+        if (mLogFileName.isEmpty() && !yamlLogfileName.isEmpty())
+        {
+            yamlLogfileName = ctrl->processStringParameter(nullptr, yamlLogfileName);
+
+            mLogger->setLogLevel(NMLogger::NM_LOG_INFO);
+            this->setLogFileName(yamlLogfileName);
+
+            QString mpiEnv = QString("MPI Environment: #proc=%1; thread support=%2\n")
+                             .arg(m_Nproc).arg(m_ThreadSupportStr);
+            this->writeLogMsg(mpiEnv);
+        }
+    }
+
+
+    QFileInfo fi(modelFile);
+    if (fi.suffix().compare(QString("lmx"), Qt::CaseInsensitive) != 0)
+    {
+        NMErr(ctx, << "Invalid model specified!");
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
+
+    // ====================================================
+    //   set ModelController settings
+    // ====================================================
+    QSettings settings("LUMASS", "GUI");
+
+#ifdef __linux__
+    settings.setIniCodec("UTF-8");
+#endif
+
+    settings.beginGroup("Directories");
+
+    QVariant val = settings.value("Workspace");
+    if (val.isValid() && workspace.isEmpty())
+    {
+        workspace = val.toString();
+    }
+
+    ctrl->updateSettings("Workspace", QVariant::fromValue(workspace));
+    sqlite3_temp_directory = const_cast<char*>(
+                workspace.toStdString().c_str());
+
+    val = settings.value("UserModels");
+    if (val.isValid())
+    {
+        ctrl->updateSettings("UserModels", val);
+    }
+
+    settings.endGroup();
+
+    // ====================================================
+
+    ctrl->getLogger()->setHtmlMode(false);
+
+    QMap<QString, QString> nameRegister;
+    NMModelSerialiser xmlS;
+    xmlS.setModelController(ctrl);
+    xmlS.setLogger(ctrl->getLogger());
+
+    //// connect the logger to the logging provider
+    //ctrl->connect(ctrl->getLogger(), SIGNAL(sendLogMsg(QString)),
+    //              NMLoggingProvider::This(), SLOT(writeLogMsg(QString)));
+
+//    NMSequentialIterComponent* root = new NMSequentialIterComponent();
+//    root->setObjectName("root");
+//    root->setDescription("Top level model component managed by the ModelController");
+//    ctrl->addComponent(root);
+
+    nameRegister = xmlS.parseComponent(modelFile, 0, ctrl);
+    if (nameRegister.size() == 0)
+    {
+        NMErr(ctx, << "Invalid model file specified!");
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
+
+    // if we've got a YAML, use that for overriding the
+    // models hard wired configuration
+    if (!configFile.IsNull())
+    {
+        try
+        {
+            if (configFile["ModelConfig"])
+            {
+                YAML::Node modelConfig = configFile["ModelConfig"];
+                this->configureModel(modelConfig);
+            }
+        }
+        catch(YAML::ParserException& pe)
+        {
+            NMErr("NMLumassEngine", << pe.what());
+        }
+        catch(YAML::RepresentationException& re)
+        {
+            NMErr("NMLumassEngine", << re.what());
+        }
+        catch (std::exception& se)
+        {
+            NMErr("NMLumassEngine", << se.what());
+        }
+    }
+
+    // ==============================================
+    //  EXECUTE MODEL
+    // ==============================================
+    GDALAllRegister();
+    GetGDALDriverManager()->AutoLoadDrivers();
+    sqlite3_temp_directory = const_cast<char*>(workspace.toStdString().c_str());//getenv("HOME");
+
+    if (bLogProv || byamlLogProv)
+    {
+        ctrl->setLogProvOn();
+    }
+
+    ctrl->executeModel("root");
+
+    GDALDestroyDriverManager();
+
+    NMDebugCtx("NMLumassEngine", << "done!");
+}
+
 int
 NMLumassEngine::loadModel(const QString &modelfile)
 {
@@ -125,13 +452,13 @@ NMLumassEngine::loadModel(const QString &modelfile)
     xmlS.setModelController(mController);
     xmlS.setLogger(mController->getLogger());
 
-	std::stringstream msg;
-	msg << "Loading model '" << modelfile.toStdString() << "' ...";
+    std::stringstream msg;
+    msg << "Loading model '" << modelfile.toStdString() << "' ...";
     log("INFO", msg.str().c_str());
     nameRegister = xmlS.parseComponent(modelfile, 0, mController);
 
-	this->mMode = NM_ENGINE_MODE_MODEL;
-	return 0;
+    this->mMode = NM_ENGINE_MODE_MODEL;
+    return 0;
 }
 
 QString
@@ -250,15 +577,15 @@ NMLumassEngine::parseYamlSetting(const YAML::const_iterator& nit, const QObject*
     return ret;
 }
 
-int 
+int
 NMLumassEngine::configureModel(const YAML::Node& modelConfig)
 {
-    mController->clearModelSettings();
+    //mController->clearModelSettings();
 
     // =====================================================================
     // iterate over model components
 
-	//std::cout << "configure model from YAML ... " << std::endl;
+    //std::cout << "configure model from YAML ... " << std::endl;
 
     YAML::const_iterator mit = modelConfig.begin();
     while (mit != modelConfig.end())
@@ -267,7 +594,7 @@ NMLumassEngine::configureModel(const YAML::Node& modelConfig)
          if (!compNode.IsNull())
          {
              QString compName = mit->first.as<std::string>().c_str();
-			 //std::cout << "  " << compName.toStdString().c_str() << std::endl;
+             //std::cout << "  " << compName.toStdString().c_str() << std::endl;
 
              bool bCompProps = true;
              bool bProcProps = false;
@@ -280,9 +607,9 @@ NMLumassEngine::configureModel(const YAML::Node& modelConfig)
              NMModelComponent* comp = mController->getComponent(compName);
              if (bCompProps && comp == nullptr)
              {
-				 std::stringstream msg;
-				 msg << "Model Configuration: Couldn't find component '"
-					 << compName.toStdString() << "'!";
+                 std::stringstream msg;
+                 msg << "Model Configuration: Couldn't find component '"
+                     << compName.toStdString() << "'!";
                  log("ERROR", msg.str().c_str());
                  return 1;
              }
@@ -294,7 +621,7 @@ NMLumassEngine::configureModel(const YAML::Node& modelConfig)
              while (pit != compNode.end())
              {
                  QString propName = pit->first.as<std::string>().c_str();
-				 //std::cout << "    - " << propName.toStdString().c_str() << "=";
+                 //std::cout << "    - " << propName.toStdString().c_str() << "=";
 
                  // check whether the specified property is a property of the
                  // given model component
@@ -319,12 +646,12 @@ NMLumassEngine::configureModel(const YAML::Node& modelConfig)
 
                          if (!bCompProps && !bProcProps)
                          {
-							 std::stringstream wmsg;
-							 wmsg << "Model Configuration: Component '"
+                             std::stringstream wmsg;
+                             wmsg << "Model Configuration: Component '"
                                        << compName.toStdString() << "' doesn't "
                                        << " have a '" << propName.toStdString()
                                        << " ' property'! We better skip this one.";
-							 log("WARN", wmsg.str().c_str());
+                             log("WARN", wmsg.str().c_str());
                              ++pit;
                              continue;
                          }
@@ -352,10 +679,10 @@ NMLumassEngine::configureModel(const YAML::Node& modelConfig)
                      }
                      if (!proc->setProperty(propName.toStdString().c_str(), val))
                      {
-						 std::stringstream emsg;
-						 emsg << "Failed setting '" << comp->objectName().toStdString() << ":"
+                         std::stringstream emsg;
+                         emsg << "Failed setting '" << comp->objectName().toStdString() << ":"
                                     << propName.toStdString() << "'!";
-						 log("ERROR", emsg.str().c_str());
+                         log("ERROR", emsg.str().c_str());
                      }
                  }
                  else if (bCompProps)
@@ -371,10 +698,10 @@ NMLumassEngine::configureModel(const YAML::Node& modelConfig)
                      // set property value
                      if (!comp->setProperty(propName.toStdString().c_str(), val))
                      {
-						 std::stringstream emsg;
-						 emsg << "Failed setting '" << comp->objectName().toStdString() << ":"
+                         std::stringstream emsg;
+                         emsg << "Failed setting '" << comp->objectName().toStdString() << ":"
                                     << propName.toStdString() << "'!";
-						 log("ERROR", emsg.str().c_str());
+                         log("ERROR", emsg.str().c_str());
                      }
                  }
                  else
@@ -384,7 +711,7 @@ NMLumassEngine::configureModel(const YAML::Node& modelConfig)
                      mController->updateSettings(propName, val);
                  }
 
-				 //std::cout << val.toString().toStdString().c_str() << std::endl;
+                 //std::cout << val.toString().toStdString().c_str() << std::endl;
 
                  ++pit;
              }
@@ -392,33 +719,33 @@ NMLumassEngine::configureModel(const YAML::Node& modelConfig)
          ++mit;
     }
 
-	return 0;
+    return 0;
 }
 
 int NMLumassEngine::loadOptimisationSettings(const QString & losFileName)
 {
-	
-	QFile los(losFileName);
-	if (!los.open(QIODevice::ReadOnly | QIODevice::Text))
-	{
-		std::stringstream emsg;
-		emsg << "LUMASS Engine: Failed reading optimisation settings file!";
-		log("ERROR", emsg.str().c_str());
-	    return 1;
-	}
-    QTextStream str(&los);
-	if (mMosra != nullptr)
-	{
-		delete mMosra;
-	}
 
-	mMosra = new NMMosra(this);
+    QFile los(losFileName);
+    if (!los.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        std::stringstream emsg;
+        emsg << "LUMASS Engine: Failed reading optimisation settings file!";
+        log("ERROR", emsg.str().c_str());
+        return 1;
+    }
+    QTextStream str(&los);
+    if (mMosra != nullptr)
+    {
+        delete mMosra;
+    }
+
+    mMosra = new NMMosra(this);
     mMosra->setLosSettings(str.readAll());
-	los.close();
+    los.close();
     mMosra->setLosFileName(losFileName);
 
     mMode = NM_ENGINE_MODE_MOSO;
-	return 0;
+    return 0;
 }
 
 int NMLumassEngine::configureOptimisation(const YAML::Node & modelConfig)
@@ -428,18 +755,18 @@ int NMLumassEngine::configureOptimisation(const YAML::Node & modelConfig)
     log("DEBUG", emsg.str().c_str());
     emsg.str("");
 
-	// no need to parse settings if we haven't got a settings file
-	// loaded yet
-	if (mMosra == nullptr || mMosra->getLosSettings().isEmpty())
-	{
-		emsg << "Please load an optimisation settings file before parsing "
-			<< "YAML-based optimisation settings!";
-		log("ERROR", emsg.str().c_str());
-		return 1;
-	}
+    // no need to parse settings if we haven't got a settings file
+    // loaded yet
+    if (mMosra == nullptr || mMosra->getLosSettings().isEmpty())
+    {
+        emsg << "Please load an optimisation settings file before parsing "
+            << "YAML-based optimisation settings!";
+        log("ERROR", emsg.str().c_str());
+        return 1;
+    }
     QString settings = mMosra->getLosSettings();
 
-	// parse optimisation settings in YAML file and evaluate
+    // parse optimisation settings in YAML file and evaluate
     // *.los file LUMASS expressions
     if (!modelConfig.IsNull() && modelConfig.IsDefined())
     {
@@ -482,13 +809,13 @@ int NMLumassEngine::configureOptimisation(const YAML::Node & modelConfig)
         if (root != nullptr)
         {
             settings = mController->processStringParameter(root, settings);
-			if (settings.startsWith(QStringLiteral("ERROR")))
-			{
-				emsg << "The settings file contains undefined LUMASS settings, e.g. $[LUMASS:DataPath]$!"
-					<< " Please double check your *.yaml configuration file, e.g. for 'DataPath: \"/mypath\"' !";
-				log("ERROR", emsg.str().c_str());
-				return 1;
-			}
+            if (settings.startsWith(QStringLiteral("ERROR")))
+            {
+                emsg << "The settings file contains undefined LUMASS settings, e.g. $[LUMASS:DataPath]$!"
+                    << " Please double check your *.yaml configuration file, e.g. for 'DataPath: \"/mypath\"' !";
+                log("ERROR", emsg.str().c_str());
+                return 1;
+            }
         }
     }
     else
@@ -507,16 +834,35 @@ int NMLumassEngine::configureOptimisation(const YAML::Node & modelConfig)
     return 0;
 }
 
+void
+NMLumassEngine::doMOSO(const QString& losFileName)
+{
+//    QScopedPointer<NMMosra> mosra(new NMMosra());
+//    mosra->setLogger(NMLoggingProvider::This()->getLogger());
+//    mosra->loadSettings(losFileName);
+
+    loadOptimisationSettings(losFileName);
+    mMosra->parseStringSettings(mMosra->getLosSettings());
+    if (mMosra->doBatch())
+    {
+        doMOSObatch();
+    }
+    else
+    {
+        doMOSOsingle();
+    }
+}
+
 int NMLumassEngine::runOptimisation(void)
 {
-	if (mMosra == nullptr)
-	{
-		std::stringstream emsg;
-		emsg << "Please specify the optimisation problem (i.e. settings) before "
-			<< "trying to solve it!";
-		log("ERROR", emsg.str().c_str());
-		return 1;
-	}
+    if (mMosra == nullptr)
+    {
+        std::stringstream emsg;
+        emsg << "Please specify the optimisation problem (i.e. settings) before "
+            << "trying to solve it!";
+        log("ERROR", emsg.str().c_str());
+        return 1;
+    }
 
     int ret = 0;
     if (mMosra->doBatch())
@@ -702,7 +1048,7 @@ NMLumassEngine::doMOSOsingle()
     m->setData(dsFileName, mosra->getLosFileName(),
                "", levels, 1, 1, mosra->getLosSettings());
     QThreadPool::globalInstance()->start(m);
-	QThreadPool::globalInstance()->waitForDone();
+    QThreadPool::globalInstance()->waitForDone();
 
     return 0;
 }
@@ -716,14 +1062,20 @@ NMLumassEngine::about(void)
 void
 NMLumassEngine::setLogFileName(const QString &fn)
 {
+    if (mLogFile.isOpen())
+    {
+        mLogFile.close();
+    }
+
     mLogFile.setFileName(fn);
     if (!mLogFile.open(QIODevice::WriteOnly | QIODevice::Text))
     {
-		std::stringstream emsg;
-		emsg << "Failed creating log file!";
-		log("ERROR", emsg.str().c_str());
+        std::stringstream emsg;
+        emsg << "Failed creating log file!";
+        log("ERROR", emsg.str().c_str());
         return;
     }
+    mLogFileName = fn;
 
     connect(mLogger, SIGNAL(sendLogMsg(QString)), this, SLOT(writeLogMsg(QString)));
 
@@ -733,7 +1085,8 @@ NMLumassEngine::setLogFileName(const QString &fn)
             .arg(QTime::currentTime().toString());
 
     this->writeLogMsg(logstart);
-	mBMILogger(2, logstart.toStdString().c_str());
+    //mBMILogger(2, logstart.toStdString().c_str());
+    log("INFO", logstart);
 }
 
 void
@@ -744,48 +1097,56 @@ NMLumassEngine::log(const QString& type, const QString &qmsg)
     if (type.compare("WARN") == 0)
     {
         NMLogWarn(<< msg);
-		if (mBMILogger != nullptr)
-		{
-			mBMILogger(3, msg.c_str());
-		}
+        if (mBMILogger != nullptr)
+        {
+            mBMILogger(3, msg.c_str());
+        }
     }
     else if (type.compare("ERROR") == 0)
     {
         NMLogError(<< msg);
-		if (mBMILogger != nullptr)
-		{
-			mBMILogger(4, msg.c_str());
-		}
+        if (mBMILogger != nullptr)
+        {
+            mBMILogger(4, msg.c_str());
+        }
     }
     else if (type.compare("INFO") == 0)
     {
         NMLogInfo(<< msg);
-		if (mBMILogger != nullptr)
-		{
-			mBMILogger(2, msg.c_str());
-		}
+        if (mBMILogger != nullptr)
+        {
+            mBMILogger(2, msg.c_str());
+        }
     }
     else if (type.compare("DEBUG") == 0)
     {
         NMLogDebug(<< msg);
-		if (mBMILogger != nullptr)
-		{
-			mBMILogger(1, msg.c_str());
-		}
+        if (mBMILogger != nullptr)
+        {
+            mBMILogger(1, msg.c_str());
+        }
     }
 }
 
 void
 NMLumassEngine::writeLogMsg(const QString& msg)
 {
+    QString themsg = msg;
+    QObject* sender = this->sender();
+    if (sender != nullptr)
+    {
+        themsg = QString("r%1:%2::%3").arg(m_Rank).arg(sender->objectName()).arg(msg);
+    }
+
     if (!mLogFile.isOpen())
     {
         NMErr("NMLumassEngine", << "Failed writing log message - log file is closed!");
-		mBMILogger(4, "NMLumassEngine: Failed writing log message - log file is closed!");
+        //mBMILogger(4, "NMLumassEngine: Failed writing log message - log file is closed!");
+        log("ERROR", "NMLumassEngine: Failed writing log message - log file is closed!");
         return;
     }
 
     QTextStream out(&mLogFile);
-    out << msg;
+    out << themsg;
 
 }

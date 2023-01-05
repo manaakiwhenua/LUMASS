@@ -22,6 +22,7 @@
 #include "itkObjectFactory.h"
 #include "utils/muParser/muParser.h"
 #include "utils/muParser/muParserDef.h"
+#include <random>
 //#include "otbsuppl/filters/otbMultiParserImpl.h"
 
 #include "otbsupplfilters_export.h"
@@ -107,16 +108,52 @@ public:
     /** Get the number of results returned by the parser */
     int GetNumResults();
 
-
     static ValueType rnum(ValueType lower, ValueType upper)
     {
-        return rand() % ((int)upper - (int)lower + 1) + (int)lower;
+        static std::random_device rand_rd;
+        static std::mt19937 rand_mt(rand_rd());
+        static std::uniform_int_distribution<int> rand_dist_int(lower, upper);
+        return rand_dist_int(rand_mt);
     }
 
     static ValueType calcMod(ValueType numer, ValueType denom)
     {
         return std::fmod(numer, denom);
     }
+
+    static ValueType unifdist_int(ValueType lower, ValueType upper)
+    {
+        static std::random_device unifdist_int_rd;
+        static std::mt19937 unifdist_int_mt(unifdist_int_rd());
+        static std::uniform_int_distribution<int> unifdist_int(lower, upper);
+        return unifdist_int(unifdist_int_mt);
+    }
+
+    static ValueType unifdist_real(ValueType lower, ValueType upper)
+    {
+        static std::random_device unifdist_dbl_rd;
+        static std::mt19937 unifdist_dbl_mt(unifdist_dbl_rd());
+        static std::uniform_real_distribution<double> unifdist_dbl(lower, upper);
+        return unifdist_dbl(unifdist_dbl_mt);
+    }
+
+
+    static ValueType lndist(ValueType m, ValueType s)
+    {
+        static std::random_device lndist_rd;
+        static std::mt19937 lndist_mt(lndist_rd());
+        static std::lognormal_distribution<double> lndist(m, s);
+        return lndist(lndist_mt);
+    }
+
+    static ValueType normdist(ValueType m, ValueType s)
+    {
+        static std::random_device normdist_rd;
+        static std::mt19937 normdist_mt(normdist_rd());
+        static std::normal_distribution<double> normdist(m, s);
+        return normdist(normdist_mt);
+    }
+
 
 protected:
     MultiParser();

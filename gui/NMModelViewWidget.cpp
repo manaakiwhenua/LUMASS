@@ -599,10 +599,17 @@ NMModelViewWidget::createSequentialIterComponent()
 }
 
 void
-NMModelViewWidget::createConditionalIterComponent()
+NMModelViewWidget::createParallelIterComponent()
 {
-    this->createAggregateComponent("NMConditionalIterComponent");
+    this->createAggregateComponent("NMParallelIterComponent");
 }
+
+
+//void
+//NMModelViewWidget::createConditionalIterComponent()
+//{
+//    this->createAggregateComponent("NMConditionalIterComponent");
+//}
 
 void NMModelViewWidget::createAggregateComponent(const QString& compType)
 {
@@ -732,24 +739,35 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
     QGraphicsItem* hostItem = this->mModelScene->getComponentItem(host->objectName());
 
     // create the new aggregate component item, and add all selected children
-    NMAggregateComponentItem* aggrItem = new NMAggregateComponentItem(hostItem);
+    bool bParallel = false;
+    if (compType.contains(QStringLiteral("Parallel")))
+    {
+        bParallel = true;
+    }
+    NMAggregateComponentItem* aggrItem = new NMAggregateComponentItem(bParallel, hostItem);
     aggrItem->setTitle(newAggrItemName);
     aggrItem->updateTimeLevel(aggrComp->getTimeLevel());
     aggrItem->updateDescription(aggrComp->getDescription());
 
-    NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(aggrComp);
-    if (sic != 0)
+    //NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(aggrComp);
+    //if (sic != 0)
     {
         aggrItem->updateNumIterations(1);
-        connect(sic, SIGNAL(NumIterationsChanged(uint)),
-                aggrItem, SLOT(updateNumIterations(uint)));
-        connect(sic, SIGNAL(signalProgress(float)),
-                aggrItem, SLOT(slotProgress(float)));
+        //connect(sic, SIGNAL(NumIterationsChanged(uint)),
+        //        aggrItem, SLOT(updateNumIterations(uint)));
+        //connect(sic, SIGNAL(signalProgress(float)),
+        //        aggrItem, SLOT(slotProgress(float)));
     }
-    else
-    {
-        aggrItem->updateNumIterations(0);
-    }
+    //else
+    //{
+    //    aggrItem->updateNumIterations(0);
+    //}
+
+    connect(aggrComp, SIGNAL(NumIterationsChanged(uint)),
+            aggrItem, SLOT(updateNumIterations(uint)));
+    connect(aggrComp, SIGNAL(signalProgress(float)),
+            aggrItem, SLOT(slotProgress(float)));
+
 
     connect(aggrComp, SIGNAL(ComponentDescriptionChanged(QString)),
             aggrItem, SLOT(updateDescription(QString)));
@@ -858,11 +876,17 @@ void NMModelViewWidget::initItemContextMenu()
     groupSeqItems->setText(groupSeqItemText);
     this->mActionMap.insert(groupSeqItemText, groupSeqItems);
 
-    QAction* groupCondItems = new QAction(this->mItemContextMenu);
-    QString groupCondItemText = "Create Conditional Group";
-    groupCondItems->setEnabled(false);
-    groupCondItems->setText(groupCondItemText);
-    this->mActionMap.insert(groupCondItemText, groupCondItems);
+    QAction* groupParaItems = new QAction(this->mItemContextMenu);
+    QString groupParaItemText = "Create Parallel Group";
+    groupParaItems->setEnabled(false);
+    groupParaItems->setText(groupParaItemText);
+    this->mActionMap.insert(groupParaItemText, groupParaItems);
+
+    //QAction* groupCondItems = new QAction(this->mItemContextMenu);
+    //QString groupCondItemText = "Create Conditional Group";
+    //groupCondItems->setEnabled(false);
+    //groupCondItems->setText(groupCondItemText);
+    //this->mActionMap.insert(groupCondItemText, groupCondItems);
 
     QAction* ungroupItems = new QAction(this->mItemContextMenu);
     QString ungroupItemsText = "Ungroup Components";
@@ -938,6 +962,7 @@ void NMModelViewWidget::initItemContextMenu()
     this->mItemContextMenu->addAction(actDeltaTimeLevel);
     this->mItemContextMenu->addAction(actGroupTimeLevel);
     this->mItemContextMenu->addAction(groupSeqItems);
+    this->mItemContextMenu->addAction(groupParaItems);
     //this->mItemContextMenu->addAction(groupCondItems);
     this->mItemContextMenu->addAction(ungroupItems);
 
@@ -966,7 +991,8 @@ void NMModelViewWidget::initItemContextMenu()
     connect(actDeltaTimeLevel, SIGNAL(triggered()), this, SLOT(addDeltaTimeLevel()));
     connect(actGroupTimeLevel, SIGNAL(triggered()), this, SLOT(setGroupTimeLevel()));
     connect(groupSeqItems, SIGNAL(triggered()), this, SLOT(createSequentialIterComponent()));
-    connect(groupCondItems, SIGNAL(triggered()), this, SLOT(createConditionalIterComponent()));
+    connect(groupParaItems, SIGNAL(triggered()), this, SLOT(createParallelIterComponent()));
+    //connect(groupCondItems, SIGNAL(triggered()), this, SLOT(createConditionalIterComponent()));
     connect(ungroupItems, SIGNAL(triggered()), this, SLOT(ungroupComponents()));
     connect(delComp, SIGNAL(triggered()), this, SLOT(deleteItem()));
     connect(copyComp, SIGNAL(triggered()), this, SLOT(copy()));
@@ -1121,7 +1147,7 @@ NMModelViewWidget::test()
     auto cpIt = repo.begin();
     while (cpIt != repo.end())
     {
-        NMSequentialIterComponent* procComp =  qobject_cast<NMSequentialIterComponent*>(cpIt.value());
+        NMIterableComponent* procComp =  qobject_cast<NMIterableComponent*>(cpIt.value());
         if (procComp == nullptr)
         {
             ++cpIt;
@@ -1369,11 +1395,13 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
             this->mActionMap.value("Set Time Level ...")->setEnabled(false);
             this->mActionMap.value("Ungroup Components")->setEnabled(true);
             this->mActionMap.value("Create Sequential Group")->setEnabled(false);
+            this->mActionMap.value("Create Parallel Group")->setEnabled(false);
             //this->mActionMap.value("Create Conditional Group")->setEnabled(true);
         }
         else if (selection.count() >= 1 && levelIndi >= 0)
         {
             this->mActionMap.value("Create Sequential Group")->setEnabled(true);
+            this->mActionMap.value("Create Parallel Group")->setEnabled(true);
             //this->mActionMap.value("Create Conditional Group")->setEnabled(true);
             if (levelIndi > 0)
             {
@@ -1391,7 +1419,8 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
         else
         {
             this->mActionMap.value("Create Sequential Group")->setEnabled(false);
-            this->mActionMap.value("Create Conditional Group")->setEnabled(false);
+            this->mActionMap.value("Create Parallel Group")->setEnabled(false);
+            //this->mActionMap.value("Create Conditional Group")->setEnabled(false);
             this->mActionMap.value("Ungroup Components")->setEnabled(false);
             this->mActionMap.value("Set Time Level ...")->setEnabled(false);
             this->mActionMap.value("Increase/Decrease Time Level ...")->setEnabled(false);
@@ -1400,7 +1429,8 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     else
     {
         this->mActionMap.value("Create Sequential Group")->setEnabled(false);
-        this->mActionMap.value("Create Conditional Group")->setEnabled(false);
+        this->mActionMap.value("Create Parallel Group")->setEnabled(false);
+        //this->mActionMap.value("Create Conditional Group")->setEnabled(false);
         this->mActionMap.value("Ungroup Components")->setEnabled(false);
         this->mActionMap.value("Set Time Level ...")->setEnabled(false);
         this->mActionMap.value("Increase/Decrease Time Level ...")->setEnabled(false);
@@ -1790,10 +1820,29 @@ NMModelViewWidget::exportModel(const QList<QGraphicsItem*>& items,
     // ---------------
     // set LUMASS identifier
     lmv << QString::fromLatin1("LUMASS Model Visualisation File");
-    //lmv << (qreal)0.93;
-    lmv << NMGlobalHelper::getLUMASSVersion();
+
+    // set LmvFileVersion (*.lmv file version)
+    // significant versions are: 0.91, 0.95, 0.97
+    // 0.91 : original file version
+    // 0.95 : collapsable aggregate components
+    // 0.97 : ParallelIterComponent (AggregateComponent)
+    qreal lmvVersion = NMGlobalHelper::getLUMASSVersion();
+
+    QString strVersion = NMGlobalHelper::getUserSetting("LmvFileVersion");
+    if (!strVersion.isEmpty())
+    {
+        bool bOK;
+        const double dblVersion = strVersion.toDouble(&bOK);
+        if (bOK)
+        {
+            lmvVersion = static_cast<qreal>(dblVersion);
+        }
+    }
+
+    lmv << lmvVersion;
 
     lmv.setVersion(13);
+
     // --------------------------------------
     // save root labels
 
@@ -3050,12 +3099,12 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 
         case (qint32)NMAggregateComponentItem::Type:
                 {
-                    ai = new NMAggregateComponentItem(0);
 
                     QString title;
                     QPointF pos;
                     QColor color;
                     bool bCollapsed = false;
+                    bool bParallel = false;
                     qint32 nkids;
 
                     lmv >> title >> pos >> color;
@@ -3063,7 +3112,13 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     {
                         lmv >> bCollapsed;
                     }
+                    if (lmv_version >= 0.97)
+                    {
+                        lmv >> bParallel;
+                    }
                     lmv >> nkids;
+
+                    ai = new NMAggregateComponentItem(bParallel, 0);
 
                     ai->setTitle(nameRegister.value(title));
                     ai->setPos(pos);
@@ -3304,12 +3359,18 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     QPointF pos;
                     QColor color;
                     bool bCollapsed = false;
+                    bool bParallel = false;
                     qint32 nkids;
                     lmv >> _title >> pos >> color;
 
                     if (lmv_version >= 0.95)
                     {
                         lmv >> bCollapsed;
+                    }
+
+                    if (lmv_version >= 0.97)
+                    {
+                        lmv >> bParallel;
                     }
 
                     lmv >> nkids;
@@ -3332,16 +3393,17 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 
                     ai->updateDescription(c->getDescription());
                     ai->updateTimeLevel(c->getTimeLevel());
-                    NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(c);
-                    if (sic != 0)
-                    {
-                        ai->updateNumIterations(sic->getNumIterations());
-                    }
-                    else
-                    {
-                        ai->updateNumIterations(0);
-                    }
+                    //NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(c);
+                    //if (sic != 0)
+                    //{
+                    //    ai->updateNumIterations(sic->getNumIterations());
+                    //}
+                    //else
+                    //{
+                    //    ai->updateNumIterations(0);
+                    //}
                     // force update of activiy status of component
+                    ai->updateNumIterations(c->getNumIterations());
                     ai->slotProgress(c->getIterationStep());
 
 
@@ -3404,14 +3466,14 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                             ai, SLOT(updateDescription(QString)));
                     connect(c, SIGNAL(TimeLevelChanged(short)),
                             ai, SLOT(updateTimeLevel(short)));
-                    connect(sic, SIGNAL(NumIterationsChanged(uint)),
+                    connect(c, SIGNAL(NumIterationsChanged(uint)),
                             ai, SLOT(updateNumIterations(uint)));
 
                     connect(c, SIGNAL(signalExecutionStarted()),
                             ai, SLOT(slotExecutionStarted()));
                     connect(c, SIGNAL(signalExecutionStopped()),
                             ai, SLOT(slotExecutionStopped()));
-                    connect(sic, SIGNAL(signalProgress(float)),
+                    connect(c, SIGNAL(signalProgress(float)),
                             ai, SLOT(slotProgress(float)));
 
                     connect(c, SIGNAL(signalExecutionStarted()),
@@ -4255,13 +4317,17 @@ NMModelViewWidget::processProcInputChanged(QList<QStringList> inputs)
 void
 NMModelViewWidget::processNumIterExprChanges()
 {
-    NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(this->sender());
-    if (sic == nullptr)
+    //NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(this->sender());
+    NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(this->sender());
+
+    //if (sic == nullptr)
+    if (ic == nullptr)
     {
         return;
     }
 
-    QStringList exprList = sic->getNumIterationsExpression();
+    //QStringList exprList = sic->getNumIterationsExpression();
+    QStringList exprList = ic->getNumIterationsExpression();
     bool bIsDynamic = false;
     if (exprList.size() > 0)
     {
@@ -4275,8 +4341,10 @@ NMModelViewWidget::processNumIterExprChanges()
         }
     }
 
-    QString sicName = sic->objectName();
-    QGraphicsItem* gi = this->mModelScene->getComponentItem(sicName);
+    //QString sicName = sic->objectName();
+    QString icName = ic->objectName();
+    //QGraphicsItem* gi = this->mModelScene->getComponentItem(sicName);
+    QGraphicsItem* gi = this->mModelScene->getComponentItem(icName);
     if (gi == nullptr)
     {
         return;
@@ -4515,15 +4583,20 @@ NMModelViewWidget::connectProcessItem(NMProcess* proc,
             SLOT(setDescription(const QString &)));
     connect(comp, SIGNAL(TimeLevelChanged(short)), procItem,
             SLOT(updateTimeLevel(short)));
+    connect(comp, SIGNAL(NumIterationsExpressionChanged()),
+            this, SLOT(processNumIterExprChanges()));
+    connect(comp, SIGNAL(signalExecutionStarted()),
+            this, SLOT(focusExecComp()));
 
-    NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(comp);
-    if (sic != nullptr)
-    {
-        connect(sic, SIGNAL(NumIterationsExpressionChanged()),
-                this, SLOT(processNumIterExprChanges()));
-        connect(sic, SIGNAL(signalExecutionStarted()),
-                this, SLOT(focusExecComp()));
-    }
+
+    //NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(comp);
+    //if (sic != nullptr)
+    //{
+    //    connect(sic, SIGNAL(NumIterationsExpressionChanged()),
+    //            this, SLOT(processNumIterExprChanges()));
+    //    connect(sic, SIGNAL(signalExecutionStarted()),
+    //            this, SLOT(focusExecComp()));
+    //}
 
 }
 

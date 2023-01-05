@@ -83,7 +83,8 @@ public slots:
             const QString& procName, QPointF scenePos);
     void createAggregateComponent(const QString& compType);
     void createSequentialIterComponent();
-    void createConditionalIterComponent();
+    void createParallelIterComponent();
+    //void createConditionalIterComponent();
     void ungroupComponents();
     void setGroupTimeLevel();
     void addDeltaTimeLevel();

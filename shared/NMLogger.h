@@ -80,10 +80,16 @@ public slots:
                   const QStringList &args,
                   QStringList &attr);
 
+    void setMPIRank(int rank){mMPIRank = rank;}
+    void setMPIInitialised(int init) {mMPIInitialised = init;}
+
 protected:
 
     bool mbHtml;
     LogEventType mLogLevel;
+
+    int mMPIRank;
+    int mMPIInitialised;
 };
 
 #endif // NMLOGGER_H

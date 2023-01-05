@@ -17,8 +17,10 @@
 ******************************************************************************/
 #include "NMLogger.h"
 
+#include <mpi.h>
+
 NMLogger::NMLogger(QObject *parent)
-    : QObject(parent), mbHtml(false),
+    : QObject(parent), mbHtml(false), mMPIRank(0), mMPIInitialised(0),
 #ifdef LUMASS_DEBUG
     mLogLevel(NM_LOG_DEBUG)
 #else
@@ -109,7 +111,10 @@ NMLogger::logProvN(const NMProvConcept &concept,
 
     msg += ")\n";
 
-    emit sendProvN(msg);
+    if (mMPIRank == 0)
+    {
+        emit sendProvN(msg);
+    }
 }
 
 void
@@ -197,5 +202,9 @@ NMLogger::processLogMsg(const QString &time, LogEventType type, const QString &m
                 break;
         }
     }
-    emit sendLogMsg(logmsg);
+
+    if (mMPIRank == 0)
+    {
+        emit sendLogMsg(logmsg);
+    }
 }

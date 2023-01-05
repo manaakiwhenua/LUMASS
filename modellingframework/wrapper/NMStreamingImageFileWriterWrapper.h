@@ -67,6 +67,8 @@ class NMSTREAMINGIMAGEFILEWRITERWRAPPER_EXPORT NMStreamingImageFileWriterWrapper
     Q_PROPERTY(QString PyramidResamplingType READ getPyramidResamplingType WRITE setPyramidResamplingType)
     Q_PROPERTY(QStringList PyramidResamplingEnum READ getPyramidResamplingEnum)
     Q_PROPERTY(bool RGBMode READ getRGBMode WRITE setRGBMode)
+    //Q_PROPERTY(bool ParallelIO READ getParallelIO WRITE setParallelIO)
+    Q_PROPERTY(int WriteProcs READ getWriteProcs WRITE setWriteProcs)
 
 public:
     NMPropertyGetSet( FileNames, QStringList )
@@ -77,10 +79,14 @@ public:
     NMPropertyGetSet( PyramidResamplingType, QString )
     NMPropertyGetSet( PyramidResamplingEnum, QStringList )
     NMPropertyGetSet( RGBMode, bool)
+    NMPropertyGetSet( ParallelIO, bool)
     NMPropertyGetSet( StreamingMethodType, QString )
     NMPropertyGetSet( StreamingMethodEnum, QStringList)
     NMPropertyGetSet( StreamingSize, int )
+    //NMPropertyGetSet( NumProcs, int )
 
+    void setWriteProcs(int procs);
+    int getWriteProcs(void){return mWriteProcs;}
 
 #ifdef BUILD_RASSUPPORT
     void setRasConnector(NMRasdamanConnectorWrapper* rw);
@@ -117,21 +123,27 @@ public:
     void setForcedLargestPossibleRegion(std::array<int, 6> forcedLPR);
     void setUpdateRegion(std::array<int, 6> updateRegion);
 
+    virtual void update();
+
 protected:
 
     QString mPyramidResamplingType;
     QStringList mPyramidResamplingEnum;
 
     int mStreamingSize;
+    int mWriteProcs;
     QString mStreamingMethodType;
     QStringList mStreamingMethodEnum;
 
     QStringList mFileNames;
+    QStringList mProcessedFileNames;
     QStringList mInputTables;
     bool mWriteImage;
     bool mWriteTable;
     bool mUpdateMode;
     bool mRGBMode;
+    bool mParallelIO;
+
 
     bool mbUseForcedLPR;
     bool mbUseUpdateRegion;
@@ -154,6 +166,8 @@ protected:
     void linkParameters(unsigned int step,
             const QMap<QString, NMModelComponent*>& repo);
 
+    void internalParallelIO_Update();
+
     void setInternalUpdateMode();
     void setInternalResamplingType();
     void setInternalInputTables(const QStringList tabelSpec,
@@ -162,6 +176,7 @@ protected:
     void setInternalStreamingSize();
     void setInternalForcedLargestPossibleRegion(itk::ImageIORegion& ior);
     void setInternalUpdateRegion(itk::ImageIORegion& ior);
+    void setInternalParallelIO(void);
 };
 
 #endif /* NMSTREAMINGIMAGEFILEWRITERWRAPPER_H_ */

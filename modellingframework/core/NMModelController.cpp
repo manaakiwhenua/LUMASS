@@ -60,7 +60,9 @@ const std::string NMModelController::ctx = "NMModelController";
 NMModelController::NMModelController(QObject* parent)
     : mbModelIsRunning(false),
       mRootComponent(0), mbAbortionRequested(false),
-      mbLogProv(false)
+      mbLogProv(false),
+      mRank(0),
+      mNumProcs(1)
 {
     this->setParent(parent);
     this->mModelStarted = QDateTime::currentDateTime();
@@ -528,14 +530,14 @@ NMModelController::addComponent(NMModelComponent* comp,
 {
     //	NMDebugCtx(ctx, << "...");
 
-    if (comp == 0)
+    if (comp == nullptr)
     {
         NMLogError(<< ctx << ": cannot add NULL component to model!");
         return "failed";
     }
 
     NMIterableComponent* ihost = 0;
-    if (host != 0)
+    if (host != nullptr)
     {
         ihost = qobject_cast<NMIterableComponent*>(host);
     }
@@ -718,6 +720,125 @@ NMModelController::getComponent(const QString& name)
         comp = cit.value();
 
     return comp;
+}
+
+int
+NMModelController::getRank(const QString& comp)
+{
+    MPI_Comm comm = this->getNextUpstrMPIComm(comp);
+
+    int rank = 0;
+    if (comm != MPI_COMM_NULL)
+    {
+        MPI_Comm_rank(comm, &rank);
+    }
+    return rank;
+}
+
+int
+NMModelController::getNumProcs(const QString& comp)
+{
+    MPI_Comm comm = this->getNextUpstrMPIComm(comp);
+
+    int nprocs = 1;
+    if (comm != MPI_COMM_NULL)
+    {
+        MPI_Comm_size(comm, &nprocs);
+    }
+    return nprocs;
+}
+
+MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
+{
+    NMDebugCtx(ctx, << "...");
+    MPI_Comm nextComm = MPI_COMM_NULL;
+
+    if (this->getNumProcs() == 1)
+    {
+        NMDebugAI(<< "Controller says, we've got just 1 proc! :-( "<< endl);
+        NMDebugCtx(ctx, << "done!");
+        return nextComm;
+    }
+
+    //NMModelComponent* comp = this->getComponent(compName);
+    //NMProcess* proc = qobject_cast<NMProcess*>(comp);
+    NMIterableComponent* aggrComp = qobject_cast<NMIterableComponent*>(this->getComponent(compName));
+
+    //if (proc != nullptr && proc->parent() != nullptr)
+    if (aggrComp->getProcess() != nullptr)
+    {
+        aggrComp = aggrComp->getHostComponent();
+        //aggrComp = qobject_cast<NMIterableComponent*>(proc->parent());
+    }
+
+    if (aggrComp == nullptr)
+    {
+        NMDebugAI(<< "'" << compName.toStdString() << "' does not reference a registered model component!"<< endl);
+        NMDebugCtx(ctx, << "done!");
+        return nextComm;
+    }
+
+    // =========================================
+    // DEBUG DEBUG DEBUG
+    // =========================================
+    NMDebugAI(<< "MPI-Debug: Registered comms ... " << endl);
+    auto iter = mAlphaComps.cbegin();
+    while (iter != mAlphaComps.cend())
+    {
+        NMDebugAI(<< "  ... '" << iter.key().toStdString() << "' : #" << iter.value() << endl);
+        ++iter;
+    }
+
+    // =========================================
+    // DEBUG DEBUG DEBUG
+    // =========================================
+
+
+    QMap<QString, MPI_Comm>::iterator citer = mAlphaComps.find(aggrComp->objectName());
+    if (citer != mAlphaComps.end())
+    {
+        NMDebugAI(<< "'" << compName.toStdString() << "' is managed by comm#" << citer.value()
+                  << " registered with '" << citer.key().toStdString() << "'" << endl);
+        NMDebugCtx(ctx, << "done!");
+        return citer.value();
+    }
+
+
+    while ((aggrComp = aggrComp->getHostComponent()) != nullptr)
+    {
+        citer = mAlphaComps.find(aggrComp->objectName());
+        if (citer != mAlphaComps.end())
+        {
+            NMDebugAI(<< "'" << compName.toStdString() << "' is managed by comm" << citer.value()
+                      << " registered with '" << citer.key().toStdString() << "'" << endl);
+            NMDebugCtx(ctx, << "done!");
+            return citer.value();
+        }
+    }
+
+    NMDebugCtx(ctx, << "done!");
+    return nextComm;
+}
+
+
+void
+NMModelController::registerParallelGroup(const QString &compName,
+        MPI_Comm comm)
+{
+    if (comm != MPI_COMM_NULL)
+    {
+        mAlphaComps[compName] = comm;
+    }
+}
+
+void
+NMModelController::deregisterParallelGroup(const QString &compName)
+{
+    auto it = mAlphaComps.find(compName);
+    if (it != mAlphaComps.end())
+    {
+        mAlphaComps.erase(it);
+    }
 }
 
 QStringList

@@ -19,6 +19,7 @@ INCLUDE_DIRECTORIES(
     ${SQLite_SOURCE_DIR}
     ${SPATIALITE_INCLUDE_DIR}
     ${shared_BINARY_DIR}
+    ${MPI_CXX_INCLUDE_DIRS}
 )
 
 LINK_DIRECTORIES(
@@ -94,6 +95,7 @@ if(LUMASS_OTB_VERSION VERSION_LESS "5.0.0")
                         ${GDAL_LIBRARY}
                         SQLite spatialite
                         OTBCommon OTBIO
+                        ${MPI_CXX_LIBRARIES}
                         )
                 endif()
 else()
@@ -114,6 +116,7 @@ else()
             #/usr/lib/libITKCommon-4.13.so /usr/lib/libITKIOImageBase-4.13.so
             OTBCommon OTBIOGDAL #OTBImageBase OTBImageIO OTBCurlAdapters
             Boost::filesystem
+            ${MPI_CXX_LIBRARIES}
             #${OTB_LIBRARIES}
             #${OTB_LINK_LIBS}
             #${ITK_LIBRARIES}

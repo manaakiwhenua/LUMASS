@@ -9,7 +9,7 @@ if (${VTK_VERSION_STRING} VERSION_LESS "8.90")
 #        vtkIOLegacy
 #        vtkIOXML
 #    )
-	SET(LUMASS_ENGINE_VTK_LIBRARIES
+        SET(LUMASS_ENGINE_VTK_LIBRARIES
         vtkCommonCore
         vtkCommonDataModel
         vtkIOCore
@@ -34,6 +34,7 @@ INCLUDE_DIRECTORIES(
         ${opt_SOURCE_DIR}
         ${NMVtk_SOURCE_DIR}
         ${gui_SOURCE_DIR}
+        ${bmi_SOURCE_DIR}
         ${shared_SOURCE_DIR}
         ${lumass_BINARY_DIR}
         ${lumass_SOURCE_DIR}
@@ -57,6 +58,12 @@ INCLUDE_DIRECTORIES(
         ${PostgreSQL_INCLUDE_DIRS}
         ${pybind11_INCLUDE_DIRS}
         ${YAML_CPP_INCLUDE_DIR}
+        ${MPI_CXX_INCLUDE_DIRS}
+        ${SQLite_SOURCE_DIR}
+# for testing
+        ${NCXX4_INCLUDE_DIR}
+        ${NETCDF_INCLUDE_DIR}
+        "/opt/netcdf-c-4.8.1/install/include"
 )
 
 LINK_DIRECTORIES(
@@ -69,8 +76,8 @@ LINK_DIRECTORIES(
     ${OSGEO4W_ROOT}/lib
     #${SPATIALITE_LIB_DIR}
     ${SPATIALITE_LIBLIB_DIR}
-    #${NETCDF_LIB_DIR}
-    #${NCXX_LIB_DIR}
+    ${NETCDF_LIB_DIR}
+    ${NCXX4_LIB_DIR}
 )
 
 # Qt5 requirement
@@ -89,6 +96,7 @@ file(GLOB ENGINE_SRC
     ${opt_SOURCE_DIR}/*.cpp
     ${NMVtk_SOURCE_DIR}/NMvtkDelimitedTextWriter.cxx
     ${lumassengine_SOURCE_DIR}/*.cxx
+    ${bmi_SOURCE_DIR}/NMLumassEngine.cpp
 
     # and ...
     ${shared_SOURCE_DIR}/*.cpp
@@ -100,14 +108,15 @@ set(ENGINE_LINKLIBS Qt5Core Qt5Sql Qt5Xml
         ${LPSOLVE_LIBRARY}
         ${YAML_CPP_LIBRARIES}
         #spatialite
+        ${MPI_CXX_LIBRARIES}
 )
 
 
 if(PYTHONSUPPORT)
     add_definitions(-DLUMASS_PYTHON)
-    list(APPEND ENGINE_LINKLIBS ${Python3_LIBRARIES} 
-	pybind11::embed 
-	pybind11::pybind11)
+    list(APPEND ENGINE_LINKLIBS ${Python3_LIBRARIES}
+        pybind11::embed
+        pybind11::pybind11)
 endif()
 
 

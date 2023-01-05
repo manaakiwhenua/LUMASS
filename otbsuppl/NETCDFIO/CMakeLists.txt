@@ -3,6 +3,8 @@ PROJECT(NETCDFIO)
 INCLUDE_DIRECTORIES(
     ${NCXX4_INCLUDE_DIR}
     ${NETCDF_INCLUDE_DIR}
+    #${netCDF_INCLUDE_DIR}
+    #"/opt/netcdf-c-4.8.1/install/include"
     ${GDALRATImageIO_SOURCE_DIR}
     ${GDALRATImageIO_BINARY_DIR}
     ${ITK_INCLUDE_DIRS}
@@ -17,15 +19,15 @@ INCLUDE_DIRECTORIES(
     ${shared_BINARY_DIR}
     ${filters_BINARY_DIR}
     ${filters_SOURCE_DIR}
+    ${MPI_CXX_INCLUDE_DIRS}
 )
 
-LINK_DIRECTORIES(
-    #${NETCDF_LIB_DIR}
-    #${NCXX_LIB_DIR}
+LINK_DIRECTORIES(NetCDFIO
+    ${NETCDF_LIB_DIR}
+    ${NCXX4_LIB_DIR}
     #${OTB_LIBRARY_DIRS}
-        ${OSGEO4W_ROOT}/lib
+    ${OSGEO4W_ROOT}/lib
 )
-
 
 add_definitions(-DNETCDFIO_EXPORTS -DNM_PROC_LOG)
 include(GenerateExportHeader)
@@ -38,16 +40,12 @@ set_property(TARGET NetCDFIO PROPERTY POSITION_INDEPENDENT_CODE 1)
 generate_export_header(NetCDFIO)
 
 TARGET_LINK_LIBRARIES(NetCDFIO
-    #${OTB_LIBRARIES}
-    #OTBCommon OTBImageBase OTBImageIO
-    #OTBExtendedFilename
     OTBImageIO
     OTBCurlAdapters
-    #${ITK_LIBRARIES}
-    ${NETCDF_LIBRARY} ${NCXX4_LIBRARY}
+    ${NETCDF_LIBRARY}
+    ${NCXX4_LIBRARY}
     OTBGDALRATImageIO
-    #OTBCommon OTBImageBase
-    #netcdf netcdf-cxx4
+    ${MPI_CXX_LIBRARIES}
 )
 ADD_DEPENDENCIES(NetCDFIO OTBGDALRATImageIO)
 

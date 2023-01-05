@@ -181,8 +181,8 @@ else()
 	endforeach(QT5COMP)
 	list(REMOVE_DUPLICATES QT5_INCLUDE_DIRS)
 	
-	message(STATUS "Qt5 libraries: ${QT5_LIB_LIST}")
-	message(STATUS "Qt5 INCLUDE_DIRS: ${QT5_INCLUDE_DIRS}")
+	#message(STATUS "Qt5 libraries: ${QT5_LIB_LIST}")
+	#message(STATUS "Qt5 INCLUDE_DIRS: ${QT5_INCLUDE_DIRS}")
 	
         # find link directories
 	# just from experience
@@ -200,7 +200,7 @@ else()
                 endif()
 	ENDIF(WIN32)
 	
-	message(STATUS "Qt5 link directories: ${QT5_LINK_DIRS}")
+	#message(STATUS "Qt5 link directories: ${QT5_LINK_DIRS}")
 endif()
 
 # ==========================================================

@@ -19,6 +19,7 @@ INCLUDE_DIRECTORIES(
     ${lumass_SOURCE_DIR}
     #${TCADB_INCLUDE_DIR}
     ${PYBIND11_INCLUDE_DIR}
+    ${MPI_CXX_INCLUDE_DIRS}
 )
 
 LINK_DIRECTORIES(
@@ -64,11 +65,19 @@ set_target_properties(OTBSupplFilters PROPERTIES
 generate_export_header(OTBSupplFilters)
 
 if(LUMASS_OTB_VERSION VERSION_LESS "5.0.0")
+    if(WIN32)
         target_link_libraries(OTBSupplFilters OTBCommon OTBBasicFilters OTBIO
         OTBGDALRATImageIO
         #tokyocabinet
         )
+    else()
+        target_link_libraries(OTBSupplFilters OTBCommon OTBBasicFilters OTBIO
+        OTBGDALRATImageIO
+        ${MPI_CXX_LIBRARIES}
+        )
+    endif()
 else()
+    if(WIN32)
         target_link_libraries(OTBSupplFilters #OTBCommon OTBIOGDAL
         #OTBExtendedFilename OTBCurlAdapters OTBImageIO OTBImageBase
         #OTBMathParser
@@ -77,6 +86,13 @@ else()
         Qt5Core Qt5Qml
         #tokyocabinet
         )
+    else()
+        target_link_libraries(OTBSupplFilters #OTBCommon OTBIOGDAL
+        OTBGDALRATImageIO
+        Qt5Core Qt5Qml
+        ${MPI_CXX_LIBRARIES}
+        )
+    endif()
 endif()
 
 add_dependencies(OTBSupplFilters OTBGDALRATImageIO)

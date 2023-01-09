@@ -22,7 +22,6 @@
  *      Author: alex
  */
 
-#include "NMMosra.h"
 #include "nmlog.h"
 #include "itkNMLogEvent.h"
 #include "NMLogger.h"
@@ -119,7 +118,7 @@
 #include "vtkMath.h"
 #include "vtkDelimitedTextWriter.h"
 
-#include "lp_lib.h"
+#include "NMMosra.h"
 
 
 ////////////////////////////////

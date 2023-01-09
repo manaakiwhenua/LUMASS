@@ -4102,59 +4102,6 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
-//    NMModelController* ctrl = this->ui->modelViewWidget->getModelController();
-
-//    auto repo = ctrl->getRepository();
-//    for (auto it = repo.cbegin(); it != repo.cend(); ++it)
-//    {
-//        NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(it.value());
-//        if (ic != nullptr)
-//        {
-//            NMLogInfo(<< it.key().toStdString() << " is an ic, and more precisely an " << it.value()->metaObject()->className());
-//        }
-//        else
-//        {
-//            NMLogInfo(<< it.key().toStdString() << " is a " << it.value()->metaObject()->className() << endl);
-//        }
-//    }
-
-    QString fileName = "/home/users/herziga/crunch/STEC/Manawatu/output2/para_opt/landslide2/lsopt.ldb";
-
-    otb::SQLiteTable::Pointer tab = otb::SQLiteTable::New();
-    tab->SetDbFileName(fileName.toStdString());
-    tab->SetOpenReadOnly(true);
-    if (!tab->openConnection())
-    {
-        NMErr("STEC par opt", << "Sumthing went wrong and we're cross now!" );
-        return;
-    }
-
-    tab->SetTableName("lsopt");
-    if (!tab->PopulateTableAdmin())
-    {
-        NMErr("STEC par opt", << "Couldn't populate the table's admin structures!");
-        return;
-    }
-
-//    auto tabMap = this->getTableList();
-//    NMSqlTableView* tview = tabMap.begin().value().second.data();
-//    NMSqlTableModel* tmodel = qobject_cast<NMSqlTableModel*>(tview->getModel());
-//    QString dbname = tmodel->getDatabaseName();
-
-    QScopedPointer<NMMosra> mosra(new NMMosra());
-    mosra->setLogger(this->getLogger());
-    mosra->setScenarioName("STEC-Landslide_Calibration_multi");
-    //mosra->setScenarioName("STEC-Landslide_Calibration_single");
-    mosra->setDataSet(tab.GetPointer());
-
-
-
-   //           static_cast<otb::AttributeTable*>(
-   //               tabMap.begin().value().first.GetPointer())
-   //           );
-
-    //mosra->makeSTECLp(0);
-    mosra->makeSTECLp2(0);
 
 }
 

@@ -26,12 +26,12 @@
 #include "itkImageToImageFilter.h"
 #include "otbImage.h"
 #include "otbSQLiteTable.h"
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace otb
 {
 template<class TInputImage>
-class OTBSUPPLFILTERS_EXPORT Image2TableFilter : public itk::ImageToImageFilter<TInputImage, TInputImage>
+class NMOTBSUPPLFILTERS_EXPORT Image2TableFilter : public itk::ImageToImageFilter<TInputImage, TInputImage>
 {
 public:
     using Self          = Image2TableFilter;

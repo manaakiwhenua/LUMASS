@@ -25,14 +25,15 @@ INCLUDE_DIRECTORIES(
     ${gui_SOURCE_DIR}
     ${lumass_SOURCE_DIR}/utils/ITK
     ${lumass_SOURCE_DIR}
-    ${otbsuppl_core_SOURCE_DIR}
+    ${OTBSupplCore_SOURCE_DIR}
+    ${OTBSupplCore_BINARY_DIR}
     ${OTB_INCLUDE_DIRS}
     ${LPSOLVE_INCLUDE_DIR}
     ${opt_SOURCE_DIR}
     ${NMVtk_SOURCE_DIR}
     ${NCXX4_INCLUDE_DIR}
     ${NETCDF_INCLUDE_DIR}
-    "/opt/netcdf-c-4.8.1/install/include"
+    #"/opt/netcdf-c-4.8.1/install/include"
     ${pybind11_INCLUDE_DIRS}
     ${bmi_SOURCE_DIR}
     ${bmi_BINARY_DIR}
@@ -44,6 +45,8 @@ LINK_DIRECTORIES(
 #    ${OTB_DIR}/lib
 #    ${OTB_DIR}/bin
     ${QT5_LINK_DIRS}
+    ${NETCDF_LIB_DIR}
+    ${NCXX4_LIB_DIR}
 #    ${RASDAMAN_LIBRARIES_DIR}
 #    ${mfw_core_BINARY_DIR}
 #    ${LIBRARY_OUTPUT_PATH}
@@ -51,8 +54,6 @@ LINK_DIRECTORIES(
     ${OSGEO4W_ROOT}/lib
 #    ${SPATIALITE_LIB_DIR}
 #    ${SPATIALITE_LIBLIB_DIR}
-    ${NCXX4_LIB_DIR}
-    ${NETCDF_LIB_DIR}
 #    ${bmi_BINARY_DIR}
 )
 
@@ -74,7 +75,7 @@ endif()
 
 set(MFW_WRAPPER_LINK_LIBS
     NMModFrameCore
-    OTBSupplFilters
+    NMOTBSupplFilters
     Qt5::Core
     ${LUMASS_WRAPPER_VTK_LIBRARIES}
 )
@@ -84,7 +85,7 @@ set(NMJSKERNEL_WRAPPER_LINKLIBS ${MFW_WRAPPER_LINK_LIBS} Qt5::Qml)
 set(NMBMI_WRAPPER_LINKLIBS ${MFW_WRAPPER_LINK_LIBS} ${YAML_CPP_LIBRARIES})
 
 set(MFW_WRAPPER_DEP_LIBS
-    OTBSupplFilters
+    NMOTBSupplFilters
     NMModFrameCore
 )
 

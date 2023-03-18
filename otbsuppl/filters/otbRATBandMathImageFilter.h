@@ -47,7 +47,7 @@
 #include "otbMultiParser.h"
 #include "otbAttributeTable.h"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace otb
 {
@@ -110,7 +110,7 @@ namespace otb
  */
 
 template< class TImage >
-class OTBSUPPLFILTERS_EXPORT RATBandMathImageFilter
+class NMOTBSUPPLFILTERS_EXPORT RATBandMathImageFilter
   : public itk::InPlaceImageFilter< TImage >
 {
 public:

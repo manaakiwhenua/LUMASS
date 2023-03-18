@@ -57,7 +57,7 @@
 
 #include "mpParser.h"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 
 namespace otb

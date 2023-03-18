@@ -36,7 +36,7 @@
 #include "itkDataObject.h"
 #include "itkObjectFactory.h"
 
-#include "otbgdalratimageio_export.h"
+#include "nmotbsupplcore_export.h"
 
 /** \brief Attribute table implementation based on
  *         sqlite database.
@@ -50,7 +50,7 @@
 namespace otb
 {
 
-class OTBGDALRATIMAGEIO_EXPORT SQLiteTable : public AttributeTable
+class NMOTBSUPPLCORE_EXPORT SQLiteTable : public AttributeTable
 {
 public:
     /** Standard class typedefs. */

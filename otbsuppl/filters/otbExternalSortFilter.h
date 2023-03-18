@@ -39,7 +39,7 @@
 #include "otbSortFilter.h"
 #include "itkNMImageRegionSplitterMaxSize.h"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 #ifdef BUILD_RASSUPPORT
     #include "RasdamanConnector.hh"

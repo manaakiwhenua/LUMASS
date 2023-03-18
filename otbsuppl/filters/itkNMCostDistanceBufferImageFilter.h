@@ -38,7 +38,7 @@
 #include <map>
 #include <itkImageToImageFilter.h>
 #include <itkImageRegionIteratorWithIndex.h>
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace itk
 {
@@ -49,7 +49,7 @@ namespace itk
  */
 
 template <class TInputImage,class TOutputImage>
-class OTBSUPPLFILTERS_EXPORT NMCostDistanceBufferImageFilter :
+class NMOTBSUPPLFILTERS_EXPORT NMCostDistanceBufferImageFilter :
     public ImageToImageFilter<TInputImage,TOutputImage>
 {
 public:

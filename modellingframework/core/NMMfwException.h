@@ -28,12 +28,12 @@
 #include <string>
 #include <exception>
 //#include "nmmodframecore_export.h"
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 using namespace std;
 
 //class NMMODFRAMECORE_EXPORT NMMfwException: public std::exception
-class OTBSUPPLFILTERS_EXPORT NMMfwException: public std::exception
+class NMOTBSUPPLFILTERS_EXPORT NMMfwException: public std::exception
 {
 public:
 

@@ -56,7 +56,7 @@
 #include "itkImage.h"
 #include "itkNumericTraits.h"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace otb
 {

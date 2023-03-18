@@ -1,15 +1,7 @@
 PROJECT(lumassengine)
 
 if (${VTK_VERSION_STRING} VERSION_LESS "8.90")
-#    find_package(VTK COMPONENTS
-#        vtkCommonCore
-#        vtkCommonDataModel
-#        vtkIOCore
-#        vtkIOSQL
-#        vtkIOLegacy
-#        vtkIOXML
-#    )
-        SET(LUMASS_ENGINE_VTK_LIBRARIES
+    SET(LUMASS_ENGINE_VTK_LIBRARIES
         vtkCommonCore
         vtkCommonDataModel
         vtkIOCore
@@ -31,39 +23,39 @@ endif ()
 
 INCLUDE_DIRECTORIES(
     ${QT5_INCLUDE_DIRS}
-        ${opt_SOURCE_DIR}
-        ${NMVtk_SOURCE_DIR}
-        ${gui_SOURCE_DIR}
-        ${bmi_SOURCE_DIR}
-        ${shared_SOURCE_DIR}
-        ${lumass_BINARY_DIR}
-        ${lumass_SOURCE_DIR}
-        ${GDALRATImageIO_SOURCE_DIR}
-        ${GDALRATImageIO_BINARY_DIR}
-        ${otbsuppl_core_SOURCE_DIR}
-        ${filters_SOURCE_DIR}
-        ${filters_BINARY_DIR}
-        ${shared_SOURCE_DIR}
-        ${shared_BINARY_DIR}
-        ${rimageio_SOURCE_DIR}
-        ${mfw_core_SOURCE_DIR}
-        ${mfw_core_BINARY_DIR}
-        ${mfw_wrapper_SOURCE_DIR}
-        ${mfw_wrapper_BINARY_DIR}
-        ${LPSOLVE_INCLUDE_DIR}
-        ${OTB_INCLUDE_DIRS}
-        ${RASDAMAN_INCLUDE_DIR}
-        ${RASDAMAN_INCLUDE_DIR}/raslib
-        ${RASDAMAN_SOURCE_DIR}/applications/rasgeo
-        ${PostgreSQL_INCLUDE_DIRS}
-        ${pybind11_INCLUDE_DIRS}
-        ${YAML_CPP_INCLUDE_DIR}
-        ${MPI_CXX_INCLUDE_DIRS}
-        ${SQLite_SOURCE_DIR}
+    ${opt_SOURCE_DIR}
+    ${NMVtk_SOURCE_DIR}
+    ${gui_SOURCE_DIR}
+    ${bmi_SOURCE_DIR}
+    ${shared_SOURCE_DIR}
+    ${lumass_BINARY_DIR}
+    ${lumass_SOURCE_DIR}
+    ${GDALRATImageIO_SOURCE_DIR}
+    ${GDALRATImageIO_BINARY_DIR}
+    ${OTBSupplCore_SOURCE_DIR}
+    ${OTBSupplCore_BINARY_DIR}
+    ${filters_SOURCE_DIR}
+    ${filters_BINARY_DIR}
+    ${shared_SOURCE_DIR}
+    ${shared_BINARY_DIR}
+    ${rimageio_SOURCE_DIR}
+    ${mfw_core_SOURCE_DIR}
+    ${mfw_core_BINARY_DIR}
+    ${mfw_wrapper_SOURCE_DIR}
+    ${mfw_wrapper_BINARY_DIR}
+    ${LPSOLVE_INCLUDE_DIR}
+    ${OTB_INCLUDE_DIRS}
+    ${RASDAMAN_INCLUDE_DIR}
+    ${RASDAMAN_INCLUDE_DIR}/raslib
+    ${RASDAMAN_SOURCE_DIR}/applications/rasgeo
+    ${PostgreSQL_INCLUDE_DIRS}
+    ${pybind11_INCLUDE_DIRS}
+    ${YAML_CPP_INCLUDE_DIR}
+    ${MPI_CXX_INCLUDE_DIRS}
+    ${SQLite_SOURCE_DIR}
 # for testing
-        ${NCXX4_INCLUDE_DIR}
-        ${NETCDF_INCLUDE_DIR}
-        "/opt/netcdf-c-4.8.1/install/include"
+    ${NCXX4_INCLUDE_DIR}
+    ${NETCDF_INCLUDE_DIR}
 )
 
 LINK_DIRECTORIES(
@@ -84,13 +76,6 @@ LINK_DIRECTORIES(
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE -fPIC")
 
 SET(CMAKE_AUTOMOC YES)
-#QT5_WRAP_CPP(ENGINE_MOC_CPP
-#	${opt_SOURCE_DIR}/NMMosra.h
-#	${opt_SOURCE_DIR}/MOSORunnable.h
-#        ${shared_SOURCE_DIR}/NMLogger.h
-#        #${shared_SOURCE_DIR}/NMObject.h
-#        ${lumassengine_SOURCE_DIR}/lumassengine.h
-#)
 
 file(GLOB ENGINE_SRC
     ${opt_SOURCE_DIR}/*.cpp
@@ -103,12 +88,13 @@ file(GLOB ENGINE_SRC
 )
 
 set(ENGINE_LINKLIBS Qt5Core Qt5Sql Qt5Xml
+        ${MPI_CXX_LIBRARIES}
+        NMNetCDFIO
         NMModFrameCore ${MFW_WRAPPER_NAMES}
         ${LUMASS_ENGINE_VTK_LIBRARIES} ${PostgreSQL_LIBRARIES}
         ${LPSOLVE_LIBRARY}
         ${YAML_CPP_LIBRARIES}
         #spatialite
-        ${MPI_CXX_LIBRARIES}
 )
 
 

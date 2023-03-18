@@ -46,7 +46,7 @@
 
 #include "otbAttributeTable.h"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace otb
 {
@@ -57,7 +57,7 @@ namespace otb
  */
 
 template< class TImage >
-class OTBSUPPLFILTERS_EXPORT RATValExtractor
+class NMOTBSUPPLFILTERS_EXPORT RATValExtractor
   : public itk::InPlaceImageFilter< TImage >
 {
 public:

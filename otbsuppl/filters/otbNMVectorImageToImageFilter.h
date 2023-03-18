@@ -23,14 +23,14 @@
 #include "itkNumericTraits.h"
 #include "otbImage.h"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace otb
 {
 /*  \brief Extracts a single band from a multi-band (multi-component) image
  */
 template < class TInputImage, class TOutputImage>
-class OTBSUPPLFILTERS_EXPORT NMVectorImageToImageFilter :
+class NMOTBSUPPLFILTERS_EXPORT NMVectorImageToImageFilter :
         public itk::ImageToImageFilter< TInputImage, TOutputImage>
 {
 public:

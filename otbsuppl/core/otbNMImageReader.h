@@ -48,7 +48,7 @@
     #include "RasdamanConnector.hh"
 #endif
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplcore_export.h"
 
 namespace otb
 {
@@ -70,7 +70,7 @@ namespace otb
  *
  */
 template <class TOutputImage>
-class OTBSUPPLFILTERS_EXPORT NMImageReader : public otb::ImageFileReader<TOutputImage>
+class NMOTBSUPPLCORE_EXPORT NMImageReader : public otb::ImageFileReader<TOutputImage>
 {
 public:
   /** Standard class typedefs. */

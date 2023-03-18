@@ -48,7 +48,7 @@
 #include "itkImageToImageFilter.h"
 #include "otbStreamingManager.h"
 
-
+#include "nmotbsupplcore_export.h"
 
 namespace otb
 {
@@ -75,7 +75,7 @@ namespace otb
  * \sa ImageIOBase
  */
 template <class TInputImage>
-class ITK_EXPORT StreamingRATImageFileWriter : public itk::ImageToImageFilter<TInputImage, TInputImage>
+class NMOTBSUPPLCORE_EXPORT StreamingRATImageFileWriter : public itk::ImageToImageFilter<TInputImage, TInputImage>
 {
 public:
   /** Standard class typedefs. */

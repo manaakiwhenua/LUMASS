@@ -41,7 +41,8 @@ INCLUDE_DIRECTORIES(
     ${lumass_SOURCE_DIR}
     ${GDALRATImageIO_SOURCE_DIR}
     ${GDALRATImageIO_BINARY_DIR}
-    ${otbsuppl_core_SOURCE_DIR}
+    ${OTBSupplCore_SOURCE_DIR}
+    ${OTBSupplCore_BINARY_DIR}
     ${filters_SOURCE_DIR}
     ${filters_BINARY_DIR}
     ${rimageio_SOURCE_DIR}
@@ -80,6 +81,7 @@ LINK_DIRECTORIES(
     ${NETCDF_LIB_DIR}
     ${YAML_CPP_LIB_DIR}
     ${Python3_LIBRARIES_DIR}
+    ${HDF5_ROOT}
 )
 
 # Qt5 requirement
@@ -109,12 +111,16 @@ SET(LumassBMI_TEST_FILES
 
 SET(BMI_LINKLIBS
     Qt5Core Qt5Sql Qt5Xml
+    ${NCXX4_LIBRARY}
+    ${NETCDF_LIBRARY}
+    curl xml2
+    ${MPI_CXX_LIBRARIES}
+    ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
     NMModFrameCore
     ${MFW_WRAPPER_NAMES}
     ${LUMASS_BMI_VTK_LIBRARIES}
     ${LPSOLVE_LIBRARY}
     ${YAML_CPP_LIBRARIES}
-    ${MPI_CXX_LIBRARIES}
 )
 
 SET(PYTHON_BMI_LINKLIBS

@@ -27,7 +27,7 @@
 #include "itkImageToImageFilter.h"
 #include "otbImage.h"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace otb
 {
@@ -45,7 +45,7 @@ namespace otb
  */
 
 template< class TInputImage, class TOutputImage = TInputImage >
-class OTBSUPPLFILTERS_EXPORT SumZonesFilter
+class NMOTBSUPPLFILTERS_EXPORT SumZonesFilter
 	: public itk::ImageToImageFilter< TInputImage, TOutputImage >
 {
 public:

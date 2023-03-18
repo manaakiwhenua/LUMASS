@@ -137,7 +137,8 @@ NMImageReader<TOutputImage>
     }
     else if (nio != nullptr)
     {
-        nio->BuildOverviews(method);
+
+        //nio->BuildOverviews(method);
     }
 }
 

@@ -36,12 +36,12 @@
 // ToDo: check, if really required
 //#include "itkConceptChecking.h"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace otb {
 
 template <class TInputImage, class TOutputImage=TInputImage >
-class OTBSUPPLFILTERS_EXPORT DEMSlopeAspectFilter
+class NMOTBSUPPLFILTERS_EXPORT DEMSlopeAspectFilter
 			: public itk::ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:

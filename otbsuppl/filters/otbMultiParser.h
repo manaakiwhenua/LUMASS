@@ -25,7 +25,7 @@
 #include <random>
 //#include "otbsuppl/filters/otbMultiParserImpl.h"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace otb
 {
@@ -40,7 +40,7 @@ namespace otb
  * \sa BandMathImageFilter
  *
  */
-class OTBSUPPLFILTERS_EXPORT MultiParser : public itk::LightObject
+class NMOTBSUPPLFILTERS_EXPORT MultiParser : public itk::LightObject
 {
 public:
     /** Standard class typedefs. */

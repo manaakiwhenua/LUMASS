@@ -91,7 +91,8 @@ INCLUDE_DIRECTORIES(
     ${NETCDFIO_SOURCE_DIR}
     ${gui_SOURCE_DIR}
     ${filters_SOURCE_DIR}
-    ${otbsuppl_core_SOURCE_DIR}
+    ${OTBSupplCore_SOURCE_DIR}
+    ${OTBSupplCore_BINARY_DIR}
     ${filters_BINARY_DIR}
     ${shared_SOURCE_DIR}
     ${shared_BINARY_DIR}
@@ -122,7 +123,7 @@ INCLUDE_DIRECTORIES(
     ${VisIt_BINARY_DIR}
     ${NCXX4_INCLUDE_DIR}
     ${NETCDF_INCLUDE_DIR}
-    "/opt/netcdf-c-4.8.1/install/include"
+    #"/opt/netcdf-c-4.8.1/install/include"
     ${NETCDFIO_BINARY_DIR}
     ${pybind11_INCLUDE_DIRS}
     ${bmi_SOURCE_DIR}
@@ -202,17 +203,18 @@ set(LUMASS_LINKLIBS
     #Qt5::Network
     Qt5::WebSockets
     QtPropertyBrowser
+    ${NCXX4_LIBRARY}
+    ${NETCDF_LIBRARY}
+    curl xml2
+    ${MPI_CXX_LIBRARIES}
+    ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
     NMModFrameCore ${MFW_WRAPPER_NAMES}
     ${LUMASS_GUI_VTK_LIBRARIES}
     ${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
     ${OPENGL_glu_LIBRARY} ${OPENGL_gl_LIBRARY}
     SQLite
     VisItTesselator
-    #netcdf-cxx4 netcdf
-    #${NETCDF_LIBRARY} ${NCXX4_LIBRARY}
-    #NetCDFIO
     ${YAML_CPP_LIBRARIES}
-    #${MPI_CXX_LIBRARIES}
 )
 
 #if (${CMAKE_VERSION} VERSION_LESS_EQUAL "3.11.0")

@@ -34,12 +34,12 @@
 #include "itkDataObject.h"
 //#include "itkObjectFactory.h"
 
-#include "otbgdalratimageio_export.h"
+#include "nmotbsupplcore_export.h"
 
 namespace otb
 {
 
-class OTBGDALRATIMAGEIO_EXPORT AttributeTable : public itk::DataObject
+class NMOTBSUPPLCORE_EXPORT AttributeTable : public itk::DataObject
 {
 public:
 	/** Standard class typedefs. */

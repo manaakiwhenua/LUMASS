@@ -51,7 +51,7 @@
 #include "itkImageToImageFilter.h"
 #include "itkInterpolateImageFunction.h"
 #include "itkSize.h"
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace itk
 {
@@ -95,7 +95,7 @@ namespace itk
  */
 template <class TInputImage, class TOutputImage,
           class TInterpolatorPrecisionType=double>
-class OTBSUPPLFILTERS_EXPORT NMResampleImageFilter
+class NMOTBSUPPLFILTERS_EXPORT NMResampleImageFilter
     : public ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:

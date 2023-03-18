@@ -33,7 +33,7 @@
 #include "itkImageRegionIterator.h"
 #include "itkMultiThreader.h"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 /**  Sorts an image and any additionally specified 'depending' image accordingly.
  *
@@ -51,7 +51,7 @@
 namespace otb {
 
 template <class TInputImage, class TOutputImage = TInputImage>
-class OTBSUPPLFILTERS_EXPORT SortFilter
+class NMOTBSUPPLFILTERS_EXPORT SortFilter
 			: public itk::ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:

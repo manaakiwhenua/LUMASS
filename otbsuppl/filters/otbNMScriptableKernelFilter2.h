@@ -60,7 +60,7 @@
 #include "otbAttributeTable.h"
 #include "otbSQLiteTable.h"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace otb
 {
@@ -228,7 +228,7 @@ namespace otb
  *
  */
 template <class TInputImage, class TOutputImage>
-class OTBSUPPLFILTERS_EXPORT NMScriptableKernelFilter2 :
+class NMOTBSUPPLFILTERS_EXPORT NMScriptableKernelFilter2 :
     public itk::ImageToImageFilter< TInputImage, TOutputImage >
 {
 public:

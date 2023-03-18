@@ -21,12 +21,12 @@
 
 
 #include "itkMacro.h"
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace otb
 {
 
-class OTBSUPPLFILTERS_EXPORT KernelScriptParserError : public itk::ExceptionObject
+class NMOTBSUPPLFILTERS_EXPORT KernelScriptParserError : public itk::ExceptionObject
 {
 public:
     KernelScriptParserError();

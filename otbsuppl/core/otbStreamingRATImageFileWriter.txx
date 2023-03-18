@@ -527,7 +527,7 @@ StreamingRATImageFileWriter<TInputImage>
 
         if (nio != nullptr)
         {
-            nio->BuildOverviews(m_ResamplingType);
+            //nio->BuildOverviews(m_ResamplingType);
         }
         else if (gio != nullptr)
         {
@@ -842,7 +842,7 @@ StreamingRATImageFileWriter<TInputImage>
         {
             if (nio != nullptr)
             {
-                nio->setRasterAttributeTable(m_InputRATs[io], 1);
+                //nio->setRasterAttributeTable(m_InputRATs[io], 1);
             }
             else if (gio != nullptr)
             {
@@ -1147,7 +1147,7 @@ StreamingRATImageFileWriter<TInputImage>
             otb::NetCDFIO* nio = dynamic_cast<otb::NetCDFIO*>(m_ImageIOs[inimg].GetPointer());
             if (nio != nullptr)
             {
-                nio->WriteRAT(m_InputRATs[inimg]);
+                //nio->WriteRAT(m_InputRATs[inimg]);
             }
             else if (gio)
             {

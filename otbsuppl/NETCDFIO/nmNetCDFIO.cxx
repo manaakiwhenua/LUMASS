@@ -27,7 +27,7 @@
 #include "nmtypeinfo.h"
 #include "nmNetCDFIO.h"
 #include "otbSystem.h"
-#include "otbImage.h"
+//#include "otbImage.h"
 
 #include "itkMetaDataObject.h"
 #include "otbMetaDataKey.h"
@@ -36,133 +36,133 @@
 #include "itkRGBAPixel.h"
 #include "itkArray2D.h"
 
-#include "otbNMImageReader.h"
-#include "otbNMGridResampleImageFilter.h"
-#include "otbStreamingRATImageFileWriter.h"
+//#include "otbNMImageReader.h"
+//#include "otbNMGridResampleImageFilter.h"
+//#include "otbStreamingRATImageFileWriter.h"
 
-#define NcGenerateOverviews( comptype ) \
-{                           \
-    switch(numDimensions)   \
-    { \
-    case 1: \
-        PyramidHelper<comptype, 1>::GeneratePyramids( \
-            imgIO, m_OvvSize, resampleType, imgVarName, inImgSpec, imgVarGrpName); \
-        break; \
-    case 2: \
-        PyramidHelper<comptype, 2>::GeneratePyramids( \
-            imgIO, m_OvvSize, resampleType, imgVarName, inImgSpec, imgVarGrpName); \
-        break; \
-    case 3: \
-        PyramidHelper<comptype, 3>::GeneratePyramids( \
-            imgIO, m_OvvSize, resampleType, imgVarName, inImgSpec, imgVarGrpName); \
-        break; \
-    }\
-}
+//#define NcGenerateOverviews( comptype ) \
+//{                           \
+//    switch(numDimensions)   \
+//    { \
+//    case 1: \
+//        PyramidHelper<comptype, 1>::GeneratePyramids( \
+//            imgIO, m_OvvSize, resampleType, imgVarName, inImgSpec, imgVarGrpName); \
+//        break; \
+//    case 2: \
+//        PyramidHelper<comptype, 2>::GeneratePyramids( \
+//            imgIO, m_OvvSize, resampleType, imgVarName, inImgSpec, imgVarGrpName); \
+//        break; \
+//    case 3: \
+//        PyramidHelper<comptype, 3>::GeneratePyramids( \
+//            imgIO, m_OvvSize, resampleType, imgVarName, inImgSpec, imgVarGrpName); \
+//        break; \
+//    }\
+//}
 
+
+//template<class PixelType, unsigned int ImageDimension>
+//class PyramidHelper
+//{
+//public:
+//    using ImgType                   = typename otb::Image<PixelType, ImageDimension>;
+//    using PointType                 = typename ImgType::PointType;
+//    using DirType                   = typename ImgType::DirectionType;
+//    using SpacingType               = typename ImgType::SpacingType;
+//    using SizeType                  = typename ImgType::SizeType;
+//    using RegionType                = typename ImgType::RegionType;
+//
+//    using ReaderType                = typename otb::NMImageReader< ImgType >;
+//    using ReaderTypePointer         = typename ReaderType::Pointer;
+//
+//    using PyramidFilterType         = typename otb::NMGridResampleImageFilter<ImgType, ImgType>;
+//    using PyramidFilterTypePointer  = typename PyramidFilterType::Pointer;
+//
+//    using WriterType                = typename otb::StreamingRATImageFileWriter<ImgType>;
+//    using WriterTypePointer         = typename WriterType::Pointer;
+//
+//
+//    static void GeneratePyramids(otb::ImageIOBase* imgIO,
+//         std::vector<std::vector<unsigned int> >& m_OvvSize,
+//         std::string& resampleType,
+//         std::string& imgVarName,
+//         std::string& inImgSpec,
+//         std::string& imgVarGrpName
+//    )
+//    {
+//        otb::NetCDFIO* nio = dynamic_cast<otb::NetCDFIO*>(imgIO);
+//        if (nio == nullptr)
+//        {
+//            NMDebug(<< "Failed creating overviews!");
+//            return;
+//        }
+//        const unsigned int numOvv = m_OvvSize.size();
+//        std::string containerName = nio->GetOverviewContainerName();
+//        std::string inputVarSpec = inImgSpec;
+//        std::stringstream ovvn;
+//        std::vector<std::string> ovvnames;
+//
+//        for (int level=1; level <= numOvv; ++level)
+//        {
+//            ovvn << containerName << ":"
+//                 << imgVarGrpName << "/OVERVIEWS_"
+//                 << imgVarName << "/"
+//                 << imgVarName << "_ovv_" << level;
+//
+//            ovvnames.push_back(ovvn.str());
+//            ovvn.str("");
+//        }
+//
+//        for (unsigned int out=0; out < numOvv; ++out)
+//        {
+//            ReaderTypePointer reader = ReaderType::New();
+//            if (out == 0)
+//            {
+//                reader->SetFileName(inputVarSpec);
+//            }
+//            else
+//            {
+//                reader->SetFileName(ovvnames.at(out-1));
+//            }
+//
+//            PointType outOrigin;
+//            SpacingType outSpacing;
+//            SizeType outSize;
+//
+//            for (int d = ImgType::ImageDimension - 1; d >=0; --d)
+//            {
+//                const double dirmult = nio->GetDirection(d)[d];
+//                const double ulc = nio->getUpperLeftCorner()[d];
+//                const double origSpacing = nio->GetSpacing(d);
+//                const unsigned int origSize = nio->GetDimensions(d);
+//                const double lrc = ulc + origSpacing * (double)origSize * dirmult;
+//
+//                outSize[d] = m_OvvSize[out][d];
+//                outSpacing[d] = ((lrc - ulc) / outSize[d]) * dirmult;
+//                outOrigin[d] = ulc + 0.5 * outSpacing[d] * dirmult;
+//            }
+//
+//            PyramidFilterTypePointer pygen = PyramidFilterType::New();
+//            pygen->SetInput(reader->GetOutput());
+//            pygen->SetInterpolationMethod(resampleType);
+//            pygen->SetOutputOrigin(outOrigin);
+//            pygen->SetOutputSpacing(outSpacing);
+//            pygen->SetOutputSize(outSize);
+//            pygen->SetDefaultPixelValue(0);
+//
+//            const int mxth = pygen->GetNumberOfThreads();
+//            pygen->SetNumberOfThreads(std::max(mxth-2, 1));
+//
+//            WriterTypePointer writer = WriterType::New();
+//            writer->SetInput(pygen->GetOutput());
+//            writer->SetAutomaticTiledStreaming(512);
+//            writer->SetResamplingType("NONE");
+//            writer->SetFileName(ovvnames.at(out));
+//            writer->Update();
+//        }
+//    }
+//};
 
 using namespace netCDF;
-
-template<class PixelType, unsigned int ImageDimension>
-class PyramidHelper
-{
-public:
-    using ImgType                   = typename otb::Image<PixelType, ImageDimension>;
-    using PointType                 = typename ImgType::PointType;
-    using DirType                   = typename ImgType::DirectionType;
-    using SpacingType               = typename ImgType::SpacingType;
-    using SizeType                  = typename ImgType::SizeType;
-    using RegionType                = typename ImgType::RegionType;
-
-    using ReaderType                = typename otb::NMImageReader< ImgType >;
-    using ReaderTypePointer         = typename ReaderType::Pointer;
-
-    using PyramidFilterType         = typename otb::NMGridResampleImageFilter<ImgType, ImgType>;
-    using PyramidFilterTypePointer  = typename PyramidFilterType::Pointer;
-
-    using WriterType                = typename otb::StreamingRATImageFileWriter<ImgType>;
-    using WriterTypePointer         = typename WriterType::Pointer;
-
-
-    static void GeneratePyramids(otb::ImageIOBase* imgIO,
-         std::vector<std::vector<unsigned int> >& m_OvvSize,
-         std::string& resampleType,
-         std::string& imgVarName,
-         std::string& inImgSpec,
-         std::string& imgVarGrpName
-    )
-    {
-        otb::NetCDFIO* nio = dynamic_cast<otb::NetCDFIO*>(imgIO);
-        if (nio == nullptr)
-        {
-            NMDebug(<< "Failed creating overviews!");
-            return;
-        }
-        const unsigned int numOvv = m_OvvSize.size();
-        std::string containerName = nio->GetOverviewContainerName();
-        std::string inputVarSpec = inImgSpec;
-        std::stringstream ovvn;
-        std::vector<std::string> ovvnames;
-
-        for (int level=1; level <= numOvv; ++level)
-        {
-            ovvn << containerName << ":"
-                 << imgVarGrpName << "/OVERVIEWS_"
-                 << imgVarName << "/"
-                 << imgVarName << "_ovv_" << level;
-
-            ovvnames.push_back(ovvn.str());
-            ovvn.str("");
-        }
-
-        for (unsigned int out=0; out < numOvv; ++out)
-        {
-            ReaderTypePointer reader = ReaderType::New();
-            if (out == 0)
-            {
-                reader->SetFileName(inputVarSpec);
-            }
-            else
-            {
-                reader->SetFileName(ovvnames.at(out-1));
-            }
-
-            PointType outOrigin;
-            SpacingType outSpacing;
-            SizeType outSize;
-
-            for (int d = ImgType::ImageDimension - 1; d >=0; --d)
-            {
-                const double dirmult = nio->GetDirection(d)[d];
-                const double ulc = nio->getUpperLeftCorner()[d];
-                const double origSpacing = nio->GetSpacing(d);
-                const unsigned int origSize = nio->GetDimensions(d);
-                const double lrc = ulc + origSpacing * (double)origSize * dirmult;
-
-                outSize[d] = m_OvvSize[out][d];
-                outSpacing[d] = ((lrc - ulc) / outSize[d]) * dirmult;
-                outOrigin[d] = ulc + 0.5 * outSpacing[d] * dirmult;
-            }
-
-            PyramidFilterTypePointer pygen = PyramidFilterType::New();
-            pygen->SetInput(reader->GetOutput());
-            pygen->SetInterpolationMethod(resampleType);
-            pygen->SetOutputOrigin(outOrigin);
-            pygen->SetOutputSpacing(outSpacing);
-            pygen->SetOutputSize(outSize);
-            pygen->SetDefaultPixelValue(0);
-
-            const int mxth = pygen->GetNumberOfThreads();
-            pygen->SetNumberOfThreads(std::max(mxth-2, 1));
-
-            WriterTypePointer writer = WriterType::New();
-            writer->SetInput(pygen->GetOutput());
-            writer->SetAutomaticTiledStreaming(512);
-            writer->SetResamplingType("NONE");
-            writer->SetFileName(ovvnames.at(out));
-            writer->Update();
-        }
-    }
-};
 
 namespace otb
 {
@@ -1039,137 +1039,137 @@ void NetCDFIO::FinaliseParallelIO(void)
     }
 }
 
-void NetCDFIO::BuildOverviews(const std::string &method)
-{
-    NMDebugCtx("NetCDFIO", << "...")
-    if (m_bParallelIO)
-    {
-        NMDebugCtx("NetCDFIO", << "done!")
-        return;
-    }
-
-    if (!m_bImageSpecParsed)
-    {
-        NMDebugCtx("NetCDFIO", << "done!")
-        return;
-    }
-
-    if (!m_ImgInfoHasBeenRead)
-    {
-        this->ReadImageInformation();
-    }
-
-    // =======================================================================
-    //              DETERMINE PYRAMID SCHEDULE
-    // ========================================================================
-
-    std::vector<bool> dimdone;
-    std::vector<unsigned int> lastsize;
-    for (int d=0; d < this->GetNumberOfDimensions(); ++d)
-    {
-        if (m_LPRDimensions[d] > 256 || d >= 2)
-        {
-            dimdone.push_back(false);
-        }
-        else
-        {
-            dimdone.push_back(true);
-        }
-        lastsize.push_back(m_LPRDimensions[d]);
-    }
-
-    m_OvvSize.clear();
-    int exp = 1;
-    double factor = static_cast<int>(std::pow(2, exp));
-    bool balldone = false;
-    while(!balldone)
-    {
-        balldone = true;
-        std::vector<unsigned int> ovvsize;
-        for (int d=0; d < this->GetNumberOfDimensions(); ++d)
-        {
-            unsigned int osize = m_LPRDimensions[d]/(int)factor;
-            if (dimdone[d] || (d < 2 && osize < 256) || (d >= 2 && osize < 2) )
-            {
-                osize = lastsize[d];
-                dimdone[d] = true;
-            }
-            else
-            {
-                lastsize[d] = osize;
-                balldone = false;
-            }
-            ovvsize.push_back(osize);
-        }
-
-        // avoid adding the same
-        // overview schedule twice!
-        if (balldone)
-        {
-            break;
-        }
-        m_OvvSize.push_back(ovvsize);
-
-        ++exp;
-        factor = static_cast<int>(std::pow(2, exp));
-    }
-
-    // =======================================================================
-    //              CALL HELPER CLASS FOR PYRAMID GENERATION
-    // ========================================================================
-
-    // define interpolation method
-    std::string resampleType;
-    if (method.compare("NEAREST") == 0)
-    {
-        resampleType = "NearestNeighbour";
-    }
-    else if (method.compare("AVERAGE") == 0)
-    {
-        resampleType = "Mean";
-    }
-    else if (method.compare("MODE") == 0)
-    {
-        resampleType = "Median";
-    }
-    else
-    {
-        NMDebug(<< "Requested resampling type '" <<
-                method << "' is not available for netCDF!"
-                << " Gonna use 'NEAREST' instead!");
-        resampleType = "NearestNeighbour";
-    }
-
-    // create base name for ovv file
-    m_OverviewContainerName = m_FileContainerName;
-
-    //unsigned int numBands = this->GetNumberOfComponents();
-    unsigned int numDimensions = this->GetNumberOfDimensions();
-
-    NcGroup imgVarGrp = m_GroupIDs.back();
-
-    std::string imgVarGrpName = "";
-    for (int gn=0; gn < m_GroupNames.size(); ++gn)
-    {
-        imgVarGrpName += "/" + m_GroupNames.at(gn);
-    }
-
-    std::string imgVarName = m_NcVarName;
-    std::string inImgSpec = this->GetFileName();
-
-    netCDF::NcType ncType = m_ncType;
-
-    otb::ImageIOBase* imgIO = this;
-
-    switch (this->getOTBComponentType(ncType.getTypeClass()))
-    {
-        LocalMacroPerSingleType( NcGenerateOverviews )
-        default:
-            break;
-    }
-    m_NbOverviews = m_OvvSize.size();
-    NMDebugCtx("NetCDFIO", << "done!")
-}
+//void NetCDFIO::BuildOverviews(const std::string &method)
+//{
+//    NMDebugCtx("NetCDFIO", << "...")
+//    if (m_bParallelIO)
+//    {
+//        NMDebugCtx("NetCDFIO", << "done!")
+//        return;
+//    }
+//
+//    if (!m_bImageSpecParsed)
+//    {
+//        NMDebugCtx("NetCDFIO", << "done!")
+//        return;
+//    }
+//
+//    if (!m_ImgInfoHasBeenRead)
+//    {
+//        this->ReadImageInformation();
+//    }
+//
+//    // =======================================================================
+//    //              DETERMINE PYRAMID SCHEDULE
+//    // ========================================================================
+//
+//    std::vector<bool> dimdone;
+//    std::vector<unsigned int> lastsize;
+//    for (int d=0; d < this->GetNumberOfDimensions(); ++d)
+//    {
+//        if (m_LPRDimensions[d] > 256 || d >= 2)
+//        {
+//            dimdone.push_back(false);
+//        }
+//        else
+//        {
+//            dimdone.push_back(true);
+//        }
+//        lastsize.push_back(m_LPRDimensions[d]);
+//    }
+//
+//    m_OvvSize.clear();
+//    int exp = 1;
+//    double factor = static_cast<int>(std::pow(2, exp));
+//    bool balldone = false;
+//    while(!balldone)
+//    {
+//        balldone = true;
+//        std::vector<unsigned int> ovvsize;
+//        for (int d=0; d < this->GetNumberOfDimensions(); ++d)
+//        {
+//            unsigned int osize = m_LPRDimensions[d]/(int)factor;
+//            if (dimdone[d] || (d < 2 && osize < 256) || (d >= 2 && osize < 2) )
+//            {
+//                osize = lastsize[d];
+//                dimdone[d] = true;
+//            }
+//            else
+//            {
+//                lastsize[d] = osize;
+//                balldone = false;
+//            }
+//            ovvsize.push_back(osize);
+//        }
+//
+//        // avoid adding the same
+//        // overview schedule twice!
+//        if (balldone)
+//        {
+//            break;
+//        }
+//        m_OvvSize.push_back(ovvsize);
+//
+//        ++exp;
+//        factor = static_cast<int>(std::pow(2, exp));
+//    }
+//
+//    // =======================================================================
+//    //              CALL HELPER CLASS FOR PYRAMID GENERATION
+//    // ========================================================================
+//
+//    // define interpolation method
+//    std::string resampleType;
+//    if (method.compare("NEAREST") == 0)
+//    {
+//        resampleType = "NearestNeighbour";
+//    }
+//    else if (method.compare("AVERAGE") == 0)
+//    {
+//        resampleType = "Mean";
+//    }
+//    else if (method.compare("MODE") == 0)
+//    {
+//        resampleType = "Median";
+//    }
+//    else
+//    {
+//        NMDebug(<< "Requested resampling type '" <<
+//                method << "' is not available for netCDF!"
+//                << " Gonna use 'NEAREST' instead!");
+//        resampleType = "NearestNeighbour";
+//    }
+//
+//    // create base name for ovv file
+//    m_OverviewContainerName = m_FileContainerName;
+//
+//    //unsigned int numBands = this->GetNumberOfComponents();
+//    unsigned int numDimensions = this->GetNumberOfDimensions();
+//
+//    NcGroup imgVarGrp = m_GroupIDs.back();
+//
+//    std::string imgVarGrpName = "";
+//    for (int gn=0; gn < m_GroupNames.size(); ++gn)
+//    {
+//        imgVarGrpName += "/" + m_GroupNames.at(gn);
+//    }
+//
+//    std::string imgVarName = m_NcVarName;
+//    std::string inImgSpec = this->GetFileName();
+//
+//    netCDF::NcType ncType = m_ncType;
+//
+//    otb::ImageIOBase* imgIO = this;
+//
+//    switch (this->getOTBComponentType(ncType.getTypeClass()))
+//    {
+//        LocalMacroPerSingleType( NcGenerateOverviews )
+//        default:
+//            break;
+//    }
+//    m_NbOverviews = m_OvvSize.size();
+//    NMDebugCtx("NetCDFIO", << "done!")
+//}
 
 std::vector<unsigned int>
 NetCDFIO::GetOverviewSize(int ovv)
@@ -1544,10 +1544,10 @@ void NetCDFIO::InternalWriteImageInformation()
     NMDebugCtx("NetCDFIO", << "done!")
 }
 
-void NetCDFIO::WriteRAT(otb::AttributeTable* tab,
-        unsigned int band)
-{
-}
+//void NetCDFIO::WriteRAT(otb::AttributeTable* tab,
+//        unsigned int band)
+//{
+//}
 
 void NetCDFIO::Write(const void* buffer)
 {
@@ -1686,11 +1686,11 @@ void NetCDFIO::Write(const void* buffer)
     NMDebugCtx("NetCDFIO", << "done!")
 }
 
-otb::AttributeTable::Pointer NetCDFIO::getRasterAttributeTable(int band)
-{
-    otb::AttributeTable::Pointer rat;
-    return rat;
-}
+//otb::AttributeTable::Pointer NetCDFIO::getRasterAttributeTable(int band)
+//{
+//    otb::AttributeTable::Pointer rat;
+//    return rat;
+//}
 
 bool NetCDFIO::parseImageSpec(const std::string imagespec)
 {
@@ -1779,16 +1779,16 @@ bool NetCDFIO::parseImageSpec(const std::string imagespec)
     return true;
 }
 
-void NetCDFIO::setRasterAttributeTable(AttributeTable* rat, int band)
-{
-    if (band < 1)
-        return;
-
-    if (this->m_vecRAT.capacity() < band)
-        this->m_vecRAT.resize(band);
-
-    this->m_vecRAT[band-1] = rat;
-}
+//void NetCDFIO::setRasterAttributeTable(AttributeTable* rat, int band)
+//{
+//    if (band < 1)
+//        return;
+//
+//    if (this->m_vecRAT.capacity() < band)
+//        this->m_vecRAT.resize(band);
+//
+//    this->m_vecRAT[band-1] = rat;
+//}
 
 void NetCDFIO::PrintSelf(std::ostream& os, itk::Indent indent) const
 {

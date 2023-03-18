@@ -55,7 +55,8 @@
 #include "ogr_spatialref.h"
 #include "ogr_srs_api.h"
 #include "gdal_rat.h"
-#include "otbgdalratimageio_export.h"
+
+#include "nmotbgdalratimageio_export.h"
 
 namespace otb
 {
@@ -71,7 +72,7 @@ class GDALDataTypeWrapper;
  * \ingroup IOFilters
  *
  */
-class OTBGDALRATIMAGEIO_EXPORT GDALRATImageIO : public otb::ImageIOBase
+class NMOTBGDALRATIMAGEIO_EXPORT GDALRATImageIO : public otb::ImageIOBase
 {
 public:
 

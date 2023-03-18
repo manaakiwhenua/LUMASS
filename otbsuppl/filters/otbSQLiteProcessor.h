@@ -33,7 +33,7 @@
 #include "otbImage.h"
 #include "otbSQLiteTable.h"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 /*!
  *  \brief SQLiteProcessor enables SQL processing with otb::SQLiteTable's
@@ -44,7 +44,7 @@ namespace otb
 {
 
 template< class TInputImage, class TOutputImage = TInputImage >
-class OTBSUPPLFILTERS_EXPORT SQLiteProcessor
+class NMOTBSUPPLFILTERS_EXPORT SQLiteProcessor
         : public itk::ImageToImageFilter< TInputImage, TOutputImage >
 {
 public:

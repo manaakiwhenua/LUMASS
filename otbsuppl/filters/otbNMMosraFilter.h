@@ -35,7 +35,7 @@
 #include "otbSQLiteTable.h"
 #include "NMMosra.h"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 /*!
  *  \brief NMMosraFilter performs spatial optimisation NMMosraDataSet
@@ -47,7 +47,7 @@ namespace otb
 {
 
 template< class TInputImage, class TOutputImage = TInputImage >
-class OTBSUPPLFILTERS_EXPORT NMMosraFilter
+class NMOTBSUPPLFILTERS_EXPORT NMMosraFilter
         : public itk::ImageToImageFilter< TInputImage, TOutputImage >
 {
 public:

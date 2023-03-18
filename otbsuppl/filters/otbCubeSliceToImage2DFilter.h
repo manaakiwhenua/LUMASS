@@ -40,12 +40,12 @@
 #include "nmlog.h"
 #define ctxCubeSliceToImage2DFilter "CubeSliceToImage2DFilter"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace otb {
 
 template <class TInputImage, class TOutputImage>
-class OTBSUPPLFILTERS_EXPORT CubeSliceToImage2DFilter
+class NMOTBSUPPLFILTERS_EXPORT CubeSliceToImage2DFilter
     : public itk::ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:

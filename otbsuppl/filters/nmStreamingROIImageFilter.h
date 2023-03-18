@@ -51,7 +51,7 @@
 
 #include <itkImageToImageFilter.h>
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace nm
 {
@@ -70,7 +70,7 @@ namespace nm
      */
 
 template <class TInputImage, class TOutputImage>
-class OTBSUPPLFILTERS_EXPORT StreamingROIImageFilter :
+class NMOTBSUPPLFILTERS_EXPORT StreamingROIImageFilter :
         public itk::ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:

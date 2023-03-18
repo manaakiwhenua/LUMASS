@@ -22,36 +22,36 @@
 #include "otbImage.h"
 #include "otbRATBandMathImageFilter.h"
 
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned char, 1> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<char, 1> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned short, 1> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<short, 1> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned int, 1> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<int, 1> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned long, 1> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<long, 1> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<float, 1> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<double, 1> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned char, 2> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<char, 2> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned short, 2> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<short, 2> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned int, 2> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<int, 2> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned long, 2> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<long, 2> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<float, 2> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<double, 2> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned char, 3> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<char, 3> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned short, 3> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<short, 3> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned int, 3> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<int, 3> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned long, 3> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<long, 3> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<float, 3> >;
-template class OTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<double, 3> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned char, 1> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<char, 1> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned short, 1> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<short, 1> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned int, 1> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<int, 1> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned long, 1> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<long, 1> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<float, 1> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<double, 1> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned char, 2> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<char, 2> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned short, 2> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<short, 2> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned int, 2> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<int, 2> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned long, 2> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<long, 2> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<float, 2> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<double, 2> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned char, 3> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<char, 3> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned short, 3> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<short, 3> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned int, 3> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<int, 3> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<unsigned long, 3> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<long, 3> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<float, 3> >;
+template class NMOTBSUPPLFILTERS_EXPORT otb::RATBandMathImageFilter< otb::Image<double, 3> >;
 
 
 #endif  // include guard

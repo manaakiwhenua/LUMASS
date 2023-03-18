@@ -35,14 +35,15 @@ INCLUDE_DIRECTORIES(
     ${NETCDFIO_BINARY_DIR}
     ${NETCDF_INCLUDE_DIR}
     ${NCXX4_INCLUDE_DIR}
-    "/opt/netcdf-c-4.8.1/install/include"
+    #"/opt/netcdf-c-4.8.1/install/include"
 #    ${rimageio_SOURCE_DIR}
     ${filters_SOURCE_DIR}
     ${filters_BINARY_DIR}
     ${gui_SOURCE_DIR}
     ${lumass_SOURCE_DIR}/utils/ITK
     ${lumass_SOURCE_DIR}
-    ${otbsuppl_core_SOURCE_DIR}
+    ${OTBSupplCore_SOURCE_DIR}
+    ${OTBSupplCore_BINARY_DIR}
     ${OTB_INCLUDE_DIRS}
     ${pybind11_INCLUDE_DIRS}
     ${shared_BINARY_DIR}
@@ -104,15 +105,16 @@ LIST(REMOVE_ITEM MFW_CORE_MOC_H ${mfw_core_SOURCE_DIR}/NMMfwException.h)
 LIST(APPEND MFW_CORE_MOC_H ${shared_SOURCE_DIR}/NMLogger.h)
 
 set(MFW_CORE_LINK_LIBS
-    #${OTB_LIBRARIES}
-    #${OTB_LINK_LIBS}
-    OTBGDALRATImageIO
-    OTBSupplFilters
-    NetCDFIO
-    #RasImageIO
     Qt5::Xml
     Qt5::Core
     Qt5::Concurrent
+    NMNetCDFIO
+    NMOTBSupplCore
+    #${OTB_LIBRARIES}
+    #${OTB_LINK_LIBS}
+    NMOTBGDALRATImageIO
+    NMOTBSupplFilters
+    #RasImageIO
     #ITKCommon
     #spatialite
 )
@@ -127,9 +129,9 @@ if(PYTHONSUPPORT)
 endif()
 
 set(MFW_CORE_DEP_LIBS
-    OTBGDALRATImageIO
-    OTBSupplFilters
-    NetCDFIO
+    NMNetCDFIO
+    NMOTBGDALRATImageIO
+    NMOTBSupplFilters
     #RasImageIO
 )
 

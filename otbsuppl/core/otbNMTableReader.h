@@ -29,12 +29,12 @@
 #include "itkProcessObject.h"
 #include "itkDataObject.h"
 
-#include "otbgdalratimageio_export.h"
+#include "nmotbsupplcore_export.h"
 
 namespace otb
 {
 
-class OTBGDALRATIMAGEIO_EXPORT NMTableReader : public itk::ProcessObject
+class NMOTBSUPPLCORE_EXPORT NMTableReader : public itk::ProcessObject
 {
 public:
     typedef NMTableReader                  Self;

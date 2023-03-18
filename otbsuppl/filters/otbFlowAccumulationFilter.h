@@ -30,7 +30,7 @@
 #include "itkNeighborhoodIterator.h"
 #include "itkNeighborhood.h"
 #include "nmlog.h"
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 #include "itkImageRegionIterator.h"
 #include "itkImageRegionConstIteratorWithIndex.h"
 #include "itkImageRegionIteratorWithIndex.h"
@@ -40,7 +40,7 @@
 namespace otb {
 
 template <class TInputImage, class TOutputImage>
-class OTBSUPPLFILTERS_EXPORT FlowAccumulationFilter
+class NMOTBSUPPLFILTERS_EXPORT FlowAccumulationFilter
             : public itk::ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:

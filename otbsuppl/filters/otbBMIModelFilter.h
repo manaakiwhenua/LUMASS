@@ -36,7 +36,7 @@
 #include "itkImageRegionIterator.h"
 #include "itkMultiThreader.h"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 /**  Enables the integration of a pixel/point-based BMI-compliant model
  *   into an ITK/OTB processing pipeline, leveraging the sequential and
@@ -46,7 +46,7 @@
 namespace otb {
 
 template <class TInputImage, class TOutputImage = TInputImage>
-class OTBSUPPLFILTERS_EXPORT BMIModelFilter
+class NMOTBSUPPLFILTERS_EXPORT BMIModelFilter
         : public itk::ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:

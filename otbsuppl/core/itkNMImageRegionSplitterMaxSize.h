@@ -22,7 +22,7 @@
 #include "itkRegion.h"
 #include "itkIndex.h"
 #include "itkImageRegionSplitterBase.h"
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace itk
 {

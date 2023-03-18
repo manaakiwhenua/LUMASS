@@ -31,7 +31,7 @@
 #include "itkImageToImageFilter.h"
 #include <itkIndent.h>
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 /**
  *   This filter is part of LUMASS' NMDataComponent (DataBuffer) that keeps
@@ -50,7 +50,7 @@
 namespace otb {
 
 template <class TInputImage >
-class OTBSUPPLFILTERS_EXPORT DataBufferFilter : public itk::ImageToImageFilter<TInputImage, TInputImage>
+class NMOTBSUPPLFILTERS_EXPORT DataBufferFilter : public itk::ImageToImageFilter<TInputImage, TInputImage>
 {
 public:
 

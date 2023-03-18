@@ -45,12 +45,12 @@
 //#include "itkImage.h"
 #include "itkNumericTraits.h"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace otb
 {
 template <class TInputImage, class TOutputImage>
-class OTBSUPPLFILTERS_EXPORT ProcessLUPotentials :
+class NMOTBSUPPLFILTERS_EXPORT ProcessLUPotentials :
     public itk::ImageToImageFilter< TInputImage, TOutputImage >
 {
 public:

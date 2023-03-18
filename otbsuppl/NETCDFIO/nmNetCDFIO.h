@@ -22,8 +22,8 @@
 #include <netcdf>
 #include "nmlog.h"
 #include "otbImageIOBase.h"
-#include "otbAttributeTable.h"
-#include "netcdfio_export.h"
+//#include "otbAttributeTable.h"
+#include "nmnetcdfio_export.h"
 
 #ifndef _WIN32
 #   include <mpi.h>
@@ -32,7 +32,7 @@
 namespace otb
 {
 
-class NETCDFIO_EXPORT NetCDFIO : public otb::ImageIOBase
+class NMNETCDFIO_EXPORT NetCDFIO : public otb::ImageIOBase
 {
 public:
 
@@ -104,7 +104,7 @@ public:
     itkGetMacro(OverviewIdx, int)
     void SetOverviewIdx(int idx);
 
-    void BuildOverviews(const std::string& method);
+    //void BuildOverviews(const std::string& method);
     std::vector<unsigned int> GetOverviewSize(int ovv);
 
     /*! \brief Returns the index of dimensional variable dimVarName of varName
@@ -152,9 +152,9 @@ public:
 
     void SetForcedLPR(const itk::ImageIORegion& forcedLPR);
 
-    otb::AttributeTable::Pointer getRasterAttributeTable(int band);
-    void setRasterAttributeTable(otb::AttributeTable* rat, int band);
-    void WriteRAT(otb::AttributeTable* tab, unsigned int band=1);
+    //otb::AttributeTable::Pointer getRasterAttributeTable(int band);
+    //void setRasterAttributeTable(otb::AttributeTable* rat, int band);
+    //void WriteRAT(otb::AttributeTable* tab, unsigned int band=1);
 
     /** define some stubs here for abstract methods inherited from base clase */
     virtual unsigned int GetOverviewsCount() {return (unsigned int)0;}
@@ -199,7 +199,7 @@ protected:
     bool m_bImageInfoNeedsToBeWritten;
 
     otb::ImageIOBase::ByteOrder m_FileByteOrder;
-    std::vector<otb::AttributeTable::Pointer> m_vecRAT;
+    //std::vector<otb::AttributeTable::Pointer> m_vecRAT;
 
     std::vector<double> m_UpperLeftCorner;
 

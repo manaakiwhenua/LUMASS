@@ -38,7 +38,7 @@
 
 //#include "tchdb.h"
 
-#include "otbsupplfilters_export.h"
+#include "nmotbsupplfilters_export.h"
 
 namespace otb
 {
@@ -48,7 +48,7 @@ namespace otb
  */
 
 template< class TInputImage, class TOutputImage = TInputImage >
-class OTBSUPPLFILTERS_EXPORT UniqueCombinationFilter
+class NMOTBSUPPLFILTERS_EXPORT UniqueCombinationFilter
         : public itk::ImageToImageFilter< TInputImage, TOutputImage >
 {
 public:

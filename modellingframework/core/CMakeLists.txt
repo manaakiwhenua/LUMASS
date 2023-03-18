@@ -156,7 +156,7 @@ generate_export_header(NMModFrameCore)
 target_link_libraries(NMModFrameCore ${MFW_CORE_LINK_LIBS})
 ADD_DEPENDENCIES(NMModFrameCore ${MFW_CORE_DEP_LIBS})
 
-#install(FILES ${MFW_CORE_H} DESTINATION include)
+install(FILES ${MFW_CORE_H} DESTINATION include)
 if(WIN32)
         install(TARGETS NMModFrameCore
                 LIBRARY DESTINATION lib

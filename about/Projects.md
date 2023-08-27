@@ -3,6 +3,10 @@ title: "Projects"
 permalink: "/about/Projects"
 ---
 
+### Growing for good: producing a healthy, low greenhouse gas and water quality footprint diet in Aotearoa, New Zealand (2021-2022)
+
+- Constrained land-use optimisation scenarios to identify suitable locations for replacing pastoral agriculture in catchments under nitrogen and phosphorous pressure with horticulture and forest to achieve greenhouse gas emission targets and water quality objectives.  
+
 ### Smarter Targeting of Erosion Control (STEC) MBIE research programme  (2018-2023)
 
 - Extension of the LUMASS modelling framework to a low-code interoperable model coupling framework [(Herzig et al. 2020)](https://doi.org/10.5194/egusphere-egu2020-20868)

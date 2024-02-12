@@ -5,27 +5,28 @@
 # - no warranty whatsoever for this being even remotely useful in whichever shape or form!
 
 # find parallel netcdf nc-config
-# find_path(NC_CONFIG_PATH NAMES nc-config
-#     HINTS
-#         /opt/netcdf-4.7.3/install/bin
-#         /opt/netcdf-4.8.1/install/bin
-#         /opt/netcdf-c-4.8.1/install/bin
-#         /opt/netcdf-bin/install/bin
-#     PATHS
-#         /opt/netcdf-4.7.3
-#         /opt/netcdf-bin
-#         /opt/netcdf-4.8.1
-#         /opt/netcdf-c-4.8.1
-#         /usr/local
-#         /usr
-#     PATH_SUFFIXES
-#         install/bin
-#         bin
-#     DOC "Path to the netcdf-cxx4 config script 'ncxx4-config'"
-# )
+find_path(NC_CONFIG_PATH NAMES nc-config
+    HINTS
+        $ENV{HOME}/garage/build/netcdf-c-4.9.2/install/bin
+        /opt/netcdf-4.7.3/install/bin
+        /opt/netcdf-4.8.1/install/bin
+        /opt/netcdf-c-4.8.1/install/bin
+        /opt/netcdf-bin/install/bin
+    PATHS
+        $ENV{HOME}/garage/build/netcdf-c-4.9.2
+        /opt/netcdf-4.7.3
+        /opt/netcdf-bin
+        /opt/netcdf-4.8.1
+        /opt/netcdf-c-4.8.1
+        /usr/local
+        /usr
+    PATH_SUFFIXES
+        install/bin
+        bin
+    DOC "Path to the netcdf-c config script 'nc-config'"
+)
 
 #set(NC_CONFIG_PATH ${NC_CONFIG_PATH} CACHE STRING "Please specify the path to the netcdf nc-config file." )
-
 
 execute_process(COMMAND ${NC_CONFIG_PATH}/nc-config --version OUTPUT_VARIABLE NETCDF_VERSION_TEXT OUTPUT_STRIP_TRAILING_WHITESPACE)
 execute_process(COMMAND ${NC_CONFIG_PATH}/nc-config --includedir OUTPUT_VARIABLE NETCDF_INCLUDE_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -55,20 +56,22 @@ endif()
 #message(STATUS "NetCDF library: ${NETCDF_LIBRARY}")
 
 # find also netcdf-cxx4
-#find_path(NCXX4_CONFIG_PATH ncxx4-config
-#    HINTS
-#        /opt/ncxx4-dbg/install/bin
-#        /opt/netcdf-cxx4/install/bin
-#    PATHS
-#        /opt/ncxx4-dbg
-#        /opt/netcdf-cxx4
-#        /usr/local
-#        /usr
-#    PATH_SUFFIXES
-#        bin
-#        install/bin
-#    DOC "Path to the netcdf-cxx4 config script 'ncxx4-config'"
-#)
+find_path(NCXX4_CONFIG_PATH ncxx4-config
+    HINTS
+        $ENV{HOME}/garage/build/netcdf-cxx-4.3.1/install/bin
+        /opt/ncxx4-dbg/install/bin
+        /opt/netcdf-cxx4/install/bin
+    PATHS
+        $ENV{HOME}/garage/build/netcdf-cxx-4.3.1
+        /opt/ncxx4-dbg
+        /opt/netcdf-cxx4
+        /usr/local
+        /usr
+    PATH_SUFFIXES
+        bin
+        install/bin
+    DOC "Path to the netcdf-cxx4 config script 'ncxx4-config'"
+)
 
 #message(STATUS "NCXX4_CONFIG_PATH: ${NCXX4_CONFIG_PATH}")
 

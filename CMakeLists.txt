@@ -2,7 +2,12 @@
 # author: Alexander Herzig
 # copyright: Landcare Research New Zealand Ltd
 
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.22)
+
+# CMAKE
+#SET(CMAKE_C_COMPILER "/usr/bin/clang-15")
+#SET(CMAKE_CXX_COMPILER "/usr/bin/clang++-15")
+
 PROJECT(lumass)
 
 INCLUDE_REGULAR_EXPRESSION("^.*$")
@@ -30,7 +35,6 @@ SET(LIBRARY_OUTPUT_PATH ${lumass_BINARY_DIR}/lib)
 # we're setting some more variables
 SET(CMAKE_INCLUDE_CURRENT_DIR ON)
 SET(CMAKE_CXX_STANDARD 14)
-#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 #====================================================================
 # MPI
@@ -156,8 +160,8 @@ endif (testvar_in STREQUAL testvar_target)
 find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
 SET(LUMASS_VERSION_MINOR 9)
-SET(LUMASS_VERSION_REVISION 70)
-SET(LUMASS_VERSION_SUFFIX "-b5")
+SET(LUMASS_VERSION_REVISION 71)
+SET(LUMASS_VERSION_SUFFIX "-b8")
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
@@ -165,15 +169,18 @@ git_date(LUMASS_COMMIT_DATE)
 message(STATUS "building LUMASS ${LUMASS_VERSION_MAJOR}.${LUMASS_VERSION_MINOR}.${LUMASS_VERSION_REVISION} (${CMAKE_BUILD_TYPE})"
                " - commit ${GIT_SHA1} from ${LUMASS_COMMIT_DATE}")
 
+
+SET(LUMASS_OPENGA_VERSION "1.0.5")
+
 #====================================================================
 # avoid 'missing Threads_FOUND' trouble ...
 #====================================================================
 
-set(CMAKE_THREAD_LIBS_INIT "-lpthread")
-set(CMAKE_HAVE_THREADS_LIBRARY 1)
-set(CMAKE_USE_WIN32_THREADS_INIT 0)
-set(CMAKE_USE_PTHREADS_INIT 1)
-set(THREADS_PREFER_PTHREAD_FLAG ON)
+#set(CMAKE_THREAD_LIBS_INIT "-lpthread")
+#set(CMAKE_HAVE_THREADS_LIBRARY 1)
+#set(CMAKE_USE_WIN32_THREADS_INIT 0)
+#set(CMAKE_USE_PTHREADS_INIT 1)
+#set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 #====================================================================
 # QT 5
@@ -186,7 +193,6 @@ ENDIF()
 #if (${QT5_VERSION_STRING} VERSION_LESS "5.7")
 #    message(FATAL_ERROR "LUMASS >= 0.9.60 requires Qt >= 5.7")
 #endif ()
-
 
 #====================================================================
 # OpenGL
@@ -267,13 +273,14 @@ message(STATUS "OTB_LINK_DIR: ${OTB_LINK_DIR}")
 # available; set up specifics later with respect to the
 # different executables
 
-#FIND_PACKAGE(LUMASSVTK)
+FIND_PACKAGE(LUMASSVTK)
 
-if(NOT LUMASS_VTK_DIR)
+if(NOT VTK_DIR)
     set(LUMASS_VTK_DIR "LUMASS_VTK_DIR NOT FOUND" CACHE STRING "VTK directory (to vtk-config.cmake)")
     message(FATAL_ERROR "Couldn't find VTK!")
 else()
-    message(STATUS "LUMASS_VTK_DIR set to '${LUMASS_VTK_DIR}'")
+    set(LUMASS_VTK_DIR ${VTK_DIR} CACHE STRING "VTK directory (to vtk-config.cmake)")
+    message(STATUS "LUMASS_VTK_DIR set to ${LUMASS_VTK_DIR}")
     find_package(VTK REQUIRED PATHS ${LUMASS_VTK_DIR} NO_DEFAULT_PATH)
     #include("${LUMASS_VTK_DIR}/vtk-config.cmake"})
 
@@ -337,7 +344,7 @@ message(STATUS "lp_solve library: ${LPSOLVE_LIBRARY}")
 #====================================================================
 
 # just define the current version included in the source tree
-set(NM_SQLite_VERSION "3.31.1")
+set(NM_SQLite_VERSION "3.42.0")
 
 #find_package(Sqlite3)
 #if(NOT SQLITE3_FOUND)
@@ -353,6 +360,7 @@ if(NOT SPATIALITE_FOUND)
         message(FATAL_ERROR "Please install Spatialite prior to installing LUMASS!")
 endif()
 
+message(STATUS "Spatialite version: ${SPATIALITE_VERSION}")
 message(STATUS "Spatialite include dir: ${SPATIALITE_INCLUDE_DIR}")
 message(STATUS "Spatialite library dir: ${SPATIALITE_LIBLIB_DIR}")
 message(STATUS "Spatialite library: ${SPATIALITE_LIB}")
@@ -388,18 +396,26 @@ if (WIN32)
                 SET(LUMASS_NCXX4_VERSION "4.3.1")
 
 else()
+
+    find_package(LUMASSNetCDF)
+
+    if(NOT NC_CONFIG_PATH)
         set(NC_CONFIG_PATH "" CACHE STRING "Please specify the path to the netcdf nc-config file." )
+        message(FATAL_ERROR "Couldn't find netcdf configuration info!")
+    else()
+        set(NC_CONFIG_PATH ${NC_CONFIG_PATH} CACHE STRING "Path to the netcdf nc-config file." )
+    endif()
+
+    if (NOT NCXX4_CONFIG_PATH)
         set(NCXX4_CONFIG_PATH "" CACHE STRING "Please specify the path to the netcdf-cxx4 ncxx4-config file.")
-        
-        if(NOT NC_CONFIG_PATH OR NOT NCXX4_CONFIG_PATH)
-            message(FATAL_ERROR "Please specify the path to the nc-config (NC_CONFIG_PATH) and ncxx4-config (NCXX4_CONFIG_PATH) files.")
-        endif()
+    else()
+        set(NCXX4_CONFIG_PATH ${NCXX4_CONFIG_PATH} CACHE STRING "Path to the ncxx4-config file.")
+    endif()
 
-        find_package(LUMASSNetCDF)
-        SET(LUMASS_NETCDF_VERSION ${NETCDF_VERSION})
-        SET(LUMASS_NCXX4_VERSION ${NCXX4_VERSTION})
+    SET(LUMASS_NETCDF_VERSION ${NETCDF_VERSION})
+    SET(LUMASS_NCXX4_VERSION ${NCXX4_VERSION})
 
-        find_package(HDF5 COMPONENTS C HL REQUIRED)
+    find_package(HDF5 COMPONENTS C HL REQUIRED)
 
 endif()
 
@@ -490,20 +506,19 @@ endif(PYTHONSUPPORT)
 #====================================================================
 # ask for YAML library and header dir
 #====================================================================
-
-find_package(yaml-cpp
-    HINTS
-        /usr/lib/x86_64-linux-gnu/cmake/yaml-cpp/yaml-cpp-config.cmake
-                c:/opt/yaml-cpp/yaml-cpp-config.cmake
-    PATHS
-        /usr/lib/x86_64-linux-gnu/cmake
-        /usr/lib/cmake
+    find_package(yaml-cpp
+        HINTS
+            /usr/lib/x86_64-linux-gnu/cmake/yaml-cpp/yaml-cpp-cdonfig.cmake
+                    c:/opt/yaml-cpp/yaml-cpp-config.cmake
+        PATHS
+            /usr/lib/x86_64-linux-gnu/cmake
+            /usr/lib/cmake
                 c:/opt/yaml-cpp
-)
+    )
 
 if (NOT YAML_CPP_CMAKE_DIR)
-    set(YAML_CPP_CMAKE_DIR "YAML_CPP_CMAKE_DIR-NOTFOUND" CACHE STRING "Please specify the path of yaml-cpp-config.cmake" )
-    message(FATAL_ERROR "Please specify the path of yaml-cpp-config.cmake!" )
+        set(YAML_CPP_CMAKE_DIR "YAML_CPP_CMAKE_DIR-NOTFOUND" CACHE STRING "Please specify the path of yaml-cpp-config.cmake" )
+        message(FATAL_ERROR "Please specify the path of yaml-cpp-config.cmake!" )
 else()
         include(${YAML_CPP_CMAKE_DIR}/yaml-cpp-config-version.cmake)
         SET(LUMASS_yaml_version "${PACKAGE_VERSION}")
@@ -532,6 +547,7 @@ ENDIF()
 #endif()
 #find_package(yaml-cpp)
 #include(/opt/yaml-debug/install/share/cmake/yaml-cpp/yaml-cpp-config.cmake)
+message(STATUS "YAML_CPP_VERSION=${LUMASS_yaml_version}")
 message(STATUS "YAML_CPP_INCLUDE_DIR=${YAML_CPP_INCLUDE_DIR}")
 message(STATUS "YAML_CPP_LIBRARIES=${YAML_CPP_LIBRARIES}")
 
@@ -617,11 +633,12 @@ SET(MFW_WRAPPER_NAMES
     NMJSKernelFilterWrapper
     NMExternalExecWrapper
     NMSQLiteProcessorWrapper
-    NMUniqueCombinationFilterWrapper
+    #NMUniqueCombinationFilterWrapper
     NMStreamingROIImageFilterWrapper
     NMImage2DToCubeSliceFilterWrapper
     NMCubeSliceToImage2DFilterWrapper
     NMImage2TableFilterWrapper
+    NMTable2NetCDFFilterWrapper
 )
 
 SET(OTB_LINK_LIBS
@@ -643,8 +660,9 @@ SET(OTB_LINK_LIBS
 ADD_SUBDIRECTORY(shared ${lumass_BINARY_DIR}/shared)
 ADD_SUBDIRECTORY(utils ${lumass_BINARY_DIR}/utils)
 ADD_SUBDIRECTORY(otbsuppl ${lumass_BINARY_DIR}/otbsuppl)
+ADD_SUBDIRECTORY(modellingframework/core ${lumass_BINARY_DIR}/modellingframework/core)
 ADD_SUBDIRECTORY(optimisation ${lumass_BINARY_DIR}/optimisation)
-ADD_SUBDIRECTORY(modellingframework ${lumass_BINARY_DIR}/modellingframework)
+ADD_SUBDIRECTORY(modellingframework/wrapper ${lumass_BINARY_DIR}/modellingframework/wrapper)
 ADD_SUBDIRECTORY(gui ${lumass_BINARY_DIR}/gui)
 ADD_SUBDIRECTORY(terminalapp ${lumass_BINARY_DIR}/terminalapp)
 ADD_SUBDIRECTORY(bmi ${lumass_BINARY_DIR}/bmi)
@@ -656,7 +674,6 @@ ADD_SUBDIRECTORY(bmi ${lumass_BINARY_DIR}/bmi)
 
 IF (UNIX AND NOT APPLE)
 
-    #set(CPACK_PACKAGE_NAME "lumass")
     set(CPACK_PACKAGE_NAME "lumass")
     set(CPACK_PACKAGE_VERSION "${LUMASS_VERSION_MAJOR}.${LUMASS_VERSION_MINOR}.${LUMASS_VERSION_REVISION}-0ubuntu1")
     set(CPACK_PACKAGE_VENDOR "Manaaki Whenua - Landcare Research")

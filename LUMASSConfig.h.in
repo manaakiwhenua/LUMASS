@@ -27,16 +27,18 @@
  #define LUMASS_BUILD_TYPE "@CMAKE_BUILD_TYPE@"
 
  // underpinning libraries
- #define LUMASS_QT_VERSION "@QT5_VERSION_STRING@"
- #define LUMASS_OTB_VERSION "@LUMASS_OTB_VERSION@"
- #define LUMASS_ITK_VERSION "@LUMASS_ITK_VERSION@"
  #define LUMASS_GDAL_VERSION "@GDAL_VERSION@"
- #define LUMASS_VTK_VERSION "@VTK_VERSION_STRING@"
- #define LUMASS_SQLITE_VERSION "@NM_SQLite_VERSION@"
+ #define LUMASS_ITK_VERSION "@LUMASS_ITK_VERSION@"
  #define LUMASS_NETCDF_VERSION "@LUMASS_NETCDF_VERSION@"
  #define LUMASS_NCXX4_VERSION "@LUMASS_NCXX4_VERSION@"
+ #define LUMASS_OTB_VERSION "@LUMASS_OTB_VERSION@"
  #define LUMASS_PYBIND11_VERSION "@LUMASS_pybind11_version@"
+ #define LUMASS_QT_VERSION "@QT5_VERSION_STRING@"
+ #define LUMASS_SPATIALITE_VERSION "@SPATIALITE_VERSION@"
+ #define LUMASS_SQLITE_VERSION "@NM_SQLite_VERSION@"
+ #define LUMASS_VTK_VERSION "@VTK_VERSION_STRING@"
  #define LUMASS_YAML_VERSION "@LUMASS_yaml_version@"
+ #define LUMASS_OPENGA_VERSION "@LUMASS_OPENGA_VERSION@"
 
  
  const char _lumass_commit_hash[] = LUMASS_COMMIT_HASH;
@@ -54,7 +56,9 @@
  const char _lumass_gdal_version[] = LUMASS_GDAL_VERSION;
  const char _lumass_vtk_version[] = LUMASS_VTK_VERSION;
  const char _lumass_sqlite_version[] = LUMASS_SQLITE_VERSION;
+ const char _lumass_spatialite_version[] = LUMASS_SPATIALITE_VERSION;
  const char _lumass_netcdf_version[] = LUMASS_NETCDF_VERSION;
  const char _lumass_ncxx4_version[] = LUMASS_NCXX4_VERSION;
  const char _lumass_pybind11_version[] = LUMASS_PYBIND11_VERSION;
  const char _lumass_yaml_version[] = LUMASS_YAML_VERSION;
+ const char _lumass_openGA_version[] = LUMASS_OPENGA_VERSION;

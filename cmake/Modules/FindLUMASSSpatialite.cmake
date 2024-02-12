@@ -38,7 +38,7 @@ FIND_PATH(FIND_SPATIALITE_LIB_DIR
         lib/x86_64-linux-gnu
         bin
     PATHS
-		C:/opt/spatialite-bin
+                C:/opt/spatialite-bin
         /opt
         /opt/local
         /usr
@@ -52,25 +52,25 @@ FIND_PATH(FIND_SPATIALITE_LIB_DIR
 # for windows, we also need the *.lib library for linking
 
 if(WIN32)
-set(SPATIALITE_LIBLIB spatialite4.lib)
+    set(SPATIALITE_LIBLIB spatialite4.lib)
 
-FIND_PATH(FIND_SPATIALITE_LIBLIB_DIR
-	NAMES ${SPATIALITE_LIBLIB}
-    PATH_SUFFIXES
-        lib
-        bin
-    PATHS
-		C:/opt/spatialite-bin
-        ${OSGEO4W_ROOT}
-    DOC "Path to the spatialite library (e.g. C:/OSGEO4W/lib/spatialite.lib)"
-)
+    FIND_PATH(FIND_SPATIALITE_LIBLIB_DIR
+            NAMES ${SPATIALITE_LIBLIB}
+        PATH_SUFFIXES
+            lib
+            bin
+        PATHS
+                    C:/opt/spatialite-bin
+            ${OSGEO4W_ROOT}
+        DOC "Path to the spatialite library (e.g. C:/OSGEO4W/lib/spatialite.lib)"
+    )
 
 
-        if (FIND_SPATIALITE_LIBLIB_DIR)
-		message(STATUS "found liblib dir: ${FIND_SPATIALITE_LIBLIB_DIR}")
-		SET(SPATIALITE_LIBLIB_DIR ${FIND_SPATIALITE_LIBLIB_DIR} 
-			CACHE FILEPATH "Spatialite import library dir" FORCE)
-	endif()
+    if (FIND_SPATIALITE_LIBLIB_DIR)
+            message(STATUS "found liblib dir: ${FIND_SPATIALITE_LIBLIB_DIR}")
+            SET(SPATIALITE_LIBLIB_DIR ${FIND_SPATIALITE_LIBLIB_DIR}
+                    CACHE FILEPATH "Spatialite import library dir" FORCE)
+    endif()
 endif()
 
 SET(SPATIALITE_LIB_DIR ${FIND_SPATIALITE_LIB_DIR} 
@@ -84,4 +84,8 @@ ELSE(WIN32)
     IF (SPATIALITE_LIB_DIR AND SPATIALITE_INCLUDE_DIR)
       set(SPATIALITE_FOUND TRUE)
     ENDIF(SPATIALITE_LIB_DIR AND SPATIALITE_INCLUDE_DIR)
+
+    # determine version
+    execute_process(COMMAND pkg-config --modversion spatialite OUTPUT_VARIABLE SPATIALITE_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+
 ENDIF(WIN32)

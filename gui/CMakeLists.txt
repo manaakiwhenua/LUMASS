@@ -52,6 +52,7 @@ else()
         VTK::InteractionWidgets
         VTK::InteractionStyle
         VTK::RenderingFreeType
+        VTK::ImagingSources
         VTK::IOCore
         VTK::IOExport
         VTK::IOInfovis
@@ -59,6 +60,7 @@ else()
         VTK::IOLegacy
         VTK::IOXML
         VTK::IOGDAL
+        VTK::IOFFMPEG
         VTK::RenderingContextOpenGL2
         VTK::ViewsCore
         VTK::ViewsContext2D
@@ -117,13 +119,13 @@ INCLUDE_DIRECTORIES(
     #${SQLITE3_INCLUDE_DIR}
     ${SQLite_SOURCE_DIR}
     ${NMQSQLite_SRC_DIR}
+    ${NMQt_SOURCE_DIR}
     ${SPATIALITE_INCLUDE_DIR}
 #    ${TCADB_INCLUDE_DIR}
     ${VisIt_SOURCE_DIR}
     ${VisIt_BINARY_DIR}
     ${NCXX4_INCLUDE_DIR}
     ${NETCDF_INCLUDE_DIR}
-    #"/opt/netcdf-c-4.8.1/install/include"
     ${NETCDFIO_BINARY_DIR}
     ${pybind11_INCLUDE_DIRS}
     ${bmi_SOURCE_DIR}
@@ -141,6 +143,7 @@ LINK_DIRECTORIES(
         ${QT5_LINK_DIRS}
         ${OTB_LIBRARY_DIRS}
         ${LIBRARY_OUTPUT_PATH}
+        ${NMQt_BINARY_DIR}
         ${mfw_BINARY_DIR}
         ${mfw_BINRAY_DIR}/lib
         ${gui_BINARY_DIR}/lib
@@ -160,6 +163,9 @@ LINK_DIRECTORIES(
         ${NETCDF_LIB_DIR}
         ${NCXX4_LIB_DIR}
         ${NETCDFIO_BINARY_DIR}
+        /opt/ipopt-bin/install/lib
+        /opt/mumps-bin/install/lib
+        /opt/asl-bin/install/lib
 )
 
 
@@ -176,12 +182,12 @@ file(GLOB QT_SRC
     ${gui_SOURCE_DIR}/*.cpp
     ${gui_SOURCE_DIR}/*.cxx
     ${gui_SOURCE_DIR}/*.txx
-    ${NMQSQLite_SRC_DIR}/*.cpp
+    #${NMQSQLite_SRC_DIR}/*.cpp
 
     # we also add some other stuff here
     ${shared_SOURCE_DIR}/*.cpp
-    ${opt_SOURCE_DIR}/LpHelper.cpp
-    ${opt_SOURCE_DIR}/NMMosra.cpp
+    #${opt_SOURCE_DIR}/LpHelper.cpp
+    #${opt_SOURCE_DIR}/NMMosra.cpp
     ${NMVtk_SOURCE_DIR}/*.cxx
     ${utils_SOURCE_DIR}/ITK/*.cxx
 )
@@ -194,7 +200,7 @@ list(REMOVE_ITEM QT_SRC ${gui_SOURCE_DIR}/NMChartWidget.cpp)
 if(DVTKOGL2)
     list(REMOVE_ITEM QT_SRC ${NMVtk_SOURCE_DIR}/vtkOGRLayerMapper.cxx)
     list(REMOVE_ITEM QT_SRC ${NMVtk_SOURCE_DIR}/NMVtkOpenGLPolyDataMapper.cxx)
-endif()
+endif(DVTKOGL2)
 
 # have taken out ${QT_LIBRARIES} here
 set(LUMASS_LINKLIBS
@@ -203,6 +209,7 @@ set(LUMASS_LINKLIBS
     #Qt5::Network
     Qt5::WebSockets
     QtPropertyBrowser
+    NMQt
     ${NCXX4_LIBRARY}
     ${NETCDF_LIBRARY}
     curl xml2
@@ -297,9 +304,10 @@ if (UNIX AND NOT APPLE)
     file(GLOB LUMASS_LINUX_UTILS
         ${lumass_SOURCE_DIR}/utils/*.bat
         ${lumass_SOURCE_DIR}/utils/env.sh
+        /usr/bin/gdal_rasterize
+        /usr/bin/ogr2ogr
+        /usr/bin/gdal_polygonize.py
     )
-
-
 
     install(PROGRAMS ${LUMASS_LINUX_UTILS} DESTINATION ${CMAKE_INSTALL_PREFIX}/utils)
 

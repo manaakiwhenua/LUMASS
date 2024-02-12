@@ -78,10 +78,10 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE -fPIC")
 SET(CMAKE_AUTOMOC YES)
 
 file(GLOB ENGINE_SRC
-    ${opt_SOURCE_DIR}/*.cpp
-    ${NMVtk_SOURCE_DIR}/NMvtkDelimitedTextWriter.cxx
+    #${opt_SOURCE_DIR}/*.cpp
+    #${NMVtk_SOURCE_DIR}/NMvtkDelimitedTextWriter.cxx
     ${lumassengine_SOURCE_DIR}/*.cxx
-    ${bmi_SOURCE_DIR}/NMLumassEngine.cpp
+    #${bmi_SOURCE_DIR}/NMLumassEngine.cpp
 
     # and ...
     ${shared_SOURCE_DIR}/*.cpp
@@ -89,6 +89,7 @@ file(GLOB ENGINE_SRC
 
 set(ENGINE_LINKLIBS Qt5Core Qt5Sql Qt5Xml
         ${MPI_CXX_LIBRARIES}
+        LumassBMI
         NMNetCDFIO
         NMModFrameCore ${MFW_WRAPPER_NAMES}
         ${LUMASS_ENGINE_VTK_LIBRARIES} ${PostgreSQL_LIBRARIES}
@@ -112,6 +113,7 @@ endif()
 #endif()
 
 set(ENGINE_DEPLIBS
+    LumassBMI
     NMModFrameCore ${MFW_WRAPPER_NAMES}
 )
 

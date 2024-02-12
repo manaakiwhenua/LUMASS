@@ -70,6 +70,7 @@ LINK_DIRECTORIES(
     ${QT5_LINK_DIRS}
     ${OTB_LIBRARY_DIRS}
     ${LIBRARY_OUTPUT_PATH}
+    ${opt_BINARY_DIR}
     ${bmi_BINARY_DIR}
     #${muparser_BINARY_DIR}
     ${RASDAMAN_LIBRARIES_DIR}
@@ -92,7 +93,7 @@ file(GLOB BMI_HEADER
 )
 
 file(GLOB BMI_SRC
-    ${opt_SOURCE_DIR}/*.cpp
+    #${opt_SOURCE_DIR}/*.cpp
     ${bmi_SOURCE_DIR}/lumassbmi.cpp
     ${bmi_SOURCE_DIR}/NMLumassEngine.cpp
     ${NMVtk_SOURCE_DIR}/NMvtkDelimitedTextWriter.cxx
@@ -116,6 +117,7 @@ SET(BMI_LINKLIBS
     curl xml2
     ${MPI_CXX_LIBRARIES}
     ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
+    NMMosra
     NMModFrameCore
     ${MFW_WRAPPER_NAMES}
     ${LUMASS_BMI_VTK_LIBRARIES}
@@ -192,9 +194,9 @@ SET(LUMASS_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
 
 # -------------------------------------------
 # INSTALL LIBRARY
-SET(BMI_INSTALL_TARGETS LumassPythonBMI)
+SET(BMI_INSTALL_TARGETS LumassBMI)
 if (PYTHONSUPPORT)
-    list(APPEND LumassPythonBMI)
+    list(APPEND BMI_INSTALL_TARGETS LumassPythonBMI)
 endif()
 
 #install(FILES ${BMI_HEADER} DESTINATION include)

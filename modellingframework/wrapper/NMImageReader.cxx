@@ -39,8 +39,10 @@
 #include "NMModelController.h"
 #include "itkRGBPixel.h"
 #include "otbStreamingStatisticsImageFilter.h"
+#include "otbStreamingRATImageFileWriter.h"
 #include "itkImageToHistogramFilter.h"
-
+#include "itkExtractImageFilter.h"
+#include "otbNMGridResampleImageFilter.h"
 
 #include "otbNMImageReader.h"
 
@@ -324,6 +326,7 @@ class FileReader
 {
 public:
     typedef otb::Image< PixelType, ImageDimension > 	ImgType;
+    typedef otb::Image< PixelType, 2>                   Img2DType;
     //typedef otb::GDALRATImageFileReader< ImgType > 		ReaderType;
     typedef otb::NMImageReader< ImgType > 		ReaderType;
     typedef typename ReaderType::Pointer				ReaderTypePointer;
@@ -342,51 +345,121 @@ public:
     typedef typename VecReaderType::Pointer				  VecReaderTypePointer;
     typedef typename VecReaderType::ImageRegionType       VecReaderRegionType;
 
-    typedef typename otb::PersistentStatisticsImageFilter<ImgType>    StatsFilterType;
-    typedef typename itk::Statistics::ImageToHistogramFilter<ImgType>             HistogramFilterType;
 
-    typedef typename otb::StreamingImageVirtualWriter<ImgType>       VirtWriterType;
+    typedef typename otb::PersistentStatisticsImageFilter<ImgType>          StatsFilterType;
+
+    typedef typename itk::ExtractImageFilter<ImgType, Img2DType>            ExtractFilterType;
+    typedef typename otb::PersistentStatisticsImageFilter<Img2DType>        Stats2DFilterType;
+    typedef typename otb::NMGridResampleImageFilter<Img2DType, Img2DType>   ResampleImage2DFilterType;
+
+    typedef typename itk::Statistics::ImageToHistogramFilter<ImgType>       HistogramFilterType;
+    typedef typename itk::Statistics::ImageToHistogramFilter<Img2DType>     Histogram2DFilterType;
+
+    typedef typename otb::StreamingImageVirtualWriter<ImgType>              VirtWriterType;
+    //typedef typename otb::StreamingImageVirtualWriter<Img2DType>            Virt2DWriterType;
+
+    typedef typename otb::StreamingRATImageFileWriter<Img2DType>            Virt2DWriterType;
 
 
     static void getImageStatistics(itk::ProcessObject* procObj, unsigned int numBands,
-                              std::vector<double>& stats, const int* index, const int* size)
+                              std::vector<double>& stats, const int* index, const int* size,
+                                   const int zSliceIdx)
     {
         stats.clear();
 
         if (numBands == 1)
         {
             ReaderType *r = dynamic_cast<ReaderType*>(procObj);
+            r->UpdateOutputInformation();
+
+            typename ImgType::PointType inOrigin = r->GetOutput()->GetOrigin();
+            typename ImgType::SpacingType inSpacing = r->GetOutput()->GetSpacing();
+
             const int curOvvIdx = r->GetOverviewIdx();
             if (r->GetOverviewsCount() > 0)
             {
                 r->SetOverviewIdx(r->GetOverviewsCount()-1);
             }
+
+            typename ReaderType::ImageRegionType reg;
             if (index != nullptr && size != nullptr)
             {
                 typename ReaderType::ImageRegionType::IndexType idx;
                 typename ReaderType::ImageRegionType::SizeType sz;
-                typename ReaderType::ImageRegionType reg;
+
 
                 for (int d=0; d < ImgType::ImageDimension; ++d)
                 {
-                    idx[d] = index[d];
-                    sz[d] = size[d];
+                    idx[d] = d == 2 ? zSliceIdx : index[d];
+                    sz[d] = d == 2 ? 0 : size[d];
                 }
                 reg.SetIndex(idx);
                 reg.SetSize(sz);
                 r->UseUserLargestPossibleRegionOn();
                 r->SetUserLargestPossibleRegion(reg);
             }
+            else
+            {
+                reg = r->GetOutput()->GetLargestPossibleRegion();
+                if (ImgType::ImageDimension == 3)
+                {
+                    reg.SetIndex(2, zSliceIdx);
+                    reg.SetSize(2, 0);
+                }
+            }
 
-            typename StatsFilterType::Pointer f = StatsFilterType::New();
-            typename VirtWriterType::Pointer w = VirtWriterType::New();
+            // we reduce to an easily managable size to speed up stats
+            // processing as much as possible
+            double div = div = std::max(reg.GetSize()[0],reg.GetSize()[1]) / 1024.0;
+
+            typename ResampleImage2DFilterType::Pointer res = ResampleImage2DFilterType::New();
+            typename ExtractFilterType::Pointer ex = ExtractFilterType::New();
+            typename Stats2DFilterType::Pointer f = Stats2DFilterType::New();
+            typename Virt2DWriterType::Pointer w = Virt2DWriterType::New();
 
             w->SetAutomaticStrippedStreaming(512);
+            w->SetWriteImage(false);
 
             unsigned int nth = f->GetNumberOfThreads();
             nth = nth > 0 ? nth : 1;
 
-            f->SetInput(r->GetOutput());
+            //if (ImgType::ImageDimension == Img2DType::ImageDimension)
+            {
+                ex->SetInPlace(true);
+            }
+            ex->SetDirectionCollapseToSubmatrix();
+            ex->SetInput(r->GetOutput());
+            ex->SetExtractionRegion(reg);
+
+            if (div > 1)
+            {
+                typename Img2DType::IndexType startIndex;
+                typename Img2DType::SizeType outputSize;
+                typename Img2DType::SpacingType outputSpacing;
+                typename Img2DType::PointType outputOrigin;
+
+                for (int d=0; d < 2; ++d)
+                {
+                    outputOrigin[d] = inOrigin[d];
+                    startIndex[d] = reg.GetIndex(d) / div;
+                    outputSize[d] = reg.GetSize(d) / div;
+                    outputSpacing[d] = (inSpacing[d] * reg.GetSize(d)) / outputSize[d];
+                }
+
+                res->SetInput(ex->GetOutput());
+                res->SetOutputOrigin(outputOrigin);
+                res->SetOutputSize(outputSize);
+                res->SetOutputStartIndex(startIndex);
+                res->SetOutputSpacing(outputSpacing);
+
+                f->SetInput(res->GetOutput());
+                //f->SetInput(ex->GetOutput());
+            }
+            else
+            {
+                f->SetInput(ex->GetOutput());
+            }
+
             f->SetNumberOfThreads(nth);
             w->SetInput(f->GetOutput());
 
@@ -1040,14 +1113,6 @@ template class RasdamanReader<double, 3>;
         }\
         else \
             { \
-    © imago
-
-    vorheriges Bild
-    näc
-    © imago
-
-    vorheriges Bild
-    näc
             switch (this->mOutputNumDimensions) \
             { \
             case 1: \
@@ -1099,17 +1164,17 @@ template class RasdamanReader<double, 3>;
           case 1: \
               FileReader< PixelType, 1 >::getImageStatistics( \
                       this->mOtbProcess, \
-                      this->mOutputNumBands, stats, index, size); \
+                      this->mOutputNumBands, stats, index, size, mZSliceIdx); \
               break; \
           case 3: \
               FileReader< PixelType, 3 >::getImageStatistics( \
                       this->mOtbProcess, \
-                      this->mOutputNumBands, stats, index, size); \
+                      this->mOutputNumBands, stats, index, size, mZSliceIdx); \
               break; \
           default: \
               FileReader< PixelType, 2 >::getImageStatistics( \
                   this->mOtbProcess, \
-                  this->mOutputNumBands, stats, index, size); \
+                  this->mOutputNumBands, stats, index, size, mZSliceIdx); \
           }\
       } \
     }

@@ -1052,6 +1052,15 @@ StreamingRATImageFileWriter<TInputImage>
         //NMDebugAI(<< "  spacing: " << spacing[0] << ", " << spacing[1] << endl);
         //NMDebugAI(<< "  region ... " << endl);
         //outputRegion.Print(std::cout, itk::Indent(nmlog::nmindent + 4));
+        NetCDFIO* nio = dynamic_cast<NetCDFIO*>(m_ImageIOs[ni].GetPointer());
+        if (nio != nullptr)
+        {
+            otb::ImageMetadata imd = outImg->GetImageMetadata();
+            if (imd.ExtraKeys.find("VarAndDimDescriptors") != imd.ExtraKeys.end())
+            {
+                nio->SetVarDimDescriptors(imd.ExtraKeys["VarAndDimDescriptors"]);
+            }
+        }
 
         m_ImageIOs[ni]->WriteImageInformation();
     }

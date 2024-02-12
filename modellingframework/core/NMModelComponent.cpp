@@ -116,7 +116,7 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
     //  NOTE: the index is 1-BASED!!!
     //        in alignment with parameter expressions fetching table
     //        table values
-    QStringList specList = paramSpec.split(":", QString::SkipEmptyParts);
+    QStringList specList = paramSpec.split(":", Qt::SkipEmptyParts);
     if (specList.size() < 2)
     {
         specList << "1";

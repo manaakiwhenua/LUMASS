@@ -666,6 +666,11 @@ void HLpHelper::SetBreakAtFirst(bool breakAtFirst)
     set_break_at_first(this->m_pLp, breakAtFirst);
 }
 
+void HLpHelper::SetBreakAtValue(double breakValue)
+{
+    set_break_at_value(this->m_pLp, breakValue);
+}
+
 bool HLpHelper::IsBreakAtFirst()
 {
     return is_break_at_first(this->m_pLp);

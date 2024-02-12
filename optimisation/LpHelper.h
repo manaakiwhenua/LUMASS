@@ -63,6 +63,7 @@ public:
 
     void SetTimeout(int secs);
     void SetBreakAtFirst(bool breakAtFirst);
+    void SetBreakAtValue(double breakValue);
     void SetPresolve(int presolveFlags, int maxloops=-1);
     void SetScaling(int scalemode);
 

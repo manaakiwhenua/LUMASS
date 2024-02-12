@@ -77,7 +77,7 @@ NMImageReader<TOutputImage>
       m_Curl(CurlHelper::New()),
       //m_FilenameHelper(FNameHelperType::New()),
       m_OverviewIdx(-1),
-      m_ZSliceIdx(0),
+      m_ZSliceIdx(-1),
       m_UseUserLargestPossibleRegion(false),
       m_RAT(0),
       m_RGBMode(false),

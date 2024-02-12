@@ -17,7 +17,7 @@ if __name__ == '__main__':
     more special
     '''
     if len(sys.argv) < 11:
-        print ("Usage: $ %s makeWrapperFactory --cl_name <WrapperClassName> --isSink <true | false> --author <author> --year <year> --date <date>")
+        print ("Usage: $ %s makeWrapperFactory --cl_name <WrapperClassName> --alias <compAlias> --isSink <true | false> --author <author> --year <year> --date <date>")
         sys.exit()
 
     pdict = {}
@@ -42,6 +42,8 @@ if __name__ == '__main__':
             pdict['year'] = sys.argv[i+1]
         elif sys.argv[i] == "--date":
             pdict['date'] = sys.argv[i+1]
+        elif sys.argv[i] == "--alias":
+            pdict['alias'] == sys.argv[i+1]
 
     # test - debug
     #for key in pdict:
@@ -53,6 +55,7 @@ if __name__ == '__main__':
     searchDict['cl_name_lower'] = "/*$<WrapperClassNameLower>$*/"
     searchDict['cl_name_upper'] = "/*$<WrapperClassNameUpper>$*/"
     searchDict['fac_name'] = "/*$<WrapperFactoryName>$*/"
+    searchDict['alias']  = "/*$<ComponentAlias>$*/"
     searchDict['author'] = "/*$<Author>$*/"
     searchDict['isSink'] = "/*$<ProcessIsSink>$*/"
     searchDict['year'] = "/*$<Year>$*/"
@@ -73,6 +76,8 @@ if __name__ == '__main__':
         pos = path.rfind('\\', 0, pos)
 
     homepath = path[0:pos]
+
+    print ("    >>> Component Alias=%s" % pdict['alias'])
 
     frameworkpath = os.path.join(homepath, 'modellingframework')
     targetpath = os.path.join(frameworkpath, 'wrapper')

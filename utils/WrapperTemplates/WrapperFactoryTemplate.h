@@ -38,7 +38,9 @@ public:
 
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return /*$<ProcessIsSink>$*/;}
-    QString getWrapperClassName() {return "/*$<WrapperClassName>$*/";}
+    QString getWrapperClassName() {return QStringLiteral("/*$<WrapperClassName>$*/");}
+    QString getComponentAlias() {return QStringLiteral("/*$<ComponentAlias>$*/");}
+
 };
 
 #endif // /*$<WrapperFactoryName>$*/_H

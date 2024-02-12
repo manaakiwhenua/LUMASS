@@ -73,6 +73,36 @@ public:
               slen(0)
         {}
 
+        _ColumnValue(const _ColumnValue& cv)
+        {
+            type = cv.type;
+            slen = 0;
+            tval = nullptr;
+            switch(type)
+            {
+            case ATTYPE_INT:
+                ival = cv.ival;
+                break;
+            case ATTYPE_DOUBLE:
+                dval = cv.dval;
+                break;
+            case ATTYPE_STRING:
+                slen = cv.slen;
+                tval = new char[slen];
+                if (cv.tval != nullptr)
+                {
+                    ::sprintf(tval, "%s", cv.tval);
+                }
+                else
+                {
+                    ::sprintf(tval, "%s", "\0");
+                }
+                break;
+            default:
+                ;
+            }
+        }
+
         ~_ColumnValue()
         {
             if (slen > 0)

@@ -135,7 +135,7 @@ public:
     void disconnectDB();
     TableCreateStatus CreateTable(std::string filename, std::string tag="");
     bool CreateFromVirtual(const std::string& fileName, const std::string& encoding =
-            "UTF-8", const int& srid = -1);
+            "UTF-8", const int& srid = -1, bool bInMemDb = false);
     void CloseTable(bool drop=false);
     bool SetRowIDColName(const std::string& name);
     bool DeleteDatabase(void);
@@ -149,7 +149,11 @@ public:
 
     sqlite3* GetDbConnection() {return this->m_db;}
 
-    bool PrepareBulkGet(const std::vector<std::string>& colNames, const std::string& whereClause="");
+    bool PrepareBulkGet(const std::vector<std::string>& colNames,
+                        const std::string& whereClause="",
+                        bool bDistinct=false);
+
+    bool PrepareRowCount(const std::string& whereClause="");
 
     bool PrepareAutoBulkSet(const std::vector<std::string>& colNames,
                         const std::vector<std::string>& autoValue,
@@ -181,6 +185,9 @@ public:
     bool DoBulkSet(std::vector< ColumnValue >& values, std::vector< ColumnValue>& keyValues);
 
     bool DoBulkGet(std::vector< ColumnValue >& values);
+    bool DoRowCount(std::vector<ColumnValue> & whereClausParmas,
+                    long long& rowCount);
+
     bool BeginTransaction();
     bool EndTransaction();
     bool CreateIndex(const std::vector<std::string>& colNames, bool unique,
@@ -368,6 +375,8 @@ protected:
 
     sqlite3_stmt* m_StmtColIter;
     sqlite3_stmt* m_StmtRowCount;
+    sqlite3_stmt* m_StmtCustomRowCount;
+    int m_iStmtCustomRowCountParam;
 
     sqlite3_stmt* m_StmtBegin;
     sqlite3_stmt* m_StmtEnd;

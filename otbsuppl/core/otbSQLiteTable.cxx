@@ -31,6 +31,7 @@
 #include <sstream>
 #include <locale>
 #include <algorithm>
+#include <random>
 //#include "otbMacro.h"
 #include <spatialite.h>
 #include <sys/types.h>
@@ -321,14 +322,74 @@ SQLiteTable::isRowidColumn(const std::string &sColName)
 }
 
 bool
-SQLiteTable::PrepareBulkGet(const std::vector<std::string> &colNames,
-                               const std::string& whereClause)
+SQLiteTable::PrepareRowCount(const std::string &whereClause)
 {
     //NMDebugCtx(_ctxotbtab, << "...");
     if (m_db == 0)
     {
         NMDebugAI(<< "Database is NULL!" << std::endl);
+        m_lastLogMsg = "No database connection!";
+
+        return false;
+    }
+
+    // scan where clause for '?' indicating number of
+    // where clause parameters, i.e. columns and associated
+    // values
+    std::string::size_type pos = 0;
+    m_iStmtCustomRowCountParam = 0;
+    while ((pos = whereClause.find('?', pos)) != std::string::npos)
+    {
+        ++m_iStmtCustomRowCountParam;
+        ++pos;
+    }
+
+    std::stringstream ssql;
+    ssql << "SELECT count(*) "
+         << " from main." << "\"" << m_tableName << "\"" << "";
+
+    if (whereClause.empty())
+    {
+        ssql << ";";
+    }
+    else
+    {
+
+        ssql << " " << whereClause
+             << ";";
+    }
+
+    // we finalise any CustomRowCount statement, that might have
+    // been prepared earlier, but whose execution and hasn't
+    // been cleaned up
+    sqlite3_finalize(m_StmtCustomRowCount);
+
+
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1,
+                                &m_StmtCustomRowCount, 0);
+    if (sqliteError(rc, &m_StmtCustomRowCount))
+    {
+        sqlite3_finalize(m_StmtCustomRowCount);
+        m_StmtCustomRowCount = 0;
         //NMDebugCtx(_ctxotbtab, << "done!");
+        return false;
+    }
+
+    //NMDebugCtx(_ctxotbtab, << "done!");
+    return true;
+}
+
+bool
+SQLiteTable::PrepareBulkGet(const std::vector<std::string> &colNames,
+                            const std::string& whereClause,
+                            bool bDistinct)
+{
+    //NMDebugCtx(_ctxotbtab, << "...");
+    if (m_db == 0)
+    {
+        NMDebugAI(<< "Database is NULL!" << std::endl);
+        m_lastLogMsg = "No database connection!";
+
         return false;
     }
 
@@ -346,6 +407,11 @@ SQLiteTable::PrepareBulkGet(const std::vector<std::string> &colNames,
     m_vTypesBulkGet.clear();
     std::stringstream ssql;
     ssql << "SELECT ";
+    if (bDistinct)
+    {
+        ssql << "DISTINCT ";
+    }
+
     for (int c=0; c < colNames.size(); ++c)
     {
         int colidx = this->ColumnExists(colNames[c]);
@@ -359,8 +425,12 @@ SQLiteTable::PrepareBulkGet(const std::vector<std::string> &colNames,
             {
                 sqlite3_finalize(m_StmtBulkGet);
                 m_StmtBulkGet = 0;
+
+                std::stringstream errstr;
+                errstr << "Couldn't find column '" << colNames[c] << "'!";
+                m_lastLogMsg = errstr.str();
                 //NMDebugCtx(_ctxotbtab, << "done!");
-            return false;
+                return false;
             }
         }
         else
@@ -858,6 +928,76 @@ SQLiteTable::CreateIndex(const std::vector<std::string> &colNames,
 }
 
 bool
+SQLiteTable::DoRowCount(std::vector<ColumnValue> &whereClausParmas,
+                        long long &rowCount)
+{
+    //NMDebugCtx(_ctxotbtab, << "...");
+    if (    m_db == nullptr
+         ||  m_StmtCustomRowCount == nullptr
+        )
+     {
+         //NMDebugCtx(_ctxotbtab, << "done!");
+         return false;
+     }
+
+     // NOTE: the where clause parameters, if any, can optinally be
+     // changed at any point, which requires to provide a values
+     // vector containing extra 'values' which are then bound to the
+     // prepared parameters in the statement; if the values vector's
+     // equals the size of the m_vTypesBulkGet vector, either no
+     // parameters have been set at all (i.e. m_iStmtBulkGetNumParam == 0)
+     // or they won't changed, instead another row from the query result set
+     // is fetched from sqlite3
+     int rc;
+     if (m_iStmtCustomRowCountParam)
+     {
+         for (int i=0, si=1; i < whereClausParmas.size(); ++i, ++si)
+         {
+             switch(whereClausParmas[i].type)
+             {
+             case ATTYPE_INT:
+                 {
+                     rc = sqlite3_bind_int64(m_StmtBulkGet, si, whereClausParmas[i].ival);
+                 }
+                 break;
+             case ATTYPE_DOUBLE:
+                 {
+                     rc = sqlite3_bind_int64(m_StmtBulkGet, si, whereClausParmas[i].dval);
+                 }
+                 break;
+
+             case ATTYPE_STRING:
+                 {
+                     rc = sqlite3_bind_text(m_StmtBulkGet, si,
+                                            whereClausParmas[i].tval,
+                                            -1, 0);
+                 }
+                 break;
+             default:
+                 {
+
+                     //NMErr(_ctxotbtab, << "UNKNOWN data type!");
+                     std::stringstream errstr;
+                     errstr << "UNKNOWN data type!";
+                     m_lastLogMsg = errstr.str();
+                     //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
+                     return false;
+                 }
+             }
+         }
+     }
+
+     rc = sqlite3_step(m_StmtCustomRowCount);
+     if (rc == SQLITE_ROW)
+     {
+         rowCount = sqlite3_column_int64(m_StmtCustomRowCount, 0);
+         sqlite3_reset(m_StmtCustomRowCount);
+     }
+
+     return true;
+}
+
+bool
 SQLiteTable::DoBulkGet(std::vector< ColumnValue >& values)
 {
    //NMDebugCtx(_ctxotbtab, << "...");
@@ -1196,7 +1336,6 @@ SQLiteTable::TableDataFetch(std::vector<std::vector<ColumnValue> > &restab,
             const otb::AttributeTable::TableColumnType type = coltypes.at(c);
             ColumnValue cval;
             cval.type = type;
-
             switch(type)
             {
             case otb::AttributeTable::ATTYPE_INT:
@@ -2659,38 +2798,45 @@ SQLiteTable::GetRandomString(int len)
         return "";
     }
 
-    std::srand(std::time(0));
+    std::random_device rand_rd;
+    std::mt19937 rand_mt(rand_rd());
+    std::uniform_int_distribution<int> rand_1_1e6(1, 1e6);
+    std::uniform_int_distribution<int> rand_48_57(48, 57);
+    std::uniform_int_distribution<int> rand_65_90(65, 90);
+    std::uniform_int_distribution<int> rand_97_122(97, 122);
+
+    //std::srand(std::time(0));
     char* nam = new char[len+1];
     for (int i=0; i < len; ++i)
     {
         if (i == 0)
         {
-            if (::rand() % 2 == 0)
+            if (rand_1_1e6(rand_mt) % 2 == 0)
             {
-                nam[i] = ::rand() % 26 + 65;
+                nam[i] = rand_65_90(rand_mt);
             }
             else
             {
-                nam[i] = ::rand() % 26 + 97;
+                nam[i] = rand_97_122(rand_mt);
             }
         }
         else
         {
-            if (::rand() % 7 == 0)
+            if (rand_1_1e6(rand_mt) % 7 == 0)
             {
                 nam[i] = '_';
             }
-            else if (::rand() % 5 == 0)
+            else if (rand_1_1e6(rand_mt) % 5 == 0)
             {
-                nam[i] = ::rand() % 26 + 65;
+                nam[i] = rand_65_90(rand_mt);
             }
-            else if (::rand() % 3 == 0)
+            else if (rand_1_1e6(rand_mt) % 3 == 0)
             {
-                nam[i] = ::rand() % 26 + 97;
+                nam[i] = rand_97_122(rand_mt);
             }
             else
             {
-                nam[i] = ::rand() % 10 + 48;
+                nam[i] = rand_48_57(rand_mt);
             }
         }
     }
@@ -2808,6 +2954,11 @@ SQLiteTable::deleteOldLDB(const std::string& vt, const std::string& ldb)
                     m_lastLogMsg = errmsg.str();
                     ret = -1;
                 }
+                std::stringstream infomsg;
+                infomsg << "SQLiteTable::deleteOldDB() - Replaced '" << ldb
+                        << "' with more recent virtual table '" << vt << "'!";
+
+                m_lastLogMsg = infomsg.str();
             }
             // ldb is more recent
             else
@@ -2830,7 +2981,8 @@ SQLiteTable::deleteOldLDB(const std::string& vt, const std::string& ldb)
 
 bool
 SQLiteTable::CreateFromVirtual(const std::string &fileName,
-                               const std::string &encoding, const int &srid)
+                               const std::string &encoding,
+                               const int &srid, bool bInMemDb)
 {
     NMDebugCtx(_ctxotbtab, << "...");
 
@@ -2863,46 +3015,56 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
     std::string vname = "vt_";
     vname += m_tableName;
 
-    // -------------------------------
-    // craft *.ldb filename
-    // -------------------------------
-    m_dbFileName = vinfo[0];
-    m_dbFileName += "/";
-    m_dbFileName += m_tableName;
-    //m_dbFileName += ext;
-    m_dbFileName += ".ldb";
 
-    // --------------------------------
-    // delete existing *.ldb if older
-    // than virtual table provided
-    // in filename
-    // ---------------------------------
+    //===============================================
+    // PREP INFO FOR *.ldb on disk
 
-    int deloldb = this->deleteOldLDB(fileName, m_dbFileName);
-    if (deloldb < 0)
+    if (!bInMemDb)
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
-        return false;
+        // -------------------------------
+        // craft *.ldb filename
+        // -------------------------------
+        m_dbFileName = vinfo[0];
+        m_dbFileName += "/";
+        m_dbFileName += m_tableName;
+        //m_dbFileName += ext;
+        m_dbFileName += ".ldb";
+
+        // --------------------------------
+        // delete existing *.ldb if older
+        // than virtual table provided
+        // in filename
+        // ---------------------------------
+
+        int deloldb = this->deleteOldLDB(fileName, m_dbFileName);
+        if (deloldb < 0)
+        {
+            NMDebugCtx(_ctxotbtab, << "done!");
+            return false;
+        }
+
+        // ------------------------------
+        // create / open *.ldb database
+        // ----------------------------
+        if (!openConnection())
+        {
+            NMDebugCtx(_ctxotbtab, << "done!");
+            return false;
+        }
+
+        // if we've got a m_tableName set, we see
+        // whether we can find it in the database ...
+        if (FindTable(m_tableName))
+        {
+            NMDebugAI(<< "There's already a table '" << m_tableName
+                      << "' - so we just use that ..." << std::endl);
+            PopulateTableAdmin();
+            return true;
+        }
     }
 
-    // ------------------------------
-    // create / open *.ldb database
-    // ----------------------------
-    if (!openConnection())
-    {
-        NMDebugCtx(_ctxotbtab, << "done!");
-        return false;
-    }
-
-    // if we've got a m_tableName set, we see
-    // whether we can find it in the database ...
-    if (FindTable(m_tableName))
-    {
-        NMDebugAI(<< "There's already a table '" << m_tableName
-                  << "' - so we just use that ..." << std::endl);
-        PopulateTableAdmin();
-        return true;
-    }
+    //===========================================
+    // Create virtual table
 
     std::stringstream ssql;
     ssql << "CREATE VIRTUAL TABLE \"" << vname << "\" USING ";
@@ -2955,7 +3117,7 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
         //      << m_tableName << "." << ext << " failed!");
         std::stringstream errstr;
         errstr << "Creating virtual table from "
-               << m_tableName << "." << ext << " failed!";
+               << m_tableName << "." << ext << " failed: " << m_lastLogMsg;
         m_lastLogMsg = errstr.str();
         //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
         NMDebugCtx(_ctxotbtab, << "done!");
@@ -2964,23 +3126,23 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
 
     // double check whether we've got any records here, since
     // spatialite creates empty tables if the import fails ...
-    ssql.str("");
-    ssql << "SELECT COUNT(*) FROM \"" << vname << "\";";
-
-    sqlite3_stmt* rcnt = 0;
-    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
-                                -1, &rcnt, 0);
-    if (sqliteError(rc, &rcnt))
-    {
-        //NMProcWarn(<< "Failed querying the number of records in the VT!");
-        m_lastLogMsg = "Failed querying the number of records in the VT!";
-        //this->InvokeEvent(itk::NMLogEvent("Failed querying the number of records in the VT!",
-          //                                itk::NMLogEvent::NM_LOG_WARN));
-        sqlite3_finalize(rcnt);
-        m_dbFileName.clear();
-        NMDebugCtx(_ctxotbtab, << "done!");
-        return false;
-    }
+    //ssql.str("");
+    //ssql << "SELECT COUNT(*) FROM \"" << vname << "\";";
+    //
+    //sqlite3_stmt* rcnt = 0;
+    //int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+    //                            -1, &rcnt, 0);
+    //if (sqliteError(rc, &rcnt))
+    //{
+    //    //NMProcWarn(<< "Failed querying the number of records in the VT!");
+    //    m_lastLogMsg = "Failed querying the number of records in the VT!";
+    //    //this->InvokeEvent(itk::NMLogEvent("Failed querying the number of records in the VT!",
+    //      //                                itk::NMLogEvent::NM_LOG_WARN));
+    //    sqlite3_finalize(rcnt);
+    //    m_dbFileName.clear();
+    //    NMDebugCtx(_ctxotbtab, << "done!");
+    //    return false;
+    //}
 
     //    if (sqlite3_step(rcnt) == SQLITE_ROW)
     //    {
@@ -3076,26 +3238,10 @@ SQLiteTable::openAsInMemDb(const std::string &dbName, const std::string &tablena
     std::stringstream errstr;
     std::string tabname = tablename.empty() ? this->m_tableName : tablename;
 
-    // open the db to copy from
-    sqlite3* pFileDb = nullptr;
-    int rc = sqlite3_open_v2(indbfn.c_str(), &pFileDb,
-                         SQLITE_OPEN_READONLY |
-                         SQLITE_OPEN_URI | SQLITE_OPEN_PRIVATECACHE,
-                         nullptr);
-    if (rc != SQLITE_OK)
-    {
-        errmsg = sqlite3_errmsg(pFileDb);
-        errstr.str("");
-        errstr << "SQLite3 ERROR #" << rc << ": " << errmsg;
-        m_lastLogMsg = errstr.str();
-        ::sqlite3_close(pFileDb);
-        pFileDb = nullptr;
-        return false;
-    }
-
-
-    // create in mem db to receive the backup
-    rc = sqlite3_open(":memory:", &m_db);
+    ///=============================================================
+    ///         Open In Memory Database
+    ///=============================================================
+    int rc = sqlite3_open(":memory:", &m_db);
 
     if (rc != SQLITE_OK)
     {
@@ -3108,42 +3254,89 @@ SQLiteTable::openAsInMemDb(const std::string &dbName, const std::string &tablena
         return false;
     }
 
-    // do the backup
-    sqlite3_backup* pBackup = sqlite3_backup_init(m_db, "main",
-                                                  pFileDb, "main");
-    if (pBackup)
+    ///=============================================================
+    ///         Open Source (Virtual) Database (Table)
+    ///=============================================================
+    std::vector<std::string> vinfo = GetFilenameInfo(indbfn);
+    const std::string ext = vinfo.at(2);
+
+    const std::string supportedExtensions = ".csv .txt .shp .shx .dbf .xls";
+
+    /// ---------------------------------------------------
+    /// create from virtual table
+
+    const std::string encoding = "UTF-8";
+    const int srid = -1;
+
+    if (supportedExtensions.find(ext) != std::string::npos)
     {
-//        do
-//        {
-//            rc = sqlite3_backup_step(pBackup, 5);
-//            if (    rc == SQLITE_OK
-//                ||  rc == SQLITE_BUSY
-//                ||  rc == SQLITE_LOCKED
-//               )
-//            {
-//                sqlite3_sleep(0.025);
-//            }
-
-//            ++bcycles;
-
-//        } while (    rc == SQLITE_OK
-//                 ||  rc == SQLITE_BUSY
-//                 ||  rc == SQLITE_LOCKED
-//                );
-        rc = sqlite3_backup_step(pBackup, -1);
-        sqlite3_backup_finish(pBackup);
+        this->CreateFromVirtual(indbfn, encoding, srid, true);
     }
-
-    if (pBackup == 0 || (pBackup && (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)))
+    /// ---------------------------------------------------
+    /// backup file db into open InMemDb
+    else // *.ldb, *.db, ...
     {
-        std::string errmsg = sqlite3_errmsg(m_db);
-        std::stringstream errstr;
-        errstr << "SQLite3 ERROR #" << rc << ": " << errmsg;
-        m_lastLogMsg = errstr.str();
-        m_dbFileName.clear();
-        ::sqlite3_close(m_db);
-        m_db = nullptr;
-        return false;
+
+
+        // open the db to copy from
+        sqlite3* pFileDb = nullptr;
+        int rc = sqlite3_open_v2(indbfn.c_str(), &pFileDb,
+                             SQLITE_OPEN_READONLY |
+                             SQLITE_OPEN_URI | SQLITE_OPEN_PRIVATECACHE,
+                             nullptr);
+        if (rc != SQLITE_OK)
+        {
+            errmsg = sqlite3_errmsg(pFileDb);
+            errstr.str("");
+            errstr << "SQLite3 ERROR #" << rc << ": " << errmsg;
+            m_lastLogMsg = errstr.str();
+            ::sqlite3_close(pFileDb);
+            pFileDb = nullptr;
+            return false;
+        }
+
+
+        // do the backup
+        sqlite3_backup* pBackup = sqlite3_backup_init(m_db, "main",
+                                                      pFileDb, "main");
+        if (pBackup)
+        {
+            //        do
+            //        {
+            //            rc = sqlite3_backup_step(pBackup, 5);
+            //            if (    rc == SQLITE_OK
+            //                ||  rc == SQLITE_BUSY
+            //                ||  rc == SQLITE_LOCKED
+            //               )
+            //            {
+            //                sqlite3_sleep(0.025);
+            //            }
+
+            //            ++bcycles;
+
+            //        } while (    rc == SQLITE_OK
+            //                 ||  rc == SQLITE_BUSY
+            //                 ||  rc == SQLITE_LOCKED
+            //                );
+            rc = sqlite3_backup_step(pBackup, -1);
+            sqlite3_backup_finish(pBackup);
+        }
+
+        // close connection to source db
+        ::sqlite3_close(pFileDb);
+
+
+        if (pBackup == 0 || (pBackup && (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)))
+        {
+            std::string errmsg = sqlite3_errmsg(m_db);
+            std::stringstream errstr;
+            errstr << "SQLite3 ERROR #" << rc << ": " << errmsg;
+            m_lastLogMsg = errstr.str();
+            m_dbFileName.clear();
+            ::sqlite3_close(m_db);
+            m_db = nullptr;
+            return false;
+        }
     }
 
     // if tablename is not specified, we look for
@@ -3212,7 +3405,7 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
 
     if (filename.empty())
     {
-        m_dbFileName = GetRandomString(5);
+        m_dbFileName = GetRandomString(10);
         m_dbFileName += ".ldb";
     }
     else
@@ -3432,6 +3625,7 @@ SQLiteTable::SQLiteTable()
       m_StmtBulkGet(nullptr),
       m_StmtColIter(nullptr),
       m_StmtRowCount(nullptr),
+      m_StmtCustomRowCount(nullptr),
       m_SpatialiteCache(nullptr),
       m_CurPrepStmt(nullptr),
       //m_idColName(""),
@@ -3451,13 +3645,20 @@ SQLiteTable::disconnectDB(void)
 {
     if (m_db != 0)
     {
-        sqlite3_close(m_db);
-        //if (m_bLoadSpatialite)
+        if (sqlite3_close(m_db) == SQLITE_OK)
         {
             if (m_SpatialiteCache != nullptr)
             {
                 spatialite_cleanup_ex(m_SpatialiteCache);
             }
+        }
+        else
+        {
+            NMErr(_ctxotbtab, << ": Failed to close connection to '"
+                       << m_dbFileName << "'" << std::endl);
+
+            sqlite3_close_v2(m_db);
+            return;
         }
         m_SpatialiteCache = 0;
         m_db = 0;
@@ -3473,44 +3674,48 @@ SQLiteTable::resetTableAdmin(void)
     // if there's no db connection any more
     // it is very likely one of the below finalization
     // statements will cause a segfault
-    if (m_db == 0)
+    if (m_db == nullptr)
     {
         return;
     }
 
     // clean up
-    if (m_StmtBegin != 0)
+    if (m_StmtBegin != nullptr)
     {
         sqlite3_finalize(m_StmtBegin);
     }
-    if (m_StmtEnd != 0)
+    if (m_StmtEnd != nullptr)
     {
         sqlite3_finalize(m_StmtEnd);
     }
-    if (m_StmtRollback != 0)
+    if (m_StmtRollback != nullptr)
     {
         sqlite3_finalize(m_StmtRollback);
     }
-    if (m_StmtBulkSet != 0)
+    if (m_StmtBulkSet != nullptr)
     {
         sqlite3_finalize(m_StmtBulkSet);
     }
-    if (m_StmtBulkGet != 0)
+    if (m_StmtBulkGet != nullptr)
     {
         sqlite3_finalize(m_StmtBulkGet);
     }
-    if (m_StmtColIter != 0)
+    if (m_StmtColIter != nullptr)
     {
         sqlite3_finalize(m_StmtColIter);
     }
-    if (m_StmtRowCount != 0)
+    if (m_StmtRowCount != nullptr)
     {
         sqlite3_finalize(m_StmtRowCount);
+    }
+    if (m_StmtCustomRowCount != nullptr)
+    {
+        sqlite3_finalize(m_StmtCustomRowCount);
     }
 
     for (int v=0; v < m_vStmtUpdate.size(); ++v)
     {
-        if (m_vStmtUpdate.at(v) != 0)
+        if (m_vStmtUpdate.at(v) != nullptr)
         {
             sqlite3_finalize(m_vStmtUpdate.at(v));
         }
@@ -3518,7 +3723,7 @@ SQLiteTable::resetTableAdmin(void)
 
     for (int s=0; s < m_vStmtSelect.size(); ++s)
     {
-        if (m_vStmtSelect.at(s) != 0)
+        if (m_vStmtSelect.at(s) != nullptr)
         {
             sqlite3_finalize(m_vStmtSelect.at(s));
         }
@@ -3526,7 +3731,7 @@ SQLiteTable::resetTableAdmin(void)
 
     for (int s=0; s < m_vStmtGetRowidx.size(); ++s)
     {
-        if (m_vStmtGetRowidx.at(s) != 0)
+        if (m_vStmtGetRowidx.at(s) != nullptr)
         {
             sqlite3_finalize(m_vStmtGetRowidx.at(s));
         }
@@ -3542,19 +3747,21 @@ SQLiteTable::resetTableAdmin(void)
     m_vStmtGetRowidx.clear();
 
     m_iNumRows = 0;
+    m_iStmtBulkGetNumParam = 0;
+    m_iStmtCustomRowCountParam = 0;
     m_iBand = 1;
     m_iNodata = -std::numeric_limits<long long>::max();
     m_dNodata = -std::numeric_limits<double>::max();
     m_sNodata = "NULL";
     //m_db = 0;
     m_bUseSharedCache = true;
-    m_StmtBegin = 0;
-    m_StmtEnd = 0;
-    m_StmtRollback = 0;
-    m_StmtBulkSet = 0;
-    m_StmtBulkGet = 0;
-    m_StmtColIter = 0;
-    m_StmtRowCount = 0;
+    m_StmtBegin = nullptr;
+    m_StmtEnd = nullptr;
+    m_StmtRollback = nullptr;
+    m_StmtBulkSet = nullptr;
+    m_StmtBulkGet = nullptr;
+    m_StmtColIter = nullptr;
+    m_StmtRowCount = nullptr;
     m_CurPrepStmt = "";
     m_idColName = "";
     //m_tableName = "";
@@ -3929,7 +4136,7 @@ SQLiteTable::JoinAttributes(const std::string& targetTable,
     std::string sourceDb = "main";
     if (!this->FindTable(sourceTable))
     {
-        sourceDb = this->GetRandomString(3);
+        sourceDb = this->GetRandomString(8);
         if (!this->AttachDatabase(sourceDbFileName, sourceDb))
         {
             NMProcWarn(<< "Couldn't attach source database!");
@@ -3959,7 +4166,7 @@ SQLiteTable::JoinAttributes(const std::string& targetTable,
     //===================================================
 
     // the final table structure (i.e. field names)
-    std::string tempJoinTable = this->GetRandomString(5);
+    std::string tempJoinTable = this->GetRandomString(10);
     std::stringstream finalTableFieldStr;
     for (int i=0; i < m_vNames.size(); ++i)
     {
@@ -4075,9 +4282,11 @@ SQLiteTable::CloseTable(bool drop)
     {
         this->DropTable();
     }
-    //    NMProcInfo(<< "disconnecting "
-    //                     << this->m_dbFileName << "."
-    //                     << this->m_tableName);
+
+    NMDebugTimeCtx("SQLiteTable", << "disconnecting "
+                     << this->m_dbFileName << "."
+                     << this->m_tableName);
+
     this->resetTableAdmin();
     this->disconnectDB();
 }

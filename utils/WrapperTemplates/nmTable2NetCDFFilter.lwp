@@ -1,0 +1,38 @@
+# LUMASS nmTable2NetCDFFilter.txx wrapper profile
+# recognised (filter variable) types: double, long, long long, bool, string
+# dim = 0 -> property type: plain type
+# dim = 1 -> property type: QStringList
+# dim = 2 -> property type: QList<QStringList>
+# dim = 3 -> property type: QList< QList<QStringList> >
+
+# FilterTypeDef: InImgType and OutImgType correspond with first and second
+#                template argument (i.e. TInputImage and TOutputImage)
+
+# InputTypeFunc_# = IDX:TYPE:SETMETHOD
+#                -> uses SETMETHOD to set the IDXth input of TYPE
+
+
+Year                        = 2023
+WrapperClassName            = NMTable2NetCDFFilterWrapper
+ComponentName               = Table2NetCDF
+FileDate                    = 2023-06-22
+Author                      = Alexander Herzig
+FilterClassFileName         = nmTable2NetCDFFilter
+FilterTypeDef               = nm::Table2NetCDFFilter<InImgType, OutImgType>
+ComponentIsSink             = 0
+RATGetSupport               = 0
+RATSetSupport               = 0
+#ForwardInputUserIDs         = SetImageNames
+Property_1                  = DimMapping:2:int:int:vector
+Property_2                  = OutputOrigin:2:double:double:vector
+Property_3                  = OutputSpacing:2:double:double:vector
+Property_4                  = OutputSize:2:long long:long long:vector
+Property_5                  = OutputIndex:2:long long:long long:vector
+Property_6                  = InputTableName:1:string:string
+Property_7                  = ImageVarName:1:string:string
+Property_8                  = NcImageContainer:1:string:string
+Property_9                  = NcGroupName:1:string:string
+Property_10                 = DimVarNames:2:string:string:vector
+Property_11                 = VarAndDimDescriptors:2:string:string:vector
+
+

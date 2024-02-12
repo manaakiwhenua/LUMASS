@@ -66,6 +66,7 @@ NMProcCompList::NMProcCompList(QWidget* parent)
     this->addItem(QString::fromLatin1("Image2DtoCubeSlice"));
     this->addItem(QString::fromLatin1("CubeSliceToImage2D"));
     this->addItem(QString::fromLatin1("Image2Table"));
+    this->addItem(QString::fromLatin1("Table2NetCDF"));
 /*$<AddComponentToGUICompList>$*/
 
     this->sortItems();

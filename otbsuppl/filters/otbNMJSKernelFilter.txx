@@ -1285,7 +1285,7 @@ NMJSKernelFilter< TInputImage, TOutputImage>
         {
             m_AuxTable = otb::SQLiteTable::New();
             m_AuxTable->SetUseSharedCache(false);
-            std::string tabName = m_WorkspacePath + "/aux_" + m_AuxTable->GetRandomString(5) + ".ldb";
+            std::string tabName = m_WorkspacePath + "/aux_" + m_AuxTable->GetRandomString(10) + ".ldb";
             m_AuxTable->CreateTable(tabName);
             return m_AuxTable.GetPointer();
         }

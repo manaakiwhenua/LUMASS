@@ -47,6 +47,7 @@
 #include "itkNMLogEvent.h"
 
 #include <ctime>
+#include <random>
 
 namespace otb
 {
@@ -352,7 +353,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     }
 
     std::stringstream uvTableName;
-    uvTableName << temppath << "uv_" << this->getRandomString(5) << ".ldb";
+    uvTableName << temppath << "uv_" << this->getRandomString(10) << ".ldb";
     if (uvTable->CreateTable(uvTableName.str()) == otb::SQLiteTable::ATCREATE_ERROR)
     {
         this->InvokeEvent(itk::NMLogEvent("Failed to create the combinations table!",
@@ -430,13 +431,13 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         ctFilter->SetInputNodata(nodata);
         ctFilter->SetImageNames(names);
         std::stringstream ctTableNameStr;
-        ctTableNameStr << temppath << "cttab" << numIter << "_" << this->getRandomString(5) << ".ldb";
+        ctTableNameStr << temppath << "cttab" << numIter << "_" << this->getRandomString(10) << ".ldb";
         ctFilter->SetOutputTableFileName(ctTableNameStr.str());
 
 
         typename WriterType::Pointer ctWriter = WriterType::New();
         std::stringstream ctImgNameStr;
-        ctImgNameStr << temppath << "ctimg" << numIter << "_"  << this->getRandomString(5) << ".nc:/uv";
+        ctImgNameStr << temppath << "ctimg" << numIter << "_"  << this->getRandomString(10) << ".nc:/uv";
         ctWriter->SetFileName(ctImgNameStr.str());
         ctWriter->SetResamplingType("NONE");
         ctWriter->SetInput(ctFilter->GetOutput());
@@ -704,7 +705,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         else
         {
 
-            normImgNameStr << temppath << "norm_" << numIter << this->getRandomString(5) << ".kea";//".nc:/uv";//".img";//<< ".kea";
+            normImgNameStr << temppath << "norm_" << numIter << this->getRandomString(10) << ".kea";//".nc:/uv";//".img";//<< ".kea";
         }
 
         typename WriterType::Pointer normWriter = WriterType::New();
@@ -799,52 +800,59 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 template< class TInputImage, class TOutputImage >
 std::string
 UniqueCombinationFilter< TInputImage, TOutputImage >
-::getRandomString(int length)
+::getRandomString(int len)
 {
-    if (length < 1)
+    if (len < 1)
     {
         return "";
     }
 
-    std::srand(std::time(0));
-    const int arlen = length+1;
-    char* nam = new char[arlen];
-    for (int i=0; i < length; ++i)
+    std::random_device rand_rd;
+    std::mt19937 rand_mt(rand_rd());
+    std::uniform_int_distribution<int> rand_1_1e6(1, 1e6);
+    std::uniform_int_distribution<int> rand_48_57(48, 57);
+    std::uniform_int_distribution<int> rand_65_90(65, 90);
+    std::uniform_int_distribution<int> rand_97_122(97, 122);
+
+    //std::srand(std::time(0));
+    char* nam = new char[len+1];
+    for (int i=0; i < len; ++i)
     {
         if (i == 0)
         {
-            if (::rand() % 2 == 0)
+            if (rand_1_1e6(rand_mt) % 2 == 0)
             {
-                nam[i] = static_cast<char>(::rand() % 26 + 65);
+                nam[i] = rand_65_90(rand_mt);
             }
             else
             {
-                nam[i] = static_cast<char>(::rand() % 26 + 97);
+                nam[i] = rand_97_122(rand_mt);
             }
         }
         else
         {
-            if (::rand() % 7 == 0)
+            if (rand_1_1e6(rand_mt) % 7 == 0)
             {
                 nam[i] = '_';
             }
-            else if (::rand() % 5 == 0)
+            else if (rand_1_1e6(rand_mt) % 5 == 0)
             {
-                nam[i] = static_cast<char>(::rand() % 26 + 65);
+                nam[i] = rand_65_90(rand_mt);
             }
-            else if (::rand() % 3 == 0)
+            else if (rand_1_1e6(rand_mt) % 3 == 0)
             {
-                nam[i] = static_cast<char>(::rand() % 26 + 97);
+                nam[i] = rand_97_122(rand_mt);
             }
             else
             {
-                nam[i] = static_cast<char>(::rand() % 10 + 48);
+                nam[i] = rand_48_57(rand_mt);
             }
         }
     }
-    nam[length] = '\0';
+    nam[len] = '\0';
     std::string ret = nam;
     delete[] nam;
+
 
     return ret;
 }

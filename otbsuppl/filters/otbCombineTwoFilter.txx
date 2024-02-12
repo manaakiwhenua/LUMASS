@@ -211,7 +211,7 @@ void CombineTwoFilter< TInputImage, TOutputImage >
 
         if (m_OutputTableFileName.empty() && !m_Workspace.empty())
         {
-            m_OutputTableFileName = m_Workspace + "/" + otb::SQLiteTable::GetRandomString(5) + ".ldb";
+            m_OutputTableFileName = m_Workspace + "/" + otb::SQLiteTable::GetRandomString(10) + ".ldb";
         }
 
         if (m_ComboTable->CreateTable(m_OutputTableFileName, "1")

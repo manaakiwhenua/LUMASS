@@ -198,11 +198,11 @@ void SumZonesFilter< TInputImage, TOutputImage >
         {
             if (!m_Workspace.empty())
             {
-                tempZtName = m_Workspace + "/" + otb::SQLiteTable::GetRandomString(5) + ".ldb";
+                tempZtName = m_Workspace + "/" + otb::SQLiteTable::GetRandomString(10) + ".ldb";
             }
             else
             {
-                tempZtName = otb::SQLiteTable::GetRandomString(5) + ".ldb";
+                tempZtName = otb::SQLiteTable::GetRandomString(10) + ".ldb";
             }
 
             // if we're using a temp data base, we want to know the name for

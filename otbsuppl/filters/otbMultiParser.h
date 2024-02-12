@@ -112,7 +112,7 @@ public:
     {
         static std::random_device rand_rd;
         static std::mt19937 rand_mt(rand_rd());
-        static std::uniform_int_distribution<int> rand_dist_int(lower, upper);
+        std::uniform_int_distribution<int> rand_dist_int(lower, upper);
         return rand_dist_int(rand_mt);
     }
 
@@ -125,7 +125,7 @@ public:
     {
         static std::random_device unifdist_int_rd;
         static std::mt19937 unifdist_int_mt(unifdist_int_rd());
-        static std::uniform_int_distribution<int> unifdist_int(lower, upper);
+        std::uniform_int_distribution<int> unifdist_int(lower, upper);
         return unifdist_int(unifdist_int_mt);
     }
 
@@ -133,7 +133,7 @@ public:
     {
         static std::random_device unifdist_dbl_rd;
         static std::mt19937 unifdist_dbl_mt(unifdist_dbl_rd());
-        static std::uniform_real_distribution<double> unifdist_dbl(lower, upper);
+        std::uniform_real_distribution<double> unifdist_dbl(lower, upper);
         return unifdist_dbl(unifdist_dbl_mt);
     }
 
@@ -142,7 +142,7 @@ public:
     {
         static std::random_device lndist_rd;
         static std::mt19937 lndist_mt(lndist_rd());
-        static std::lognormal_distribution<double> lndist(m, s);
+        std::lognormal_distribution<double> lndist(m, s);
         return lndist(lndist_mt);
     }
 
@@ -150,7 +150,7 @@ public:
     {
         static std::random_device normdist_rd;
         static std::mt19937 normdist_mt(normdist_rd());
-        static std::normal_distribution<double> normdist(m, s);
+        std::normal_distribution<double> normdist(m, s);
         return normdist(normdist_mt);
     }
 

@@ -19,6 +19,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <cctype>
 #include <limits>
 #include <algorithm>
 
@@ -35,6 +36,7 @@
 #include "itkRGBPixel.h"
 #include "itkRGBAPixel.h"
 #include "itkArray2D.h"
+
 
 //#include "otbNMImageReader.h"
 //#include "otbNMGridResampleImageFilter.h"
@@ -273,6 +275,7 @@ bool NetCDFIO::CanReadFile(const char* filename)
         if (!m_bParallelIO)
         {
             mFile.open(this->m_FileContainerName, NcFile::read);
+            NMDebugAI(<< "NetCDFIO: m_bParallelIO == false : opened file '" << this->GetFileName() << "' for sequential reading!" << std::endl);
         }
 
         if (mFile.isNull())
@@ -353,6 +356,7 @@ bool NetCDFIO::CanReadFile(const char* filename)
         if (!m_bParallelIO)
         {
             mFile.close();
+            NMDebugAI(<< "NetCDFIO: m_bParallelIO == false : closed file '" << this->GetFileName() << "' opened for sequential reading." << std::endl)
         }
 
         // check whether we've got the right info we need ...
@@ -413,11 +417,16 @@ void NetCDFIO::ReadImageInformation()
     // - get dimensions for the named variable
     //      - look up size of the dimensions
 
+    // bool for indicating as to whether we need to
+    // swap the sign of the (default) 'y' dimension
+    bool bSwapYSign = true;
+
     try
     {
         if (!m_bParallelIO)
         {
             mFile.open(m_FileContainerName, NcFile::read);
+            NMDebugAI(<< "NetCDFIO: m_bParallelIO == false : opened file '" << this->GetFileName() << "' for sequential reading!" << std::endl);
         }
 
         if (mFile.isNull())
@@ -473,6 +482,7 @@ void NetCDFIO::ReadImageInformation()
         // dimensions ordered slowest to fastest changing,
         // whereas otb/itk uses fastest, usually x, to
         // slowest, e.g. time for space-time cubes
+
         for (int d = var.getDimCount()-1, a=0; d >= 0; --d, ++a)
         {
             //set some defaults
@@ -540,8 +550,18 @@ void NetCDFIO::ReadImageInformation()
                 vMinMaxVal[1] = max;
             }
             m_CoordMinMax.push_back(vMinMaxVal);
-        }
 
+            // if this dimension is called (in lower case) 't', or 'time'
+            if (a == 1)
+            {
+                std::string yname = coorVar.getName();
+                std::transform(yname.begin(), yname.end(), yname.begin(), ::tolower);
+                if (yname.compare("t") == 0 || yname.compare("time") == 0)
+                {
+                    bSwapYSign = false;
+                }
+            }
+        }
 
         // ====================================================
         //              READ OVERVIEW INFORMATION
@@ -599,6 +619,7 @@ void NetCDFIO::ReadImageInformation()
         if (!m_bParallelIO)
         {
             mFile.close();
+            NMDebugAI(<< "NetCDFIO: m_bParallelIO == false : closed file '" << this->GetFileName() << "' opened for sequential access." << std::endl)
         }
     }
     catch(exceptions::NcException& e)
@@ -629,7 +650,7 @@ void NetCDFIO::ReadImageInformation()
         // for the y dimension that is usually
         // the second most quickly changing
         // index in row-major representation
-        if (d == 1)
+        if (d == 1 & bSwapYSign )
         {
             m_LPRSpacing[d] = m_LPRSpacing[d] * -1;
             m_Spacing[d] = m_Spacing[d] * -1;
@@ -864,6 +885,7 @@ void NetCDFIO::Read(void* buffer)
         if (!m_bParallelIO)
         {
             mFile.open(this->m_FileContainerName, NcFile::read);
+            NMDebugAI(<< "NetCDFIO: m_bParallelIO == false : opened file '" << this->GetFileName() << "' for sequential reading!" << std::endl);
         }
         const int imgGrpId = m_GroupIDs.size() > 0 ? m_GroupIDs.back() : mFile.getId();
         NcGroup imgGrp(imgGrpId);
@@ -907,6 +929,7 @@ void NetCDFIO::Read(void* buffer)
         if (!m_bParallelIO)
         {
             mFile.close();
+            NMDebugAI(<< "NetCDFIO: m_bParallelIO == false : closed file '" << this->GetFileName() << "' opened for parallel acess!" << std::endl);
         }
     }
     catch(exceptions::NcException& e)
@@ -927,27 +950,39 @@ bool NetCDFIO::InitParallelIO(MPI_Comm &comm, MPI_Info &info, bool write)
         return false;
     }
 
-    //if (!mFile.isNull())
-    //{
-    //    mFile.close();
-    //}
+//    if (!m_bParallelIO)
+//    {
+//        mFile.close();
+//        NMDebugAI(<< "NetCDFIO: m_bParallelIO = false : closed file '" << this->GetFileName() << " opened for sequential access'!" << std::endl);
+//    }
 
     int mrank;
     try
     {
         MPI_Comm_rank(comm, &mrank);
-        NMDebugAI(<< "proc #" << mrank << "::InitIOBarrier" << std::endl);
-        MPI_Barrier(comm);
 
         NcFile::FileMode fileMode = NcFile::read;
         if (write)
         {
             fileMode = NcFile::write;
+            NMDebugAI(<< "NetCDFIO: proc #" << mrank <<
+                      " is trying to init parallel WRITE for '"
+                      << this->GetFileName() << "'" << std::endl);
         }
+        else
+        {
+            NMDebugAI(<< "NetCDFIO: proc #" << mrank <<
+                      " is trying to init parallel READ for '"
+                      << this->GetFileName() << "'" << std::endl);
+        }
+
+        NMDebugAI(<< "proc #" << mrank << "::InitIOBarrier" << std::endl);
+        MPI_Barrier(comm);
         mFile.open(comm, info, this->m_FileContainerName, fileMode);
 
         NMDebugAI(<< "proc #" << mrank << ": opened file '" << this->m_FileContainerName
-                  << "' with write=" << write << std::endl);
+                  << "' for parallel access (with write=" << write << ")" << std::endl);
+
         if (write)
         {
             this->m_bCanWrite = true;
@@ -957,13 +992,16 @@ bool NetCDFIO::InitParallelIO(MPI_Comm &comm, MPI_Info &info, bool write)
     {
         std::string nestr = ne.what();
         std::string nsfod = "No such file or directory";
-        NMDebugAI(<< "InitParallelIO::CatchException's ne.what(): " << ne.what());
+        NMDebugAI(<< "InitParallelIO::CatchException's ne.what(): " << ne.what()
+                  << " for file: " << this->m_FileContainerName);
         if (write && nestr.find(nsfod) != std::string::npos)
         {
             try
             {
+                MPI_Barrier(comm);
                 mFile.open(comm, info, this->m_FileContainerName, NcFile::newFile);
-                NMDebugAI(<< "proc #" << mrank << ": opened file '" << this->m_FileContainerName << "'" << std::endl);
+                NMDebugAI(<< "proc #" << mrank << ": opened file '" << this->m_FileContainerName
+                          << "' for parallel create/write" << std::endl);
                 this->m_bCanWrite = true;
             }
             catch(exceptions::NcException& ofe)
@@ -1007,8 +1045,10 @@ bool NetCDFIO::CanWriteFile(const char* filename)
     {
         // assume file exists and try opening it for writing ...
         nc.open(this->m_FileContainerName, NcFile::write);
+        NMDebugAI(<< "NetCDFIO: opened file '" << this->GetFileName() << "' for sequential writing!");
         this->m_bCanWrite = true;
         nc.close();
+        NMDebugAI(<< "NetCDFIO: closed file '" << this->GetFileName() << "' opened for sequential writing!");
     }
     catch(...)
     {
@@ -1018,8 +1058,10 @@ bool NetCDFIO::CanWriteFile(const char* filename)
             // so try creating a new file with the given name ...
             // ... this will fail if the file already exists
             nc.open(this->m_FileContainerName, NcFile::newFile);
+            NMDebugAI(<< "NetCDFIO: opened file '" << this->GetFileName() << "' for sequential writing!");
             this->m_bCanWrite = true;
             nc.close();
+            NMDebugAI(<< "NetCDFIO: closed file '" << this->GetFileName() << "' opened for sequential writing!");
         }
         catch (...)
         {
@@ -1033,10 +1075,14 @@ bool NetCDFIO::CanWriteFile(const char* filename)
 
 void NetCDFIO::FinaliseParallelIO(void)
 {
+    NMDebugCtx("NetCDFIO", << "...")
     if (!mFile.isNull())
     {
         mFile.close();
+        NMDebugAI(<< "NetCDFIO: closed file '" << this->GetFileName() << "' opened for parallel writing!");
     }
+
+    NMDebugCtx("NetCDFIO", << "done!")
 }
 
 //void NetCDFIO::BuildOverviews(const std::string &method)
@@ -1247,6 +1293,171 @@ void NetCDFIO::WriteImageInformation()
     this->InternalWriteImageInformation();
 }
 
+void NetCDFIO::SetVarDimDescriptors(const std::string& varDimDescriptors)
+{
+    m_VarDimDescriptors = varDimDescriptors;
+    ProcessVarDimDescriptors();
+}
+
+
+void NetCDFIO::ProcessVarDimDescriptors()
+{
+    /*
+     * NOTE: processing expects the following schema:
+     *
+     * m_VarDimDescriptors is a comma separated string
+     * specifying variable or dimension attributes:
+     *
+     *  variable descriptors:
+     *      var:name:att_name:att_type:att_value
+     *
+     *  dimension descriptors:
+     *      dim:name:dim_type:dim_size
+     *
+     */
+
+    m_DimInfoMap.clear();
+    m_VarAttInfoMap.clear();
+
+    std::string descr;
+    std::string elem;
+
+    std::vector<std::string> vdescr;
+
+    size_t descr_pos = 0;
+    size_t descr_lpos = 0;
+    while(   (descr_pos = m_VarDimDescriptors.find(',', descr_lpos))
+          != std::string::npos
+         )
+    {
+        // 0123456789
+        // ha,llo,var
+
+        descr = m_VarDimDescriptors.substr(descr_lpos, descr_pos-descr_lpos);
+        descr_lpos = descr_pos + 1;
+
+        vdescr.push_back(descr);
+    }
+    descr = m_VarDimDescriptors.substr(descr_lpos, m_VarDimDescriptors.size() - descr_lpos);
+    vdescr.push_back(descr);
+
+    for (int d=0; d < vdescr.size(); ++d)
+    {
+        descr = vdescr[d];
+
+        std::vector<std::string> velem;
+
+        size_t elem_pos = 0;
+        size_t elem_lpos = 0;
+        while (    (elem_pos = descr.find(':', elem_lpos))
+                   != std::string::npos
+              )
+        {
+            elem = descr.substr(elem_lpos, elem_pos - elem_lpos);
+            elem_lpos = elem_pos + 1;
+
+            velem.push_back(elem);
+        }
+        elem = descr.substr(elem_lpos, descr.size() - elem_lpos);
+        velem.push_back(elem);
+
+        if (velem.size() >= 5 && velem[0].compare("var") == 0)
+        {
+            VarAttInfo vi;
+            vi.name = velem[1];
+            vi.attName = velem[2];
+            vi.type = getNetCDFComponentType(velem[3]);
+            switch (vi.type)
+            {
+            case netCDF::NcType::nc_INT:
+            case netCDF::NcType::nc_INT64:
+                vi.intVal = std::atoll(velem[4].c_str());
+                break;
+            case netCDF::NcType::nc_FLOAT:
+            case netCDF::NcType::nc_DOUBLE:
+                vi.dblVal = std::atof(velem[4].c_str());
+            default:
+                vi.strVal = velem[4];
+                break;
+            }
+
+            auto vit = m_VarAttInfoMap.find(vi.name);
+            if (vit != m_VarAttInfoMap.end())
+            {
+                vit->second.push_back(vi);
+            }
+            else
+            {
+                std::vector<VarAttInfo> vvai;
+                vvai.push_back(vi);
+                m_VarAttInfoMap.insert(std::pair<std::string, std::vector<VarAttInfo> >(vi.name, vvai));
+            }
+        }
+        else if (velem.size() >= 4 && velem[0].compare("dim") == 0)
+        {
+            DimInfo di;
+            di.name = velem[1];
+            switch (di.type)
+            {
+            case netCDF::NcType::nc_INT:
+            case netCDF::NcType::nc_INT64:
+                di.intVal = std::atoll(velem[2].c_str());
+                break;
+            case netCDF::NcType::nc_FLOAT:
+            case netCDF::NcType::nc_DOUBLE:
+                di.dblVal = std::atof(velem[2].c_str());
+                break;
+            default: ; break;
+            }
+            di.size = std::atol(velem[3].c_str());
+
+            if (m_DimInfoMap.find(di.name) == m_DimInfoMap.end())
+            {
+                m_DimInfoMap.insert(std::pair<std::string, DimInfo>(di.name, di));
+            }
+
+            if (std::find(m_DimensionNames.begin(), m_DimensionNames.end(), di.name) == m_DimensionNames.end())
+            {
+                m_DimensionNames.push_back(di.name);
+            }
+        }
+        else
+        {
+            NMProcErr(<< "Non standard variable or dimension descriptor detected: '"
+                      << vdescr[d] << "'! "
+                      << "Please double check your descriptors!");
+            continue;
+        }
+    }
+}
+
+void NetCDFIO::setVariableAttributes(NcVar &var)
+{
+    if (m_VarAttInfoMap.find(var.getName()) != m_VarAttInfoMap.end())
+    {
+        std::vector<VarAttInfo>& vatt = m_VarAttInfoMap[var.getName()];
+        for (int va=0; va < vatt.size(); ++va)
+        {
+            const VarAttInfo& vi = vatt[va];
+            switch(vi.type)
+            {
+            case NcType::nc_INT:
+            case NcType::nc_INT64:
+                var.putAtt(vi.attName, vi.type, vi.intVal);
+                break;
+            case NcType::nc_FLOAT:
+            case NcType::nc_DOUBLE:
+                var.putAtt(vi.attName, vi.type, vi.dblVal);
+                break;
+            case NcType::nc_STRING:
+                var.putAtt(vi.attName, vi.strVal);
+                break;
+            default: ; break;
+            }
+        }
+    }
+}
+
 void NetCDFIO::InternalWriteImageInformation()
 {
     NMDebugCtx("NetCDFIO", << "...")
@@ -1274,6 +1485,7 @@ void NetCDFIO::InternalWriteImageInformation()
         if (!m_bParallelIO)
         {
             mFile.open(this->m_FileContainerName, NcFile::write, NcFile::nc4);
+            NMDebugAI(<< "NetCDFIO: m_bParallelIO == false : file '" << this->GetFileName() << "' opened for sequential writing!");
         }
 
         if (m_bParallelIO)
@@ -1367,6 +1579,12 @@ void NetCDFIO::InternalWriteImageInformation()
         {
             // add the dimension
             std::vector<std::string> dimtemplates = {"x", "y", "z"};
+            if (m_DimensionNames.size() == ndims)
+            {
+                dimtemplates = m_DimensionNames;
+            }
+
+            double dimDirCorr = 1.0;
             std::vector<NcDim> dims;
             for (int d = ndims-1; d >=0; --d)
             {
@@ -1383,7 +1601,7 @@ void NetCDFIO::InternalWriteImageInformation()
                 }
                 else
                 {
-                    if (d <= 2)
+                    if (d <= 2 || d < m_DimensionNames.size())
                     {
                         dname << dimtemplates.at(d);
                     }
@@ -1393,7 +1611,21 @@ void NetCDFIO::InternalWriteImageInformation()
                     }
                 }
 
+                auto dimit = m_DimInfoMap.find(dname.str());
                 NcDim aDim = grp.getDim(dname.str());
+
+                // if this dimension is called (in lower case) 't', or 'time'
+                if (d == 1)
+                {
+                    std::string yname = dname.str();
+                    std::transform(yname.begin(), yname.end(), yname.begin(), ::tolower);
+                    if (yname.compare("t") == 0 || yname.compare("time") == 0)
+                    {
+                        dimDirCorr = -1.0;
+                    }
+                }
+
+
                 if (aDim.isNull())
                 {
                     if (dsize > 1)
@@ -1401,10 +1633,25 @@ void NetCDFIO::InternalWriteImageInformation()
                         // add fixed dimension
                         aDim = grp.addDim(dname.str(), dsize);
                     }
+                    // check whether we've been provided with some info
+                    // on this dimension's size
                     else
                     {
+                        size_t dimSize = 0;
+                        if (dimit != m_DimInfoMap.end())
+                        {
+                            dimSize = dimit->second.size;
+                        }
+
+                        if (dimSize > 0)
+                        {
+                            aDim = grp.addDim(dname.str(), dimSize);
+                        }
                         // add unlimited dimension
-                        aDim = grp.addDim(dname.str());
+                        else
+                        {
+                            aDim = grp.addDim(dname.str());
+                        }
                     }
                     if (this->m_bParallelIO)
                     {
@@ -1414,24 +1661,28 @@ void NetCDFIO::InternalWriteImageInformation()
                 else
                 {
                     if (    !aDim.isUnlimited()
-                        &&  dsize != aDim.getSize()
-                       )
+                            &&  dsize != aDim.getSize()
+                            )
                     {
                         NMProcErr(<< m_NcVarName << ": " << dname.str()
                                   << "-axis size incompatible with existing " << dname.str()
                                   << "-axis!");
                         NMDebugCtx("NetCDFIO", << "done!")
-                        return;
+                                return;
                     }
-                 }
-
+                }
                 dims.push_back(aDim);
-
 
                 NcVar dimVar = grp.getVar(dname.str());
                 if (dimVar.isNull())
                 {
-                    dimVar = grp.addVar(dname.str(), NcType::nc_DOUBLE, aDim);
+                    NcType::ncType dimType = NcType::nc_DOUBLE;
+                    if (dimit != m_DimInfoMap.end())
+                    {
+                        dimType = dimit->second.type;
+                    }
+
+                    dimVar = grp.addVar(dname.str(), dimType, aDim);
                     if (m_bParallelIO)
                     {
                         MPI_Barrier(m_MPIComm);
@@ -1445,7 +1696,7 @@ void NetCDFIO::InternalWriteImageInformation()
                     std::vector<double> dimVals(dsize, 0.0);
                     for (unsigned int dimIdx=0; dimIdx < dsize; ++dimIdx)
                     {
-                        dimVals[dimIdx] = this->m_Origin[d] + dimIdx * this->m_Spacing[d];
+                        dimVals[dimIdx] = this->m_Origin[d] + dimIdx * this->m_Spacing[d] * dimDirCorr;
                     }
 
                     std::vector<size_t> startp = {0};
@@ -1453,13 +1704,15 @@ void NetCDFIO::InternalWriteImageInformation()
 
                     dimVar.putVar(startp, countp, &dimVals[0]);
 
+                    // add attributes, if we've got some ...
+                    setVariableAttributes(dimVar);
                 }
                 else
                 {
                     NMProcWarn(<< m_NcVarName << " is re-using dimension variable '"
                                << dname.str() << "'!");
                 }
-             }
+            }
 
             // now add the actual variable we want to write
             valVar = grp.addVar(this->m_NcVarName, vtype, dims);
@@ -1472,8 +1725,10 @@ void NetCDFIO::InternalWriteImageInformation()
             {
                 valVar.setCompression(true, true, m_CompressionLevel);
                 valVar.setFill(true, 0);
-            }
 
+                // note this may overwrite previously set attributes
+                setVariableAttributes(valVar);
+            }
         }
         // ========================================================
         //                 ADJUST VAR's DIMENSION
@@ -1489,6 +1744,19 @@ void NetCDFIO::InternalWriteImageInformation()
                     // maps the netcdf dimension order : [..., [d4,]] z, y, x
                     // to the itk/otb dimension order:   x, y, z [, d4 [, ...]]
                     const unsigned int otbDimIdx = ndims - d - 1;
+
+                    double dimDirCorr = 1.0;
+                    // if this dimension is called (in lower case) 't', or 'time'
+                    if (otbDimIdx == 1)
+                    {
+                        std::string yname = dims[d].getName();
+                        std::transform(yname.begin(), yname.end(), yname.begin(), ::tolower);
+                        if (yname.compare("t") == 0 || yname.compare("time") == 0)
+                        {
+                            dimDirCorr = -1.0;
+                        }
+                    }
+
 
                     // determine the number of new dimension ids (and
                     // coordinate values) that need to be added for the
@@ -1522,7 +1790,7 @@ void NetCDFIO::InternalWriteImageInformation()
                         std::vector<double> dvals(numNewIds, 0.0);
                         for (unsigned int dIdx=0; dIdx < numNewIds; ++dIdx)
                         {
-                            dvals[dIdx] = lastRec[0] + (dIdx + 1) * this->m_Spacing[otbDimIdx];
+                            dvals[dIdx] = lastRec[0] + (dIdx + 1) * this->m_Spacing[otbDimIdx] * dimDirCorr;
                         }
                         dvar.putVar(ioidx, iolen, &dvals[0]);
                     }
@@ -1533,6 +1801,7 @@ void NetCDFIO::InternalWriteImageInformation()
         if (!m_bParallelIO)
         {
             mFile.close();
+            NMDebugAI(<< "NetCDFIO: m_bParallelIO == false : closed file '" << this->GetFileName() << "' opened for sequential writing!");
         }
 
     }
@@ -1582,6 +1851,7 @@ void NetCDFIO::Write(const void* buffer)
         if (!m_bParallelIO)
         {
             mFile.open(this->m_FileContainerName, NcFile::write);
+            NMDebugAI(<< "NetCDFIO: m_bParallelIO == false : file '" << this->GetFileName() << "' opened for sequential writing!");
         }
 
         if (mFile.isNull())
@@ -1675,6 +1945,7 @@ void NetCDFIO::Write(const void* buffer)
         if (!m_bParallelIO)
         {
             mFile.close();
+            NMDebugAI(<< "NetCDFIO: m_bParallelIO == false : closed file '" << this->GetFileName() << "' opened for sequential writing!");
         }
 
     }
@@ -1907,5 +2178,16 @@ NetCDFIO::getNetCDFComponentType(otb::ImageIOBase::IOComponentType otbtype)
     return nctype;
 }
 
+netCDF::NcType::ncType NetCDFIO::getNetCDFComponentType(const std::string& typeStr)
+{
+    netCDF::NcType::ncType ret = netCDF::NcType::nc_STRING;
+
+    if (typeStr.compare("nc_INT") == 0) ret = netCDF::NcType::nc_INT;
+    else if (typeStr.compare("nc_INT64") == 0) ret = netCDF::NcType::nc_INT64;
+    else if (typeStr.compare("nc_FLOAT") == 0) ret = netCDF::NcType::nc_FLOAT;
+    else if (typeStr.compare("nc_DOUBLE") == 0) ret = netCDF::NcType::nc_DOUBLE;
+
+    return ret;
+}
 
 }		// end of namespace otb

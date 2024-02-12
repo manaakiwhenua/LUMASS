@@ -78,6 +78,25 @@ public:
       {m_BandMap = map;}
     std::vector<int> GetBandMap() {return m_BandMap;}
 
+    //void SetDimensionNames(std::vector<std::string> dimNames)
+      //  {m_DimensionNames = dimNames;}
+
+    /*
+     *  Specification of image variable (the one to be written or read)
+     *  and its associated dimension variables. The vector contains a
+     *  string for the image variable [0] and each of the dimension variables,
+     *  starting with the fastest moving index, i.e. x, y, z, ...
+     *
+     *  A variable attribute specification string is constructed as follows:
+     *        var:name:att_name:att_type:att_value
+     *
+     *  Dimensions are specified as follows:
+     *        dim:name:dim_type:dim_size:compression
+     *
+     */
+
+    void SetVarDimDescriptors(const std::string& varDimDescriptors);
+
     /** Set/Get whether pixels are represented as RGB(A) pixels */
     itkSetMacro(RGBMode, bool)
     itkGetMacro(RGBMode, bool)
@@ -163,19 +182,51 @@ public:
         bool isVectorImage) {}
 
 protected:
-  NetCDFIO();
-  virtual ~NetCDFIO();
+    NetCDFIO();
+    virtual ~NetCDFIO();
 
-  void updateOverviewInfo();
+    void updateOverviewInfo();
 
-  void PrintSelf(std::ostream& os, itk::Indent indent) const;
+    void PrintSelf(std::ostream& os, itk::Indent indent) const;
 
+    void ProcessVarDimDescriptors(void);
 
     bool parseImageSpec(const std::string imagespec);
     otb::ImageIOBase::IOComponentType getOTBComponentType(
             netCDF::NcType::ncType nctype);
 
     netCDF::NcType::ncType getNetCDFComponentType(otb::ImageIOBase::IOComponentType otbtype);
+    netCDF::NcType::ncType getNetCDFComponentType(const std::string& typeStr);
+    void setVariableAttributes(netCDF::NcVar& var);
+
+    struct DimInfo
+    {
+        std::string name;
+        netCDF::NcType::ncType type = netCDF::NcType::nc_INT;
+        union
+        {
+            double dblVal;
+            long long intVal;
+        };
+        size_t size = 0;
+    };
+
+    struct VarAttInfo
+    {
+        std::string name;
+        std::string attName;
+        netCDF::NcType::ncType type = netCDF::NcType::nc_STRING;
+
+        std::string strVal;
+        union
+        {
+            double      dblVal;
+            long long   intVal;
+        };
+    };
+
+    std::map<std::string, DimInfo> m_DimInfoMap;
+    std::map<std::string, std::vector<VarAttInfo> > m_VarAttInfoMap;
 
     bool m_bCanRead;
     bool m_bCanWrite;
@@ -207,7 +258,7 @@ protected:
     std::vector<std::string> m_GroupNames;
     std::vector<int> m_GroupIDs;
     std::string m_NcVarName;
-
+    std::string  m_VarDimDescriptors;
     std::string m_OverviewContainerName;
 
     netCDF::NcType::ncType m_ncType;
@@ -232,6 +283,7 @@ protected:
     std::vector<std::string>  m_DimensionNames;
     std::vector<double> m_LPRSpacing;
 
+
     bool m_bImageSpecParsed;
 
     bool m_ImgInfoHasBeenRead;
@@ -253,7 +305,6 @@ private:
     bool m_CanStreamWrite;
 
     bool m_IsComplex;
-
 
     /** whether the pixel type is
      *  vector (otb side)

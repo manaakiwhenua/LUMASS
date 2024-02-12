@@ -53,7 +53,7 @@ vtkQtEditableTableModelAdapter::flags(const QModelIndex &idx) const
 	if (idx.isValid())
 		return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable;
 	else
-		return 0;
+        return QFlags<Qt::ItemFlag>();
 }
 
 bool

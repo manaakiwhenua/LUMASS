@@ -56,6 +56,7 @@ NMVtkInteractorStyleImage::NMVtkInteractorStyleImage()
     this->mEndPosition[0] = this->mEndPosition[1] = 0;
 
     this->State = VTKIS_IMAGE2D;
+    //this->InteractionMode = VTKIS_IMAGE2D;
     mNMInteractorMode = NM_INTERACT_PAN;
     mMoving = 0;
     mDPR = 1;
@@ -89,13 +90,14 @@ NMVtkInteractorStyleImage::OnMouseMove()
         {
             this->FindPokedRenderer(mEndPosition[0], mEndPosition[1]);
             this->Pan();
-            this->InvokeEvent(vtkCommand::InteractionEvent, 0);
+            this->InvokeEvent(vtkCommand::InteractionEvent, nullptr);
         }
         else if (   this->mNMInteractorMode == NM_INTERACT_ZOOM_IN
                  || this->mNMInteractorMode == NM_INTERACT_ZOOM_OUT
                 )
         {
             this->DrawRubberBand();
+            //this->InvokeEvent(vtkCommand::InteractionEvent, nullptr);
         }
     }
 }
@@ -156,7 +158,7 @@ NMVtkInteractorStyleImage::DrawRubberBand()
       pixels[3*(i*size[0]+max[0])+2] =  255 ^ pixels[3*(i*size[0]+max[0])+2];
       }
 
-    this->Interactor->GetRenderWindow()->SetPixelData(0, 0, size[0]-1, size[1]-1, pixels, 1);
+    this->Interactor->GetRenderWindow()->SetPixelData(0, 0, size[0]-1, size[1]-1, pixels, 0);
     this->Interactor->GetRenderWindow()->Frame();
 
     tmpPixelArray->Delete();
@@ -208,6 +210,8 @@ NMVtkInteractorStyleImage::OnLeftButtonDown()
             this->mPixelArray->SetNumberOfTuples(size[0]*size[1]);
 
             renWin->GetPixelData(0, 0, size[0]-1, size[1]-1, 1, this->mPixelArray);
+
+            this->CurrentRenderer->ComputeAspect();
         }
         break;
 

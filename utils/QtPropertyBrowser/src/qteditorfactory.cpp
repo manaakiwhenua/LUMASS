@@ -2700,7 +2700,7 @@ void QtColorEditWidget::buttonClicked()
 {
     bool ok = false;
     QRgb oldRgba = m_color.rgba();
-    QRgb newRgba = QColorDialog::getRgba(oldRgba, &ok, this);
+    QRgb newRgba = QColorDialog::getColor(oldRgba,this, QStringLiteral(""), QColorDialog::ShowAlphaChannel).rgba();
     if (ok && newRgba != oldRgba) {
         setValue(QColor::fromRgba(newRgba));
         emit valueChanged(m_color);

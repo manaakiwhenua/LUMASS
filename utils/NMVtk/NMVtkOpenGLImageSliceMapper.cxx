@@ -66,7 +66,7 @@
 
 #include <math.h>
 
-#include "vtkOpenGL.h"
+#include "vtk_glew.h"
 #include "vtkOpenGLError.h"
 
 #ifndef VTK_OPENGL2

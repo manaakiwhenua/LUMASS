@@ -219,9 +219,8 @@ void SQLiteProcessor< TInputImage, TOutputImage >
         }
         else
         {
-            itkExceptionMacro(<< "Failed attaching input databases - "
-                << m_vRAT.at(0)->getLastLogMsg());
-            return;
+            NMProcWarn(<< "Input table at idx=" << i
+                            << " is NULL in this iteration! Attaching database failed!");
         }
     }
 

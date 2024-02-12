@@ -27,6 +27,7 @@
 #include "NMMacros.h"
 #include "NMMfwException.h"
 #include "NMModelController.h"
+#include "NMIterableComponent.h"
 
 #include "itkProcessObject.h"
 #include "otbImage.h"
@@ -146,7 +147,13 @@ public:
                 uid << "L" << cnt;
                 QString inputCompName = p->getModelController()->getComponentNameFromInputSpec(input);
                 NMModelComponent* comp = p->getModelController()->getComponent(inputCompName);
-                if (comp != 0)
+                NMIterableComponent* itc = qobject_cast<NMIterableComponent*>(comp);
+                bool bIsActive = true;
+                if (itc != nullptr && itc->evalNumIterationsExpression(step+1) == 0)
+                {
+                    bIsActive = false;
+                }
+                if (comp != nullptr && bIsActive)
                 {
                     if (comp->getUserID().isEmpty())
                     {
@@ -156,12 +163,8 @@ public:
                     {
                         userIDs.push_back(comp->getUserID().toStdString());
                     }
+                    ++cnt;
                 }
-                else
-                {
-                    userIDs.push_back(uid.str());
-                }
-                ++cnt;
             }
         }
         f->SetImageNames(userIDs);

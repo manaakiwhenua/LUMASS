@@ -58,6 +58,10 @@ public:
     itkGetMacro(CreateTable, bool)
     itkSetMacro(CreateTable, bool)
 
+    itkGetMacro(InMemoryDb, bool)
+    itkSetMacro(InMemoryDb, bool)
+
+
     DataObjectPointer MakeOutput(DataObjectPointerArraySizeType idx);
     void GenerateData();
 
@@ -68,6 +72,7 @@ protected:
     ~NMTableReader();
 
     bool m_CreateTable;
+    bool m_InMemoryDb;
     std::string m_FileName;
     std::string m_TableName;
     std::string m_RowIdColname;

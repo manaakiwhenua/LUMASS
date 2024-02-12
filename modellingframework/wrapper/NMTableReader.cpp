@@ -48,12 +48,16 @@ NMTableReader
     this->mOutputNumDimensions = 2;
     this->mInputComponentType = otb::ImageIOBase::INT;
 
+    this->mCreateTable = false;
+    this->mInMemoryDb = false;
+
     mUserProperties.clear();
     //mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("PixelType"));
     //mUserProperties.insert(QStringLiteral("InputNumDimensions"), QStringLiteral("NumDimensions"));
     mUserProperties.insert(QStringLiteral("FileName"), QStringLiteral("FileName"));
     mUserProperties.insert(QStringLiteral("TableName"), QStringLiteral("TableName"));
     mUserProperties.insert(QStringLiteral("CreateTable"), QStringLiteral("CreateTable"));
+    //mUserProperties.insert(QStringLiteral("InMemoryDb"), QStringLiteral("InMemoryDb"));
 }
 
 NMTableReader
@@ -81,6 +85,10 @@ NMTableReader::linkParameters(unsigned int step, const QMap<QString, NMModelComp
                                .arg(mCreateTable ? "true" : "false");
     this->addRunTimeParaProvN(provCreateTable);
 
+    f->SetInMemoryDb(mInMemoryDb);
+    QString provInMemoryDb = QString("nm:InMemoryDb=\"%1\"")
+                               .arg(mInMemoryDb ? "true" : "false");
+    this->addRunTimeParaProvN(provInMemoryDb);
 
     QVariant curFileNameVar = getParameter("FileName");
     std::string curFileName;

@@ -43,7 +43,7 @@
 namespace otb {
 
 NMTableReader::NMTableReader()
-    : m_FileName(""), m_TableName(""), m_CreateTable(false)
+    : m_FileName(""), m_TableName(""), m_CreateTable(false), m_InMemoryDb(false)
 {
     otb::SQLiteTable::Pointer output = otb::SQLiteTable::New();
     itk::ProcessObject::AddOutput(output.GetPointer());
@@ -187,11 +187,27 @@ NMTableReader::GenerateData()
 
     if (m_TableName.empty())
     {
-        if (!tab->CreateFromVirtual(m_FileName))
+        if (m_InMemoryDb)
         {
-            NMProcErr(<< "Failed reading table '"
-                              << m_FileName << "'! Double check FileName!")
-            return;
+            if (!tab->openAsInMemDb(m_FileName, m_TableName))
+            {
+                NMProcErr(<< "Failed opening table '"
+                                  << m_FileName << "' as InMemoryDb!")
+                return;
+            }
+        }
+        else
+        {
+            if (!tab->CreateFromVirtual(m_FileName))
+            {
+                NMProcErr(<< "Failed reading table '"
+                                  << m_FileName << "'! Double check FileName!")
+                return;
+            }
+            if (tab->getLastLogMsg().find("Replaced") != std::string::npos)
+            {
+                NMProcInfo(<< tab->getLastLogMsg());
+            }
         }
     }
     else

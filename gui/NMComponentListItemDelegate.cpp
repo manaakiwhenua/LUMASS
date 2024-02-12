@@ -35,6 +35,7 @@
 #include <QComboBox>
 #include <QLineEdit>
 #include <QDebug>
+#include <algorithm>
 
 #include "NMComponentListItemDelegate.h"
 #include "NMLayer.h"
@@ -296,8 +297,13 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
                     {
                         if (legendtype == NMLayer::NM_LEGEND_CLRTAB)
                         {
-                            cols.append(l->getStringColumns());
-                            cols.append(l->getNumericColumns(false));
+                            QStringList scols = l->getStringColumns();
+                            scols.sort(Qt::CaseInsensitive);
+                            QStringList ncols = l->getNumericColumns(false);
+                            ncols.sort(Qt::CaseInsensitive);
+
+                            cols.append(scols);
+                            cols.append(ncols);
                         }
                         else
                         {
@@ -311,8 +317,13 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 
                     if (legendtype == NMLayer::NM_LEGEND_INDEXED && classtype == NMLayer::NM_CLASS_UNIQUE)
                     {
-                        cols.append(l->getStringColumns());
-                        cols.append(l->getNumericColumns(true));
+                        QStringList scols = l->getStringColumns();
+                        scols.sort(Qt::CaseInsensitive);
+                        QStringList ncols = l->getNumericColumns(true);
+                        ncols.sort(Qt::CaseInsensitive);
+
+                        cols.append(scols);
+                        cols.append(ncols);
                     }
                     // editing the value field for colour tables doesn't make sense
                     // so, bail out!
@@ -326,7 +337,9 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
                     }
                     else
                     {
-                        cols.append(l->getNumericColumns(false));
+                        QStringList numcols = l->getNumericColumns(false);
+                        numcols.sort(Qt::CaseInsensitive);
+                        cols.append(numcols);
                         if (il)
                         {
                             cols.prepend(QString("Pixel Values"));

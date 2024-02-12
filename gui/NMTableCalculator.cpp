@@ -298,7 +298,7 @@ bool NMTableCalculator::parseFunction()
 	{
 		NMDebugInd(2, << "group term: " << grp.toStdString() << std::endl);
 
-		QStringList logTerms = grp.split(exprSep, QString::SkipEmptyParts);
+		QStringList logTerms = grp.split(exprSep, Qt::SkipEmptyParts);
 		foreach(const QString& lt, logTerms)
 		{
 			//if (lt.simplified().isEmpty())
@@ -411,7 +411,7 @@ bool NMTableCalculator::parseFunction()
 			else
 			{
 				QStringList scrambledEggs = lt.split(allOps,
-						QString::SkipEmptyParts);
+						Qt::SkipEmptyParts);
 				//NMDebugInd(6,
 				//		<< "are those fields? : " << scrambledEggs.join(" ").toStdString() << endl);
 

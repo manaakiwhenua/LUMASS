@@ -49,10 +49,10 @@ NMLogWidget::insertHtml(const QString& text)
 
     //insertPlainText(QString("%1\n").arg(worktext));
     QStringList captured;
-    QStringList tokens = worktext.split(':', QString::SkipEmptyParts);
+    QStringList tokens = worktext.split(':', Qt::SkipEmptyParts);
     foreach(const QString& tok, tokens)
     {
-        QStringList ttkk = tok.split(' ', QString::SkipEmptyParts);
+        QStringList ttkk = tok.split(' ', Qt::SkipEmptyParts);
         foreach(const QString& tt, ttkk)
         {
             if (!captured.contains(tt))

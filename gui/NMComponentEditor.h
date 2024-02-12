@@ -74,6 +74,7 @@ public slots:
     void update(void);
     void clear(void);
     void signalModelConfigChanged();
+    NMHoverEdit* getHoverEdit() {return mHoverEdit;}
 
 private slots:
     void applySettings(QtProperty* prop, const QVariant& val);

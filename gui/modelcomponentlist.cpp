@@ -1501,7 +1501,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
     if (event->mimeData()->hasFormat("text/plain"))
     {
         QString ts = event->mimeData()->text();
-        QStringList tl = ts.split(':', QString::SkipEmptyParts);
+        QStringList tl = ts.split(':', Qt::SkipEmptyParts);
         if (tl.count() == 2)
         {
             dropSource = tl.at(0);
@@ -1694,7 +1694,7 @@ void ModelComponentList::importMultiDataSet(const QString &fn)
     }
     extNcPath = extNcPath.split(" ").at(0);
 
-    QStringList namecomps = extNcPath.split("/", QString::SkipEmptyParts);
+    QStringList namecomps = extNcPath.split("/", Qt::SkipEmptyParts);
 
     QFileInfo fifo(fn);
     QString layerName = QString("%1_%2").arg(fifo.baseName()).arg(namecomps.back());
@@ -1721,7 +1721,7 @@ void ModelComponentList::dragEnterEvent(QDragEnterEvent* event)
     if (event->mimeData()->hasFormat("text/plain"))
     {
         QString ts = event->mimeData()->text();
-        QStringList tl = ts.split(':', QString::SkipEmptyParts);
+        QStringList tl = ts.split(':', Qt::SkipEmptyParts);
         if (tl.count() == 2)
         {
             dropSource = tl.at(0);
@@ -1781,7 +1781,7 @@ void ModelComponentList::dragMoveEvent(QDragMoveEvent* event)
     if (event->mimeData()->hasFormat("text/plain"))
     {
         QString ts = event->mimeData()->text();
-        QStringList tl = ts.split(':', QString::SkipEmptyParts);
+        QStringList tl = ts.split(':', Qt::SkipEmptyParts);
         if (tl.count() == 2)
         {
             dropSource = tl.at(0);
@@ -1836,7 +1836,7 @@ void ModelComponentList::paintEvent(QPaintEvent* event)
 
         painter.setFont(font);
         QFontMetrics fm = painter.fontMetrics();
-        int textwidth = fm.width(text);
+        int textwidth = fm.horizontalAdvance(text);
         int iconwidth = vrect.width() - itemIndentation - textwidth - checkboxwidth;
 
         QRect rect = QRect(
@@ -2090,10 +2090,12 @@ void ModelComponentList::mapUniqueValues()
         return;
     }
 
+    sFields.sort();
+
     bool bOk = false;
     QString theField = QInputDialog::getItem(this,
             tr("Map Unique Values"), tr("Choose an attribute to map"),
-            sFields, 0, false, &bOk, 0);
+            sFields, 0, false, &bOk, {});
     // if the user pressed cancel
     if (!bOk)
         return;
@@ -2217,6 +2219,7 @@ void ModelComponentList::stretchColourRampToVisMinMax()
             q.finish();
             q.clear();
             sqlModel->database().commit();
+            sqlModel = nullptr;
         }
 
         if (stats.size() >= 2)

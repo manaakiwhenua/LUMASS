@@ -265,7 +265,7 @@ void
 NMSelectableSortFilterProxyModel::hideSource(const QList<int>& rows)
 {
 	if (	this->mSourceModel == 0
-		&&  rows.size() <= this->mSourceModel->rowCount(QModelIndex())
+        ||  rows.size() <= this->mSourceModel->rowCount(QModelIndex())
 	   )
 	{
 		return;
@@ -436,7 +436,7 @@ Qt::ItemFlags NMSelectableSortFilterProxyModel::flags(
 	if (index.isValid())
 		return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable;
 	else
-		return 0;
+        return QFlags<Qt::ItemFlag>();
 }
 
 QModelIndex

@@ -3,6 +3,8 @@
         <file alias="link-icon.png">resources/draw-bezier-curves.png</file>
         <file alias="select.png">resources/select.png</file>
         <file alias="clear.png">resources/document-new.png</file>
+        <file alias="open-folder.png">resources/document-open-folder.png</file>
+        <file alias="model-close.png">resources/dialog-close.png</file>
         <file alias="model-icon.png">resources/system-run-3.png</file>
         <file alias="move-icon.png">resources/transform-move.png</file>
         <file alias="zoom-in-icon.png">resources/zoom-in-3.png</file>
@@ -22,7 +24,7 @@
         <file alias="model-pause-icon.png">resources/model-pause.png</file>
         <file alias="model-reset-icon.png">resources/model-reset.png</file>
         <file alias="model-stop-icon.png">resources/model-stop.png</file>
-        <file alias="SQLite_Logo_4.png">resources/SQLite_Logo_4.png</file>
+        <file alias="SQLite_Logo_4.png">resources/SQLite_Logo_nm_64.png</file>
         <file alias="table_object.png">resources/table_object.png</file>
         <file alias="table_object_invisible.png">resources/table_object_invisible.png</file>
         <file alias="image-read.png">resources/image-read.png</file>
@@ -32,6 +34,7 @@
         <file alias="lumass-icon.png">resources/LUMASS_icon_64.png</file>
         <file alias="view-split-left-right.png">resources/view-split-left-right.png</file>
         <file alias="view-split-top-bottom.png">resources/view-split-top-bottom.png</file>
+        <file alias="refresh.png">resources/view-refresh-4.png</file>
         <file alias="view-map.png">resources/network-globe2.png</file>
         <file alias="document-save.png">resources/document-save.png</file>
         <file alias="document-save-as.png">resources/document-save-as.png</file>

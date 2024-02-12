@@ -563,7 +563,7 @@ NMHoverEditTree::extractString(QTreeWidgetItem *item, int pos)
     }
 
     QString s = item->text(0);
-    QStringList sl = s.split(':', QString::SkipEmptyParts);
+    QStringList sl = s.split(':', Qt::SkipEmptyParts);
     if (sl.count() >= 2)
     {
         s = sl.at(pos).simplified();

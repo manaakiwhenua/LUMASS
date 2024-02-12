@@ -211,7 +211,7 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
         p1 = poly.at(i);
         p2 = poly.at(i+1);
         polyEdge = QLineF(p1, p2);
-        if (polyEdge.intersect(linkLine, &ip) == QLineF::BoundedIntersection)
+        if (polyEdge.intersects(linkLine, &ip) == QLineF::BoundedIntersection)
                 break;
     }
 
@@ -221,7 +221,7 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
         p1 = spoly.at(i);
         p2 = spoly.at(i+1);
         polyEdge = QLineF(p1, p2);
-        if (polyEdge.intersect(linkLine, &sip) == QLineF::BoundedIntersection)
+        if (polyEdge.intersects(linkLine, &sip) == QLineF::BoundedIntersection)
                 break;
     }
 

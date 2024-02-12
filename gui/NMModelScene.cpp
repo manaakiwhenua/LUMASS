@@ -491,7 +491,7 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
     pt->setLogger(controller->getLogger());
     pt->setModelController(controller);
 
-    QStringList unquotedTabName = tv->getModel()->tableName().split('\"', QString::SkipEmptyParts);
+    QStringList unquotedTabName = tv->getModel()->tableName().split('\"', Qt::SkipEmptyParts);
     pt->setTableName(unquotedTabName.at(0));
     pt->setFileName(dbFN);
 
@@ -1290,8 +1290,12 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
                 {
                     selRect = selRect.united(gi->mapRectToScene(gi->boundingRect()));
                 }
-                QPixmap dragPix = QPixmap::grabWidget(this->views()[0],
-                        this->views()[0]->mapFromScene(selRect).boundingRect());
+
+                QGraphicsView* gv = this->views()[0];
+                QPixmap dragPix = gv->grab(gv->mapFromScene(selRect).boundingRect());
+
+                //QPixmap dragPix = QPixmap::grabWidget(this->views()[0],
+                //        this->views()[0]->mapFromScene(selRect).boundingRect());
 #ifdef QT_HIGHDPI_SUPPORT
     qreal pratio = NMGlobalHelper::getMainWindow()->devicePixelRatioF();
 #else

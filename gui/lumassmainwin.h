@@ -58,6 +58,7 @@
 #include "vtkOrientationMarkerWidget.h"
 #include "vtkSmartPointer.h"
 #include "vtkCellPicker.h"
+#include "NMVtkInteractorStyleImage.h"
 
 #include "LUMASSConfig.h"
 //#include "NMLayer.h"
@@ -76,6 +77,8 @@
   #include "otbRasdamanImageIO.h"
   #include "otbRasdamanImageIOFactory.h"
 #endif
+
+#include "NMMosra.h"
 
 //QT_FORWARD_DECLARE_CLASS(QWebSocketServer)
 //QT_FORWARD_DECLARE_CLASS(QWebSocket)
@@ -228,6 +231,7 @@ public slots:
     void saveAsVectorLayerOGR();
     void saveImageFile();
     void saveMapAsImage();
+    void makeZSliceMovie();
     void updateLayerInfo(NMLayer* l, long long cellId);
     void importTableObject();
     void aboutLUMASS();
@@ -248,6 +252,9 @@ public slots:
     void clearSelection(void);
     bool isInDarkMode(void);
     void setDarkMode(bool bdark);
+
+    void infoTableHeaderClicked(int idx);
+    void infoTableHeaderContextMenu();
 
     void pan(bool toggled);
     void zoomIn(bool toggled);
@@ -399,6 +406,12 @@ protected slots:
     void socketDisconnected();
     //void onSslErrors(const QList<QSslError>& errors);
 
+    void readProcOutput();
+
+    void onTabifiedDockWidgetActivated(QDockWidget* dockWidget);
+    void onDockWidgetAreaChanged(Qt::DockWidgetArea dockArea);
+    void setDockWidgetVisibility(QDockWidget *dw, bool bVisible);
+
 protected:
 
     void hideEvent(QHideEvent* event);
@@ -418,6 +431,7 @@ protected:
 
     void initWebSocketServer();
 
+    QString eventTypeToString(const QEvent::Type type);
 
     //	void displayPolyData(vtkSmartPointer<vtkPolyData> polydata, double* lowPt, double* highPt);
 #ifndef GDAL_200
@@ -474,7 +488,7 @@ protected:
         return 0;
     }
 
-    /** merging to adjacent arrays a and b; a sits in front of b,
+    /** merging two adjacent arrays a and b; a sits in front of b,
      *  and both arrays share the same element type T */
     template<class T>
     static void merge_adj(char* a, char* b, int a_size, int b_size)
@@ -595,6 +609,25 @@ private:
     // loaded for the first time
     bool mbFirstTimeLoaded;
 
+    class OptProc : public QProcess
+    {
+    public:
+        OptProc(QObject* parent=nullptr)
+            : QProcess(parent) {}
+
+    protected:
+        virtual void setupChildProcess()
+        {
+            ::setgid(1002);
+            ::setuid(1002);
+            ::umask(777);
+        }
+    };
+
+
+    OptProc* mpLuProc;
+    NMMosra* mpMosra;
+
     // the GUI containing all controls of the main window
     Ui::LUMASSMainWin *ui;
     // for showing the mouse position in real world coordinates
@@ -606,6 +639,8 @@ private:
     QIcon mLUMASSIcon;
 
     QString mLastToolBar;
+
+    QMap<QString, Qt::DockWidgetArea> mDockWidgetAreaMap;
 
     QMap<QString, QVariant> mSettings;
 
@@ -624,6 +659,11 @@ private:
 
     double mLastPick[3];
     NMLayer* mLastInfoLayer;
+    // 0: ascending
+    // 1: descending
+    // 2: unsorted
+    int mInfoTableSortOrder;
+    long long mLastInfoTabCellId;
 
     // the background renderer (layer 0)
     vtkSmartPointer<vtkRenderer> mBkgRenderer;
@@ -634,6 +674,8 @@ private:
     vtkSmartPointer<vtkEventQtSlotConnect> m_vtkConns;
     // orientation marker
     vtkSmartPointer<vtkOrientationMarkerWidget> m_orientwidget;
+
+    vtkSmartPointer<NMVtkInteractorStyleImage> m_iasimg;
 
     bool mbNoRasdaman;
 

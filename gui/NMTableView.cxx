@@ -456,7 +456,7 @@ void NMTableView::normalise()
 
 	QString sMode = QInputDialog::getItem(this, tr("Normalisation Mode"),
 													 tr("Select mode"),
-													 slModes, 0, false, &bOk, 0);
+                                          slModes, 0, false, &bOk, {});
 	if (!bOk)
 	{
 		NMDebugAI(<< "No normalisation mode specified!" << endl);
@@ -469,7 +469,7 @@ void NMTableView::normalise()
 
 	// split the strings into a stringlist
 	QStringList columnNames = fieldNames.split(tr(" "),
-			QString::SkipEmptyParts, Qt::CaseInsensitive);
+			Qt::SkipEmptyParts, Qt::CaseInsensitive);
 
 	const int ncols = columnNames.size();
 	const int maxrange = mlNumSelRecs ? mlNumSelRecs * ncols : mSortFilter->sourceRowCount() * ncols;
@@ -793,7 +793,7 @@ void NMTableView::joinAttributes()
 	bool bOk = false;
 	QString tarFieldName = QInputDialog::getItem(this,
 			tr("Select Target Join Field"), tr("Select Target Join Field"),
-			tarJoinFields, 0, false, &bOk, 0);
+            tarJoinFields, 0, false, &bOk, {});
 	int tarJoinColIdx = tarJoinFields.indexOf(tarFieldName);
 	if (!bOk || tarJoinColIdx < 0)
 	{
@@ -806,7 +806,7 @@ void NMTableView::joinAttributes()
 
 	QString srcFieldName = QInputDialog::getItem(this,
 			tr("Select Source Join Field"), tr("Select Source Join Field"),
-			srcJoinFields, 0, false, &bOk, 0);
+                                                 srcJoinFields, 0, false, &bOk, {});
 	int srcJoinColIdx = srcJoinFields.indexOf(srcFieldName);
 	if (!bOk || srcJoinColIdx < 0)
 	{
@@ -998,7 +998,7 @@ void NMTableView::exportTable()
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
-	QString tabName = this->windowTitle().split(" ", QString::SkipEmptyParts).last();
+	QString tabName = this->windowTitle().split(" ", Qt::SkipEmptyParts).last();
 	QString proposedName = QString(tr("%1/%2.csv")).arg(getenv("HOME")).arg(tabName);
 
 	// take the first layer and save as vtkpolydata
@@ -1014,7 +1014,7 @@ void NMTableView::exportTable()
 		return;
 	}
 
-	QStringList fnList = fileName.split(tr("."), QString::SkipEmptyParts);
+	QStringList fnList = fileName.split(tr("."), Qt::SkipEmptyParts);
 
 	QString suffix = fnList.last();
 	if (suffix.compare(tr("txt"), Qt::CaseInsensitive) == 0 ||
@@ -1183,7 +1183,7 @@ bool NMTableView::writeDelimTxt(const QString& fileName,
 		if (col < ncols-1)
 			out << ",";
 	}
-	out << endl;
+    out << Qt::endl;
 
 	out.setRealNumberNotation(QTextStream::SmartNotation);
 	foreach(const QItemSelectionRange& range, inputSelection)

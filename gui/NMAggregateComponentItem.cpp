@@ -41,7 +41,7 @@ NMAggregateComponentItem::NMAggregateComponentItem(bool bParallel, QGraphicsItem
 	this->setParentItem(parent);
     this->mTimeLevel = 0;
     this->mNumIterations = 1;
-    this->mColor = QColor(qrand() % 256, qrand() % 256, qrand() % 256);
+    this->mColor = QColor(QRandomGenerator::global()->generate() % 256, QRandomGenerator::global()->generate() % 256, QRandomGenerator::global()->generate() % 256);
 
     dpr = 1;//qApp->devicePixelRatio();
 
@@ -291,7 +291,7 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
 
     QFontMetrics fm(mFont);
 
-    qreal descrWidth = fm.width(mDescription);
+    qreal descrWidth = fm.horizontalAdvance(mDescription);
     qreal descrHeight = fm.height();
 
     mDash = QRectF(mItemBnd.left(), bnd.top()+12*dpr, mItemBnd.width(),25*dpr);
@@ -309,7 +309,7 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
     mPointer2.setLength(0.6*mPointer1.length());
     mPointer2.setAngle((qreal)-27.5);
 
-    qreal levelWidth = fm.width(QString("%1").arg(mTimeLevel));
+    qreal levelWidth = fm.horizontalAdvance(QString("%1").arg(mTimeLevel));
 
     mTimeLevelRect = QRectF(mClockRect.right()+smallGap, mDash.top()+bigGap,
                             levelWidth, descrHeight);
@@ -335,11 +335,11 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
                             mIterSymbolRect.bottomLeft().y()+headBase-1.25);
 
 
-    qreal numIterWidth = fm.width(QString("%1").arg(mNumIterations));
+    qreal numIterWidth = fm.horizontalAdvance(QString("%1").arg(mNumIterations));
     qreal numIterHeight = fm.height();
     if (mIsExecuting)
     {
-        numIterWidth = fm.width(QString("%1 of %2").arg(mProgress).arg(mNumIterations));
+        numIterWidth = fm.horizontalAdvance(QString("%1 of %2").arg(mProgress).arg(mNumIterations));
     }
 
     mNumIterRect = QRectF(mIterSymbolRect.right()+smallGap, mDash.top()+bigGap,
@@ -372,9 +372,9 @@ NMAggregateComponentItem::boundingRect(void) const
     }
 
     QFontMetrics fm(mFont);
-    qreal minWidth = fm.height() + smallGap + fm.width(QString("%1").arg(mTimeLevel)) + bigGap +
-                     fm.height() + smallGap + fm.width(QString("%1").arg(mNumIterations)) + bigGap +
-                     fm.width(mDescription);
+    qreal minWidth = fm.height() + smallGap + fm.horizontalAdvance(QString("%1").arg(mTimeLevel)) + bigGap +
+                     fm.height() + smallGap + fm.horizontalAdvance(QString("%1").arg(mNumIterations)) + bigGap +
+                     fm.horizontalAdvance(mDescription);
 
     if (minWidth > bnd.width())
     {

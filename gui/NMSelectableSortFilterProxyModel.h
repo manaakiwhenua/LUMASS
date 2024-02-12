@@ -315,7 +315,7 @@ private:
 			if (le <= ri)
 			{
 
-				mProxy2Source.swap(le, ri);
+                mProxy2Source.swapItemsAt(le, ri);
 				++le;
 				--ri;
 			}

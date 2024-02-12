@@ -171,7 +171,7 @@ NMParamEdit::wheelEvent(QWheelEvent* e)
 {
     if (e->modifiers() & Qt::ControlModifier)
     {
-        if (e->delta() > 0)
+        if (e->angleDelta().y() > 0)
         {
             this->zoomIn(2);
         }
@@ -187,8 +187,8 @@ void
 NMParamEdit::updateWhiteSpaceTab()
 {
     // set the default tabStopWidth
-    int fw = QFontMetrics(this->currentCharFormat().font()).width(QLatin1Char(' '));
-    this->setTabStopWidth(fw * 4);
+    int fw = QFontMetrics(this->currentCharFormat().font()).horizontalAdvance(QLatin1Char(' '));
+    this->setTabStopDistance(fw * 4);
 }
 
 void

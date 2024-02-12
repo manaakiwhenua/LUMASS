@@ -318,6 +318,23 @@
 #endif
 
 
+#include "vtkFFMPEGWriter.h"
+#include "vtkImageFlip.h"
+#include "vtkImageResample.h"
+#include "vtkImageResize.h"
+#include "vtkImageCast.h"
+#include "vtkImageData.h"
+#include "vtkImageMandelbrotSource.h"
+#include "vtkImageMapToColors.h"
+#include "vtkLookupTable.h"
+#include "vtksys/SystemTools.hxx"
+
+
+
+
+//#include "IpIpoptApplication.hpp"
+//#include "AmplTNLP.hpp"
+
 #include "otbNMImageReader.h"
 #include "otbStreamingRATImageFileWriter.h"
 //#include "otbNMStreamingImageVirtualWriter.h"
@@ -336,7 +353,9 @@
 
 
 LUMASSMainWin::LUMASSMainWin(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::LUMASSMainWin)//, mServer(nullptr)
+    : QMainWindow(parent), ui(new Ui::LUMASSMainWin),
+      mpLuProc(nullptr), mpMosra(nullptr)
+      //, mServer(nullptr)
 {
     // **********************************************************************
     // *                    META TYPES and other initisalisations           *
@@ -467,13 +486,40 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     // *                    MENU BAR AND DOCKS                              *
     // **********************************************************************
 
+    this->setDockOptions(
+                  QMainWindow::AnimatedDocks
+                | QMainWindow::AllowNestedDocks
+                | QMainWindow::AllowTabbedDocks
+                //| QMainWindow::VerticalTabs
+                );
+
+    connect(ui->componentsWidget, SIGNAL(dockLocationChanged(Qt::DockWidgetArea)),
+            this, SLOT(onDockWidgetAreaChanged(Qt::DockWidgetArea)));
+    connect(ui->componentInfoDock, SIGNAL(dockLocationChanged(Qt::DockWidgetArea)),
+            this, SLOT(onDockWidgetAreaChanged(Qt::DockWidgetArea)));
+    connect(ui->logDock, SIGNAL(dockLocationChanged(Qt::DockWidgetArea)),
+            this, SLOT(onDockWidgetAreaChanged(Qt::DockWidgetArea)));
+
+    connect(this, SIGNAL(tabifiedDockWidgetActivated(QDockWidget*)),
+            this, SLOT(onTabifiedDockWidgetActivated(QDockWidget*)));
+
     // ================================================
     // INFO COMPONENT DOCK
     // ================================================
 
+    // .................................
+    // InfoTable interactions
+    mInfoTableSortOrder = 2;
+    mLastInfoTabCellId  = -1;
+
     QTableWidget* tabWidget = new QTableWidget(ui->infoWidgetList);
     tabWidget->setObjectName(QString::fromUtf8("layerInfoTable"));
     tabWidget->setAlternatingRowColors(true);
+    QHeaderView* ihv = tabWidget->horizontalHeader();
+    ihv->viewport()->setObjectName(QStringLiteral("layerInfoTableHeader"));
+    ihv->viewport()->installEventFilter(this);
+    //connect(ihv, SIGNAL(sectionPressed(int)), this, SLOT(infoTableHeaderClicked(int)));
+    connect(ihv, &QHeaderView::sectionPressed, this, &LUMASSMainWin::infoTableHeaderClicked);
     ui->infoWidgetList->addWidgetItem(tabWidget, QString::fromUtf8("Layer Attributes"));
 
     mTreeCompEditor = new NMComponentEditor(ui->infoWidgetList);
@@ -544,7 +590,6 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     // ================================================
     ui->logDock->setVisible(false);
 
-
     // ================================================
     // BAR(s) SETUP - MENU - PROGRESS - STATUS
     // ================================================
@@ -570,21 +615,26 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     connect(actStartWebSockets, SIGNAL(triggered()), this, SLOT(startWebSocketServer()));
     connect(actStopWebSockets, SIGNAL(triggered()), this, SLOT(stopWebSocketServer()));
 
+    //ui->menu
+
 
     // since we havent' go an implementation for odbc import
     // we just remove the action for now
     //ui->menuObject->removeAction(ui->actionopenCreateTable);
 
+    this->ui->statusBar->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+
     // add a label to the status bar for displaying
     // the coordinates of the map window
-    this->m_coordLabel = new QLabel("", this, 0);
-    this->mPixelValLabel = new QLabel("", this, 0);
+    this->m_coordLabel = new QLabel("", this, {});
+    this->mPixelValLabel = new QLabel("", this, {});
+    //this->mPixelValLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
     this->ui->statusBar->addWidget(m_coordLabel);
     this->ui->statusBar->addWidget(mPixelValLabel);
 
     // add a label to show random messages in the status bar
     this->mBusyProcCounter = 0;
-    this->m_StateMsg = new QLabel("",  this, 0);
+    this->m_StateMsg = new QLabel("",  this, {});
     this->ui->statusBar->addWidget(this->m_StateMsg);
     // progress bar
     this->mProgressBar = new QProgressBar(this);
@@ -627,6 +677,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     connect(ui->actionLUMASS, SIGNAL(triggered()), this, SLOT(aboutLUMASS()));
     connect(ui->actionBackground_Colour, SIGNAL(triggered()), this,
             SLOT(setMapBackgroundColour()));
+    connect(ui->actionMake_Z_Slice_Movie, SIGNAL(triggered()), this, SLOT(makeZSliceMovie()));
 
     connect(ui->actionShow_Map_View, SIGNAL(toggled(bool)), this, SLOT(showMapView(bool)));
     connect(ui->actionShow_Model_View, SIGNAL(toggled(bool)), this, SLOT(showModelView(bool)));
@@ -644,6 +695,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 
     // USER TOOL SUPPORT
     connect(ui->actionAdd_Toolbar, SIGNAL(triggered()), this, SLOT(addUserToolBar()));
+
 
 
     // SYSTEM
@@ -835,6 +887,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     connect(this->ui->modelViewWidget, SIGNAL(modelConfigurationChanged()),
             this, SLOT(forwardModelConfigChanged()));
 
+
     // **********************************************************************
     // *                    VTK DISPLAY WIDGET                              *
     // **********************************************************************
@@ -917,16 +970,18 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     axes->SetTotalLength(10,10,10);
     axes->SetOrigin(0,0,0);
 
-    vtkSmartPointer<NMVtkInteractorStyleImage> iasm = vtkSmartPointer<NMVtkInteractorStyleImage>::New();
+    this->m_iasimg = vtkSmartPointer<NMVtkInteractorStyleImage>::New();
 #ifdef QT_HIGHDPI_SUPPORT
-    iasm->setDevicePixelRatio(this->devicePixelRatioF());
+    //iasm->setDevicePixelRatio(this->devicePixelRatioF());
+    m_iasimg->setDevicePixelRatio(this->devicePixelRatioF());
 #endif
 
-    this->ui->qvtkWidget->interactor()->SetInteractorStyle(iasm);
+    //this->ui->qvtkWidget->interactor()->SetInteractorStyle(iasm);
 
     m_orientwidget = vtkSmartPointer<vtkOrientationMarkerWidget>::New();
     m_orientwidget->SetOrientationMarker(axes);
     m_orientwidget->SetInteractor(static_cast<vtkRenderWindowInteractor*>(this->ui->qvtkWidget->interactor()));
+    m_orientwidget->GetInteractor()->SetInteractorStyle(m_iasimg);
     m_orientwidget->SetViewport(0.0, 0.0, 0.2, 0.2);
     m_orientwidget->SetEnabled(0);
     m_orientwidget->InteractiveOff();
@@ -1096,6 +1151,153 @@ void LUMASSMainWin::populateProcCompList()
     compWidget->addItem(QStringLiteral("TextLabel"));
     compWidget->addItems(NMProcessFactory::instance().getRegisteredComponents());
     compWidget->sortItems();
+}
+
+void LUMASSMainWin::onDockWidgetAreaChanged(Qt::DockWidgetArea dockArea)
+{
+    if (dockArea == Qt::NoDockWidgetArea)
+    {
+        return;
+    }
+
+    QDockWidget* dw = qobject_cast<QDockWidget*>(this->sender());
+
+    QList<QDockWidget*> tabDocs = this->tabifiedDockWidgets(dw);
+    for (int i=0; i < tabDocs.size(); ++i)
+    {
+        this->setDockWidgetVisibility(tabDocs.at(i), true);
+    }
+}
+
+void LUMASSMainWin::onTabifiedDockWidgetActivated(QDockWidget* dockWidget)
+{
+    NMLogDebug(<< "activated '" << dockWidget->objectName().toStdString() << "'");
+    QList<QDockWidget*> dwList = this->tabifiedDockWidgets(dockWidget);
+
+    NMLogDebug(<< "we're tabified: ");
+    for (int i=0; i < dwList.size(); ++i)
+    {
+        this->setDockWidgetVisibility(dwList.at(i), true);
+    }
+}
+
+void LUMASSMainWin::setDockWidgetVisibility(QDockWidget* dw, bool bVisible)
+{
+    dw->setVisible(bVisible);
+
+    if (dw->objectName().compare(ui->componentsWidget->objectName()) == 0)
+    {
+        ui->actionComponents_View->setChecked(bVisible);
+    }
+    else if (dw->objectName().compare(ui->componentInfoDock->objectName()) == 0)
+    {
+        ui->actionShow_Components_Info->setChecked(bVisible);
+    }
+    else if (dw->objectName().compare(ui->logDock->objectName()) == 0)
+    {
+        ui->actionShow_Notifications->setChecked(bVisible);
+    }
+}
+
+void LUMASSMainWin::makeZSliceMovie()
+{
+    NMLayer* l = this->mLayerList->getSelectedLayer();
+    if (l == nullptr)
+    {
+        NMLogInfo(<< "No layer selected!");
+        return;
+    }
+
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+    if (il == nullptr)
+    {
+        NMLogInfo(<< "We're looking for image layers only!");
+        return;
+    }
+
+    if (il->getNumDimensions() < 3)
+    {
+        NMLogInfo(<< "Only 3D layers supported!");
+        return;
+    }
+
+    const double* spacing = il->getSignedSpacing();
+    double bbox[6];
+    il->getBBox(bbox);
+
+
+    QString aviName = QFileDialog::getSaveFileName(this,
+         tr("Save Movie as"), "~", tr("Video File (*.avi)"));
+
+    if (aviName.isEmpty())
+    {
+        return;
+    }
+
+    int div = QInputDialog::getInt(this, "Get SizeReductionFactor", "", 4, 1, 100);
+
+    //vtkSmartPointer<vtkImageResample> res = vtkImageResample::New();
+    //res->SetInputConnection(il->getItkVtkPipelineOutput());
+    ////res->SetInputData(il->getVTKImage());
+    //res->SetInterpolationModeToNearestNeighbor();
+    //res->SetOutputExtentToDefault();
+    //res->SetOutputOriginToDefault();
+    //res->SetOutputDirectionToDefault();
+    //res->SetDimensionality(2);
+    //res->SetMagnificationFactors(16,16,1);
+
+    const int* inExtent = il->getVTKImage()->GetExtent();
+    double ratio = inExtent[1] / (double)inExtent[0];
+    int outsize[3];
+
+    outsize[0] = inExtent[0] / (double)div;
+    outsize[1] = inExtent[1] / (double(div)*ratio);
+    outsize[2] = 1;
+
+    vtkSmartPointer<vtkImageResize> res = vtkImageResize::New();
+    res->SetInputConnection(il->getItkVtkPipelineOutput());
+    res->InterpolateOff();
+    res->SetOutputDimensions(outsize);
+
+    vtkSmartPointer<vtkImageFlip> flip = vtkImageFlip::New();
+    //flip->SetInputConnection(il->getItkVtkPipelineOutput());
+    flip->SetInputConnection(res->GetOutputPort());
+    flip->SetFilteredAxis(1);
+
+    vtkImageProperty* ip = const_cast<vtkImageProperty*>(il->getImageProperty());
+    vtkScalarsToColors* table = ip->GetLookupTable();
+
+    vtkSmartPointer<vtkImageMapToColors> colorize = vtkImageMapToColors::New();
+    colorize->SetOutputFormatToRGB();
+    colorize->SetLookupTable(table);
+    colorize->SetInputConnection(flip->GetOutputPort());
+
+    std::string filepath = aviName.toStdString();
+    vtkFFMPEGWriter* w = vtkFFMPEGWriter::New();
+
+    w->SetInputConnection(colorize->GetOutputPort());
+    w->SetFileName(filepath.c_str());
+    cout << "Writing file '" << filepath << "'" << endl;
+    w->SetBitRate(1024 * 1024 * 30);
+    w->SetBitRateTolerance(1024 * 1024 * 3);
+    w->Start();
+
+    const int numslices = std::floor((bbox[5] - bbox[4]) / spacing[2]);
+    for (int i=0; i < numslices; ++i)
+    {
+        il->setZSliceIndex(i);
+        //res->SetInputData(il->getVTKImage());
+        for (int f=0; f < 3; ++f)
+        {
+            w->Write();
+        }
+    }
+
+    w->End();
+    cout << endl;
+    cout << "Done writing file " << filepath << "' ..." << endl;
+    w->Delete();
+    return;
 }
 
 
@@ -1281,6 +1483,19 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
 //        return true;
 //    }
 
+    QStringList ooo;
+    ooo << "componentsWidget"
+        << "componentInfoDock"
+        << "logDock";
+
+    QString eventStr = this->eventTypeToString(event->type());
+    if (ooo.contains(obj->objectName()))
+    {
+        NMLogDebug(<< obj->objectName().toStdString() << ": "
+                   << eventStr.toStdString() << std::endl
+                   );
+    }
+
     // ===========================================================
     //                      QVTKWIDGET EVENTS
     // ===========================================================
@@ -1359,13 +1574,27 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
                 }
             }
         }
+        else if (event->type() == QEvent::GraphicsSceneWheel)
+        {
+            NMLogDebug(<< "Got a SceneWheelEvent!");
+        }
+
         // detect zAxis move
         else if (event->type() == QEvent::Wheel)
         {
             QWheelEvent* we = static_cast<QWheelEvent*>(event);
             if (we != nullptr && we->modifiers().testFlag(Qt::AltModifier))
             {
-                int delta = we->delta();
+                // fetch both directions as we're confused as to which
+                // direction is the 'common' one; and we have only tested
+                // on linux (X11) so far ...
+                // so, if 'common' vertical mouse wheel (Qt doc) yields '0',
+                // we take the horizontal scrolling  ...
+
+                int deltay = we->angleDelta().y();
+                int deltax = we->angleDelta().x();
+
+                int delta = deltay == 0 ? deltax : deltay;
 
                 // forward yields  -delta
                 // backward yields +delta
@@ -1538,6 +1767,21 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
             }
         }
     }
+    // ===========================================================
+    //                     LAYER INFO TABLE
+    // ===========================================================
+    else if (obj->objectName().compare(QStringLiteral("layerInfoTableHeader")) == 0)
+    {
+        if (event->type() == QEvent::MouseButtonPress)
+        {
+            QMouseEvent* me = static_cast<QMouseEvent*>(event);
+            if (me->buttons() & Qt::RightButton)
+            {
+                this->infoTableHeaderContextMenu();
+                true;
+            }
+        }
+    }
     // ===============
     // MAIN TOOL BAR
     // ===============
@@ -1640,7 +1884,7 @@ LUMASSMainWin::checkMimeDataForModelComponent(const QMimeData *mimedata)
     if (mimedata->hasFormat("text/plain"))
     {
         QString ts = mimedata->text();
-        QStringList tl = ts.split(':', QString::SkipEmptyParts);
+        QStringList tl = ts.split(':', Qt::SkipEmptyParts);
         if (tl.count() == 2)
         {
             dropSource = tl.at(0);
@@ -1705,13 +1949,17 @@ LUMASSMainWin::updateExclusiveActions(const QString &checkedAction,
 
         NMLogDebug(<< "no exclusive tool selected!");
 
-        // set map interactor multi mode
-        NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
-                    ui->qvtkWidget->interactor()->GetInteractorStyle());
-        if (iact)
-        {
-            iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_MULTI);
-        }
+        //// set map interactor multi mode
+        //NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
+        //            ui->qvtkWidget->interactor()->GetInteractorStyle());
+
+        ui->qvtkWidget->interactor()->SetInteractorStyle(this->m_iasimg);
+        m_iasimg->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_MULTI);
+
+        //if (iact)
+        //{
+        //    iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_MULTI);
+        //}
     }
     mbUpdatingExclusiveActions = false;
 }
@@ -2496,7 +2744,7 @@ void LUMASSMainWin::aboutLUMASS(void)
         << "NetCDF-C " << _lumass_netcdf_version << " - https://www.unidata.ucar.edu/software/netcdf/" << std::endl
         << "NetCDF-CXX4 " << _lumass_ncxx4_version << " - https://github.com/Unidata/netcdf-cxx4" << std::endl
         << "SQLite " << _lumass_sqlite_version << " - http://www.sqlite.org" << std::endl
-        << "Spatialite 4.3 - https://www.gaia-gis.it/fossil/libspatialite/index" << std::endl
+        << "Spatialite " << _lumass_spatialite_version << " - https://www.gaia-gis.it/fossil/libspatialite/index" << std::endl
         << "MuParser 2.2.5 - http://beltoforion.de/article.php?a=muparser" << std::endl
         << "pybind11 " << _lumass_pybind11_version << " - https://github.com/pybind/pybind11" << std::endl
         << "yaml " << _lumass_yaml_version << " - https://github.com/jbeder/yaml-cpp" << std::endl
@@ -2740,6 +2988,8 @@ LUMASSMainWin::importTable(const QString& fileName,
         {
             if (!sqlTable->CreateFromVirtual(fileName.toStdString()))
             {
+                NMBoxErr("Create Table", "Failed creating LUMASS data base table from '"
+                         << fileName.toStdString() << "': " << sqlTable->getLastLogMsg());
                 NMDebugCtx(ctxLUMASSMainWin, << "done!");
                 return 0;
             }
@@ -2999,15 +3249,35 @@ LUMASSMainWin::deleteTableObject(const QString& name)
     QString viewtitle;
     if (itList != mTableList.end())
     {
-        itList.value().second->getSortFilter()->removeTempTables();
-        NMSqlTableModel* model = qobject_cast<NMSqlTableModel*>(itList.value().second->getModel());
-        viewtitle = itList.value().second->windowTitle();
-        dbname = model->database().databaseName();
-        cname = model->database().connectionName();
+        NMSqlTableModel* model = nullptr;
+        {
+            itList.value().second->getSortFilter()->removeTempTables();
+            model = qobject_cast<NMSqlTableModel*>(itList.value().second->getModel());
+            viewtitle = itList.value().second->windowTitle();
+            dbname = model->database().databaseName();
+            cname = model->database().connectionName();
 
-        model->clear();
-        delete model;
-        model = nullptr;
+            // detach from session db
+            model->clear();
+            model->database().close();
+            delete model;
+
+            auto it = mQSqlDbConnectionNameMap.find(dbname, cname);
+            if (it != mQSqlDbConnectionNameMap.end())
+            {
+                mQSqlDbConnectionNameMap.erase(it);
+                NMLogInfo(<< "De-registered connection '"
+                           << cname.toStdString() << "' to '"
+                           << dbname.toStdString() << "'!");
+            }
+            else
+            {
+                NMLogError(<< "Failed to de-register connection '"
+                           << cname.toStdString() << "' to '"
+                           << dbname.toStdString() << "'!");
+            }
+        }
+        QSqlDatabase::removeDatabase(cname);
 
         itList.value().second->close();
         mTableList.erase(itList);
@@ -3165,7 +3435,7 @@ void LUMASSMainWin::saveAsVectorLayerOGR(void)
     bool bOk = false;
     QString theDriverName = QInputDialog::getItem(this, tr("Save As Vector Layer"),
             tr("Select Data Format (Driver)"),
-            sDriverList, 0, false, &bOk, 0);
+            sDriverList, 0, false, &bOk, {});
 
     // if the user pressed cancel
     if (!bOk)
@@ -3515,7 +3785,9 @@ void LUMASSMainWin::checkRemoveLayerInfo(NMLayer* l)
         const QString cname = tm->database().connectionName();
         const QString dbname = tm->database().databaseName();
         const QString viewtitle = tv->windowTitle();
-        tm->database().close();
+        //QSqlDatabase db = tm->database();
+        //tm->clear();
+        //db.close();
 
         mTableDbNames.remove(dbname, viewtitle);
 
@@ -3527,9 +3799,130 @@ void LUMASSMainWin::checkRemoveLayerInfo(NMLayer* l)
         }
 
         mQSqlDbConnectionNameMap.remove(dbname, cname);
-        QSqlDatabase::removeDatabase(cname);
+        //{QSqlDatabase::removeDatabase(cname);}
 
+        //tm = 0;
+        //delete tv;
     }
+}
+
+void LUMASSMainWin::infoTableHeaderContextMenu()
+{
+    NMLayer* l = this->mLayerList->getSelectedLayer();
+    if (l == nullptr)
+    {
+        return;
+    }
+
+    QStringList allColumns;
+
+    if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
+    {
+        vtkDataSet* ds = const_cast<vtkDataSet*>(l->getDataSet());
+        vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
+        int nfields = dsAttr->GetNumberOfArrays();
+
+        for (int r=0; r < nfields; ++r)
+        {
+            vtkAbstractArray* aa = dsAttr->GetAbstractArray(r);
+            if (	aa == 0
+                ||  strcmp(aa->GetName(),"nm_sel") == 0
+                ||  strcmp(aa->GetName(),"nm_hole") == 0
+               )
+            {
+                continue;
+            }
+
+            allColumns << aa->GetName();
+        }
+    }
+    // =====================================================================
+    // 					READ IMAGE ATTRIBUTES
+    // =====================================================================
+    else if (l->getLayerType() == NMLayer::NM_IMAGE_LAYER)
+    {
+        NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+
+        NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(
+                    const_cast<QAbstractItemModel*>(il->getTable()));
+        QSqlDatabase db = sqlModel->database();
+        QSqlDriver* drv = db.driver();
+        QString queryStr = QString("SELECT * from %1 where %2 = %3")
+                .arg(drv->escapeIdentifier(sqlModel->tableName(), QSqlDriver::TableName))
+                .arg(drv->escapeIdentifier(sqlModel->getNMPrimaryKey(), QSqlDriver::FieldName))
+                .arg(0);
+
+        db.transaction();
+        QSqlQuery q(db);
+        QSqlRecord rec;
+
+        bool bempty = true;
+        if (q.exec(queryStr))
+        {
+            if (q.next())
+            {
+                rec = q.record();
+                bempty = false;
+            }
+        }
+
+        int ncols = sqlModel == 0 || rec.isEmpty() ? 1 : rec.count();
+
+        for (int r=0; r < ncols; ++r)
+        {
+            QString colname = sqlModel == 0 ? "Value" : rec.fieldName(r);
+
+            if (!colname.isEmpty())
+            {
+                allColumns << colname;
+            }
+        }
+        db.commit();
+        q.finish();
+        q.clear();
+    }
+    allColumns.sort(Qt::CaseInsensitive);
+
+    QStringList viewCols = NMGlobalHelper::getMultiItemSelection("Layer Attributes", "Select Attributes", allColumns, l->getInfoAttributes(), this);
+    l->setInfoAttributes(viewCols);
+
+    this->updateLayerInfo(this->mLastInfoLayer, this->mLastInfoTabCellId);
+
+}
+
+void LUMASSMainWin::infoTableHeaderClicked(int idx)
+{
+    QTableWidget* ti = this->ui->infoWidgetList->findChild<QTableWidget*>(
+                QString::fromUtf8("layerInfoTable"));
+    if (ti == 0)
+    {
+        NMWarn(ctxLUMASSMainWin, << "Couldn't find 'layerInfoTable'!");
+        return;
+    }
+
+    if (idx == 0)
+    {
+        if (mInfoTableSortOrder == 2)
+        {
+            ti->horizontalHeader()->setSortIndicatorShown(true);
+            ti->sortByColumn(0, Qt::AscendingOrder);
+            mInfoTableSortOrder = 0;
+        }
+        else if (mInfoTableSortOrder == 0)
+        {
+            ti->horizontalHeader()->setSortIndicatorShown(true);
+            ti->sortByColumn(0, Qt::DescendingOrder);
+            mInfoTableSortOrder = 1;
+        }
+        else if (mInfoTableSortOrder == 1)
+        {
+            mInfoTableSortOrder = 2;
+            this->updateLayerInfo(this->mLastInfoLayer, this->mLastInfoTabCellId);
+            ti->horizontalHeader()->setSortIndicatorShown(false);
+        }
+    }
+
+    ti->clearSelection();
 }
 
 void LUMASSMainWin::updateLayerInfo(NMLayer* l, long long cellId)
@@ -3554,6 +3947,7 @@ void LUMASSMainWin::updateLayerInfo(NMLayer* l, long long cellId)
         return;
     }
     this->mLastInfoLayer = l;
+    this->mLastInfoTabCellId = cellId;
 
     ti->setColumnCount(2);
     ti->horizontalHeader()->setStretchLastSection(true);
@@ -3563,6 +3957,7 @@ void LUMASSMainWin::updateLayerInfo(NMLayer* l, long long cellId)
 
     ti->setHorizontalHeaderLabels(colHeaderLabels);
 
+    QStringList infoCols = l->getInfoAttributes();
     // =====================================================================
     // 					READ VECTOR ATTRIBUTES
     // =====================================================================
@@ -3575,6 +3970,11 @@ void LUMASSMainWin::updateLayerInfo(NMLayer* l, long long cellId)
         // we substract 2 fields from that list (i.e. nm_sel, nm_hole)
         ti->setRowCount(nfields-2);
 
+        if (infoCols.size() > 0)
+        {
+            ti->setRowCount(infoCols.size());
+        }
+
         long rowcnt = 0;
         for (int r=0; r < nfields; ++r)
         {
@@ -3582,6 +3982,9 @@ void LUMASSMainWin::updateLayerInfo(NMLayer* l, long long cellId)
             if (	aa == 0
                 ||  strcmp(aa->GetName(),"nm_sel") == 0
                 ||  strcmp(aa->GetName(),"nm_hole") == 0
+                ||  (   infoCols.size() > 0
+                     && !infoCols.contains(aa->GetName())
+                    )
                )
             {
                 continue;
@@ -3647,17 +4050,29 @@ void LUMASSMainWin::updateLayerInfo(NMLayer* l, long long cellId)
 
         int ncols = sqlModel == 0 || rec.isEmpty() ? 1 : rec.count();
         ti->setRowCount(ncols);
+        if (infoCols.size() > 0)
+        {
+            ti->setRowCount(infoCols.size());
+        }
 
+        int showRows = 0;
         for (int r=0; r < ncols; ++r)
         {
             QTableWidgetItem *item1;
             QString colname = sqlModel == 0 ? "Value" : rec.fieldName(r);
 
+            if (    infoCols.size() > 0
+                 && !infoCols.contains(colname)
+               )
+            {
+                continue;
+            }
+
             if (!colname.isEmpty())
                 item1 = new QTableWidgetItem(colname);
             else
                 item1 = new QTableWidgetItem("");
-            ti->setItem(r, 0, item1);
+            ti->setItem(showRows, 0, item1);
 
             QTableWidgetItem *item2;
             if (rec.count())
@@ -3677,11 +4092,25 @@ void LUMASSMainWin::updateLayerInfo(NMLayer* l, long long cellId)
                 //item2 = new QTableWidgetItem(QString("%1").arg(cellId, 0, 'g'));
                 item2 = new QTableWidgetItem(QString("%1").arg(cellId));
             }
-            ti->setItem(r, 1, item2);
+            ti->setItem(showRows, 1, item2);
+            ++showRows;
         }
         q.finish();
         q.clear();
         db.commit();
+    }
+
+    if (this->mInfoTableSortOrder == 0)
+    {
+        ti->sortByColumn(0, Qt::AscendingOrder);
+    }
+    else if (this->mInfoTableSortOrder == 1)
+    {
+        ti->sortByColumn(0, Qt::DescendingOrder);
+    }
+    else
+    {
+        ti->horizontalHeader()->setSortIndicatorShown(false);
     }
 
     connect(l, SIGNAL(destroyed()), ti, SLOT(clear()));
@@ -3787,7 +4216,7 @@ LUMASSMainWin::treeAdmin(QAbstractItemModel *&model,
     bool ok;
     QString idColName = QInputDialog::getItem(this, tr("Tree Analysis"),
                                              tr("Please select Parent column:"), colnames,
-                                             0, false, &ok, 0);
+                                             0, false, &ok, {});
     if (ok && !idColName.isEmpty())
     {
         parIdx = nameIdxMap.find(idColName).value();
@@ -3803,7 +4232,7 @@ LUMASSMainWin::treeAdmin(QAbstractItemModel *&model,
 
     QString dnColName = QInputDialog::getItem(this, tr("Tree Analysis"),
                                              tr("Please select Child column:"), colnames,
-                                             0, false, &ok, 0);
+                                             0, false, &ok, {});
     if (ok && !dnColName.isEmpty())
     {
         childIdx = nameIdxMap.find(dnColName).value();
@@ -4068,7 +4497,7 @@ LUMASSMainWin::processTree(QAbstractItemModel*& model, int& parIdx,
         }
     }
 
-    return recordIdList.toList();
+    return recordIdList.values();
 }
 
 QStringList
@@ -4102,9 +4531,167 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
+    ///*************************************************************************
+    ///********              NMMOSRA :: IPOPT                           ********
+    ///*************************************************************************
 
+    QStringList choiceList;
+    choiceList << "Solve" << "Map";
+    QString userChoice = NMGlobalHelper::getItemSelection("Solving or Mapping?", "It's your choice:", choiceList, this);
+
+    if (mpMosra != nullptr)
+    {
+        delete mpMosra;
+    }
+    mpMosra = new NMMosra(this);
+
+    //QString suggestFN = "/mnt/data/win/crunch/OLW_Mosaics/scenarios/rua_small/rua_small.los";
+
+    QString fileName = QFileDialog::getOpenFileName(this,
+         tr("Open Optimisation Settings"), "~", tr("LUMASS Optimisation Settings (*.los)"));
+
+
+    QFileInfo fileinfo(fileName);
+
+    QString path = fileinfo.absoluteDir().path();
+    QString baseName = fileinfo.baseName();
+    if (!fileinfo.isReadable())
+    {
+        NMLogError(<< ctxLUMASSMainWin << ": Could not read file '" << fileName.toStdString() << "'!");
+        NMDebugCtx(ctxLUMASSMainWin, << "done!");
+        return;
+    }
+
+    QString tresPath = ::getenv("MOSO_RESULT_PATH");
+    if (tresPath.isEmpty())
+    {
+        tresPath = path;
+    }
+    QFileInfo pathInfo(tresPath);
+    QDir parentDir(pathInfo.path());
+
+    // create a new optimisation object
+    //QScopedPointer<NMMosra> mpMosra(new NMMosra(this));
+    mpMosra->setLogger(this->getLogger());
+    mpMosra->loadSettings(fileName);
+
+
+    QString ldbName = QString("%1/%2.ldb").arg(path).arg(mpMosra->getLayerName());
+    otb::SQLiteTable::Pointer tab = otb::SQLiteTable::New();
+    tab->SetDbFileName(ldbName.toStdString());
+    if (!tab->openConnection())
+    {
+        NMErr("Ipopt testing", << "Sumthing went wrong and we're cross now!" );
+        return;
+    }
+
+    QString tableName = QString("%1_1").arg(mpMosra->getLayerName());
+    tab->SetTableName(tableName.toStdString());
+    if (!tab->PopulateTableAdmin())
+    {
+        NMErr("Ipopt testing", << "Couldn't populate the table's admin structures!");
+        return;
+    }
+
+    mpMosra->setScenarioName("Mosaics' Model TEST");
+    mpMosra->setDataSet(tab.GetPointer());
+
+    ///////////////////////////////////////////////////////////////////////////
+    //              SOLVE
+    ///////////////////////////////////////////////////////////////////////////
+    if (userChoice.compare(QStringLiteral("Solve")) == 0)
+    {
+        this->showBusyStart();
+        mpMosra->solveProblem();
+        this->showBusyEnd();
+    }
+    ///////////////////////////////////////////////////////////////////////////
+    //              Map
+    ///////////////////////////////////////////////////////////////////////////
+    else
+    {
+        QString losFN = mpMosra->getLosFileName();
+        QFileInfo lfo(losFN);
+
+        QString solFN = QString("%1/%2.dvars").arg(lfo.absolutePath()).arg(lfo.baseName());
+        QFileInfo infoSol(solFN);
+        if (!infoSol.exists())
+        {
+            NMLogError(<< "Missing ipopt *.dvars file!");
+            this->showBusyEnd();
+            return;
+        }
+        if (mpMosra->getSolFileName().isEmpty())
+        {
+            mpMosra->setSolFileName(solFN);
+        }
+
+
+        this->showBusyStart();
+        mpMosra->mapNL();
+        this->showBusyEnd();
+
+    }
+
+    return;
+
+    /*
+    QString ipoptPath = "/home/users/herziga/crunch/LumassApptainer/ipopt-latest.sif /opt/ipopt/install/bin/ipopt";
+    QString bindPath = QString("%1:/data").arg(path);
+    QString bindName = "APPTAINER_BINDPATH";
+    QString ipoptCommand = QString("/opt/Apptainer/bin/apptainer exec %1 /data/%2.nl output_file=/data/%1.sol file_print_level=8 "
+                                   "max_iter=5 wantsol=2 > %2.dvars")
+            .arg(path)
+            .arg(baseName);
+
+    NMLogInfo(<< "Calling apptainer run " << ipoptPath.toStdString() << " /data/"
+              << baseName.toStdString() << ".nl output_file=/data/"
+              << baseName.toStdString() << ".sol file_print_level=8" );
+    NMLogInfo(<< "...");
+
+
+    QProcessEnvironment procEnv = QProcessEnvironment::systemEnvironment();
+    procEnv.insert(bindName, bindPath);
+
+    if (mpLuProc != nullptr)
+    {
+        mpLuProc->close();
+        delete mpLuProc;
+    }
+
+    mpLuProc = new OptProc(this);
+    mpLuProc->setProcessChannelMode(QProcess::MergedChannels);
+    mpLuProc->setWorkingDirectory(path);
+    mpLuProc->setProcessEnvironment(procEnv);
+
+    connect(mpLuProc, SIGNAL(readyRead()), this, SLOT(readProcOutput()));
+
+    this->showBusyStart();
+    mpLuProc->start(ipoptCommand);
+    mpLuProc->waitForFinished(-1);
+    this->showBusyEnd();
+
+    mpLuProc->close();
+    delete mpLuProc;
+    mpLuProc = nullptr;
+
+    return;
+    */
 }
 
+void
+LUMASSMainWin::readProcOutput()
+{
+    if (mpLuProc != nullptr)
+    {
+        QString baOut = mpLuProc->readAllStandardOutput();
+        NMLogInfoNoNL(<< baOut.toStdString());
+    }
+    else
+    {
+        NMLogError(<< "External Process is NULL!");
+    }
+}
 
 bool
 LUMASSMainWin::checkTree(const int& rootId, const int &stopId,
@@ -4723,6 +5310,9 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
         }
     }
 
+    QFontMetrics fm = this->mPixelValLabel->fontMetrics();
+
+
     int nDim = 2;
     double zcoord = 0.0;
     QString pixval = "";
@@ -5015,7 +5605,7 @@ void LUMASSMainWin::doMOSO()
     }
 
     // create a new optimisation object
-    NMMosra* mosra = new NMMosra(this);
+    QScopedPointer<NMMosra> mosra(new NMMosra(this));
     mosra->setLogger(mLogger);
 
     // load the file with optimisation settings
@@ -5031,12 +5621,10 @@ void LUMASSMainWin::doMOSO()
                               QString("Could not find layer '%1'!")
                                  .arg(mosra->getLayerName())
                               );
-        delete mosra;
         NMDebugCtx(ctxLUMASSMainWin, << "done!");
         return;
     }
 
-    // now set the layer, do moso and clean up
     if (layer->getLayerType() == NMLayer::NM_VECTOR_LAYER)
     {
         mosra->setDataSet(layer->getDataSet());
@@ -5046,7 +5634,7 @@ void LUMASSMainWin::doMOSO()
         NMImageLayer* il = qobject_cast<NMImageLayer*>(layer);
         if (il != nullptr)
         {
-            mosra->setDataSet(qobject_cast<QSqlTableModel*>(const_cast<QAbstractItemModel*>(il->getTable())));
+            mosra->setDataSet(qobject_cast<NMSqlTableModel*>(const_cast<QAbstractItemModel*>(il->getTable())));
         }
     }
     mosra->setTimeOut(0); // clears any time out setting ...
@@ -5097,7 +5685,6 @@ void LUMASSMainWin::doMOSO()
         //NMDebugAI( << "write report to '" << sRepName.toStdString() << "'" << std::endl);
         //mosra->writeReport(sRepName);
 
-        delete mosra;
         return;
     }
 
@@ -5131,6 +5718,7 @@ void LUMASSMainWin::doMOSO()
     this->openTablesReadWrite();
     int solved = mosra->mapLp();
     this->openTablesReadOnly();
+
 
     layer->tableDataChanged(QModelIndex(), QModelIndex());
 
@@ -5283,8 +5871,6 @@ void LUMASSMainWin::doMOSO()
         //			cw->show();
         //		}
     }
-
-    delete mosra;
 
     if (solved)
     {
@@ -7199,11 +7785,12 @@ void LUMASSMainWin::toggle3DSimpleMode()
         }
 
         // set image interaction
-        NMVtkInteractorStyleImage* iasim = NMVtkInteractorStyleImage::New();
+        //NMVtkInteractorStyleImage* iasim = NMVtkInteractorStyleImage::New();
 #ifdef QT_HIGHDPI_SUPPORT
-        iasim->setDevicePixelRatio(this->devicePixelRatioF());
+        //iasim->setDevicePixelRatio(this->devicePixelRatioF());
+        this->m_iasimg->setDevicePixelRatio(this->devicePixelRatioF());
 #endif
-        this->ui->qvtkWidget->interactor()->SetInteractorStyle(iasim);
+        this->ui->qvtkWidget->interactor()->SetInteractorStyle(m_iasimg);
 
         // switch back to parallel projection
         cam0->ParallelProjectionOn();
@@ -8070,6 +8657,7 @@ LUMASSMainWin::getDbConnection(const QString &dbFileName, bool bReadWrite, const
     foreach(const QString& cns, dbConns)
     {
         if (    (!conSuffix.isEmpty() && cns.endsWith(conSuffix))
+            ||  conSuffix.isEmpty()
             ||  cns.compare(mSessionDbConName) == 0
            )
         {
@@ -8926,3 +9514,158 @@ void LUMASSMainWin::closeEvent(QCloseEvent* event)
 #endif
 }
 
+QString LUMASSMainWin::eventTypeToString(const QEvent::Type type)
+{
+    QString msg;
+    switch(type)
+    {
+    case 1  : "Regular timer events (QTimerEvent)."; break;
+    case 2  : "Mouse press (QMouseEvent)."; break;
+    case 3  : "Mouse release (QMouseEvent)."; break;
+    case 4  : "Mouse press again (QMouseEvent)."; break;
+    case 5  : "Mouse move (QMouseEvent)."; break;
+    case 6  : "Key press (QKeyEvent)."; break;
+    case 7  : "Key release (QKeyEvent)."; break;
+    case 8  : "Widget or Window gains keyboard focus (QFocusEvent)."; break;
+    case 9  : "Widget or Window loses keyboard focus (QFocusEvent)."; break;
+    case 10 : "Mouse enters widget's boundaries (QEnterEvent)."; break;
+    case 11 : "Mouse leaves widget's boundaries."; break;
+    case 12 : "Screen update necessary (QPaintEvent)."; break;
+    case 13 : "Widget's position changed (QMoveEvent)."; break;
+    case 14 : "Widget's size changed (QResizeEvent)."; break;
+    case 17 : "Widget was shown on screen (QShowEvent)."; break;
+    case 18 : "Widget was hidden (QHideEvent)."; break;
+    case 19 : "Widget was closed (QCloseEvent)."; break;
+    case 21 : "The widget parent has changed."; break;
+    case 22 : "The object is moved to another thread. This is the last event sent to this object in the previous thread. See QObject::moveToThread()."; break;
+    case 23 : "Widget or Window focus is about to change (QFocusEvent)"; break;
+    case 24 : "Window was activated."; break;
+    case 25 : "Window was deactivated."; break;
+    case 26 : "A child widget has been shown."; break;
+    case 27 : "A child widget has been hidden."; break;
+    case 31 : "Mouse wheel rolled (QWheelEvent)."; break;
+    case 33 : "The window title has changed."; break;
+    case 34 : "The window's icon has changed."; break;
+    case 35 : "The application's icon has changed."; break;
+    case 36 : "The default application font has changed."; break;
+    case 37 : "The default application layout direction has changed."; break;
+    case 38 : "The default application palette has changed."; break;
+    case 39 : "Palette of the widget changed."; break;
+    case 40 : "The clipboard contents have changed."; break;
+    case 43 : "An asynchronous method invocation via QMetaObject::invokeMethod()."; break;
+    case 50 : "Socket activated, used to implement QSocketNotifier."; break;
+    case 51 : "Key press in child, for overriding shortcut key handling (QKeyEvent). When a shortcut is about to trigger, ShortcutOverride is sent to the active window. This allows clients (e.g. widgets) to signal that they will handle the shortcut themselves, by accepting the event. If the shortcut override is accepted, the event is delivered as a normal key press to the focus widget. Otherwise, it triggers the shortcut action, if one exists."; break;
+    case 52 : "The object will be deleted after it has cleaned up (QDeferredDeleteEvent)"; break;
+    case 60 : "The cursor enters a widget during a drag and drop operation (QDragEnterEvent)."; break;
+    case 61 : "A drag and drop operation is in progress (QDragMoveEvent)."; break;
+    case 62 : "The cursor leaves a widget during a drag and drop operation (QDragLeaveEvent)."; break;
+    case 63 : "A drag and drop operation is completed (QDropEvent)."; break;
+    case 68 : "An object gets a child (QChildEvent)."; break;
+    case 69 : "A widget child gets polished (QChildEvent)."; break;
+    case 71 : "An object loses a child (QChildEvent)."; break;
+    case 74 : "The widget should be polished."; break;
+    case 75 : "The widget is polished."; break;
+    case 76 : "Widget layout needs to be redone."; break;
+    case 77 : "The widget should be repainted."; break;
+    case 78 : "The widget should be queued to be repainted at a later time."; break;
+    case 82 : "Context popup menu (QContextMenuEvent)."; break;
+    case 83 : "An input method is being used (QInputMethodEvent)."; break;
+    case 87 : "Wacom tablet move (QTabletEvent)."; break;
+    case 88 : "The system locale has changed."; break;
+    case 89 : "The application translation changed."; break;
+    case 90 : "The direction of layouts changed."; break;
+    case 92 : "Wacom tablet press (QTabletEvent)."; break;
+    case 93 : "Wacom tablet release (QTabletEvent)."; break;
+    case 96 : "The main icon of a window has been dragged away (QIconDragEvent)."; break;
+    case 97 : "Widget's font has changed."; break;
+    case 98 : "Widget's enabled state has changed."; break;
+    case 99 : "A widget's top-level window activation state has changed."; break;
+    case 100: "Widget's style has been changed."; break;
+    case 101: "Widget's icon text has been changed. (Deprecated)"; break;
+    case 102: "Widgets modification state has been changed."; break;
+    case 103: "The window is blocked by a modal dialog."; break;
+    case 104: "The window is unblocked after a modal dialog exited."; break;
+    case 105: "The window's state (minimized, maximized or full-screen) has changed (QWindowStateChangeEvent)."; break;
+    case 106: "Widget's read-only state has changed (since Qt 5.4)."; break;
+    case 109: "The mouse tracking state has changed."; break;
+    case 110: "A tooltip was requested (QHelpEvent)."; break;
+    case 111: "The widget should reveal \"What's This?\" help (QHelpEvent)."; break;
+    case 112: "A status tip is requested (QStatusTipEvent)."; break;
+    case 113: "An action has been changed (QActionEvent)."; break;
+    case 114: "A new action has been added (QActionEvent)."; break;
+    case 115: "An action has been removed (QActionEvent)."; break;
+    case 116: "File open request (QFileOpenEvent)."; break;
+    case 117: "Key press in child for shortcut key handling (QShortcutEvent)."; break;
+    case 118: "A link in a widget's \"What's This?\" help was clicked."; break;
+    case 120: "The toolbar button is toggled on macOS."; break;
+    case 121: "This enum has been deprecated. Use ApplicationStateChange instead."; break;
+    case 122: "This enum has been deprecated. Use ApplicationStateChange instead."; break;
+    case 123: "The widget should accept the event if it has \"What's This?\" help (QHelpEvent)."; break;
+    case 124: "Send to toplevel widgets when the application enters \"What's This?\" mode."; break;
+    case 125: "Send to toplevel widgets when the application leaves \"What's This?\" mode."; break;
+    case 126: "The widget's z-order has changed. This event is never sent to top level windows."; break;
+    case 127: "The mouse cursor enters a hover widget (QHoverEvent)."; break;
+    case 128: "The mouse cursor leaves a hover widget (QHoverEvent)."; break;
+    case 129: "The mouse cursor moves inside a hover widget (QHoverEvent)."; break;
+    case 131: "The widget parent is about to change."; break;
+    case 132: "A Windows-specific activation event has occurred."; break;
+    case 150: "An editor widget gains focus for editing. QT_KEYPAD_NAVIGATION must be defined."; break;
+    case 151: "An editor widget loses focus for editing. QT_KEYPAD_NAVIGATION must be defined."; break;
+    case 155: "Move mouse in a graphics scene (QGraphicsSceneMouseEvent)."; break;
+    case 156: "Mouse press in a graphics scene (QGraphicsSceneMouseEvent)."; break;
+    case 157: "Mouse release in a graphics scene (QGraphicsSceneMouseEvent)."; break;
+    case 158: "Mouse press again (double click) in a graphics scene (QGraphicsSceneMouseEvent)."; break;
+    case 159: "Context popup menu over a graphics scene (QGraphicsSceneContextMenuEvent)."; break;
+    case 160: "The mouse cursor enters a hover item in a graphics scene (QGraphicsSceneHoverEvent)."; break;
+    case 161: "The mouse cursor moves inside a hover item in a graphics scene (QGraphicsSceneHoverEvent)."; break;
+    case 162: "The mouse cursor leaves a hover item in a graphics scene (QGraphicsSceneHoverEvent)."; break;
+    case 163: "The user requests help for a graphics scene (QHelpEvent)."; break;
+    case 164: "The cursor enters a graphics scene during a drag and drop operation (QGraphicsSceneDragDropEvent)."; break;
+    case 165: "A drag and drop operation is in progress over a scene (QGraphicsSceneDragDropEvent)."; break;
+    case 166: "The cursor leaves a graphics scene during a drag and drop operation (QGraphicsSceneDragDropEvent)."; break;
+    case 167: "A drag and drop operation is completed over a scene (QGraphicsSceneDragDropEvent)."; break;
+    case 168: "Mouse wheel rolled in a graphics scene (QGraphicsSceneWheelEvent)."; break;
+    case 169: "The keyboard layout has changed."; break;
+    case 170: "A dynamic property was added, changed, or removed from the object."; break;
+    case 171: "Wacom tablet enter proximity event (QTabletEvent), sent to QApplication."; break;
+    case 172: "Wacom tablet leave proximity event (QTabletEvent), sent to QApplication."; break;
+    case 173: "A mouse move occurred outside the client area (QMouseEvent)."; break;
+    case 174: "A mouse button press occurred outside the client area (QMouseEvent)."; break;
+    case 175: "A mouse button release occurred outside the client area (QMouseEvent)."; break;
+    case 176: "A mouse double click occurred outside the client area (QMouseEvent)."; break;
+    case 177: "The user changed his widget sizes (macOS only)."; break;
+    case 178: "The margins of the widget's content rect changed."; break;
+    case 181: "Widget was resized (QGraphicsSceneResizeEvent)."; break;
+    case 182: "Widget was moved (QGraphicsSceneMoveEvent)."; break;
+    case 183: "The widget's cursor has changed."; break;
+    case 184: "The widget's tooltip has changed."; break;
+    case 186: "Item gains mouse grab (QGraphicsItem only)."; break;
+    case 187: "Item loses mouse grab (QGraphicsItem, QQuickItem)."; break;
+    case 188: "Item gains keyboard grab (QGraphicsItem only)."; break;
+    case 189: "Item loses keyboard grab (QGraphicsItem only)."; break;
+    case 192: "A signal delivered to a state machine (QStateMachine::SignalEvent)."; break;
+    case 193: "The event is a wrapper for, i.e., contains, another event (QStateMachine::WrappedEvent)."; break;
+    case 194: "Beginning of a sequence of touch-screen or track-pad events (QTouchEvent)."; break;
+    case 195: "Touch-screen event (QTouchEvent)."; break;
+    case 196: "End of touch-event sequence (QTouchEvent)."; break;
+    case 197: "The system has detected a gesture (QNativeGestureEvent)."; break;
+    case 198: "A gesture was triggered (QGestureEvent)."; break;
+    case 199: "A widget wants to open a software input panel (SIP)."; break;
+    case 200: "A widget wants to close the software input panel (SIP)."; break;
+    case 202: "A gesture override was triggered (QGestureEvent)."; break;
+    case 203: "The window system identifer for this native widget has changed."; break;
+    case 204: "The object needs to fill in its geometry information (QScrollPrepareEvent)."; break;
+    case 205: "The object needs to scroll to the supplied position (QScrollEvent)."; break;
+    case 206: "Sent to a window when its on-screen contents are invalidated and need to be flushed from the backing store."; break;
+    case 207: "A input method query event (QInputMethodQueryEvent)"; break;
+    case 208: "The screens orientation has changes (QScreenOrientationChangeEvent)."; break;
+    case 209: "Cancellation of touch-event sequence (QTouchEvent)."; break;
+    case 212: "A platform specific panel has been requested."; break;
+    case 214: "The state of the application has changed."; break;
+    case 217: "A native platform surface has been created or is about to be destroyed (QPlatformSurfaceEvent)."; break;
+    case 219: "The Wacom tablet tracking state has changed (since Qt 5.9)."; break;
+    default: "aehh, no plan ... !";
+    }
+
+    return msg;
+}

@@ -26,7 +26,7 @@ NMWidgetListView::NMWidgetListView(QWidget *parent) :
     QWidget(parent)
 {
     QSizePolicy spSA(QSizePolicy::Expanding,
-                        QSizePolicy::Expanding);
+                        QSizePolicy::Ignored);
     spSA.setHorizontalStretch(0);
     spSA.setVerticalStretch(0);
     spSA.setHeightForWidth(false);

@@ -86,11 +86,11 @@ NMProcessComponentItem::initRectsNSizes()
     mClockRect = QRectF(mIconBnd.left()+smallGap, mIconBnd.top()+bigGap,
                         fm.height()*0.6,fm.height()*0.6);
 
-    qreal timewidth = fm.width(QString("%1").arg(9999));
+    qreal timewidth = fm.horizontalAdvance(QString("%1").arg(9999));
     mTimeLevelRect = QRectF(mClockRect.right()+smallGap,mIconBnd.top()+1.5,
                             timewidth,fm.height());
 
-    qreal idwidth = fm.width(QString("%1").arg(9999));
+    qreal idwidth = fm.horizontalAdvance(QString("%1").arg(9999));
     mIDRect = QRectF(mIconBnd.right()-idwidth-bigGap, mIconBnd.top()+1.5,
                      idwidth, fm.height());
 
@@ -418,7 +418,7 @@ NMProcessComponentItem::paint(QPainter* painter,
         //QPen pen = QPen(QBrush(Qt::darkGray), 2, Qt::SolidLine);
         QPen pen = QPen(QBrush(Qt::darkRed), 2, Qt::SolidLine);
 		painter->setPen(pen);
-		painter->drawRoundRect(mIconBnd, 10, 10);
+        painter->drawRoundedRect(mIconBnd, 10, 10);
 
 		// draw icon
         painter->drawPixmap(mIconRect.toRect(), mIcon, QRectF(0,0,64*dpr,64*dpr)); // 0,0,64,64
@@ -431,7 +431,7 @@ NMProcessComponentItem::paint(QPainter* painter,
 			painter->setFont(mFont);
             QString strProg = QString("%1\%").arg(this->mProgress, 3, 'f', 0);
             painter->drawText(QRectF(mIconBnd.right()-40*dpr,mIconBnd.top()+1.5,
-                              fm.width(strProg),fm.height()),
+                              fm.horizontalAdvance(strProg),fm.height()),
                     Qt::AlignRight, strProg);
 		}
 	}
@@ -445,7 +445,7 @@ NMProcessComponentItem::paint(QPainter* painter,
 		else
             pen = QPen(QBrush(Qt::darkGray), 2, Qt::SolidLine);
 		painter->setPen(pen);
-		painter->drawRoundRect(mIconBnd, 10, 10);
+        painter->drawRoundedRect(mIconBnd, 10, 10);
 
 		// draw icon
         painter->drawPixmap(mIconRect, mIcon, QRectF(0,0,64*dpr,64*dpr));

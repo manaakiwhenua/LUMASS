@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+   <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
@@ -36,11 +36,14 @@
     </sizepolicy>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout_3">
+    <property name="sizeConstraint">
+     <enum>QLayout::SetDefaultConstraint</enum>
+    </property>
     <item>
      <widget class="NMModelViewWidget" name="modelViewWidget" native="true"/>
     </item>
     <item>
-     <widget class="NMQVTKOpenGLWidget" name="qvtkWidget" native="true"/>
+     <widget class="QVTKOpenGLNativeWidget" name="qvtkWidget" native="true"/>
     </item>
    </layout>
   </widget>
@@ -50,7 +53,7 @@
      <x>0</x>
      <y>0</y>
      <width>1001</width>
-     <height>22</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuObject">
@@ -92,6 +95,7 @@
     <addaction name="separator"/>
     <addaction name="actionBackground_Colour"/>
     <addaction name="actionSaveAsImage"/>
+    <addaction name="actionMake_Z_Slice_Movie"/>
    </widget>
    <widget class="QMenu" name="menuMOSO">
     <property name="title">
@@ -165,7 +169,7 @@
   </widget>
   <widget class="QDockWidget" name="componentsWidget">
    <property name="sizePolicy">
-    <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
@@ -187,7 +191,7 @@
    </attribute>
    <widget class="QWidget" name="compDock">
     <property name="sizePolicy">
-     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
       <horstretch>0</horstretch>
       <verstretch>0</verstretch>
      </sizepolicy>
@@ -203,8 +207,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>68</width>
-          <height>615</height>
+          <width>83</width>
+          <height>267</height>
          </rect>
         </property>
         <property name="acceptDrops">
@@ -218,20 +222,23 @@
   </widget>
   <widget class="QDockWidget" name="componentInfoDock">
    <property name="sizePolicy">
-    <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
+   </property>
+   <property name="features">
+    <set>QDockWidget::AllDockWidgetFeatures</set>
    </property>
    <property name="windowTitle">
     <string>Att&amp;ributes and Properties</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>2</number>
+    <number>1</number>
    </attribute>
    <widget class="QWidget" name="infoDock">
     <property name="sizePolicy">
-     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
       <horstretch>0</horstretch>
       <verstretch>0</verstretch>
      </sizepolicy>
@@ -247,8 +254,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>68</width>
-          <height>615</height>
+          <width>83</width>
+          <height>267</height>
          </rect>
         </property>
        </widget>
@@ -265,6 +272,12 @@
     <number>8</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
     <layout class="QVBoxLayout" name="verticalLayout_4">
      <item>
       <widget class="NMLogWidget" name="logEdit">
@@ -383,6 +396,9 @@
   <action name="actionTest">
    <property name="text">
     <string>&amp;test</string>
+   </property>
+   <property name="toolTip">
+    <string>This is a TEST!!</string>
    </property>
   </action>
   <action name="actionFieldCalculator">
@@ -558,6 +574,14 @@
     <string>&amp;Add Toolbar</string>
    </property>
   </action>
+  <action name="actionMake_Z_Slice_Movie">
+   <property name="text">
+    <string>Make Z-Slice Movie ...</string>
+   </property>
+   <property name="toolTip">
+    <string>Make Z-Slice Movie</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
@@ -579,9 +603,9 @@
    <header>NMLogWidget.h</header>
   </customwidget>
   <customwidget>
-   <class>NMQVTKOpenGLWidget</class>
+   <class>QVTKOpenGLNativeWidget</class>
    <extends>QWidget</extends>
-   <header>NMQVTKOpenglWidget.h</header>
+   <header>/home/users/herziga/garage/cpp/VTK-9.3.0.rc1/GUISupport/Qt/QVTKOpenGLNativeWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

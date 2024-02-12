@@ -60,6 +60,8 @@ public:
 		{mLastMousePos = pos;}
 
 private:
+
+
 	QPoint mLastMousePos;
 
 };

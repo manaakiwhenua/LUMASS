@@ -25,6 +25,7 @@
 #include "NMSelSortSqlTableProxyModel.h"
 #include <cstdio>
 #include <ctime>
+#include <random>
 
 #include <QSqlDatabase>
 #include <QSqlQuery>
@@ -564,44 +565,52 @@ NMSelSortSqlTableProxyModel::getRandomString(int len)
         return QString();
     }
 
+    std::random_device rand_rd;
+    std::mt19937 rand_mt(rand_rd());
+    std::uniform_int_distribution<int> rand_1_1e6(1, 1e6);
+    std::uniform_int_distribution<int> rand_48_57(48, 57);
+    std::uniform_int_distribution<int> rand_65_90(65, 90);
+    std::uniform_int_distribution<int> rand_97_122(97, 122);
+
     //std::srand(std::time(0));
     char* nam = new char[len+1];
     for (int i=0; i < len; ++i)
     {
         if (i == 0)
         {
-            if (::rand() % 2 == 0)
+            if (rand_1_1e6(rand_mt) % 2 == 0)
             {
-                nam[i] = ::rand() % 26 + 65;
+                nam[i] = rand_65_90(rand_mt);
             }
             else
             {
-                nam[i] = ::rand() % 26 + 97;
+                nam[i] = rand_97_122(rand_mt);
             }
         }
         else
         {
-            if (::rand() % 7 == 0)
+            if (rand_1_1e6(rand_mt) % 7 == 0)
             {
                 nam[i] = '_';
             }
-            else if (::rand() % 5 == 0)
+            else if (rand_1_1e6(rand_mt) % 5 == 0)
             {
-                nam[i] = ::rand() % 26 + 65;
+                nam[i] = rand_65_90(rand_mt);
             }
-            else if (::rand() % 3 == 0)
+            else if (rand_1_1e6(rand_mt) % 3 == 0)
             {
-                nam[i] = ::rand() % 26 + 97;
+                nam[i] = rand_97_122(rand_mt);
             }
             else
             {
-                nam[i] = ::rand() % 10 + 48;
+                nam[i] = rand_48_57(rand_mt);
             }
         }
     }
     nam[len] = '\0';
     QString ret = nam;
     delete[] nam;
+
 
     return ret;
 }
@@ -702,7 +711,7 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     // first, we create a real sqlite temporary table from the
     // spatialite virtualtable
 
-    QString tempJoinTableName = this->getRandomString(5);
+    QString tempJoinTableName = this->getRandomString(10);
 
     QSqlDatabase db = mSourceModel->database();
     QSqlDriver* drv = db.driver();
@@ -750,7 +759,7 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     // ---------------------------------------------------------------
     // now, we create temporary join table ...
 
-    QString tempTableName = this->getRandomString(5);
+    QString tempTableName = this->getRandomString(10);
 
     ssql.str("");
     ssql << "CREATE TEMP TABLE " << tempTableName.toStdString() << " AS "
@@ -1200,7 +1209,7 @@ NMSelSortSqlTableProxyModel::removeColumn(const QString& name)
          << "CREATE TABLE main." << tablename << " as SELECT * FROM " << backuptable << ";"
          << "DROP TABLE " << backuptable << ";";
 
-    QStringList queries = QString::fromLatin1(ssql.str().c_str()).split(';', QString::SkipEmptyParts);
+    QStringList queries = QString::fromLatin1(ssql.str().c_str()).split(';', Qt::SkipEmptyParts);
     QStringList errortypes;
     errortypes << QStringLiteral("create temporary backup table:")
                << QStringLiteral("drop original table:")
@@ -1358,7 +1367,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
 
 
     //QString tmpCreate = QString("Create temp table if not exists %1 ")
-    QString tmpCreate = QString("Create table if not exists %1 ")
+    QString tmpCreate = QString("Create temp table if not exists %1 ")
                         .arg(db.driver()->escapeIdentifier(mTempTableName, QSqlDriver::TableName));
     tmpCreate += QString("(%1 integer primary key, %2 integer").arg(mProxyPK)
                                                        .arg(mSourcePK);
@@ -1681,7 +1690,7 @@ NMSelSortSqlTableProxyModel::flags(const QModelIndex &index) const
     if (index.isValid())
         return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable;
     else
-        return 0;
+        return QFlags<Qt::ItemFlag>();
 }
 
 QVariant

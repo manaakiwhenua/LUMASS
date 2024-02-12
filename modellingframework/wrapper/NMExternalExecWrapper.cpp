@@ -201,7 +201,7 @@ NMExternalExecWrapper::linkParameters(unsigned int step,
 
         foreach (const QString& kv, temp)
         {
-            QStringList aList = kv.split('=', QString::SkipEmptyParts);
+            QStringList aList = kv.split('=', Qt::SkipEmptyParts);
             if (aList.size() > 1)
             {
                 QString path = aList.at(1);

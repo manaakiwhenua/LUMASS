@@ -1018,7 +1018,8 @@ void
 NMStreamingImageFileWriterWrapper
 ::linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 {
-    NMDebugCtx(ctxNMStreamWriter, << "...");
+    //NMDebugCtx(ctxNMStreamWriter, << "...");
+    NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
     //if (step > this->mFileNames.size()-1)
     //	step = 0;
 //    step = this->mapHostIndexToPolicyIndex(step, mFileNames.size());
@@ -1083,7 +1084,8 @@ NMStreamingImageFileWriterWrapper
                 bWriteable = false;
                 if (rank == 0)
                 {
-                   NMDebugAI(<< "testing whether " << param.toString().toStdString()
+                   NMDebugAI(<< this->parent()->objectName().toStdString()
+                             << " tests whether " << param.toString().toStdString()
                              << " is writable." << endl);
                    bWriteable = this->isOutputFileNameWriteable(param.toString());
                 }
@@ -1093,9 +1095,8 @@ NMStreamingImageFileWriterWrapper
                     NMDebugAI(<< "broadcasting writeability to fellow ranks ... " << endl);
 
                     int errc = MPI_Bcast(&bWriteable, 1, MPI_CXX_BOOL, 0, comm);
-                    NMDebugAI(<< "Bcast: " << (errc == 0 ? "successful" : "failed") << endl);
-
                     MPI_Barrier(comm);
+                    NMDebugAI(<< "Bcast: " << (errc == 0 ? "successful" : "failed") << endl);
                 }
 
                 NMDebugAI(<< "lr" << rank << ": " << param.toString().toStdString()
@@ -1150,6 +1151,9 @@ NMStreamingImageFileWriterWrapper
             bWriteable = false;
             if (rank == 0)
             {
+                NMDebugAI(<< this->parent()->objectName().toStdString()
+                          << " tests whether " << pstr.toStdString()
+                          << " is writable." << endl);
                 bWriteable = this->isOutputFileNameWriteable(pstr);
             }
 
@@ -1159,11 +1163,12 @@ NMStreamingImageFileWriterWrapper
                           << ") to fellow ranks ... " << endl);
 
                 int errc = MPI_Bcast(&bWriteable, 1, MPI_CXX_BOOL, 0, comm);
-                NMDebugAI(<< "Bcast: " << (errc == 0 ? "successful" : "failed") << endl);
-
                 MPI_Barrier(comm);
+                NMDebugAI(<< "Bcast: " << (errc == 0 ? "successful" : "failed") << endl);
             }
 
+            NMDebugAI(<< "lr" << rank << ": " << pstr.toStdString()
+                      << "'s writable? " << (bWriteable ? "yes" : "no") << endl);
 
             //if (!this->isOutputFileNameWriteable(pstr))
             if (!bWriteable)
@@ -1306,14 +1311,15 @@ NMStreamingImageFileWriterWrapper
 
     this->setInternalParallelIO();
 
-    NMDebugCtx(ctxNMStreamWriter, << "done!");
+    NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
+
 }
 
 void
 NMStreamingImageFileWriterWrapper
 ::setInternalParallelIO(void)
 {
-    NMDebugCtx(ctxNMStreamWriter, << "...");
+    NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
 
     if (!this->mbIsInitialised)
         return;
@@ -1353,7 +1359,7 @@ NMStreamingImageFileWriterWrapper
     default:
         break;
     }
-    NMDebugCtx(ctxNMStreamWriter, << "done!");
+    NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
 }
 
 void

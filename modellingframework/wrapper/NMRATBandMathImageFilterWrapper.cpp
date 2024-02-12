@@ -478,7 +478,7 @@ NMRATBandMathImageFilterWrapper
         this->addRunTimeParaProvN(curExrProvN);
 
         // work out number of expressions from supplied expresssion string
-        numExpr = currentExpression.split(",", QString::SkipEmptyParts).size();
+        numExpr = currentExpression.split(",", Qt::SkipEmptyParts).size();
         this->setInternalNumExpression(numExpr);
 
         QString numExprProvN = QString("nm:NumExpressions=\"%1\"").arg(numExpr);

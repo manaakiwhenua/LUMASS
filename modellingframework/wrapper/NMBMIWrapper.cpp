@@ -193,7 +193,7 @@ public:
 
                 // double check whether name is provided as part inputspec
                 std::string inputname;
-                QStringList nameparts = input.split(":", QString::SkipEmptyParts);
+                QStringList nameparts = input.split(":", Qt::SkipEmptyParts);
                 if (nameparts.size() == 2)
                 {
                     QVariant npvar = QVariant::fromValue(nameparts.at(1));
@@ -520,7 +520,7 @@ NMBMIWrapper::parseYamlConfig()
 
               mComponentPathList.clear();
 
-              QStringList tmpList = mComponentPath.split(QDir::listSeparator(), QString::SkipEmptyParts);
+              QStringList tmpList = mComponentPath.split(QDir::listSeparator(), Qt::SkipEmptyParts);
 
               foreach(const QString & pathItem, tmpList)
               {

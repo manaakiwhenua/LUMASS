@@ -467,7 +467,6 @@ NMItkDataObjectWrapper& NMItkDataObjectWrapper::operator=(const NMItkDataObjectW
     this->mNumBands = w->getNumBands();
     this->mIsRGBImage = w->getIsRGBImage();
     this->mbIsStreaming = w->getIsStreaming();
-    this->setupBufferFilter();
 
     if (mbIsStreaming)
     {

@@ -51,14 +51,16 @@ NMMosraFilterWrapper
     Q_PROPERTY(QStringList TimeOut READ getTimeOut WRITE setTimeOut)
     Q_PROPERTY(QStringList ScenarioName READ getScenarioName WRITE setScenarioName)
     Q_PROPERTY(bool GenerateReports READ getGenerateReports WRITE setGenerateReports)
+    Q_PROPERTY(QStringList IpOptCommand READ getIpOptCommand WRITE setIpOptCommand)
 
 public:
-
 
     NMPropertyGetSet( LosFileName, QStringList )
     NMPropertyGetSet( TimeOut, QStringList )
     NMPropertyGetSet( ScenarioName, QStringList)
     NMPropertyGetSet( GenerateReports, bool )
+    NMPropertyGetSet( IpOptCommand, QStringList )
+    NMPropertyGetSet( ApplicationDirPath, QString)
 
 public:
     NMMosraFilterWrapper(QObject* parent=0);
@@ -85,10 +87,12 @@ protected:
     void linkParameters(unsigned int step,
             const QMap<QString, NMModelComponent*>& repo);
 
+    QString mApplicationDirPath;
 
     QStringList mLosFileName;
     QStringList mTimeOut;
     QStringList mScenarioName;
+    QStringList mIpOptCommand;
     bool mGenerateReports;
 
 };

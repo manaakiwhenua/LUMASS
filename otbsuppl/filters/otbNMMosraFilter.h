@@ -85,6 +85,8 @@ public:
     itkSetMacro(LosFileName, std::string)
     itkSetMacro(ScenarioName, std::string)
     itkSetMacro(LosSettings, std::string)
+    itkSetMacro(IpOptCommand, std::string)
+    itkSetMacro(ApplicationDirPath, std::string)
     itkSetMacro(GenerateReports, bool)
     itkSetMacro(TimeOut, int)
 
@@ -105,13 +107,21 @@ public:
     void GenerateData();
     void GenerateReportData(NMMosra* mosra, char* theTime=nullptr);
 
+    void lpSolve(NMMosra* mosra);
+    void ipOpt(NMMosra* mosra);
+    void openGA(NMMosra* mosra);
+
+    bool needToUpdateNlFile(const std::string& nlFile, const std::string& losFile);
+
     std::vector<std::string>  m_ImageNames;
 
+    std::string m_ApplicationDirPath;
     std::string m_CompName;
     std::string m_Workspace;
     std::string m_LosFileName;
     std::string m_ScenarioName;
     std::string m_LosSettings;
+    std::string m_IpOptCommand;
 //    std::string m_ReportFileName;
 //    std::string m_LpFileName;
 //    std::string

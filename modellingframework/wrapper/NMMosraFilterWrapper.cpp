@@ -27,8 +27,10 @@
 #include "itkProcessObject.h"
 #include "otbImage.h"
 
+#include <QApplication>
 #include <QTextStream>
 #include <QFile>
+#include <QFileInfo>
 
 #include "nmlog.h"
 #include "NMMacros.h"
@@ -171,7 +173,9 @@ public:
             QString losInString = losStream.readAll();
             losFile.close();
             QString losOutString = p->getModelController()->processStringParameter(p, losInString);
-            //f->SetLosFileName(curLosFileName);
+            // need this just for the los file's base name later on
+            f->SetLosFileName(curLosFileName.toStdString());
+            // need this for getting the evaluated lumass parameter settings forwarded to the NMMosra object
             f->SetLosSettings(losOutString.toStdString());
 
             QString losFileNameProvN = QString("nm:LosFileName=\"%1\"").arg(curLosFileName.toStdString().c_str());
@@ -209,6 +213,50 @@ public:
             QString ScenarioNameProvN = QString("nm:ScenarioName=\"%1\"").arg(curScenarioName.toStdString().c_str());
             p->addRunTimeParaProvN(ScenarioNameProvN);
         }
+
+        // set the application dir path, so we can find required
+        // helper scripts installed close to the main app
+        QString curApplicationDirPath = p->getApplicationDirPath();
+        QFileInfo contInfo(curApplicationDirPath);
+        if (!contInfo.exists() || !contInfo.isExecutable())
+        {
+            NMErr("NMMosraFilterWrapper_Internal", << "Invalid value for 'ApplicationDirPath'!"
+                  << " '" << curApplicationDirPath.toStdString() << "' either does not exist or is not executable!");
+            NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+            e.setDescription("Invalid value for 'ApplicationDirPath'!");
+            throw e;
+        }
+
+        f->SetApplicationDirPath(curApplicationDirPath.toStdString());
+
+        QString ApplicationDirPathProvN = QString("nm:ApplicationDirPath=\"%1\"").arg(curApplicationDirPath.toStdString().c_str());
+        p->addRunTimeParaProvN(ApplicationDirPathProvN);
+
+
+
+        QVariant curIpOptCommandVar = p->getParameter("IpOptCommand");
+        QString curIpOptCommand;
+        if (curIpOptCommandVar.isValid())
+        {
+            curIpOptCommand = curIpOptCommandVar.toString();
+            QString OutString = p->getModelController()->processStringParameter(p, curIpOptCommand);
+
+            //QFileInfo contInfo(OutString);
+            //if (!contInfo.exists() || !contInfo.isExecutable())
+            //{
+            //    NMErr("NMMosraFilterWrapper_Internal", << "Invalid value for 'IpOptCommand'!"
+            //          << " '" << OutString.toStdString() << "' either does not exist or is not executable!");
+            //    NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+            //    e.setDescription("Invalid value for 'IpOptCommand'!");
+            //    throw e;
+            //}
+
+            f->SetIpOptCommand(OutString.toStdString());
+
+            QString IpOptCommandProvN = QString("nm:IpOptCommand=\"%1\"").arg(curIpOptCommand.toStdString().c_str());
+            p->addRunTimeParaProvN(IpOptCommandProvN);
+        }
+
 
         QVariant curGenerateReportsVar = p->getParameter("GenerateReports");
         bool curGenerateReports;
@@ -256,7 +304,6 @@ public:
         }
         f->SetImageNames(userIDs);
 
-
         NMDebugCtx("NMMosraFilterWrapper_Internal", << "done!");
     }
 };
@@ -278,12 +325,15 @@ NMMosraFilterWrapper
     this->setObjectName("NMMosraFilterWrapper");
     this->mParameterHandling = NMProcess::NM_USE_UP;
 
+    this->mApplicationDirPath = QApplication::applicationDirPath();
+
     mUserProperties.clear();
     mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("PixelType"));
     mUserProperties.insert(QStringLiteral("LosFileName"), QStringLiteral("LosFileName"));
     mUserProperties.insert(QStringLiteral("TimeOut"), QStringLiteral("TimeOut"));
     mUserProperties.insert(QStringLiteral("ScenarioName"), QStringLiteral("ScenarioName"));
     mUserProperties.insert(QStringLiteral("GenerateReports"), QStringLiteral("GenerateReports"));
+    mUserProperties.insert(QStringLiteral("IpOptCommand"), QStringLiteral("IpOptCommand"));
 }
 
 NMMosraFilterWrapper

@@ -24,9 +24,10 @@
  *
  */
 
-#include "NMMosra.h"
-
 #include <ctime>
+#include <cstdio>
+
+#include <QFileInfo>
 
 #include "otbNMMosraFilter.h"
 #include "otbNMTableReader.h"
@@ -34,6 +35,8 @@
 #include "vtkDataSet.h"
 #include "vtkTable.h"
 #include "NMvtkDelimitedTextWriter.h"
+
+#include "NMMosra.h"
 
 namespace otb
 {
@@ -174,7 +177,42 @@ void NMMosraFilter< TInputImage, TOutputImage >
     mosra->setScenarioName(m_ScenarioName.c_str());
     mosra->setItkProcessObject(this);
     mosra->parseStringSettings(m_LosSettings.c_str());
+    // need to set them after parsing string settings as
+    // the latter is resetting the LosFileName to "" !!!
+    mosra->setLosFileName(m_LosFileName.c_str());
     mosra->setDataSet(m_DataSet->getOtbAttributeTable());
+
+    const NMMosra::NMSolverType solver = mosra->getSolverType();
+
+    switch(solver)
+    {
+    case NMMosra::NM_SOLVER_GA:
+        openGA(mosra);
+        break;
+    case NMMosra::NM_SOLVER_IPOPT:
+        ipOpt(mosra);
+        break;
+    case NMMosra::NM_SOLVER_LPSOLVE:
+    default:
+        lpSolve(mosra);
+        break;
+    }
+
+    this->SetProgress(1.0);
+    delete mosra;
+}
+
+template< class TInputImage, class TOutputImage >
+void NMMosraFilter< TInputImage, TOutputImage >
+::openGA(NMMosra *mosra)
+{
+    mosra->solveOpenGA();
+}
+
+template< class TInputImage, class TOutputImage >
+void NMMosraFilter< TInputImage, TOutputImage >
+::lpSolve(NMMosra *mosra)
+{
     if (m_TimeOut >= 0)
     {
         mosra->setBreakAtFirst(false);
@@ -236,15 +274,15 @@ void NMMosraFilter< TInputImage, TOutputImage >
     }
 
 
-
     // this will write the problem before it's attampted to being solved
     mosra->writeProblem(lpFN.c_str(), NMMosra::NM_MOSO_LP);
+    this->UpdateProgress(0.25);
 
     // solve the problem
-    this->UpdateProgress(0.2);
     static char solveTime[128];
     if (mosra->solveLp())
     {
+        this->UpdateProgress(0.75);
         time(&timestamp);
         timeinfo = localtime(&timestamp);
         sprintf(solveTime, "%.2d-%.2d-%.2dT%.2d-%.2d-%.2d",
@@ -258,19 +296,296 @@ void NMMosraFilter< TInputImage, TOutputImage >
         this->SetProgress(0.8);
         if (mosra->mapLp() && this->m_GenerateReports)
         {
+            this->UpdateProgress(0.9);
             this->GenerateReportData(mosra, solveTime);
         }
+        this->UpdateProgress(0.9);
     }
     else
     {
-        this->SetProgress(0.8);
+        this->SetProgress(0.9);
         NMProcErr( << "optimisation failed!");
     }
 
     mosra->writeReport(reportFN.c_str());
+}
 
-    this->SetProgress(1.0);
-    delete mosra;
+template< class TInputImage, class TOutputImage >
+bool NMMosraFilter< TInputImage, TOutputImage >
+::needToUpdateNlFile(const std::string& nlFile, const std::string& losFile)
+{
+#ifdef _WIN32
+#define stat64 _stat64
+#endif
+
+    bool ret = false;
+
+    struct stat64 resLos;
+    if (stat64(losFile.c_str(), &resLos) == 0)
+    {
+        struct stat64 resNl;
+        if (stat64(nlFile.c_str(), &resNl) == 0)
+        {
+            std::stringstream infomsg;
+            // los is more recent
+            if (resLos.st_mtime > resNl.st_mtime)
+            {
+                infomsg << "NMMosraFilter::needToUpdateNlFile() - Yes, the "
+                        << " provided LOS file '" << losFile
+                        << "' is newer than the NL file '" << nlFile
+                        << "'!";
+                ret = true;
+            }
+            else
+            {
+                infomsg << "NMMosraFilter::needToUpdateNlFile() - No, the "
+                        << " provided LOS file '" << losFile
+                        << "' is older than the NL file '" << nlFile
+                        << "'!";
+            }
+            NMProcInfo(<< infomsg.str());
+        }
+        else
+        {
+            ret = true;
+        }
+    }
+    else
+    {
+        std::stringstream errmsg;
+        errmsg << "NMMosraFilter::needToUpdateNlFile() - Couldn't access "
+               << "the provided LOS file '" << losFile << "'!";
+        NMProcErr(<< errmsg.str());
+    }
+
+    return ret;
+}
+
+template< class TInputImage, class TOutputImage >
+void NMMosraFilter< TInputImage, TOutputImage >
+::ipOpt(NMMosra *mosra)
+{
+
+    QFileInfo losInfo(mosra->getLosFileName());
+    QString nlFileName = QString("%1/%2.nl")
+            .arg(losInfo.canonicalPath())
+            .arg(losInfo.baseName());
+
+    bool bDoLUCControl = false;
+    if (mosra->getEnableLUCControl())
+    {
+        bDoLUCControl = true;
+        NMProcInfo(<< "backing up LUCControl ...");
+        mosra->backupLUCControl();
+    }
+
+    // =======================================================
+    // ==           LUCControl Loop                       ====
+    // =======================================================
+    this->UpdateProgress(0.1);
+    int iRound = 1;
+    do
+    {
+        // whether we need to (re-create) the NL file, or whether
+        // we're re-using an already available one
+        //if (    this->needToUpdateNlFile(nlFileName.toStdString(), mosra->getLosFileName().toStdString())
+        //     || bDoLUCControl
+        //   )
+        {
+            QFile nlfile(nlFileName);
+            nlfile.remove();
+
+            // creates *.nl file
+            if (!mosra->solveProblem())
+            {
+                NMProcErr(<< "Failed creating the *.nl file!");
+                return;
+            }
+        }
+        //else
+        //{
+        //    QString solFN = QString("%1/%2.dvars").arg(losInfo.canonicalPath()).arg(losInfo.baseName());
+        //    mosra->setSolFileName(solFN);
+        //}
+
+        if (bDoLUCControl)
+        {
+            this->UpdateProgress(0.15);
+        }
+        else
+        {
+            this->UpdateProgress(0.65);
+        }
+
+
+        // test whether we've got the ipopt.sh script in place
+        QString ipoptScriptFN = QString("%1/../utils/ipopt.sh").arg(this->m_ApplicationDirPath.c_str());
+        QFileInfo ipScr(ipoptScriptFN);
+        if (!ipScr.isExecutable())
+        {
+            NMProcWarn(<< "Attention there's no 'ipopt.sh' installed in '"
+                      << ipScr.canonicalPath().toStdString() << "' - double check your setup for running IpOpt with LUMASS!");
+        }
+
+        // create the command that calls ipopt.sh that calls ipopt inside the ipopt container ...
+        //      ipopt.sh : "Synopsis: $ ipopt <IpOptContainerPath> <IpOptExecPath> <ScenarioDir> <NlFileName> <DVarFileName>"
+        //const std::string sp = "\" \"";
+        //std::stringstream cmd;
+        //cmd << ipoptScriptFN.toStdString() << "\""
+        //    << this->m_IpOptContainerPath << sp
+        //    << "\"/opt/ipopt/install/bin/ipopt\"" << sp
+        //    << mosra->getDataPath().toStdString() << sp
+        //    << mosra->getNlFileName().toStdString() << sp
+        //    << mosra->getSolFileName().toStdString() << "\"";
+
+        NMProcInfo(<< this->m_IpOptCommand << " ...");
+
+        enum NmIpoptResult{
+            NM_IPOPT_RES_UNKNOWN = 0,
+            NM_IPOPT_RES_OPTIMAL,
+            NM_IPOPT_RES_ITEREX,
+            NM_IPOPT_RES_INFEASIBLE
+        };
+
+        NmIpoptResult optRes = NM_IPOPT_RES_UNKNOWN;
+
+        //    if (::system(nullptr))
+        //    {
+        //        if (!::system(cmd.str().c_str()))
+        //        {
+
+        char outBuf[128];
+        std::string outString;
+
+        FILE* ipOptOutput = popen(m_IpOptCommand.c_str(), "r");
+        if (!ipOptOutput)
+        {
+            NMProcErr(<< "Running IpOpt failed - double check your settings!");
+            bDoLUCControl = false;
+        }
+
+        while (fgets(outBuf, sizeof outBuf, ipOptOutput) != nullptr)
+        {
+            outString += outBuf;
+        }
+
+        if (pclose(ipOptOutput) == -1)
+        {
+            NMProcErr(<< "Unfortunately, the issued command returned with an ERROR, "
+                      << "and this is the last we heard: "
+                      << outString);
+            return;
+        }
+
+        if (outString.find("Ipopt::TNLP::INVALID_TNLP") != std::string::npos)
+        {
+            NMProcErr(<< "Ipopt::TNLP::INVALID_TNLP - Invalid NL file provided to ipopt!"
+                      << " This shouldn't happen! Double check your equations and constraints!");
+            return;
+        }
+
+        if (bDoLUCControl)
+        {
+            this->UpdateProgress(0.4);
+        }
+        else
+        {
+            this->UpdateProgress(0.8);
+        }
+
+        NMProcInfo(<< outString);
+
+        // check whether we've got a optimal solution
+        ifstream outFile;
+        std::string line;
+        outFile.open(mosra->getSolFileName().toStdString().c_str());
+        if (outFile.is_open())
+        {
+            while (getline(outFile, line))
+            {
+                if (line.find("Optimal Solution Found") != std::string::npos)
+                {
+                    optRes = NM_IPOPT_RES_OPTIMAL;
+                    //NMProcInfo(<< "Optimal Solution Found");
+                }
+                else if (line.find("Problem may be infeasible") != std::string::npos)
+                {
+                    optRes = NM_IPOPT_RES_INFEASIBLE;
+                    //NMProcInfo(<< "Problem may be infeasible");
+                }
+                else if (line.find("Number of Iterations Exceeded") != std::string::npos)
+                {
+                    optRes = NM_IPOPT_RES_ITEREX;
+                    //NMProcInfo(<< "Number of Iterations Exceeded");
+                }
+                else if (line.find("_svar") != std::string::npos)
+                {
+                    break;
+                }
+            }
+        }
+
+        // that's what we got ...
+        //NMProcInfo(<< "NlFileName: '" << mosra->getNlFileName().toStdString() << "'");
+        //NMProcInfo(<< "DvarsFileName: '" << mosra->getSolFileName().toStdString() << "'");
+        //NMProcInfo(<< "IpOptCommand: '" << this->m_IpOptCommand << "'");
+        //NMProcInfo(<< "LUMASS Path: '" << this->m_ApplicationDirPath << "'");
+        //NMProcInfo(<< "EnableLUCC: " << mosra->getEnableLUCControl());
+        //NMProcInfo(<< "MaxOptLucAlloc: " << mosra->getMaxOptAlloc());
+        //NMProcInfo(<< "LUCCField: " << mosra->getLUCControlField().toStdString());
+
+        // say what we're doing next
+        switch(optRes)
+        {
+        case NM_IPOPT_RES_OPTIMAL:
+            NMProcInfo(<< "You did it! Optimal solution found!");
+            break;
+        case NM_IPOPT_RES_ITEREX:
+            NMProcInfo(<< "Mmh, we've exhausted all available iterations. Let's see what we've got ...")
+            break;
+        case NM_IPOPT_RES_UNKNOWN:
+            NMProcInfo(<< "Not quite sure what's going on here, you'd better investigate!");
+            bDoLUCControl = false;
+            return;
+        case NM_IPOPT_RES_INFEASIBLE:
+        default:
+            NMProcInfo(<< "Sorry, mate, that didn't work! Check your problem for conflicting constraints or try scaling (other / additional) input parameters! Good luck!");
+            bDoLUCControl = false;
+            return;
+        }
+
+        NMProcInfo(<< "Mapping current solution ...");
+        if (!mosra->mapNL())
+        {
+            NMProcErr(<< "Failed mapping current solution '" << mosra->getSolFileName().toStdString() << "'!");
+            bDoLUCControl = false;
+        }
+        if (bDoLUCControl)
+        {
+            if (iRound == 1)
+            {
+                const int numRecChanges = mosra->getNumRecLUCChange();
+                NMProcInfo(<< "Changed LUC settings  for " << numRecChanges << " parcels ...");
+
+                mosra->setEnableLUCControl(false);
+                iRound++;
+            }
+            else if (iRound == 2)
+            {
+                bDoLUCControl = false;
+                mosra->restoreLUCControl();
+            }
+            this->UpdateProgress(0.5);
+        }
+        else
+        {
+            this->UpdateProgress(0.95);
+        }
+
+    } while (   bDoLUCControl
+             && !this->GetAbortGenerateData()
+            );
+
 }
 
 template< class TInputImage, class TOutputImage >

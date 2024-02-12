@@ -163,6 +163,174 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
 {
     Superclass::GenerateInputRequestedRegion();
 
+    // Check for input
+    if (!this->GetInput())
+    {
+      return;
+    }
+
+    // get pointers to the input and output
+    typename TInputImage::Pointer inputPtr = const_cast<TInputImage*>(this->GetInput());
+
+    // check for output
+    OutputImageType* outputPtr = this->GetOutput();
+    if (!outputPtr)
+    {
+      return;
+    }
+
+    typename TOutputImage::RegionType outputRequestedRegion = outputPtr->GetRequestedRegion();
+
+    IndexType outULIndex, outLRIndex;
+
+    typedef itk::ContinuousIndex<double, TInputImage::ImageDimension> ContinuousIndexType;
+
+    ContinuousIndexType inULCIndex, inLRCIndex;
+
+    // Get output image requested region corners as Index
+    outULIndex = outputRequestedRegion.GetIndex();
+    outLRIndex = outULIndex + outputRequestedRegion.GetSize();
+    outLRIndex[0] -= outLRIndex[0] > 0 ? 1 : 0;
+    outLRIndex[1] -= outLRIndex[1] > 0 ? 1 : 0;
+
+    // Transform to physiscal points
+    PointType outULPoint, outLRPoint;
+    outputPtr->TransformIndexToPhysicalPoint(outULIndex, outULPoint);
+    outputPtr->TransformIndexToPhysicalPoint(outLRIndex, outLRPoint);
+
+    // Transform to input image Index
+    inputPtr->TransformPhysicalPointToContinuousIndex(outULPoint, inULCIndex);
+    inputPtr->TransformPhysicalPointToContinuousIndex(outLRPoint, inLRCIndex);
+
+    SizeType  inSize;
+    IndexType inULIndex, inLRIndex;
+
+    // Reorder index properly and compute size
+    for (unsigned int dim = 0; dim < ImageDimension; ++dim)
+    {
+      if (inULCIndex[dim] > inLRCIndex[dim])
+      {
+        // swap
+        typename ContinuousIndexType::ValueType tmp(inULCIndex[dim]);
+        inULCIndex[dim] = inLRCIndex[dim];
+        inLRCIndex[dim] = tmp;
+      }
+
+      // Ensure correct rounding of coordinates
+
+      inULIndex[dim] = std::floor(inULCIndex[dim]);
+      inLRIndex[dim] = std::ceil(inLRCIndex[dim]);
+
+      inSize[dim] = static_cast<typename SizeType::SizeValueType>(inLRIndex[dim] - inULIndex[dim]) + 1;
+    }
+
+/*// =========================== ORIGINAL =====================================================
+
+    // Build the input requested region
+    typename TInputImage::RegionType inputRequestedRegion;
+    inputRequestedRegion.SetIndex(inULIndex);
+    inputRequestedRegion.SetSize(inSize);
+
+    // Compute the padding due to the interpolator
+    unsigned int interpolatorRadius = StreamingTraits<typename Superclass::InputImageType>::CalculateNeededRadiusForInterpolator(this->GetInterpolator());
+    inputRequestedRegion.PadByRadius(interpolatorRadius);
+
+    // crop the input requested region at the input's largest possible region
+    if (inputRequestedRegion.Crop(inputPtr->GetLargestPossibleRegion()))
+    {
+      inputPtr->SetRequestedRegion(inputRequestedRegion);
+    }
+    else
+    {
+
+      // store what we tried to request (prior to trying to crop)
+      inputPtr->SetRequestedRegion(inputRequestedRegion);
+
+      // build an exception
+      itk::InvalidRequestedRegionError e(__FILE__, __LINE__);
+      e.SetLocation(ITK_LOCATION);
+      e.SetDescription("Requested region is (at least partially) outside the largest possible region.");
+      e.SetDataObject(inputPtr);
+      throw e;
+    }
+*/
+
+// =========================== ALEX ADAPTED OLD II ============================================
+
+
+    // Build the input requested region
+    typename TInputImage::RegionType lpr;
+    lpr = inputPtr->GetLargestPossibleRegion();
+    typename TInputImage::RegionType irr;
+    irr.SetIndex(inULIndex);
+    irr.SetSize(inSize);
+
+    // Compute the padding due to the interpolator
+    unsigned int interpolatorRadius = StreamingTraits<typename Superclass::InputImageType>::CalculateNeededRadiusForInterpolator(this->GetInterpolator());
+
+    // adjust the interpolation radius for thin dimensions
+    //InputIndexArrayType padVec;
+    //for (unsigned int di=0; di < ImageDimension; ++di)
+    //{
+    //    unsigned int ipr = interpolatorRadius;
+    //    while (2*ipr > inSize[di])
+    //    {
+    //        --ipr;
+    //    }
+    //    padVec[di] = ipr;
+    //}
+
+    typename TInputImage::RegionType tr = irr;
+
+
+
+    irr.PadByRadius(interpolatorRadius);
+    //inputRequestedRegion.PadByRadius(padVec);
+
+    for (int d=0; d < ImageDimension; ++d)
+    {
+        if (irr.GetIndex()[d] < 0)
+        {
+            irr.SetIndex(d, 0);
+        }
+
+        if (irr.GetIndex()[d] > lpr.GetSize()[d]-1)
+        {
+            irr.SetIndex(d, lpr.GetSize()[d]-1);
+        }
+
+        if (    irr.GetIndex()[d] + irr.GetSize()[d]
+             >= lpr.GetSize()[d]
+           )
+        {
+            irr.SetSize(d, irr.GetSize()[d] - ((irr.GetIndex()[d] + irr.GetSize()[d]) - lpr.GetSize()[d]));
+        }
+    }
+    inputPtr->SetRequestedRegion(irr);
+
+
+    // crop the input requested region at the input's largest possible region
+    //if (inputRequestedRegion.Crop(inputPtr->GetLargestPossibleRegion()))
+    //{
+    //  inputPtr->SetRequestedRegion(inputRequestedRegion);
+    //}
+    //else
+    //{
+    //
+    //  // store what we tried to request (prior to trying to crop)
+    //  inputPtr->SetRequestedRegion(inputRequestedRegion);
+    //
+    //  // build an exception
+    //  itk::InvalidRequestedRegionError e(__FILE__, __LINE__);
+    //  e.SetLocation(ITK_LOCATION);
+    //  e.SetDescription("Requested region is (at least partially) outside the largest possible region.");
+    //  e.SetDataObject(inputPtr);
+    //  throw e;
+    //}
+
+
+// =========================== ALEX ADAPTED OLD I ============================================
+/*
     OutputImageType* outimg = this->GetOutput();
     if (outimg == ITK_NULLPTR)
     {
@@ -298,6 +466,8 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
     }
 
     img->SetRequestedRegion(inRegion);
+*/
+
 }
 
 template <typename TInputImage, typename TOutputImage,

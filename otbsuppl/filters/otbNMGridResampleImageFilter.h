@@ -82,6 +82,9 @@ public:
   typedef typename OutputImageType::RegionType                            OutputImageRegionType;
   typedef typename TOutputImage::PixelType                                OutputPixelType;
 
+  typedef typename InputImageRegionType::IndexValueArrayType                   InputIndexArrayType;
+
+
 
   typedef itk::DefaultConvertPixelTraits<OutputPixelType>                 OutputPixelConvertType;
   typedef typename OutputPixelConvertType::ComponentType                  OutputPixelComponentType;

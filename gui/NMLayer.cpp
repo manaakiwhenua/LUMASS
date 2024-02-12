@@ -170,7 +170,7 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 
 NMLayer::~NMLayer()
 {
-    //NMDebugCtx(ctxNMLayer, << " - " << this->objectName().toStdString());
+    NMDebugCtx(this->objectName().toStdString(), << "...");
 
     if (this->mRenderer != 0)
     {
@@ -183,37 +183,13 @@ NMLayer::~NMLayer()
         delete this->mTableView;
     }
 
-    if (this->mTableModel != 0)
+    if (mSelectionModel != 0)
     {
-        NMSqlTableModel* tmodel = qobject_cast<NMSqlTableModel*>(this->mTableModel);
-        if (tmodel != nullptr)
-        {
-            QString dbconn;
-            {
-                QSqlDatabase db = tmodel->database();
-                if (db.isValid())
-                {
-                    if (db.isOpen())
-                    {
-                        db.close();
-                    }
-                    dbconn = db.connectionName();
-                }
-            }
-
-            if (!dbconn.isEmpty())
-            {
-                QSqlDatabase::removeDatabase(dbconn);
-            }
-        }
-        delete mTableModel;
+        delete mSelectionModel;
     }
 
-    if (mSelectionModel != 0)
-        delete mSelectionModel;
 
-
-    //NMDebugCtx(ctxNMLayer, << "done!");
+    NMDebugCtx(this->objectName().toStdString(), << "...");
 }
 
 //void NMLayer::emitDataSetChanged()
@@ -385,8 +361,77 @@ NMLayer::getColumnType(int colidx)
         return QVariant::Invalid;
     }
 
-    QModelIndex midx = mTableModel->index(0, colidx, QModelIndex());
-    return mTableModel->data(midx, Qt::DisplayRole).type();
+    QModelIndex midx = mTableModel->index(0, colidx);
+    QVariant var = mTableModel->data(midx);
+
+    bool bgotit = true;
+    if (   var.type() == QVariant::String
+        && var.toString().isEmpty()
+       )
+    {
+        bgotit = false;
+    }
+    const int maxSearch = 1000;
+    int cnt = 1;
+    while(!bgotit && cnt <= maxSearch)
+    {
+        midx = mTableModel->index(cnt, colidx);
+        while (!midx.isValid() && mTableModel->canFetchMore(QModelIndex()))
+        {
+            mTableModel->fetchMore(QModelIndex());
+            midx = mTableModel->index(cnt, colidx);
+        }
+
+        if (!midx.isValid())
+        {
+            break;
+        }
+
+        var = mTableModel->data(midx);
+        if (    (var.type() == QVariant::String && !var.toString().isEmpty())
+             || (var.type() != QVariant::String && var.type() != QVariant::Invalid)
+           )
+        {
+            bgotit = true;
+            break;
+        }
+
+        ++cnt;
+    }
+
+// prohibitive for large tables with lots of columns!
+//#ifndef LUMASS_DEBUG
+//    // if we still haven't found anything, we're doing a query
+//    if (!bgotit)
+//    {
+//        QSqlTableModel* sqlMod = qobject_cast<QSqlTableModel*>(mTableModel);
+//        if (sqlMod != nullptr)
+//        {
+//            QSqlDriver* drv = sqlMod->database().driver();
+//            QString colName = this->getColumnName(colidx);
+//
+//            QString qstr = QString("select %1 from %2 where %1 is not null limit 1")
+//                            .arg(drv->escapeIdentifier(colName, QSqlDriver::FieldName))
+//                            .arg(drv->escapeIdentifier(sqlMod->tableName(), QSqlDriver::TableName));
+//
+//            QSqlQuery query(sqlMod->database());
+//            if (!query.exec(qstr))
+//            {
+//                NMLogError(<< "NMLayer" << "::" << __FUNCTION__ << "() : " << query.lastError().text().toStdString() << std::endl);
+//                query.finish();
+//            }
+//
+//            if (query.next())
+//            {
+//                var = query.value(0);
+//                query.finish();
+//            }
+//        }
+//    }
+//#endif
+
+
+    return var.type();
 }
 
 void
@@ -2411,6 +2456,7 @@ NMLayer::getValueFieldStatistics()
                 q.finish();
                 q.clear();
                 sqlModel->database().commit();
+                sqlModel = nullptr;
             }
         }
         else

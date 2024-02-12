@@ -36,7 +36,7 @@
 #include <spatialite.h>
 
 #include "QVTKWin32Header.h"
-#include "vtkConfigure.h"
+//#include "vtkConfigure.h"
 
 #include <QItemSelectionModel>
 #include <QObject>
@@ -232,6 +232,11 @@ public:
     QString getColumnName(const int idx);
     QStringList getNumericColumns(bool onlyints);
     QStringList getStringColumns(void);
+
+    void setInfoAttributes(QStringList visAttr)
+    {mVisibleAttributes = visAttr;}
+    QStringList getInfoAttributes(void)
+    {return mVisibleAttributes;}
 
     virtual long long getNumTableRecords();
 
@@ -454,6 +459,8 @@ protected:
      *
      */
     vtkSmartPointer<vtkTable> mLegendInfo;
+
+    QStringList mVisibleAttributes;
 
     bool mHasClrTab;
 

@@ -283,7 +283,7 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 		if (!subcompElem.isNull())
 		{
 			NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(itComp);
-			QStringList lst = subcompElem.text().split(" ", QString::SkipEmptyParts);
+			QStringList lst = subcompElem.text().split(" ", Qt::SkipEmptyParts);
 			for (unsigned int i=0; i < lst.size(); ++i)
 			{
 				NMModelComponent* sub = 0;
@@ -854,7 +854,7 @@ NMModelSerialiser::harmoniseInputComponentNames(QMap<QString, QString>& nameRegi
 					QString newinput;
 					if (oldinputSrc.contains(":"))
 					{
-						QStringList oldinputSrcParams = oldinputSrc.split(":", QString::SkipEmptyParts);
+						QStringList oldinputSrcParams = oldinputSrc.split(":", Qt::SkipEmptyParts);
 						if (oldinputSrcParams.size() == 2)
 						{
 							newinput = QString("%1:%2").

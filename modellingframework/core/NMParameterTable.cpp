@@ -184,7 +184,7 @@ NMParameterTable::setFileName(QString fn)
 //    }
 
 //    //  <columnName>:<rowNumber>
-//    QStringList specList = paramSpec.split(":", QString::SkipEmptyParts);
+//    QStringList specList = paramSpec.split(":", Qt::SkipEmptyParts);
 //    long long row = 0;
 //    if (specList.size() == 2)
 //    {

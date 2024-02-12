@@ -36,6 +36,7 @@
 #include "NMModelController.h"
 //#include "utils/muParser/muParserError.h"
 #include "itkNMLogEvent.h"
+#include <algorithm>
 
 NMProcess::NMProcess(QObject *parent)
     : mbAbortExecution(false), mbLinked(false)
@@ -302,7 +303,7 @@ NMProcess::getParameter(const QString& property)
                     //                    throw me;
                     return QVariant();
                 }
-                //QStringList fetchedList = fetched.split(QString(" "), QString::SkipEmptyParts);
+                //QStringList fetchedList = fetched.split(QString(" "), Qt::SkipEmptyParts);
                 QStringList fetchedList = this->mController->parseQuotedArguments(fetched, QChar(' '));
                 if (fetchedList.size() > 1)
                 {
@@ -320,7 +321,14 @@ NMProcess::getParameter(const QString& property)
                 }
                 else
                 {
-                    curList.replace(i, fetched);
+                    if (fetchedList.size() == 1)
+                    {
+                        curList.replace(i, fetchedList[0]);
+                    }
+                    else
+                    {
+                        curList.replace(i, fetched);
+                    }
                 }
             }
         }
@@ -435,17 +443,21 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
     if (step < this->mInputComponents.size())
     {
 
+        int effTargetIdx = 0;
+        int nullInputCount = 0;
+
         for (unsigned int ii = 0;
                 ii < this->mInputComponents.at(step).size();
                 ++ii)
         {
             // (re-)set default ouput index of input component
+            effTargetIdx = std::max(0, static_cast<int>(ii) - nullInputCount);
             outIdx = 0;
             QString outName;
             // parse the input source string
             inputSrc = this->mInputComponents.at(step).at(
                     ii);
-            inputSrcParams = inputSrc.split(":", QString::SkipEmptyParts);
+            inputSrcParams = inputSrc.split(":", Qt::SkipEmptyParts);
             inputCompName = inputSrcParams.at(0);
             if (inputSrcParams.size() == 2)
             {
@@ -489,6 +501,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                        )
                     {
                         NMLogDebug(<< "'" << inputCompName.toStdString() << "' skipped as input for this run!")
+                        ++nullInputCount;
                         continue;
                     }
                 }
@@ -529,12 +542,12 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                         {
                             outName = ic->objectName();
                         }
-                        this->setNthInput(ii, iw, outName);
+                        this->setNthInput(effTargetIdx, iw, outName);
                         bInvalidOutput = false;
-                        NMDebugAI(<< "input #" << ii << ": " << inputSrc.toStdString()
+                        NMDebugAI(<< "input #" << effTargetIdx << ": " << inputSrc.toStdString()
                                   << " (DataObject)" << std::endl);
                         QString inputImgProv = QString("nm:InputImage-%1=\"nm:%2\"")
-                                                    .arg(ii).arg(ic->objectName());
+                                                    .arg(effTargetIdx).arg(ic->objectName());
                         mRuntimeParaProv << inputImgProv;
                     }
                     else
@@ -545,12 +558,12 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                     if (iw->getOTBTab().IsNotNull())
                     {
                         // note: this method does nothing, if it is not reimplemented by the subclass
-                        this->setRAT(ii, iw);
+                        this->setRAT(effTargetIdx, iw);
                         bInvalidOutput = false;
-                        NMDebugAI(<< "input #" << ii << ": " << inputSrc.toStdString()
+                        NMDebugAI(<< "input #" << effTargetIdx << ": " << inputSrc.toStdString()
                                   << " (AttributeTable)" << std::endl);
                         QString inputTabProv = QString("nm:InputTable-%1=\"nm:%2\"")
-                                                    .arg(ii).arg(ic->objectName());
+                                                    .arg(effTargetIdx).arg(ic->objectName());
                         mRuntimeParaProv << inputTabProv;
                     }
                     else

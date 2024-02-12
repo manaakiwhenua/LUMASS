@@ -94,7 +94,7 @@ NMModelController::getOutputFromSource(const QString& inputSrc)
     w.clear();
 
     // parse the input source string
-    QStringList inputSrcParams = inputSrc.split(":", QString::SkipEmptyParts);
+    QStringList inputSrcParams = inputSrc.split(":", Qt::SkipEmptyParts);
     QString inputCompName = inputSrcParams.at(0);
 
     NMModelComponent* mc = this->getComponent(inputCompName);
@@ -753,9 +753,23 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
     NMDebugCtx(ctx, << "...");
     MPI_Comm nextComm = MPI_COMM_NULL;
 
+    auto aiter = mAlphaComps.find("root");
+    if (aiter == mAlphaComps.end())
+    {
+        nextComm = MPI_COMM_NULL;
+        NMLogDebug(<< "root component has no registered MPI_COMM! "
+                   << "Something went horribly wrong!");
+        return nextComm;
+    }
+    else
+    {
+        nextComm = aiter.value();
+    }
+
     if (this->getNumProcs() == 1)
     {
-        NMDebugAI(<< "Controller says, we've got just 1 proc! :-( "<< endl);
+        NMDebugAI(<< "Controller says, we've got just 1 proc! :-( "
+                  << " No private conversation possible ;-) ..." << endl);
         NMDebugCtx(ctx, << "done!");
         return nextComm;
     }
@@ -866,16 +880,16 @@ NMModelController::getComponentTable(const NMModelComponent* comp)
     if (dc)
     {
         // update the data component
-        QSharedPointer<NMItkDataObjectWrapper> dw = dc->getOutput(0);
-        if (!dw.isNull())
+        NMItkDataObjectWrapper* dw = dc->getOutput(0).data();
+        if (dw != nullptr)
         {
             tab = dw->getOTBTab();
         }
         else
         {
             this->executeModel(dc->objectName());
-            QSharedPointer<NMItkDataObjectWrapper> dwupd = dc->getOutput(0);
-            if (!dwupd.isNull())
+            NMItkDataObjectWrapper* dwupd = dc->getOutput(0).data();
+            if (dwupd != nullptr)
             {
                 tab = dwupd->getOTBTab();
             }
@@ -905,8 +919,8 @@ NMModelController::getComponentTable(const NMModelComponent* comp)
             else if (tr)
             {
                 this->executeModel(ic->objectName());
-                QSharedPointer<NMItkDataObjectWrapper> dw = ic->getOutput(0);
-                if (!dw.isNull())
+                NMItkDataObjectWrapper* dw = ic->getOutput(0).data();
+                if (dw != nullptr)
                 {
                     tab = dw->getOTBTab();
                 }
@@ -1290,7 +1304,7 @@ NMModelController::evalFunc(const QString& funcName, const QStringList& args,
                 {
                     sep = args.at(1);
                 }
-                stritems = thestr.split(sep, QString::SkipEmptyParts);
+                stritems = thestr.split(sep, Qt::SkipEmptyParts);
                 if (stritems.size() > 0)
                 {
                     if (args.size() == 3)
@@ -1355,7 +1369,7 @@ NMModelController::evalFunc(const QString& funcName, const QStringList& args,
                 {
                     sep = args.at(1);
                 }
-                QStringList stritems  = thestr.split(sep, QString::SkipEmptyParts);
+                QStringList stritems  = thestr.split(sep, Qt::SkipEmptyParts);
                 ret = QString("%1").arg(stritems.length());
             }
             else
@@ -1699,7 +1713,7 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                     }
                     else
                     {
-                        foreach(QString s, args.split(',', QString::SkipEmptyParts))
+                        foreach(QString s, args.split(',', Qt::SkipEmptyParts))
                         {
                             argList << s.trimmed();
                         }

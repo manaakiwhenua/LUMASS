@@ -20,6 +20,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <QSet>
 
 #ifndef NM_ENABLE_LOGGER
 #   define NM_ENABLE_LOGGER
@@ -159,7 +160,7 @@ QVariant
 NMIterableComponent::getModelParameter(const QString& paramSpec)
 {
     QString fullSpec = paramSpec;
-    QStringList spec = paramSpec.split(":", QString::SkipEmptyParts);
+    QStringList spec = paramSpec.split(":", Qt::SkipEmptyParts);
     if (spec.size() < 2)
     {
         // convert 1-based iteration steps to 0-based index
@@ -284,6 +285,15 @@ NMIterableComponent::createExecSequence(QList<QStringList>& execList,
         NMModelComponent* comp = this->getModelController()->getComponent(de);
         if (comp == nullptr)
             continue;
+
+        NMIterableComponent* icomp = qobject_cast<NMIterableComponent*>(comp);
+        if (icomp != nullptr)
+        {
+            if (icomp->evalNumIterationsExpression(step) == 0)
+            {
+                continue;
+            }
+        }
 
         QStringList upstreamPipe;
         upstreamPipe.push_front(comp->objectName());
@@ -618,50 +628,50 @@ NMModelComponent* NMIterableComponent::removeModelComponent(const QString& compN
     NMDebugCtx(ctx, << "...");
 
     NMModelComponent* comp = this->findModelComponent(compName);
-    if (comp == 0)
+    if (comp == nullptr)
         return 0;
 
     NMDebugAI( << this->objectName().toStdString() << ": removing '"
             << compName.toStdString() << "'" << std::endl);
     string tname = "";
     NMModelComponent* up = comp->getUpstreamModelComponent();
-    tname = up != 0 ? up->objectName().toStdString() : "0";
+    tname = up != nullptr ? up->objectName().toStdString() : "0";
     NMDebugAI( << "   up-comp is " << tname << std::endl);
     NMModelComponent* down = comp->getDownstreamModelComponent();
-    tname = down != 0 ? down->objectName().toStdString() : "0";
+    tname = down != nullptr ? down->objectName().toStdString() : "0";
     NMDebugAI( << "   down-comp is " << tname << std::endl);
-    if (up == 0)// && comp == this->mProcessChainStart)
+    if (up == nullptr)// && comp == this->mProcessChainStart)
     {
-        if (down != 0)
+        if (down != nullptr)
         {
             this->mProcessChainStart = down;
-            down->setUpstreamModelComponent(0);
+            down->setUpstreamModelComponent(nullptr);
             NMDebugAI( << "   new start comp is '" << down->objectName().toStdString() << "'" << std::endl);
         }
         else
         {
             NMDebugAI( << comp->objectName().toStdString() << " is empty now" << std::endl);
-            this->mProcessChainStart = 0;
+            this->mProcessChainStart = nullptr;
         }
     }
-    else if (up != 0)
+    else if (up != nullptr)
     {
         up->setDownstreamModelComponent(down);
-        NMDebugAI( << "   new down comp is '" << (down > 0 ? down->objectName().toStdString() : "0") << "'" << std::endl);
-        if (down != 0)
+        NMDebugAI( << "   new down comp is '" << (down != nullptr ? down->objectName().toStdString() : "0") << "'" << std::endl);
+        if (down != nullptr)
         {
             down->setUpstreamModelComponent(up);
             NMDebugAI( << "   new up comp is '" << up->objectName().toStdString() << "'" << std::endl);
         }
     }
 
-    this->mProcessChainPointer = 0;
+    this->mProcessChainPointer = nullptr;
 
     // release all ties to the host's remaining
     // components
-    comp->setHostComponent(0);
-    comp->setUpstreamModelComponent(0);
-    comp->setDownstreamModelComponent(0);
+    comp->setHostComponent(nullptr);
+    comp->setUpstreamModelComponent(nullptr);
+    comp->setDownstreamModelComponent(nullptr);
 
     NMDebugCtx(ctx, << "done!");
     emit NMModelComponentChanged();
@@ -1354,6 +1364,7 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
                 NMIterableComponent* icomp = qobject_cast<NMIterableComponent*>(comp);
 
                 /// ToDo: need to look at this at one point!
+                /// HAVE IMPLEMENTED THIS INTO ::createExecSequence();
                 // we disregard disabled components
                 //NMSequentialIterComponent* sicomp = qobject_cast<NMSequentialIterComponent*>(icomp);
                 //if (    sicomp->evalNumIterationsExpression(step) == 0
@@ -1607,7 +1618,7 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 
         foreach(const QStringList& pipeline, execList)
         {
-            // skip this pipeline, if this it's not this ranks business!
+            // skip this pipeline, if it's not this rank's business!
             if (!rankExecComps.contains(pipeline.last()))
             {
                 wulog(-1, "lr" << commRank << ": >> skip " << pipeline.last().toStdString());
@@ -1653,15 +1664,16 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 
                             if (nio.GetPointer() != nullptr)
                             {
+wulog(-1, "lr" << commRank << ": '" << nio->GetFileName() << "' needs opening in parallel mode ...!");
                                 MPI_Comm niopioComm = this->mController->getNextUpstrMPIComm(comp->objectName());
                                 MPI_Info info = MPI_INFO_NULL;
-                                nio->InitParallelIO(niopioComm, info, false);
+                                bool bpio = nio->InitParallelIO(niopioComm, info, false);
+wulog(-1, "lr" << commRank << ": init parallel IO " << (bpio ? " successful!" : " failed!"));
                                 parallelReaders.push_back(nio);
                             }
                         }
                     }
                 }
-
 
 
                 // gather some info, we could use for debugging purposes in case

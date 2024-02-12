@@ -77,6 +77,7 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     // mProcRegister << QString::fromLatin1("Image2DtoCubeSlice");
     // mProcRegister << QString::fromLatin1("CubeSliceToImage2D");
     // mProcRegister << QString::fromLatin1("Image2Table");
+    // mProcRegister << QString::fromLatin1("Table2NetCDF");
 /*$<RegisterComponentName>$*/
 
     // mSinks << QString::fromLatin1("ImageWriter");
@@ -251,8 +252,11 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
 //    {
 //        return "NMImage2TableFilterWrapper";
 //    }
-
-///*$<WrapperClassNameFromComponentName>$*/
+//    else if (alias.compare("Table2NetCDF") == 0)
+//    {
+//        return "NMTable2NetCDFFilterWrapper";
+//    }
+/*$<WrapperClassNameFromComponentName>$*/
 
 //    else return proc;
 }

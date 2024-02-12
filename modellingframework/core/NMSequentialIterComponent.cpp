@@ -105,9 +105,8 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
     //    }
 
     NMModelController* ctrl = this->getModelController();
-
-    unsigned int niter = mNumIterations;
     mIterationStepRun = mIterationStep;
+    unsigned int niter = evalNumIterationsExpression(mIterationStepRun);
     unsigned int i = mIterationStepRun-1;
     for (; i < niter && !ctrl->isModelAbortionRequested(); ++i)
     {

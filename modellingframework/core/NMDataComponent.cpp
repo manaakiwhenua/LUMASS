@@ -179,7 +179,7 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
     this->mLastInputOutputIdx = this->mInputOutputIdx;
     if (inputSpec.contains(":"))
     {
-        QStringList inputSrcParams = inputSpec.split(":", QString::SkipEmptyParts);
+        QStringList inputSrcParams = inputSpec.split(":", Qt::SkipEmptyParts);
         mInputCompName = inputSrcParams.at(0);
 
         bool bOK = false;
@@ -238,7 +238,7 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
     // break up paramSpec, which can be either
     //   <columnName>:<rowNumber> or
     //   <objectProperty>:<index>
-    QStringList specList = paramSpec.split(":", QString::SkipEmptyParts);
+    QStringList specList = paramSpec.split(":", Qt::SkipEmptyParts);
 
     // fetch table, if applicable
     otb::AttributeTable::Pointer tab;
@@ -549,6 +549,8 @@ NMDataComponent::update(const QMap<QString, NMModelComponent*>& repo)
 void
 NMDataComponent::reset(void)
 {
+    NMDebugCtx(this->objectName().toStdString(), << "...");
+
     if (!mDataWrapper.isNull())
     {
         if (    mDataWrapper->getOTBTab().IsNotNull()
@@ -569,4 +571,6 @@ NMDataComponent::reset(void)
     this->mLastInputOutputIdx = 0;
 
     emit NMDataComponentChanged();
+
+    NMDebugCtx(this->objectName().toStdString(), << "done!");
 }

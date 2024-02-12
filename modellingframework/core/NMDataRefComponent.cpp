@@ -219,7 +219,7 @@ NMDataRefComponent::linkComponents(unsigned int step, const QMap<QString, NMMode
     this->mLastInputOutputIdx = this->mInputOutputIdx;
     if (inputSpec.contains(":"))
     {
-        QStringList inputSrcParams = inputSpec.split(":", QString::SkipEmptyParts);
+        QStringList inputSrcParams = inputSpec.split(":", Qt::SkipEmptyParts);
         mInputCompName = inputSrcParams.at(0);
 
         bool bOK = false;
@@ -278,7 +278,7 @@ NMDataRefComponent::getModelParameter(const QString &paramSpec)
     // break up paramSpec, which can be either
     //   <columnName>:<rowNumber> or
     //   <objectProperty>:<index>
-    QStringList specList = paramSpec.split(":", QString::SkipEmptyParts);
+    QStringList specList = paramSpec.split(":", Qt::SkipEmptyParts);
 
     // fetch table, if applicable
     otb::AttributeTable::Pointer tab;

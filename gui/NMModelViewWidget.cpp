@@ -57,8 +57,9 @@
 #include "NMModelController.h"
 #include "NMDataComponent.h"
 #include "NMSequentialIterComponent.h"
-#include "NMConditionalIterComponent.h"
+#include "NMParallelIterComponent.h"
 #include "NMComponentEditor.h"
+#include "NMHoverEdit.h"
 #include "NMGlobalHelper.h"
 #include "NMParameterTable.h"
 #include "NMIterableComponent.h"
@@ -241,6 +242,15 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     QHBoxLayout* hFileBox = new QHBoxLayout();
     QLabel* aModelLabel = new QLabel("Model File: ");
     hFileBox->addWidget(aModelLabel);
+
+    QIcon openIcon(":open-folder.png");
+    QPushButton* openModelBtn = new QPushButton(this);
+    openModelBtn->setIcon(openIcon);
+    openModelBtn->setToolTip(tr("Open Model"));
+    openModelBtn->setEnabled(true);
+    hFileBox->addWidget(openModelBtn);
+
+
     QIcon saveIcon(":document-save.png");
     mSaveModelBtn = new QPushButton(this);
     mSaveModelBtn->setIcon(saveIcon);
@@ -249,10 +259,18 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     hFileBox->addWidget(mSaveModelBtn);
 
     QIcon saveAsIcon(":document-save-as.png");
-    QPushButton* saveAsBtn = new QPushButton(this);
-    saveAsBtn->setIcon(saveAsIcon);
-    saveAsBtn->setToolTip(tr("Save Model As ..."));
-    hFileBox->addWidget(saveAsBtn);
+    mSaveAsModelBtn = new QPushButton(this);
+    mSaveAsModelBtn->setIcon(saveAsIcon);
+    mSaveAsModelBtn->setToolTip(tr("Save Model As ..."));
+    mSaveAsModelBtn->setEnabled(false);
+    hFileBox->addWidget(mSaveAsModelBtn);
+
+    QIcon closeIcon(":model-close.png");
+    mCloseModelBtn = new QPushButton(this);
+    mCloseModelBtn->setIcon(closeIcon);
+    mCloseModelBtn->setToolTip(tr("Close Model"));
+    mCloseModelBtn->setEnabled(false);
+    hFileBox->addWidget(mCloseModelBtn);
 
     mModelPathEdit = new QLineEdit(this);
     mModelPathEdit->setReadOnly(true);
@@ -262,6 +280,14 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     // model configuration interface
     QHBoxLayout* hConfigBox = new QHBoxLayout();
     QLabel* aLabel = new QLabel("Model Config: ");
+
+    QIcon refreshIcon(":refresh.png");
+    mReloadConfigBtn = new QPushButton(this);
+    mReloadConfigBtn->setIcon(refreshIcon);
+    mReloadConfigBtn->setToolTip(tr("Reload Configuration"));
+    mReloadConfigBtn->setEnabled(false);
+    //hFileBox->addWidget(mReloadConfigBtn);
+
 
     mConfigPathEdit = new QLineEdit(this);
     mConfigPathEdit->setReadOnly(true);
@@ -278,6 +304,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 
     hConfigBox->addWidget(aLabel);
     hConfigBox->addWidget(mToolContext);
+    hConfigBox->addWidget(mReloadConfigBtn);
     hConfigBox->addWidget(mConfigPathEdit);
 
 
@@ -315,9 +342,12 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     // TIMER & CHANGE NOTIFICATIONS TO IMPROVE BOOKEEPING OF CHANGES
     connect(this, SIGNAL(signalModelChanged(QString)), this, SLOT(slotModelChanged(QString)));
     connect(mSaveModelBtn, SIGNAL(pressed()), this, SLOT(saveCurrentModel()));
-    connect(saveAsBtn, SIGNAL(pressed()), this, SLOT(saveCurrentModelAs()));
+    connect(mSaveAsModelBtn, SIGNAL(pressed()), this, SLOT(saveCurrentModelAs()));
+    connect(openModelBtn, SIGNAL(pressed()),  this, SLOT(openModel()));
+    connect(mCloseModelBtn, SIGNAL(pressed()), this, SLOT(closeModel()));
+    connect(mReloadConfigBtn, SIGNAL(pressed()), this, SLOT(reloadConfig()));
 
-    qsrand(QTime(0,0,0).secsTo(QTime::currentTime()));
+    QRandomGenerator(QTime(0,0,0).secsTo(QTime::currentTime()));
 
     mTimerThread = new QThread(this);
     connect(this, SIGNAL(widgetIsExiting()), mTimerThread, SLOT(quit()));
@@ -428,6 +458,65 @@ NMModelViewWidget::searchModelComponent()
     }
 }
 
+void
+NMModelViewWidget::openModel()
+{
+    this->closeModel();
+    this->loadBenchItems(QString());
+}
+
+void
+NMModelViewWidget::closeModel()
+{
+    if (mSaveModelBtn->isEnabled())
+    {
+        QMessageBox::StandardButton btn = QMessageBox::question(
+                    this, tr("Close Model"),
+                    tr("Shall I save your changes before closing the current model?"),
+                    QMessageBox::Yes | QMessageBox::No,
+                    QMessageBox::Yes);
+        if (btn == QMessageBox::Yes)
+        {
+            this->saveCurrentModel();
+        }
+    }
+
+    QList<QGraphicsItem*> children = this->mModelScene->items();
+    foreach(QGraphicsItem* gi, children)
+    {
+        gi->setFlag(QGraphicsItem::ItemIsSelectable, true);
+        gi->setSelected(true);
+    }
+
+    this->deleteItem(false);
+}
+
+void
+NMModelViewWidget::reloadConfig()
+{
+    QString toolName = this->mToolContext->currentText();
+    QString configSource = this->mConfigPathEdit->text();
+
+    // cleanse model settings
+    this->mToolContext->setCurrentText(QStringLiteral("None"));
+
+    if (toolName.compare(QStringLiteral("YAML File")) == 0)
+    {
+        if (mToolContext->findText(toolName) == -1)
+        {
+            mToolContext->addItem(toolName);
+            mToolContext->setCurrentText(toolName);
+        }
+        this->mModelController->clearModelSettings();
+        this->loadYAMLSettings(configSource);
+        this->mReloadConfigBtn->setEnabled(true);
+    }
+    else
+    {
+        this->mToolContext->setCurrentText(toolName);
+    }
+}
+
 
 void
 NMModelViewWidget::slotModelChanged(const QString &itemName)
@@ -435,6 +524,8 @@ NMModelViewWidget::slotModelChanged(const QString &itemName)
     if (mModelScene->items().count())
     {
         this->mSaveModelBtn->setEnabled(true);
+        this->mSaveAsModelBtn->setEnabled(true);
+        this->mCloseModelBtn->setEnabled(true);
         if (!mTimer->isActive())
         {
             emit signalSaveTimerStart();
@@ -447,6 +538,8 @@ NMModelViewWidget::slotModelChanged(const QString &itemName)
         this->mToolContext->setCurrentText("None");
         this->mModelPathEdit->clear();
         this->mSaveModelBtn->setEnabled(false);
+        this->mSaveAsModelBtn->setEnabled(false);
+        this->mCloseModelBtn->setEnabled(false);
     }
 }
 
@@ -496,7 +589,7 @@ NMModelViewWidget::autoSaveCurrentModel(void)
         {
             fn = QString("%1/model_%2_autosave.lmx")
                     .arg(NMGlobalHelper::getUserSetting("Workspace"))
-                    .arg(NMGlobalHelper::getRandomString(5));
+                    .arg(NMGlobalHelper::getRandomString(10));
             mAutoSaveName = fn;
         }
     }
@@ -525,7 +618,7 @@ NMModelViewWidget::saveCurrentModelAs(void)
     {
         fn = QString("%1/model_%2.lmx")
                 .arg(NMGlobalHelper::getUserSetting("Workspace"))
-                .arg(NMGlobalHelper::getRandomString(5));
+                .arg(NMGlobalHelper::getRandomString(10));
     }
 
     QString fileNameString = QFileDialog::getSaveFileName(
@@ -615,8 +708,26 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 {
     NMDebugCtx(ctx, << "...");
 
+    QList<QGraphicsItem*> selItems;
+    NMIterableComponent* iComp = nullptr;
+    NMAggregateComponentItem* ai = nullptr;
+    this->createAggregateComponent(compType, selItems, iComp, ai);
+
+    NMDebugCtx(ctx, << "done!");
+}
+
+void NMModelViewWidget::createAggregateComponent(const QString& compType, QList<QGraphicsItem*>& childItems,
+                                                 NMIterableComponent*& outIterComp, NMAggregateComponentItem*& ai)
+{
+    NMDebugCtx(ctx, << "...");
+
     // get the selected items
-    QList<QGraphicsItem*> selItems = this->mModelScene->selectedItems();
+    QList<QGraphicsItem*> selItems = childItems;
+    if (selItems.count() == 0)
+    {
+        selItems = this->mModelScene->selectedItems();
+    }
+
     if (selItems.count() < 1)
     {
         NMDebugAI(<< "grouping not a single component does not make sense!" << endl);
@@ -707,6 +818,13 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
     NMIterableComponent* aggrComp =
             qobject_cast<NMIterableComponent*>(
                     NMModelComponentFactory::instance().createModelComponent(compType));
+    if (aggrComp == nullptr)
+    {
+        NMLogError(<< "Couldn't create a model component of type '"
+                   << compType.toStdString() << "'!");
+        NMDebugCtx(ctx, << "ERROR: Couldn't create a model component of type '"
+                   << compType.toStdString() << "'!" << std::endl);
+    }
     aggrComp->setObjectName("AggrComp");
 
     // set the new aggregated component on the host's time level
@@ -833,6 +951,10 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
     connect(aggrComp, SIGNAL(NMModelComponentChanged()), this, SLOT(slotComponentChanged()));
 
     this->mModelScene->invalidate();
+
+    outIterComp = aggrComp;
+    ai = aggrItem;
+
     NMDebugCtx(ctx, << "done!");
 }
 
@@ -881,6 +1003,18 @@ void NMModelViewWidget::initItemContextMenu()
     groupParaItems->setEnabled(false);
     groupParaItems->setText(groupParaItemText);
     this->mActionMap.insert(groupParaItemText, groupParaItems);
+
+    QAction* convSeqToPara = new QAction(this->mItemContextMenu);
+    QString convSeqToParaText = "Convert to Parallel Group";
+    convSeqToPara->setEnabled(false);
+    convSeqToPara->setText(convSeqToParaText);
+    this->mActionMap.insert(convSeqToParaText, convSeqToPara);
+
+    QAction* convParaToSeq = new QAction(this->mItemContextMenu);
+    QString convParaToSeqText = "Convert to Sequential Group";
+    convParaToSeq->setEnabled(false);
+    convParaToSeq->setText(convParaToSeqText);
+    this->mActionMap.insert(convParaToSeqText, convParaToSeq);
 
     //QAction* groupCondItems = new QAction(this->mItemContextMenu);
     //QString groupCondItemText = "Create Conditional Group";
@@ -965,6 +1099,8 @@ void NMModelViewWidget::initItemContextMenu()
     this->mItemContextMenu->addAction(groupParaItems);
     //this->mItemContextMenu->addAction(groupCondItems);
     this->mItemContextMenu->addAction(ungroupItems);
+    this->mItemContextMenu->addAction(convSeqToPara);
+    this->mItemContextMenu->addAction(convParaToSeq);
 
     this->mItemContextMenu->addSeparator();
     this->mItemContextMenu->addAction(clearSelAct);
@@ -994,6 +1130,8 @@ void NMModelViewWidget::initItemContextMenu()
     connect(groupParaItems, SIGNAL(triggered()), this, SLOT(createParallelIterComponent()));
     //connect(groupCondItems, SIGNAL(triggered()), this, SLOT(createConditionalIterComponent()));
     connect(ungroupItems, SIGNAL(triggered()), this, SLOT(ungroupComponents()));
+    connect(convSeqToPara, SIGNAL(triggered()), this, SLOT(convertSequentialToParallelIterComponent()));
+    connect(convParaToSeq, SIGNAL(triggered()), this, SLOT(convertParallelToSequentialIterComponent()));
     connect(delComp, SIGNAL(triggered()), this, SLOT(deleteItem()));
     connect(copyComp, SIGNAL(triggered()), this, SLOT(copy()));
     connect(cutComp, SIGNAL(triggered()), this, SLOT(cut()));
@@ -1216,6 +1354,7 @@ NMModelViewWidget::processModelFileDrop(const QString& fileName,
         mToolContext->setCurrentText(ymlTxt);
         this->mModelController->clearModelSettings();
         this->loadYAMLSettings(fileName);
+        this->mReloadConfigBtn->setEnabled(true);
     }
 }
 
@@ -1294,6 +1433,8 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     }
 
     NMModelComponent* comp = this->componentFromItem(item);
+    NMSequentialIterComponent* seqIter = qobject_cast<NMSequentialIterComponent*>(comp);
+    NMParallelIterComponent* paraIter = qobject_cast<NMParallelIterComponent*>(comp);
 
     QString title;
     bool dataBuffer = false;
@@ -1396,7 +1537,6 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
             this->mActionMap.value("Ungroup Components")->setEnabled(true);
             this->mActionMap.value("Create Sequential Group")->setEnabled(false);
             this->mActionMap.value("Create Parallel Group")->setEnabled(false);
-            //this->mActionMap.value("Create Conditional Group")->setEnabled(true);
         }
         else if (selection.count() >= 1 && levelIndi >= 0)
         {
@@ -1424,6 +1564,18 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
             this->mActionMap.value("Ungroup Components")->setEnabled(false);
             this->mActionMap.value("Set Time Level ...")->setEnabled(false);
             this->mActionMap.value("Increase/Decrease Time Level ...")->setEnabled(false);
+        }
+
+        if (paraIter != nullptr)
+        {
+            this->mActionMap.value("Convert to Sequential Group")->setEnabled(true);
+            this->mActionMap.value("Convert to Parallel Group")->setEnabled(false);
+        }
+
+        if (seqIter != nullptr)
+        {
+            this->mActionMap.value("Convert to Sequential Group")->setEnabled(false);
+            this->mActionMap.value("Convert to Parallel Group")->setEnabled(true);
         }
     }
     else
@@ -1825,7 +1977,7 @@ NMModelViewWidget::exportModel(const QList<QGraphicsItem*>& items,
     // significant versions are: 0.91, 0.95, 0.97
     // 0.91 : original file version
     // 0.95 : collapsable aggregate components
-    // 0.97 : ParallelIterComponent (AggregateComponent)
+    // 0.97 : ParallelIterComponent (AggregateComponent), TableReader::InMemoryDb
     qreal lmvVersion = NMGlobalHelper::getLUMASSVersion();
 
     QString strVersion = NMGlobalHelper::getUserSetting("LmvFileVersion");
@@ -2577,6 +2729,7 @@ NMModelViewWidget::updateToolContext(const QString &tool)
     {
         mModelController->clearModelSettings();
         mConfigPathEdit->clear();
+        mReloadConfigBtn->setEnabled(false);
     }
     // load model SETTINGS from the model's associated YAML file <Model Name>.yaml
     else if (tool.compare(QStringLiteral("Model's YAML")) == 0)
@@ -2596,16 +2749,19 @@ NMModelViewWidget::updateToolContext(const QString &tool)
             {
                 mModelController->clearModelSettings();
                 this->loadYAMLSettings(yamlFN);
+                this->mReloadConfigBtn->setEnabled(true);
             }
             else if (ymlInfo.isReadable())
             {
                 mModelController->clearModelSettings();
                 this->loadYAMLSettings(ymlFN);
+                this->mReloadConfigBtn->setEnabled(true);
             }
             else
             {
                 NMLogError(<< "Couldn't find a YAML next to the model files!");
                 this->mConfigPathEdit->clear();
+                this->mReloadConfigBtn->setEnabled(false);
             }
         }
     }
@@ -2623,6 +2779,7 @@ NMModelViewWidget::updateToolContext(const QString &tool)
                     << tool.toStdString().c_str() << "' is not registered!");
             }
             NMLogDebug(<< "Update tool context: No tool name specified!");
+            this->mReloadConfigBtn->setEnabled(false);
         }
         else
         {
@@ -2632,6 +2789,7 @@ NMModelViewWidget::updateToolContext(const QString &tool)
                 mModelController->clearModelSettings();
                 NMLogDebug(<< "Update tool context: Tool '"
                            << tool.toStdString() << "' is not registered!");
+                this->mReloadConfigBtn->setEnabled(false);
             }
             else
             {
@@ -2655,6 +2813,8 @@ NMModelViewWidget::updateToolContext(const QString &tool)
                 mToolContextController = ctrl;
                 connect(mToolContextController, SIGNAL(settingsUpdated(QString,QVariant)),
                         mModelController, SLOT(updateSettings(QString,QVariant)));
+
+                this->mReloadConfigBtn->setEnabled(true);
             }
         }
     }
@@ -3849,10 +4009,175 @@ NMModelViewWidget::setGroupTimeLevel()
     }
 }
 
+void NMModelViewWidget::convertSequentialToParallelIterComponent()
+{
+    NMDebugCtx(ctx, << "...");
+
+    this->convertIterableComponents(QStringLiteral("NMSequentialIterComponent"));
+
+    NMDebugCtx(ctx, << "done!");
+}
+
+void NMModelViewWidget::convertParallelToSequentialIterComponent()
+{
+    NMDebugCtx(ctx, << "...");
+
+    this->convertIterableComponents(QStringLiteral("NMParallelIterComponent"));
+
+    NMDebugCtx(ctx, << "done!");
+}
+
+
+void NMModelViewWidget::convertIterableComponents(QString sourceType)
+{
+    NMDebugCtx(ctx, << "...");
+
+    // assumes that the selection is a set of Sequential Groups
+    QList<QGraphicsItem*> selection = this->mModelScene->selectedItems();
+    if (selection.count() == 0)
+    {
+        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(mLastItem);
+        if (ai != 0)
+        {
+            selection.push_back(mLastItem);
+        }
+    }
+
+    foreach(const QGraphicsItem* gi, selection)
+    {
+        // query attributes to be copied
+        QString giTitle = this->getComponentItemTitle(const_cast<QGraphicsItem*>(gi));
+
+        NMModelComponent* selComp = this->mModelController->getComponent(giTitle);
+
+        NMIterableComponent* iComp = qobject_cast<NMIterableComponent*>(selComp);
+        NMSequentialIterComponent* seqComp = qobject_cast<NMSequentialIterComponent*>(selComp);
+        NMParallelIterComponent* parComp = qobject_cast<NMParallelIterComponent*>(selComp);
+
+        if (    (    sourceType.compare(QStringLiteral("NMSequentialIterComponent")) == 0
+                  && seqComp != nullptr
+                )
+            ||  (    sourceType.compare(QStringLiteral("NMParallelIterComponent")) == 0
+                     && parComp != nullptr
+                )
+           )
+        {
+            this->convertIterableComponent(iComp);
+        }
+        else
+        {
+            NMLogInfo(<< "Skipping non-" << sourceType.toStdString() << " '" << giTitle.toStdString() << "'!");
+            NMDebugAI(<< "Skipping non-" << sourceType.toStdString() << " '" << giTitle.toStdString() << "'!" << std::endl);
+
+        }
+    }
+
+    NMDebugCtx(ctx, << "done!");
+
+}
+
+void NMModelViewWidget::convertIterableComponent(NMIterableComponent* iComp)
+{
+    NMDebugCtx(ctx, << "...");
+
+    if (iComp == nullptr)
+    {
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
+
+    // probe the 'iterable' type
+    NMSequentialIterComponent* seqComp = qobject_cast<NMSequentialIterComponent*>(iComp);
+
+    // source properties
+    QString iCompObjectName = iComp->objectName();
+
+    QGraphicsItem* srcGI = this->mModelScene->getComponentItem(iCompObjectName);
+    NMAggregateComponentItem* srcAI = qgraphicsitem_cast<NMAggregateComponentItem*>(srcGI);
+    QColor giclr = QColor(QRandomGenerator::global()->generate() % 256, QRandomGenerator::global()->generate() % 256, QRandomGenerator::global()->generate() % 256);
+    if (srcAI != nullptr)
+    {
+        giclr = srcAI->getColor();
+    }
+
+    short timeLevel = iComp->getTimeLevel();
+    QString userID  = iComp->getUserID();
+    unsigned int numIterations = iComp->getNumIterations();
+    QStringList numIterationsExpression = iComp->getNumIterationsExpression();
+    QString description = iComp->getDescription();
+
+    // determine target 'iterable' type
+    QString targetType;
+    if (seqComp != nullptr)
+    {
+        targetType = QStringLiteral("NMParallelIterComponent");
+    }
+    else
+    {
+        targetType = QStringLiteral("NMSequentialIterComponent");
+    }
+
+    // get sub-component items
+    QList<QGraphicsItem*> kids;
+    NMModelComponentIterator cit = iComp->getComponentIterator();
+    while (!cit.isAtEnd())
+    {
+        kids.push_back(this->mModelScene->getComponentItem(cit->objectName()));
+        ++cit;
+    }
+
+    // this will destroy the source component (iComp)
+    this->ungroupComponents(kids);
+
+    NMIterableComponent* newComp = nullptr;
+    NMAggregateComponentItem* ai = nullptr;
+    this->createAggregateComponent(targetType, kids, newComp, ai);
+
+    if (newComp != nullptr && ai != nullptr)
+    {
+        newComp->setTimeLevel(timeLevel);
+        newComp->setUserID(userID);
+        newComp->setNumIterations(numIterations);
+        newComp->setNumIterationsExpression(numIterationsExpression);
+        newComp->setDescription(description);
+
+        ai->updateTimeLevel(timeLevel);
+        ai->updateNumIterations(numIterations);
+        ai->updateDescription(description);
+        ai->setColor(giclr);
+    }
+    else
+    {
+        NMDebugAI(<< "Conversion of '" << iCompObjectName.toStdString()
+                  << "' into a " << targetType.toStdString() << " failed!" << std::endl);
+        NMLogInfo(<< "Conversion of '" << iCompObjectName.toStdString()
+                  << "' into a " << targetType.toStdString() << " failed!");
+    }
+
+    NMDebugCtx(ctx, << "done!");
+}
+
+
+
 void NMModelViewWidget::ungroupComponents()
 {
     NMDebugCtx(ctx, << "...");
-    QList<QGraphicsItem*> selection = this->mModelScene->selectedItems();
+
+    QList<QGraphicsItem*> giGroup;
+    this->ungroupComponents(giGroup);
+
+    NMDebugCtx(ctx, << "done!");
+}
+
+void NMModelViewWidget::ungroupComponents(QList<QGraphicsItem*>& giGroup)
+{
+    NMDebugCtx(ctx, << "...");
+    QList<QGraphicsItem*> selection = giGroup;
+    if (giGroup.count() == 0)
+    {
+        selection = this->mModelScene->selectedItems();
+    }
+
     if (selection.count() == 0)
     {
         NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(mLastItem);
@@ -4248,7 +4573,7 @@ NMModelViewWidget::processProcInputChanged(QList<QStringList> inputs)
         foreach(const QString& src, srclist)
         {
             if (!src.isEmpty())
-                list.push_back(src.split(":", QString::SkipEmptyParts).at(0));
+                list.push_back(src.split(":", Qt::SkipEmptyParts).at(0));
         }
 
         // remove (persistent) input links
@@ -4416,25 +4741,14 @@ NMModelViewWidget::deleteLinkComponentItem(NMComponentLinkItem* linkItem)
 }
 
 void
-NMModelViewWidget::deleteAggregateComponentItem(NMAggregateComponentItem* aggrItem)
+NMModelViewWidget::deleteComponentItems(QList<QGraphicsItem *> &itemList)
 {
-    NMDebugCtx(ctx, << "...");
-
-    NMAggregateComponentItem* dai = qgraphicsitem_cast<NMAggregateComponentItem*>(mLastItem);
-    if (dai == aggrItem)
+    if (itemList.size() == 0)
     {
-        mLastItem = 0;
+        return;
     }
 
-    // object's context, we need further down the track
-    QString aggrTitle = aggrItem->getTitle();
-    NMModelComponent* comp = mModelController->getComponent(aggrTitle);
-    NMModelComponent* hostComp = comp->getHostComponent();
-
-    // iterate over all subcomponents and delete them
-    //QList<QGraphicsItem*> childItems = aggrItem->childItems();
-    QList<QGraphicsItem*> childItems = aggrItem->getModelChildren();
-    QMutableListIterator<QGraphicsItem*> it(childItems);
+    QMutableListIterator<QGraphicsItem*> it(itemList);
     NMModelComponent* pcomp = 0;
     while(it.hasNext())
     {
@@ -4471,17 +4785,46 @@ NMModelViewWidget::deleteAggregateComponentItem(NMAggregateComponentItem* aggrIt
             this->deleteProxyWidget(proxyWidget);
         }
     }
+}
 
-    // finally remove the component itself
-    QString aggrName = aggrItem->getTitle();
-    mModelScene->removeItem(aggrItem);
-    if (!mModelController->removeComponent(aggrName))
+void
+NMModelViewWidget::deleteAggregateComponentItem(NMAggregateComponentItem* aggrItem)
+{
+    NMDebugCtx(ctx, << "...");
+
+    NMAggregateComponentItem* dai = qgraphicsitem_cast<NMAggregateComponentItem*>(mLastItem);
+    if (dai == aggrItem)
     {
-        NMDebugAI(<< "failed to remove component '"
-                << aggrName.toStdString() << "'!");
+        mLastItem = 0;
     }
 
-    this->deleteEmptyComponent(hostComp);
+    // object's context, we need further down the track
+    QString aggrTitle = aggrItem->getTitle();
+    NMModelComponent* comp = mModelController->getComponent(aggrTitle);
+    NMModelComponent* hostComp = nullptr;
+    if (comp != nullptr)
+    {
+        hostComp = comp->getHostComponent();
+    }
+
+    // iterate over all subcomponents and delete them
+    //QList<QGraphicsItem*> childItems = aggrItem->childItems();
+    QList<QGraphicsItem*> childItems = aggrItem->getModelChildren();
+    this->deleteComponentItems(childItems);
+
+    // finally remove the component itself
+    //QString aggrName = aggrItem->getTitle();
+    mModelScene->removeItem(aggrItem);
+    if (!mModelController->removeComponent(aggrTitle))
+    {
+        NMDebugAI(<< "failed to remove component '"
+                << aggrTitle.toStdString() << "'!");
+    }
+
+    if (hostComp != nullptr)
+    {
+        this->deleteEmptyComponent(hostComp);
+    }
 
     NMDebugCtx(ctx, << "done!");
 }
@@ -4838,6 +5181,11 @@ void NMModelViewWidget::callEditComponentDialog(const QString& compName)
 void NMModelViewWidget::removeObjFromOpenEditsList(QObject* obj)
 {
     NMModelComponent* comp = qobject_cast<NMModelComponent*>(obj);
+    if (comp == nullptr)
+    {
+        return;
+    }
+
     NMEditModelComponentDialog* dlg;
     if (this->mOpenEditors.contains(comp))
     {
@@ -4921,24 +5269,8 @@ NMModelViewWidget::resetModel(void)
         return;
     }
 
-    NMModelComponent* comp = 0;
-    bool bClearAll = false;
-    if (QString("QAction").compare(this->sender()->metaObject()->className()) == 0)
-    {
-        comp = this->mModelController->getComponent("root");
-        bClearAll =  true;
-    }
-    else if (this->mLastItem != 0)
-    {
-        comp = this->componentFromItem(this->mLastItem);
-    }
-    else
-    {
-        comp = this->mModelController->getComponent("root");
-        bClearAll =  true;
-    }
-
-    if (comp == 0)
+    NMModelComponent* comp = this->mModelController->getComponent("root");
+    if (comp == nullptr)
     {
         NMLogError(<< ctx << ": Failed to perform model reset!");
         return;
@@ -4947,32 +5279,13 @@ NMModelViewWidget::resetModel(void)
     QGraphicsItem* gi = nullptr;
     NMProcessComponentItem* pi = nullptr;
     NMAggregateComponentItem* ai = nullptr;
-    if (bClearAll)
-    {
-        QList<QGraphicsItem*> allItems = this->mModelScene->items();
-        QList<QGraphicsItem*>::iterator iit = allItems.begin();
-        while (iit != allItems.end())
-        {
-            pi = qgraphicsitem_cast<NMProcessComponentItem*>(*iit);
-            ai = qgraphicsitem_cast<NMAggregateComponentItem*>(*iit);
 
-            if (pi != nullptr)
-            {
-                pi->reportExecutionStopped(pi->getTitle());
-            }
-            else if (ai != nullptr)
-            {
-                ai->slotExecutionStopped();
-            }
-
-            ++iit;
-        }
-    }
-    else
+    QList<QGraphicsItem*> allItems = this->mModelScene->items();
+    QList<QGraphicsItem*>::iterator iit = allItems.begin();
+    while (iit != allItems.end())
     {
-        gi = this->getScene()->getComponentItem(comp->objectName());
-        pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
-        ai = qgraphicsitem_cast<NMAggregateComponentItem*>(gi);
+        pi = qgraphicsitem_cast<NMProcessComponentItem*>(*iit);
+        ai = qgraphicsitem_cast<NMAggregateComponentItem*>(*iit);
 
         if (pi != nullptr)
         {
@@ -4982,9 +5295,16 @@ NMModelViewWidget::resetModel(void)
         {
             ai->slotExecutionStopped();
         }
+
+        ++iit;
     }
 
     emit requestModelReset(comp->objectName());
+
+    LUMASSMainWin* lumass = NMGlobalHelper::getMainWindow();
+    NMComponentEditor* edit = const_cast<NMComponentEditor*>(lumass->getCompEditor());
+    edit->update();
+    edit->getHoverEdit()->updateExpressionPreview();
 }
 
 void NMModelViewWidget::zoom(int delta)
@@ -5004,12 +5324,12 @@ NMModelViewWidget::eventFilter(QObject* obj, QEvent* e)
     {
         QWheelEvent* we = static_cast<QWheelEvent*>(e);
 
-        const QPointF pS0 = mModelView->mapToScene(we->pos());
+        const QPointF pS0 = mModelView->mapToScene(we->position().toPoint());
 
-        zoom(we->delta());
+        zoom(we->angleDelta().y());
 
         const QPoint pS1 = mModelView->mapFromScene(pS0);
-        const QPoint pd = pS1 - we->pos();
+        const QPoint pd = pS1 - we->position().toPoint();
 
         mModelView->horizontalScrollBar()->setValue(pd.x() + mModelView->horizontalScrollBar()->value());
         mModelView->verticalScrollBar()->setValue(pd.y() + mModelView->verticalScrollBar()->value());

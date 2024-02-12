@@ -65,7 +65,7 @@ class NMModelViewWidget: public QWidget
     Q_OBJECT
 
 public:
-    NMModelViewWidget(QWidget* parent=0, Qt::WindowFlags f=0);
+    NMModelViewWidget(QWidget* parent=0, Qt::WindowFlags f={});
     virtual ~NMModelViewWidget();
 
     NMModelScene* getScene(void){return mModelScene;}
@@ -82,10 +82,19 @@ public slots:
     void createProcessComponent(NMProcessComponentItem* procItem,
             const QString& procName, QPointF scenePos);
     void createAggregateComponent(const QString& compType);
+    void createAggregateComponent(const QString& compType, QList<QGraphicsItem*>& childItems,
+                                  NMIterableComponent*& outIterComp, NMAggregateComponentItem*& ai);
     void createSequentialIterComponent();
     void createParallelIterComponent();
-    //void createConditionalIterComponent();
+    void convertSequentialToParallelIterComponent();
+    void convertParallelToSequentialIterComponent();
+
+    void convertIterableComponent(NMIterableComponent* iComp);
+    void convertIterableComponents(QString sourceType);
+
     void ungroupComponents();
+    void ungroupComponents(QList<QGraphicsItem*>& giGroup);
+
     void setGroupTimeLevel();
     void addDeltaTimeLevel();
 
@@ -172,6 +181,7 @@ protected:
 protected slots:
     void removeObjFromOpenEditsList(QObject* obj);
     void deleteItem(bool bConfirm=true);
+    void deleteComponentItems(QList<QGraphicsItem*>& itemList);
     void deleteLinkComponentItem(NMComponentLinkItem* linkItem);
     void deleteProcessComponentItem(NMProcessComponentItem* procItem);
     void deleteAggregateComponentItem(NMAggregateComponentItem* aggrItem);
@@ -182,6 +192,10 @@ protected slots:
     QString getComponentItemTitle(QGraphicsItem* item);
     void saveBenchItems();
     void loadBenchItems(const QString& fileName);
+    void openModel();
+    void closeModel();
+    void reloadConfig();
+
     void reportIsModelControllerBusy(bool);
     void callLoadItems()
         {loadBenchItems(QString());}
@@ -291,6 +305,9 @@ private:
     QLineEdit* mConfigPathEdit;
 
     QPushButton* mSaveModelBtn;
+    QPushButton* mSaveAsModelBtn;
+    QPushButton* mCloseModelBtn;
+    QPushButton* mReloadConfigBtn;
     //QPushButton* mLoadConfigBtn;
     QString mAutoSaveName;
 

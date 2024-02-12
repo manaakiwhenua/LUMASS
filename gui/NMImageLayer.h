@@ -40,6 +40,7 @@
 #include "NMVtkOpenGLImageSliceMapper.h"
 #include "vtkImageSlice.h"
 #include "vtkImageProperty.h"
+#include "vtkAlgorithmOutput.h"
 
 
 #ifdef BUILD_RASSUPPORT
@@ -111,6 +112,7 @@ public:
 
     itk::DataObject *getITKImage(void);
     vtkImageData* getVTKImage(void);
+    vtkAlgorithmOutput* getItkVtkPipelineOutput();
     QSharedPointer<NMItkDataObjectWrapper> getImage(void);
     NMProcess* getProcess(void)
         {return this->mReader;}
@@ -238,10 +240,11 @@ protected:
     int mOverviewIdx;
     bool mbUpdateScalars;
 
-    // this keeps track of the world x-coordinate of the
-    // upper left corner; we use it to determine whether
-    // the map extent has changed or not
+    // this keeps track of the visible extent
+    // (in the map view) to decide whether new
+    // data needs to be loaded or not
     double mWTLx;
+    int mPrevZIdx;
 
     /*!
      * \brief The buffered (current) image region

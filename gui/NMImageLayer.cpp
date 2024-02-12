@@ -447,6 +447,7 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
                             this, SLOT(updateHistogram(vtkObject*)));
 
     this->mWTLx = itk::NumericTraits<double>::NonpositiveMin();
+    this->mPrevZIdx = 0;
 
 //	this->mVtkConn->Connect(style, vtkCommand::ResetWindowLevelEvent,
 //			this, SLOT(windowLevelReset(vtkObject*)));
@@ -456,15 +457,38 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 
 NMImageLayer::~NMImageLayer()
 {
-//    if (this->mSqlTableView != nullptr)
-//    {
-//        this->mSqlTableView->getSortFilter()->removeTempTables();
-//    }
+    NMDebugCtx(this->objectName().toStdString(), << "...");
 
     if (mHistogramView != 0)
     {
         mHistogramView->close();
         delete mHistogramView;
+    }
+
+
+    if (this->mTableView != nullptr)
+    {
+        this->mTableView->close();
+        delete this->mTableView;
+        mTableView = nullptr;
+    }
+
+    if (this->mSelectionModel != nullptr)
+    {
+        delete this->mSelectionModel;
+        mSelectionModel = nullptr;
+    }
+
+    if (this->mTableModel != nullptr)
+    {
+        QString conname;
+        {
+            NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
+            conname = sqlModel->database().connectionName();
+            sqlModel->database().close();
+            delete this->mTableModel;
+        }
+        QSqlDatabase::removeDatabase(conname);
     }
 
     if (this->mOtbRAT.IsNotNull())
@@ -487,6 +511,8 @@ NMImageLayer::~NMImageLayer()
     {
         delete this->mPipeconn;
     }
+
+    NMDebugCtx(this->objectName().toStdString(), << "...");
 }
 
 
@@ -496,7 +522,7 @@ NMImageLayer::getWindowStatistics(void)
 {
     std::vector<double> ret;
 
-    if (this->mNumBands > 1)
+    if (this->mNumBands > 1)// || this->mNumDimensions > 2)
     {
         for (int i=0; i < 7; ++i)
         {
@@ -627,7 +653,7 @@ NMImageLayer::updateHistogram(vtkObject *)
     plotBar = vtkPlotBar::SafeDownCast(plot);
     plotBar->SetInputData(tab, 0, 1);
     plotBar->SetOrientation(vtkPlotBar::VERTICAL);
-    plotBar->SetColor(0, 170/255.0, 255/255.0);
+    plotBar->SetColorF(0, 170/255.0, 255/255.0);
 
 
     mHistogramView->show();
@@ -1377,7 +1403,14 @@ NMImageLayer::setFileName(QString filename)
         NMDebugCtx(ctxNMImageLayer, << "done!");
         return false;
     }
-    if (this->mReader->getNumberOfOverviews() == 0)
+
+    this->mNumDimensions = this->mReader->getOutputNumDimensions();
+    if (this->mNumDimensions == 3)
+    {
+        mReader->setZSliceIdx(this->mZSliceIdx);
+    }
+
+    if (this->mNumDimensions == 2 && this->mReader->getNumberOfOverviews() == 0)
     {
         emit layerProcessingEnd();
         NMLogWarn(<< ctxNMImageLayer << ": layer '" << this->objectName().toStdString() << "'"
@@ -1424,12 +1457,6 @@ NMImageLayer::setFileName(QString filename)
 
 
     // store overview sizes
-    this->mNumDimensions = this->mReader->getOutputNumDimensions();
-    if (this->mNumDimensions == 3)
-    {
-        mReader->setZSliceIdx(this->mZSliceIdx);
-    }
-
     mOverviewSize.clear();
     const int numOvv = this->mReader->getNumberOfOverviews();
     for (int n=0; n < numOvv; ++n)
@@ -1620,7 +1647,7 @@ NMImageLayer::loadLegend(const QString &filename)
     // ###################################################################################
     // init the QSql
     NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
-    QString conname = QString("NMImageLayer_%1").arg(NMGlobalHelper::getRandomString(4));
+    QString conname = QString("NMImageLayer_%1").arg(NMGlobalHelper::getRandomString(8));
 
     // db scope
     // without db and q going out of scope, we cannot remove
@@ -1802,22 +1829,25 @@ NMImageLayer::mapExtentChanged(void)
 
         // top left (note: display origin is bottom left)
         vtkInteractorObserver::ComputeDisplayToWorld(ren, 0,size[1]-1,0, wtl);
+        vtkInteractorObserver::ComputeDisplayToWorld(ren, size[0]-1,0,0, wbr);
 
         // since the image and image-selection mapper are hooked up to this
         // method, we make sure that we don't do double the work, i.e. if
         // nothing has changed ('cause the other mapper has called this function
         // already), we don't have to reload new data;
-        if (wtl[0] == mWTLx)
+        if (this->mWTLx == wtl[0] && mZSliceIdx == mPrevZIdx)
         {
             return;
         }
-        mWTLx = wtl[0];
 
+        mWTLx = wtl[0];
+        mPrevZIdx = mZSliceIdx;
+
+        // top left
         wminx = wtl[0];
         wmaxy = wtl[1];
 
         // bottom right
-        vtkInteractorObserver::ComputeDisplayToWorld(ren, size[0]-1,0,0, wbr);
         wmaxx = wbr[0];
         wminy = wbr[1];
 
@@ -2372,7 +2402,7 @@ NMImageLayer::updateScalarBuffer()
     NMDebugCtx(ctxNMImageLayer, << "...");
 
     NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
-    QString conSuffix = QString("updateBuffer_%1").arg(NMGlobalHelper::getRandomString(4));
+    QString conSuffix = QString("updateBuffer_%1").arg(NMGlobalHelper::getRandomString(8));
     QString conname;
     {
         conname = NMGlobalHelper::getMainWindow()->getDbConnection(sqlModel->getDatabaseName(), false, conSuffix);
@@ -2522,7 +2552,7 @@ NMImageLayer::setLongDBScalars(T* buf,
 {
     NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
 
-    QString conname = QString("NMImageLayer_%1").arg(NMGlobalHelper::getRandomString(4));
+    QString conname = QString("NMImageLayer_%1").arg(NMGlobalHelper::getRandomString(8));
 
     // db scope
     // without db and q going out of scope, we cannot remove
@@ -2650,7 +2680,7 @@ NMImageLayer::setDoubleDBScalars(T* buf,
 {
     NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
 
-    QString conname = QString("NMImageLayer_%1").arg(NMGlobalHelper::getRandomString(4));
+    QString conname = QString("NMImageLayer_%1").arg(NMGlobalHelper::getRandomString(8));
 
     // db scope
     // without db and q going out of scope, we cannot remove
@@ -3207,6 +3237,16 @@ vtkImageData *NMImageLayer::getVTKImage(void)
 
     return nullptr;
 }
+
+vtkAlgorithmOutput* NMImageLayer::getItkVtkPipelineOutput()
+{
+    if (this->mPipeconn->isConnected())
+    {
+        return mPipeconn->getVtkAlgorithmOutput();
+    }
+    return nullptr;
+}
+
 
 //vtkIdTypeArray* NMImageLayer::getHistogram(void)
 //{

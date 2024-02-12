@@ -88,6 +88,7 @@ NMLumassEngine::NMLumassEngine(QObject* parent)
     if (!mpiinit)
     {
         MPI_Init_thread(nullptr, nullptr, MPI_THREAD_FUNNELED, &m_ThreadSupport);
+        //MPI_Init_thread(nullptr, nullptr, MPI_THREAD_SINGLE, &m_ThreadSupport);
 
         switch(m_ThreadSupport)
         {

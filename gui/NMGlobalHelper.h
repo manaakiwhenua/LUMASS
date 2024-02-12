@@ -59,6 +59,7 @@ public:
     static QStringList getMultiItemSelection(const QString& title,
                                          const QString& label,
                                          const QStringList& items,
+                                         QStringList selectedItems=QStringList(),
                                          QWidget* parent=0);
     static QString getItemSelection(const QString& title,
                                           const QString& label,

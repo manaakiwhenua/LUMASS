@@ -39,6 +39,7 @@
 #include "NMModelController.h"
 #include "NMIterableComponent.h"
 
+#include <random>
 
 #include "nmlog.h"
 
@@ -64,7 +65,7 @@ NMGlobalHelper::getMultiLineInput(const QString& title,
         NMParamHighlighter* highlighter = new NMParamHighlighter(textEdit);
         highlighter->setExpressionType(NMParamHighlighter::NM_SQLITE_EXP);
 
-        QColor bkg = textEdit->palette().background().color();
+        QColor bkg = textEdit->palette().window().color();
         bool bdark = false;
         if (bkg.red() < 80 && bkg.green() < 80 && bkg.blue() < 80)
         {
@@ -221,7 +222,7 @@ void
 NMGlobalHelper::logQsqlConnections(void)
 {
     QStringList conList = QSqlDatabase::connectionNames();
-    foreach(const QString con, conList)
+    foreach(const QString& con, conList)
     {
         QSqlDatabase db = QSqlDatabase::database(con, false);
         if (db.isValid() && db.isOpen())
@@ -349,6 +350,16 @@ NMGlobalHelper::attachDatabase(QSqlDatabase dbTarget, const QString dbFileName, 
     }
     q.finish();
 
+    std::stringstream smsg;
+    smsg << "Attached '" << dbFileName.toStdString()
+         << "' as '" << schemaName.toStdString() << "' "
+         << "to '" << dbTarget.databaseName().toStdString() << "'" << std::endl;
+
+    NMGlobalHelper::getMainWindow()->getLogger()->processLogMsg(
+                QDateTime::currentDateTime().time().toString(),
+                NMLogger::NM_LOG_DEBUG,
+                smsg.str().c_str());
+
     return true;
 }
 
@@ -385,14 +396,24 @@ bool NMGlobalHelper::detachDatabase(QSqlDatabase db, QString schemaName)
         q.finish();
         return false;
     }
-    q.finish();
+    std::stringstream smsg;
+    smsg << "Detached schema '" << schemaName.toStdString()
+               << "' from '" << db.databaseName().toStdString() << "'"
+               << std::endl;
+    NMGlobalHelper::getMainWindow()->getLogger()->processLogMsg(
+                QDateTime::currentDateTime().time().toString(),
+                NMLogger::NM_LOG_DEBUG,
+                smsg.str().c_str());
 
+    q.finish();
     return true;
 }
 
 bool NMGlobalHelper::detachMultipleDbs(QSqlDatabase dbTarget, const QStringList &dbFileNames)
 {
     bool ret = true;
+
+    QStringList detachList;
     foreach(const QString& fn, dbFileNames)
     {
         const QString schema = QFileInfo(fn).baseName();
@@ -400,8 +421,18 @@ bool NMGlobalHelper::detachMultipleDbs(QSqlDatabase dbTarget, const QStringList 
         {
             ret = false;
         }
+        else
+        {
+            detachList << schema;
+        }
     }
-
+    std::stringstream smsg;
+    smsg << "Detached schemas '" << detachList.join(" ").toStdString() << "'"
+               << " from '" << dbTarget.databaseName().toStdString() << "'" << std::endl;
+    NMGlobalHelper::getMainWindow()->getLogger()->processLogMsg(
+                QDateTime::currentDateTime().time().toString(),
+                NMLogger::NM_LOG_DEBUG,
+                smsg.str().c_str());
     return ret;
 }
 
@@ -560,6 +591,7 @@ QStringList
 NMGlobalHelper::getMultiItemSelection(const QString& title,
                                      const QString& label,
                                      const QStringList& items,
+                                     QStringList selectedItems,
                                      QWidget* parent)
 {
     if (items.size() == 0)
@@ -575,8 +607,32 @@ NMGlobalHelper::getMultiItemSelection(const QString& title,
     QLabel* userPrompt = new QLabel(label, dlg);
 
     QListView* lstView = new QListView(dlg);
-    lstView->setSelectionMode(QAbstractItemView::MultiSelection);
     lstView->setModel(new QStringListModel(items, lstView));
+    lstView->setSelectionMode(QAbstractItemView::MultiSelection);
+
+
+    QItemSelectionModel* ism = lstView->selectionModel();
+    if (ism == nullptr)
+    {
+        NMGlobalHelper::getMainWindow()->appendLogMsg("getMultiItemSelection() - ism is null!");
+        return QStringList();
+    }
+
+    QAbstractItemModel* aim = const_cast<QAbstractItemModel*>(lstView->model());
+    if (aim == nullptr)
+    {
+        NMGlobalHelper::getMainWindow()->appendLogMsg("getMultiItemSelection() - aim is null!");
+        return QStringList();
+    }
+
+    for (int i=0; i < items.size(); ++i)
+    {
+        if (selectedItems.contains(items.at(i)))
+        {
+            ism->select(aim->index(i, 0), QItemSelectionModel::Select);
+        }
+    }
+
 
     QPushButton* btnCancel = new QPushButton("Cancel", dlg);
     dlg->connect(btnCancel, SIGNAL(pressed()), dlg, SLOT(reject()));
@@ -806,38 +862,44 @@ NMGlobalHelper::getRandomString(int len)
         return QString();
     }
 
-    //std::srand(std::time(0));
+    std::random_device rand_rd;
+    std::mt19937 rand_mt(rand_rd());
+    std::uniform_int_distribution<int> rand_1_1e6(1, 1e6);
+    std::uniform_int_distribution<int> rand_48_57(48, 57);
+    std::uniform_int_distribution<int> rand_65_90(65, 90);
+    std::uniform_int_distribution<int> rand_97_122(97, 122);
+
     char* nam = new char[len+1];
     for (int i=0; i < len; ++i)
     {
         if (i == 0)
         {
-            if (::rand() % 2 == 0)
+            if (rand_1_1e6(rand_mt) % 2 == 0)
             {
-                nam[i] = ::rand() % 26 + 65;
+                nam[i] = rand_65_90(rand_mt);
             }
             else
             {
-                nam[i] = ::rand() % 26 + 97;
+                nam[i] = rand_97_122(rand_mt);
             }
         }
         else
         {
-            if (::rand() % 7 == 0)
+            if (rand_1_1e6(rand_mt) % 7 == 0)
             {
                 nam[i] = '_';
             }
-            else if (::rand() % 5 == 0)
+            else if (rand_1_1e6(rand_mt) % 5 == 0)
             {
-                nam[i] = ::rand() % 26 + 65;
+                nam[i] = rand_65_90(rand_mt);
             }
-            else if (::rand() % 3 == 0)
+            else if (rand_1_1e6(rand_mt) % 3 == 0)
             {
-                nam[i] = ::rand() % 26 + 97;
+                nam[i] = rand_97_122(rand_mt);
             }
             else
             {
-                nam[i] = ::rand() % 10 + 48;
+                nam[i] = rand_48_57(rand_mt);
             }
         }
     }

@@ -45,17 +45,21 @@
 
 #include <QObject>
 #include <QMap>
+#include <QSet>
 #include <QStringList>
 #include <QSqlTableModel>
 #include <QSqlQuery>
-
-#include "LpHelper.h"
+#include <QTextStream>
+#include <QFile>
 
 #include "vtkSmartPointer.h"
 #include "vtkTable.h"
 #include "vtkDataSet.h"
 #include "vtkDataSetAttributes.h"
 #include "otbAttributeTable.h"
+#include "otbSQLiteTable.h"
+
+#include "LpHelper.h"
 
 class NMLogger;
 
@@ -181,6 +185,36 @@ protected:
 ///        the one dealing with the deatails of the optimisation
 /////////////////////////////////////////////////////////////////
 
+struct VarAdmin
+{
+    QString name;
+    QStringList dimensions;
+    QStringList bounds;
+
+    // <dim id vector>, <varOffset>
+    // note the dimension ids, identifying the
+    // variable offset, are stored in the same
+    // order as defined in the .los file
+    //      dim id = as values in table
+    // OPTIONS ids = 0-based
+    // var_offset  = 0-based
+    QMap<QVector<long long>, long long> dimOffsetMap;
+    //QMap<long long, std::vector<long long> > offsetDimMap;
+
+    VarAdmin(){}
+
+    VarAdmin(const VarAdmin& va)
+    {
+        name = va.name;
+        dimensions = va.dimensions;
+        bounds = va.bounds;
+
+        dimOffsetMap = va.dimOffsetMap;
+    }
+};
+
+class NMOpenGA;
+
 class NMMosra : public QObject
 {
     Q_OBJECT
@@ -192,6 +226,12 @@ class NMMosra : public QObject
 public:
     NMMosra(QObject* parent=0);
     virtual ~NMMosra();
+
+    // solver type
+    enum NMSolverType {NM_SOLVER_NONE,
+                       NM_SOLVER_LPSOLVE,
+                       NM_SOLVER_IPOPT,
+                       NM_SOLVER_GA};
 
     // decision variable type
     enum NMMosoDVType {NM_MOSO_REAL, NM_MOSO_INT,
@@ -222,6 +262,25 @@ public:
 
     void setItkProcessObject(itk::ProcessObject* obj);
 
+    void setSolFileName(const QString& filename) {msSolFileName = filename;}
+    QString getSolFileName(void){return msSolFileName;}
+
+    QString getNlFileName(void){return msNlFileName;}
+
+    void setEnableLUCControl(bool blucc){mbEnableLUCControl = blucc;}
+    bool getEnableLUCControl(void){return mbEnableLUCControl;}
+
+    void setLUCControlField(const QString& lucctrlField){msLUCControlField = lucctrlField;}
+    QString getLUCControlField(void){return msLUCControlField;}
+
+    void setMaxOptAlloc(const int maxOptAlloc){miMaxOptAlloc = maxOptAlloc;}
+    int getMaxOptAlloc(void){return miMaxOptAlloc;}
+
+    int backupLUCControl(void);
+    int restoreLUCControl(void);
+    int getNumRecLUCChange(void){return miNumRecLUCChange;}
+    void lockInLUGrps(bool bLockInLuGrps){mbLockInLuGrps = bLockInLuGrps;}
+
     /*! stores the filename of the settings file with this object,
         doesn't do anything else, i.e. doesn't parse of othewise checks
         the file for accessibility etc.
@@ -235,6 +294,8 @@ public:
      *  to parse the settings */
     QString getLosSettings(void) { return msLosSettings; }
 
+    NMSolverType getSolverType(void){return mSolverType;}
+
     void setDataSet(const vtkDataSet* dataset);
     void setDataSet(otb::AttributeTable::Pointer otbtab);
     void setDataSet(const QSqlTableModel* sqlmod);
@@ -246,14 +307,25 @@ public:
         {mScenarioName = name;}
     QString getScenarioName(void) {return mScenarioName;}
 
+    bool infixToPolishPrefix();
+
     void cancelSolving(void) {this->mbCanceled = true;}
     int configureProblem(void);
-    void solveProblem(void);
+    bool solveProblem(void);
     int solveLp(void);
+    int solveOpenGA(void);
     int mapLp(void);
+    /*
+     * proc : 0=landslide, 1=surficial, 2=earthflow, 3=gully
+     */
+    int makeSTECLp(int proc);
+    int makeSTECLp2(int proc);
+    int makeNL(void);
+    int makeNL2(void);
     int mapLpTab(void);
     int mapLpDb(void);
     int mapLpQtSql(void);
+    int mapNL(void);
     int calcBaseline(void);
     int calcBaselineTab(void);
     int calcBaselineDb(void);
@@ -292,6 +364,9 @@ public:
 
     void writeBaselineReductions(QString filename);
 
+    void writeSTECReport(QString fileName, std::map<int, std::map<long long, double> > &valstore);
+    void writeSTECReport2(QString fileName, std::map<int, std::map<long long, double> > &valstore);
+
     /* set a solver timeout -> maximum availalbe time for solving
      * the problem
      */
@@ -329,12 +404,32 @@ public:
     static void lpLogCallback(lprec* lp, void* userhandle, char* buf);
 
 
+    bool processExplicitArealCons(std::vector<QString>& vsConsLabel,
+                                  std::vector<int>& vnZoneLength,
+                                  std::vector<QString>& vsZoneField,
+                                  std::vector<std::vector<unsigned int> >& vvnOptionIndex,
+                                  std::vector<unsigned int>& vnConsType,
+                                  std::vector<double>& vdRHS
+                                  );
+
+    bool processFeatureSetConstraints(std::vector<QString>& vsFSCZoneField,
+                                std::vector<std::vector<unsigned int> >& vvnFSCOptionIndex);
+
+
+    // fills mmvHighDimLoopIterLength
+    bool determineHighDimLoopIterLength(
+            const QString& eqn,
+            otb::SQLiteTable::Pointer& sqltab
+            );
+
 
 private:
 
     static const std::string ctxNMMosra;
 
     bool mbCanceled;
+
+    NMSolverType mSolverType;
 
     HLpHelper* mLp;
     //vtkDataSet* mDataSet;
@@ -348,13 +443,32 @@ private:
     QString msLosFileName;
     QString msLosSettings;
     QString mScenarioName;
+    QString msSolFileName;
+    QString msNlFileName;
 
     QString mProblemFilename;
     NMMosoExportType mProblemType;
 
-    QString msLandUseField;
     QString msAreaField;
     QString msLayerName;
+
+
+    QString msLandUseField;
+    QString msLUCControlField;
+    QString msBkpLUCControlField;
+
+    // openGA settings
+    bool mbGAMultiThreading;
+    double mGAConstraintTolerance;
+    size_t mGAPopulation;
+    size_t mGAMaxGeneration;
+
+    // IpOpt specific settings
+    bool mbEnableLUCControl;
+    bool mbLockInLuGrps;
+    int  miMaxOptAlloc;
+    int  miNumRecLUCChange;
+    double mdLuLbndFactor;
 
     QString msOptFeatures;
     QString msDataPath;
@@ -369,8 +483,15 @@ private:
     bool mbBreakAtFirst;
     unsigned int muiTimeOut;
     int miNumOptions;
+    // {lp_solve, ipopt}
+    QString msSolver;
     QStringList mslOptions;
     QStringList mslPerfSumZones;
+
+    QList<QStringList> mlslOptGrps;
+
+    // <OPTION, OptGrp (pos in mlslOptGrps)>
+    QMap<QString, int> mmOptGrpMap;
 
     // <objective> <min | max> <weight>
     QMap<QString, QStringList> mmslObjectives;
@@ -380,6 +501,22 @@ private:
     // option performance fields have to be given in the same order
     // as in the mlsOptions list
     QMap<QString, QStringList> mmslCriteria;
+
+    // maps eqn parameters to columns (values) in the optimisation db
+    // when a parameter is further qualifed by ':unique' it denotes
+    // a dimension defined over the distinct set of values of the given
+    // (single) column in the db
+    // <para name>, <column1 [column2 [column3 ...]]>
+    QMap<QString, QStringList> mmslParameters;
+    QStringList mslDistinctParameters;
+
+    // defines non-linear decision variables and thier dimension(s);
+    // the latter are defined as (=distinct parameters, s. above) or
+    // the special OPTIONS set of resources
+    // <var name>, <dimension1 [dimension2 [dimension3 ...]]>
+    QMap<QString, QStringList> mmslVariables;
+
+    QMap<QString, QString> mmsEquations;
 
     // map holding the incentive names (key) (comprised of two
     // valid criterion names from the CRITERIA section
@@ -398,6 +535,19 @@ private:
     // are going to be used to evaluate status quo and optimised
     // performance
     QMap<QString, QStringList> mmslEvalFields;
+
+    // <eqn name>, <comp operator, rhs>
+    QMap<QString, QStringList> mmslLinearConstraints;
+
+
+    // <eqn name>, <comp operator, rhs>
+    QMap<QString, QStringList> mmslNonLinearConstraints;
+
+    // <eqn name>, <comp operator, rhs>
+    QMap<QString, QStringList> mmslLogicConstraints;
+
+    // <parameter name>, < pair<scaling factor, affected eqns> >
+    QMap<QString, std::pair<double, QStringList> > mmParameterScaling;
 
     // maps areal constraints onto options
     // <constr label>, <option[,option[,...]][:zonefield]> < >= | <= > < number > < percent_of_total | percent_of_selected | map_units >
@@ -469,6 +619,14 @@ private:
     QMap<QString, QStringList> mslFeatSetCons;
     QMap<QString, QString> msFeatureSetConsLabel;
 
+    // ----- FeatureSet Constraint value structure --------------
+    // - the order of constraints in those vectors below id governed
+    //   bye the order of constraints in the mslFeatSetCons map
+    // for each feature set constraint, we need a vector of unique ids
+    //               uid      0: fsc_j_seg, 1: fsc_rhs
+    std::vector<QMap<size_t, QStringList> > mvvFSCUniqueIDSegmentRHSMap;
+    std::vector<QMap<size_t, unsigned int> > mvvFSCUniqueIDCounterMap;
+
 
 
     // maps criterion constraints onto criteria
@@ -492,6 +650,9 @@ private:
     long mlLpCols;
     double mdAreaTotal;
     double mdAreaSelected;
+    double mdAreaScalingFactor;
+
+    double mdMinAlloc;
 
     // reset internal variables
     void reset(void);
@@ -518,6 +679,500 @@ private:
       (same units as the specified area field) */
     double convertAreaUnits(double input, AreaUnitType otype);
     double convertAreaUnits(double input, const QString& otype, const QStringList& zoneSpec);
+
+    // ===========================================================
+    //                      NL PROCESSING
+    // ============================================================
+
+    enum NLSegment {
+        NL_SEG_UNKNOWN = 0,
+        NL_SEG_C = 1,
+        NL_SEG_L = 2,
+        NL_SEG_O = 3,
+        NL_SEG_x = 4,
+        NL_SEG_r = 5,
+        NL_SEG_b = 6,
+        NL_SEG_k = 7,
+        NL_SEG_J = 8,
+        NL_SEG_G = 9,
+        NL_SEG_NL = 10
+    };
+
+    bool createSegmentFile(QFile*& file, NMMosra::NLSegment segType, const QString& abbr="");
+
+    long mConsCounter;
+    long mObjCounter;
+    long mLogicConsCounter;
+
+    QMap<size_t, size_t> mvNonLinearConsVarCounter;
+    QMap<size_t, size_t> mvNonLinearObjVarCounter;
+
+
+    //QSet<QString> mSNonLinearConsVarCounter;
+    //QSet<QString> mSNonLinearObjVarCounter;
+
+    static const QString msOPTIONS;
+    static const QString msSDU;
+    static const QStringList mslLowDims;
+
+    QStringList mslDecisionVars;
+    QStringList mslProcessVars;
+    QStringList msBinaryVars;
+    QStringList msIntVars;
+    QMap<QString, QString> mmLookupColsFstParam;
+
+
+    QMap<QString, QStringList > mmslVarBoundsMap;
+    QMap<QString, VarAdmin> mmVarAdminMap;
+    QMap<QString, long> mmDimLengthMap;
+    QMap<QString, QSet<QString> > mmDimEqnMap;
+    QMap<QString, QStringList> mmHighDimEqnMap;
+    QMap<QString, QSet<QVector<long long> > > mmslHighDimValComboTracker;
+
+    QMap<QVector<long long>, long long> mmvHighDimLoopIterLength;
+
+    // segment stores
+    //std::vector<QString> mvC_seg;
+    //std::vector<QString> mvL_seg;
+    //std::vector<std::vector<QString> > mvO_seg;
+    //std::vector<QString> mvJ_seg;
+    //std::vector<QString> mvG_seg;
+    //static const size_t miOsegSizeLimit;
+
+    std::vector<QFile*> mvfC_seg;
+    std::vector<QFile*> mvfL_seg;
+    std::vector<QFile*> mvfO_seg;
+    std::vector<QFile*> mvfJ_seg;
+    std::vector<QFile*> mvfG_seg;
+
+    size_t mJAccessCounter;
+    size_t mCAccessCounter;
+
+    QString mx_seg;
+    QString mb_seg;
+    QString mr_seg;
+    QString mk_seg;
+
+    QFile* mpNLFile;
+
+    // for each explict area constraint, vector of var offsets
+    std::vector<std::vector<size_t> > mvExplicitAreaConsVarOffsets;
+    // for each implict area constraint, vector of var offsets
+    std::vector<std::vector<QString> > mvvImplicitAreaConsSegments;
+
+    // <eqn name, < <high dims>,<all eqn's dimensions> > >
+    QMap<QString, std::pair<QStringList, QStringList> > mmslHighDimLoopEquations;
+
+    // < column, i.e. varoffset >, <non-zero count>
+    QMap<size_t, size_t> mNonZeroJColCount;
+
+    bool processVariables(QString &b_seg, QString& x_seg, long *n_vars, NMOpenGA* oga=nullptr);
+    bool processLoopDimensions(void);
+    void identifyHighDimLoopEquations(
+            const QString& rootEqnName,
+            const QString& subEqnName);
+
+
+    double getRecordValue(
+            QMap<QString, std::vector<size_t> >& nameValPosMap,
+            std::vector<otb::AttributeTable::ColumnValue>& getvalues,
+            const QString& paramName,
+            const size_t optionsIdx = 0
+            );
+
+    bool populateEquations(
+            const QString& eqnName,
+            QMap<QString, QStack<std::vector<int> > > &activeSegment,
+            int nestingLevel,
+            const NLSegment& nlSeg,
+            long& segCounter,
+            QMap<QString, QMap<QString, int> > &eqnLoopCounterMap,
+            QMap<QString, double>& dimValueMap,
+            QMap<QString, std::vector<size_t> >& nameValPosMap,
+            std::vector<otb::AttributeTable::ColumnValue>& getvalues
+            );
+
+    void removeLoopCounter(
+            QMap<QString, QMap<QString, int> > &eqnLoopCounterMap,
+            const QString& dimName,
+            const QString& eqnName
+            );
+
+    void removeNLFiles(void);
+    void clearInternalNLDataStructures(void);
+    //bool processNLSegmentData(void);
+    bool processNLSegmentData2(void);
+
+    bool populateHighDimLoopEquations(
+            const QString& hdeqn,
+            otb::SQLiteTable::Pointer& sqltab,
+            QMap<QString, std::vector<size_t> >& nameValPosMap,
+            std::vector<std::string>& getnames,
+            std::vector<otb::AttributeTable::ColumnValue>& getvalues
+            );
+
+    bool populateHDLE(
+            const QString& hdeqn,
+            otb::SQLiteTable::Pointer& sqltab,
+            QMap<QString, std::vector<size_t> >& nameValPosMap,
+            std::vector<std::string>& getnames,
+            std::vector<otb::AttributeTable::ColumnValue>& getvalues
+            );
+
+
+    bool populateLowDimAndOtherEquations(
+            otb::SQLiteTable::Pointer& sqltab,
+            QMap<QString, std::vector<size_t> >& nameValPosMap,
+            std::vector<std::string>& getnames,
+            std::vector<otb::AttributeTable::ColumnValue>& getvalues
+            );
+
+
+    bool writeNLSegment(const QString &sseg, QFile *&fseg, const NLSegment& segType, int writeFile = -1);
+
+    bool bkprestoreLUCControl(bool bBackup);
+
+    //bool
+
+    // ===========================================================
+    //                      EQUATION PARSING
+    // ============================================================
+
+    enum EqnElement {
+        EQN_LOOP=1,
+        EQN_FUNCTION=2,
+        EQN_PARAMETER=3,
+        EQN_EQUATION=4,
+        EQN_NUMBER=5,
+        EQN_OPERATOR=6,
+        EQN_LBRACE=7,
+        EQN_RBRACE=8,
+        EQN_UNKNOWN=0
+    };
+
+    // eqn obj type : 1
+    struct Loop
+    {
+        static const EqnElement type = EQN_LOOP;
+        QString name;
+        QString dim;
+        int level = -1;
+        int bodyStart = -1;
+        int bodyEnd = -1;
+
+        std::vector<int> sections;
+    };
+
+    // eqn obj type : 2
+    struct Func
+    {
+        static const EqnElement type = EQN_FUNCTION;
+        QString name;
+        std::vector<int> sep;
+        int level = -1;
+        int bodyStart = -1;
+        int bodyEnd = -1;
+    };
+
+    // eqn obj type : 3
+    // NOTE: a 'parameter' is here defined as
+    // a named numerical value, which, in the
+    // context of the optimisation problem at
+    // hand, could be either a descision variable
+    // or a pre-defined parameter
+    struct Param
+    {
+        static const EqnElement type = EQN_PARAMETER;
+        QString name;
+        QStringList dimensions;
+        int paramStart = -1;
+        int paramEnd = -1;
+    };
+
+    // eqn obj type : 4
+    struct Equation
+    {
+        static const EqnElement type = EQN_EQUATION;
+        QString eqn;
+        int eqnStart = -1;
+        int eqnEnd = -1;
+    };
+
+    // eqn obj type : 5
+    struct Number
+    {
+        static const EqnElement type = EQN_NUMBER;
+        int numStart = -1;
+        int numEnd = -1;
+        double value = 0;
+    };
+
+    // eqn obj type : 6
+    struct Operator
+    {
+        static const EqnElement type = EQN_OPERATOR;
+        QString op;
+        int opStart = -1;
+        int opEnd = -2;
+    };
+
+
+    struct EquationAdmin {
+        QString name;
+        // <pos in revPolPrefix list>,
+        //      <eqn element type, offset into type list>
+        QMap<int, std::pair<EqnElement, int> > elemMap;
+        //QMultiMap<int, Loop> loopMap;
+        QList<Loop> loopList;
+        QList<Func> funcList;
+        QList<Param> paramList;
+        QList<Equation> eqnList;
+        QList<Number> numList;
+        QList<Operator> opList;
+    };
+
+    // <name>, <parsed and itemized equation stored in a handy object>
+    QMap<QString, EquationAdmin> mmEquationAdmins;
+
+    // <name>, <EquationAdmin>, <polish prefix notation eqn elements>
+    QMap<QString, std::pair<EquationAdmin, QStringList> > mmPrefixEquations;
+
+
+    bool parseEquation(const QString eqn,
+            EquationAdmin& ea,
+            bool blogEndPos = false
+            );
+
+    bool polishingEqn(EquationAdmin& ea, EquationAdmin &pa,
+                      QStringList& polishPrefix);
+    QString reverseEqn(const QString& eqn, EquationAdmin& ea,
+                       int offset, int end);
+
+    bool shuntyYard(const QString& revInEqn,
+                    QStringList &polishPrefixList,
+                    EquationAdmin& ea,
+                    EquationAdmin& pa
+            );
+
+
+    QStringList shuntyCoreRev(const QString& revEqn,
+                       EquationAdmin& ea,
+                       EquationAdmin& pa,
+                       int offset, int outlistoffset//,
+                       //QMap<QString, std::pair<Loop, QString> > *pRevLoopMap=nullptr
+                       );
+    QStringList shuntyCorePref(const QStringList& revList,
+                               EquationAdmin& inEa,
+                               EquationAdmin& outEa);
+
+    void PrintElemMap(const EquationAdmin& admin);
+
+    bool createEqnElemAdminMap(
+            QMap<QString, QSet<QString> > &dimEqnMap,
+            QMap<QString, std::vector<size_t> >& nameValPosMap,
+            QMap<QString, int>& procVarInObjConsMap,
+            std::vector<std::string>& getnames,
+            std::vector<otb::AttributeTable::ColumnValue>& getvalues,
+            const QString& eqnname);
+
+    bool getParameterValue(
+            double& pVal,
+            const QString& eqnName,
+            const NMMosra::Param& pa,
+            std::vector<otb::AttributeTable::ColumnValue>& getvalues,
+            QMap<QString, std::vector<size_t> >& nameValPosMap,
+            QMap<QString, QMap<QString, int> > &eqnLoopCounterMap,
+            QMap<QString, double>& dimValueMap
+            );
+
+    static QList<QChar> numchar(){
+        QList<QChar> nchlist;
+        nchlist << '0' << '1' << '2'
+                << '3' << '4' << '5'
+                << '6' << '7' << '8'
+                << '9' << 'e' << '+'
+                << '-' << '.';
+        return nchlist;
+    }
+    static const QList<QChar> mNumCharList;
+
+    static QList<QChar> ws(){
+        QList<QChar> lws;
+        lws << ' ' << '\n' << '\r'
+            << '\t' << '\t' << '\b'
+            << '\v' << '\f';
+        return lws;
+    }
+    static const QList<QChar> mWhitespaces;
+
+    static QStringList lnames(){
+        QStringList lnam;
+        lnam << "for" << "sum" << "mult";
+        return lnam;
+    }
+    static const QStringList mLoopNames;
+
+    static QList<QChar> opchar(){
+        QList<QChar> opcharList;
+        opcharList << '+';
+        opcharList << '^';
+        opcharList << '<';
+        opcharList << '=';
+        opcharList << '-';
+        opcharList << '!';
+        opcharList << '>';
+        opcharList << '*';
+        opcharList << '&';
+        opcharList << '<';
+        opcharList << '/';
+        opcharList << '|';
+        opcharList << '>';
+        return opcharList;
+    }
+    static const QList<QChar> mOpCharList;
+
+    static QMap<QString, int> aov(){
+        QMap<QString, int> mapov;
+        mapov.insert("and" , 21);
+        mapov.insert("or"  , 20);
+        mapov.insert("lt"  , 22);
+        mapov.insert("le"  , 23);
+        mapov.insert("ge"  , 28);
+        mapov.insert("gt"  , 29);
+        mapov.insert("eq"  , 24);
+        mapov.insert("ne"  , 30);
+        return mapov;
+     }
+    static const QMap<QString, int> mAMPLOperators;
+
+    static QMap<QChar, QChar> rl(){
+        QMap<QChar, QChar> maprl;
+        maprl.insert('(', ')');
+        maprl.insert('{', '}');
+        maprl.insert('[', ']');
+        return maprl;
+    }
+    static const QMap<QChar, QChar> mReverseLeft;// = rl();
+
+    static QMap<QChar, QChar> rr(){
+        QMap<QChar, QChar> maprr;
+        maprr.insert(')', '(');
+        maprr.insert('}', '{');
+        maprr.insert(']', '[');
+        return maprr;
+    }
+    static const QMap<QChar, QChar> mReverseRight;// = rr();
+
+
+    static QMap<QString, int> po(){
+        QMap<QString, int> mappo;
+        mappo.insert("+", 0);
+        mappo.insert("-", 1);
+        mappo.insert("*", 2);
+        mappo.insert("/", 3);
+        mappo.insert("^", 5);
+        mappo.insert("<", 6);
+        mappo.insert("||", 20);
+        mappo.insert("&&", 21);
+        mappo.insert("<=", 23);
+        mappo.insert("=", 24);
+        mappo.insert(">=", 28);
+        mappo.insert(">", 29);
+        mappo.insert("<>", 30);
+        mappo.insert("!=", 30);
+        mappo.insert("!", 34);
+        return mappo;
+    }
+    static const QMap<QString, int> mParseOperators;// = po();
+
+    static QMap<QString, int> opLevel(){
+        //6 ^
+        //5 * /
+        //4 + -
+        //3 < > = <= >= <> !=
+        //2 ! not
+        //1 && and
+        //0 || or
+        QMap<QString, int> lvlmap;
+        lvlmap.insert("+", 4);
+        lvlmap.insert("^", 6);
+        lvlmap.insert("<", 3);
+        lvlmap.insert("=", 3);
+        lvlmap.insert("-", 4);
+        lvlmap.insert("!", 2);
+        lvlmap.insert(">", 3);
+        lvlmap.insert("*", 5);
+        lvlmap.insert("&&", 1);
+        lvlmap.insert("<=", 3);
+        lvlmap.insert("/", 5);
+        lvlmap.insert("||", 0);
+        lvlmap.insert(">=", 3);
+        lvlmap.insert("<>", 3);
+        lvlmap.insert("!=", 3);
+        return lvlmap;
+    }
+    static const QMap<QString, int> mmOpLevel;
+
+    static QMap<QString, int> amplfunc(){
+        QMap<QString, int> amfuncmap;
+        amfuncmap.insert("floor", 13);
+        amfuncmap.insert("neg"  , 16);
+        amfuncmap.insert("tan"  , 38);
+        amfuncmap.insert("sin"  , 41);
+        amfuncmap.insert("exp"  , 44);
+        amfuncmap.insert("atanh", 47);
+        amfuncmap.insert("asin" , 51);
+
+        amfuncmap.insert("ceil" , 14);
+        amfuncmap.insert("not"  , 34);
+        amfuncmap.insert("sqrt" , 39);
+        amfuncmap.insert("log10", 42);
+        amfuncmap.insert("cosh" , 45);
+        amfuncmap.insert("atan" , 49);
+        amfuncmap.insert("acosh", 52);
+
+        amfuncmap.insert("abs"   , 15);
+        amfuncmap.insert("tanh"  , 37);
+        amfuncmap.insert("sinh"  , 40);
+        amfuncmap.insert("log"   , 43);
+        amfuncmap.insert("cos"   , 46);
+        amfuncmap.insert("asinh" , 50);
+        amfuncmap.insert("acos"  , 53);
+
+        amfuncmap.insert("plus"   , 0 );
+        amfuncmap.insert("div"    , 3 );
+        amfuncmap.insert("less"   , 6 );
+        amfuncmap.insert("atan2"  , 48);
+        amfuncmap.insert("round"  , 57);
+
+        amfuncmap.insert("minus"  , 1 );
+        amfuncmap.insert("rem"    , 4 );
+        amfuncmap.insert("intdiv" , 55);
+        amfuncmap.insert("trunc"  , 58);
+
+        amfuncmap.insert("mult"      , 2 );
+        amfuncmap.insert("pow"       , 5 );
+        amfuncmap.insert("precision" , 56);
+        amfuncmap.insert("iff"       , 73);
+
+        amfuncmap.insert("max"  , 12);
+        amfuncmap.insert("min"  , 11);
+        amfuncmap.insert("sum"  , 54);
+        amfuncmap.insert("count", 59);
+
+        amfuncmap.insert("and"  , 70);
+        amfuncmap.insert("or"   , 71);
+
+        amfuncmap.insert("numberof", 60);
+        amfuncmap.insert("numberofs", 61);
+
+        amfuncmap.insert("if", 35);
+        amfuncmap.insert("ifs", 65);
+        amfuncmap.insert("implies", 72);
+
+        return amfuncmap;
+    }
+    static const QMap<QString, int> mAMPLFunctions;
 
 };
 

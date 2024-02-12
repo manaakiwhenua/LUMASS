@@ -25,6 +25,58 @@
 #include "nmlog.h"
 #include "itkNMLogEvent.h"
 #include "NMLogger.h"
+#include "NMSqlTableModel.h"
+
+//#include "NMTableCalculator.h"
+//#include "NMMfwException.h"
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <algorithm>
+
+#include <QObject>
+#include <QMetaObject>
+#include <QFile>
+#include <QTextStream>
+#include <QRegExp>
+#include <QList>
+#include <QMap>
+#include <QVector>
+#include <QPointer>
+#include <QStandardItem>
+#include <QScopedPointer>
+#include <QFileInfo>
+#include <QDateTime>
+#include <QDir>
+#include <QDirIterator>
+#include <QSqlDriver>
+#include <QSqlDatabase>
+#include <QSqlTableModel>
+#include <QSqlQuery>
+#include <QSqlIndex>
+#include <QSqlError>
+#include <QVariantList>
+#include <QStack>
+#include <QSet>
+
+#include "itkProcessObject.h"
+#include "otbSQLiteTable.h"
+
+#include "vtkDataSetAttributes.h"
+#include "vtkDataSet.h"
+#include "vtkTable.h"
+#include "vtkAbstractArray.h"
+#include "vtkDataArray.h"
+#include "vtkBitArray.h"
+#include "vtkIntArray.h"
+#include "vtkLongArray.h"
+#include "vtkDoubleArray.h"
+#include "vtkStringArray.h"
+#include "vtkCellData.h"
+#include "vtkMath.h"
+#include "vtkDelimitedTextWriter.h"
+
+#include "NMMosra.h"
 
 /// need to define NMMosra specific debug macros since this class
 /// is used as part of the GUI as well as the modlling framework,
@@ -75,51 +127,8 @@
                         sstr.str().c_str()); \
        }
 
-
-//#include "NMTableCalculator.h"
-//#include "NMMfwException.h"
-#include <string>
-#include <iostream>
-#include <sstream>
-
-#include <QFile>
-#include <QTextStream>
-#include <QRegExp>
-#include <QList>
-#include <QMap>
-#include <QVector>
-#include <QPointer>
-#include <QStandardItem>
-#include <QScopedPointer>
-#include <QFileInfo>
-#include <QDateTime>
-#include <QDir>
-#include <QSqlDriver>
-#include <QSqlDatabase>
-#include <QSqlQuery>
-#include <QSqlIndex>
-#include <QSqlError>
-#include <QVariantList>
-
-#include "itkProcessObject.h"
-#include "otbSQLiteTable.h"
-
-#include "vtkDataSetAttributes.h"
-#include "vtkDataSet.h"
-#include "vtkTable.h"
-#include "vtkAbstractArray.h"
-#include "vtkDataArray.h"
-#include "vtkBitArray.h"
-#include "vtkIntArray.h"
-#include "vtkLongArray.h"
-#include "vtkDoubleArray.h"
-#include "vtkStringArray.h"
-#include "vtkCellData.h"
-#include "vtkMath.h"
-#include "vtkDelimitedTextWriter.h"
-
-#include "NMMosra.h"
-
+// need to have the macros defined before including the openGA related header(s)
+#include "NMOpenGA.h"
 
 ////////////////////////////////
 /// NMMosraDataSet implementation
@@ -480,7 +489,7 @@ NMMosraDataSet::getStrValue(const QString &columnName, int row)
                             dsAttr->GetAbstractArray(columnName.toStdString().c_str()));
                 if (sa != nullptr)
                 {
-                    val = sa->GetValue(row);
+                    val = sa->GetValue(row).c_str();
                 }
             }
         }
@@ -627,7 +636,7 @@ NMMosraDataSet::getStrValue(int col, int row)
                             dsAttr->GetAbstractArray(col));
                 if (sa != nullptr)
                 {
-                    val = sa->GetValue(row);
+                    val = sa->GetValue(row).c_str();
                 }
             }
         }
@@ -1584,6 +1593,9 @@ NMMosraDataSet::updateRow(const QVariantList &values, const int &row)
 
         if (!mRowUpdateQuery.exec())
         {
+            NMDebugAI(<< "Failed updating table record: "
+                           << mRowUpdateQuery.lastQuery().toStdString() << std::endl
+                           << mRowUpdateQuery.lastError().text().toStdString());
             MosraLogError(<< "Failed updating table record: "
                           << mRowUpdateQuery.lastQuery().toStdString() << std::endl
                           << mRowUpdateQuery.lastError().text().toStdString());
@@ -1669,7 +1681,7 @@ NMMosraDataSet::getRowValues(QVariantList &values, const int &row)
                             MosraLogError(<< "Failed fetching row value for column '" << mRowGetColumns.at(val).toStdString() << "'!");
                             return false;
                         }
-                        varVal = QVariant::fromValue(QString(sa->GetValue(row).operator const char *()));
+                        varVal = QVariant::fromValue(QString(sa->GetValue(row).c_str()));
                     }
                     break;
 
@@ -1798,10 +1810,29 @@ NMMosraDataSet::getRowValues(QVariantList &values, const int &row)
 /// NMMosra implementation
 ////////////////////////////////
 
+// initialising static class members
 const std::string NMMosra::ctxNMMosra = "NMMosra";
+const QString NMMosra::msOPTIONS = QStringLiteral("OPTIONS");
+const QString NMMosra::msSDU = QStringLiteral("SDU");
+const QStringList NMMosra::mslLowDims = {NMMosra::msSDU, NMMosra::msOPTIONS};
+const QMap<QChar, QChar> NMMosra::mReverseLeft    = NMMosra::rl();
+const QMap<QChar, QChar> NMMosra::mReverseRight   = NMMosra::rr();
+const QMap<QString, int> NMMosra::mParseOperators = NMMosra::po();
+const QMap<QString, int> NMMosra::mAMPLOperators  = NMMosra::aov();
+const QMap<QString, int> NMMosra::mAMPLFunctions  = NMMosra::amplfunc();
+const QList<QChar> NMMosra::mWhitespaces = NMMosra::ws();
+const QList<QChar> NMMosra::mOpCharList  = NMMosra::opchar();
+const QStringList  NMMosra::mLoopNames   = NMMosra::lnames();
+const QList<QChar> NMMosra::mNumCharList = NMMosra::numchar();
+const QMap<QString, int> NMMosra::mmOpLevel = NMMosra::opLevel();
+
+// max size of O_seg
+//const size_t NMMosra::miOsegSizeLimit = 2136997888;
+//using VarAdmin = NMMosra::VarAdmin;
 
 NMMosra::NMMosra(QObject* parent) //: QObject(parent)
-    : mProblemFilename(""), mProblemType(NM_MOSO_LP)
+    : mProblemFilename(""), mProblemType(NM_MOSO_LP),
+      mSolverType(NM_SOLVER_NONE)
 {
     NMDebugCtx(ctxNMMosra, << "...");
 
@@ -1814,6 +1845,21 @@ NMMosra::NMMosra(QObject* parent) //: QObject(parent)
     this->reset();
 
     mScenarioName = "My Optimisation Scenario";
+    mdMinAlloc = 1.0;
+    mbEnableLUCControl = false;
+    mbLockInLuGrps = false;
+    miMaxOptAlloc = 3;
+    mpNLFile = nullptr;
+
+    msBkpLUCControlField = "LuCtrBkp";
+    miNumRecLUCChange = 0;
+
+    mdLuLbndFactor = 0.0;
+
+    mbGAMultiThreading = true;
+    mGAConstraintTolerance = 0.2;
+    mGAPopulation = 50;
+    mGAMaxGeneration = 100;
 
     // seed the random number generator
     srand(time(0));
@@ -1899,6 +1945,7 @@ void NMMosra::reset(void)
     this->mlLpCols = 0;
     this->mdAreaSelected = 0;
     this->mdAreaTotal = 0;
+    this->mdAreaScalingFactor = 1.0;
 
     this->muiTimeOut = 60;
     this->miNumOptions = 0;
@@ -1989,8 +2036,14 @@ int NMMosra::parseStringSettings(QString strSettings)
     enum ParSec {
         problem,
         criteria,
+        parameters,
+        variables,
+        equations,
         incentives,
         objectives,
+        linearcons,
+        nonlinearcons,
+        logiccons,
         arealcons,
         featcons,
         featsetcons,
@@ -1998,13 +2051,14 @@ int NMMosra::parseStringSettings(QString strSettings)
         cricons,
         objcons,
         batch,
+        scaling,
         nosection
     };
 
     ParSec section = nosection;
 
-    sReport << "Import Report" << endl << endl;
-    MosraLogDebug( << "parsing settings file ..." << endl)
+    sReport << "Import Report" << Qt::endl << Qt::endl;
+    MosraLogDebug( << "parsing settings file ..." << std::endl)
     while (!str.atEnd())
     {
         sLine = str.readLine();
@@ -2030,6 +2084,21 @@ int NMMosra::parseStringSettings(QString strSettings)
             section = criteria;
             continue;
         }
+        else if (!sLine.compare(tr("<PARAMETERS>"), Qt::CaseInsensitive))
+        {
+            section = parameters;
+            continue;
+        }
+        else if (!sLine.compare(tr("<VARIABLES>"), Qt::CaseInsensitive))
+        {
+            section = variables;
+            continue;
+        }
+        else if (!sLine.compare(tr("<EQUATIONS>"), Qt::CaseInsensitive))
+        {
+            section = equations;
+            continue;
+        }
         else if (!sLine.compare(tr("<INCENTIVES>"), Qt::CaseInsensitive))
         {
             section = incentives;
@@ -2038,6 +2107,21 @@ int NMMosra::parseStringSettings(QString strSettings)
         else if (!sLine.compare(tr("<OBJECTIVES>"), Qt::CaseInsensitive))
         {
             section = objectives;
+            continue;
+        }
+        else if (!sLine.compare(tr("<ALGEBRAIC_LINEAR_CONSTRAINTS>"), Qt::CaseInsensitive))
+        {
+            section = linearcons;
+            continue;
+        }
+        else if (!sLine.compare(tr("<ALGEBRAIC_NONLINEAR_CONSTRAINTS>"), Qt::CaseInsensitive))
+        {
+            section = nonlinearcons;
+            continue;
+        }
+        else if (!sLine.compare(tr("<LOGIC_CONSTRAINTS>"), Qt::CaseInsensitive))
+        {
+            section = logiccons;
             continue;
         }
         else if (!sLine.compare(tr("<AREAL_CONSTRAINTS>"), Qt::CaseInsensitive))
@@ -2070,6 +2154,11 @@ int NMMosra::parseStringSettings(QString strSettings)
             section = objcons;
             continue;
         }
+        else if (!sLine.compare(tr("<PARAMETER_SCALING>"), Qt::CaseInsensitive))
+        {
+            section = scaling;
+            continue;
+        }
         else if (!sLine.compare(tr("<BATCH_SETTINGS>"), Qt::CaseInsensitive))
         {
             section = batch;
@@ -2084,7 +2173,7 @@ int NMMosra::parseStringSettings(QString strSettings)
         //check, if we are dealing with a valid data section
         if (section == nosection)
         {
-            sReport << "Line " << numline << " does not belong to a valid data section" << endl;
+            sReport << "Line " << numline << " does not belong to a valid data section" << Qt::endl;
             continue;
         }
 
@@ -2094,7 +2183,7 @@ int NMMosra::parseStringSettings(QString strSettings)
         //if there is no equal sign skip processing of this line
         if (sep == -1)
         {
-            sReport << "Line " << numline << " contains invalid data" << endl;
+            sReport << "Line " << numline << " contains invalid data" << Qt::endl;
             continue;
         }
 
@@ -2119,30 +2208,183 @@ int NMMosra::parseStringSettings(QString strSettings)
                 else // DVTYPE_CONTINUOUS
                     this->meDVType = NMMosra::NM_MOSO_REAL;
 
-                MosraLogInfo( << "DEVTYPE: " << this->meDVType << endl)
+                MosraLogInfo( << "DEVTYPE: " << this->meDVType << std::endl)
             }
             else if (sVarName.compare(tr("CRITERION_LAYER"), Qt::CaseInsensitive) == 0)
             {
                 this->msLayerName = sValueStr;
-                MosraLogInfo( << "LayerName: " << this->msLayerName.toStdString() << endl)
+                MosraLogInfo( << "LayerName: " << this->msLayerName.toStdString() << std::endl)
             }
             else if (sVarName.compare(tr("LAND_USE_FIELD"), Qt::CaseInsensitive) == 0)
             {
                 this->msLandUseField = sValueStr;
-                MosraLogInfo( << "LandUseField: " << this->msLandUseField.toStdString() << endl)
+                MosraLogInfo( << "LandUseField: " << this->msLandUseField.toStdString() << std::endl)
+            }
+            else if (sVarName.compare(tr("LUC_CONTROL_FIELD"), Qt::CaseInsensitive) == 0)
+            {
+                this->msLUCControlField = sValueStr;
+                MosraLogInfo( << "LUCControlField: " << this->msLUCControlField.toStdString() << std::endl)
+            }
+            else if (sVarName.compare(tr("ENABLE_LUC_CONTROL"), Qt::CaseInsensitive) == 0)
+            {
+                if (    sValueStr.compare(QStringLiteral("on"), Qt::CaseInsensitive) == 0
+                     || sValueStr.compare(QStringLiteral("true"), Qt::CaseInsensitive) == 0
+                     || sValueStr.compare(QStringLiteral("yes"), Qt::CaseInsensitive) == 0
+                   )
+                {
+                    this->mbEnableLUCControl = true;
+                }
+                else
+                {
+                    this->mbEnableLUCControl = false;
+                }
+
+                MosraLogInfo( << "EnableLUCControl: " << (mbEnableLUCControl ? "on" : "off") << std::endl)
+            }
+            else if (sVarName.compare(tr("LOCK_IN_LU_GRPS"), Qt::CaseInsensitive) == 0)
+            {
+                if (    sValueStr.compare(QStringLiteral("on"), Qt::CaseInsensitive) == 0
+                     || sValueStr.compare(QStringLiteral("true"), Qt::CaseInsensitive) == 0
+                     || sValueStr.compare(QStringLiteral("yes"), Qt::CaseInsensitive) == 0
+                   )
+                {
+                    this->mbLockInLuGrps = true;
+                }
+                else
+                {
+                    this->mbLockInLuGrps = false;
+                }
+
+                MosraLogInfo( << "LockInLuGrps: " << (mbLockInLuGrps ? "on" : "off") << std::endl)
+            }
+            else if (sVarName.compare(tr("GA_MULTITHREADING"), Qt::CaseInsensitive) == 0)
+            {
+                if (    sValueStr.compare(QStringLiteral("on"), Qt::CaseInsensitive) == 0
+                     || sValueStr.compare(QStringLiteral("true"), Qt::CaseInsensitive) == 0
+                     || sValueStr.compare(QStringLiteral("yes"), Qt::CaseInsensitive) == 0
+                   )
+                {
+                    this->mbGAMultiThreading = true;
+                }
+                else
+                {
+                    this->mbGAMultiThreading = false;
+                }
+
+                MosraLogInfo( << "GA Multithreading: " << (mbGAMultiThreading ? "on" : "off") << std::endl)
+            }
+            else if (sVarName.compare(tr("GA_CONS_TOLERANCE"), Qt::CaseInsensitive) == 0)
+            {
+                bool bConv = false;
+                double consTol = sValueStr.toDouble(&bConv);
+                if (bConv && consTol >= 0)
+                {
+                    this->mGAConstraintTolerance = consTol;
+                }
+                else
+                {
+                    MosraLogError(<< "Invalid value specified for 'GA_CONS_TOLERANCE'! "
+                                  << "Please specify a real value >= 0 !" << std::endl);
+                }
+
+                MosraLogInfo( << "GA_CONS_TOLERANCE: " << this->mGAConstraintTolerance << std::endl)
+            }
+            else if (sVarName.compare(tr("GA_POPULATION"), Qt::CaseInsensitive) == 0)
+            {
+                bool bConv = false;
+                double gaPop = sValueStr.toInt(&bConv);
+                if (bConv && gaPop > 0)
+                {
+                    this->mGAPopulation = gaPop;
+                }
+                else
+                {
+                    MosraLogError(<< "Invalid value specified for 'GA_POPULATION'! "
+                                  << "Please specify an integer value > 0 !" << std::endl);
+                }
+
+                MosraLogInfo( << "GA_POPULATION: " << this->mGAConstraintTolerance << std::endl)
+            }
+            else if (sVarName.compare(tr("GA_MAX_GENERATION"), Qt::CaseInsensitive) == 0)
+            {
+                bool bConv = false;
+                double gaMaxGen = sValueStr.toInt(&bConv);
+                if (bConv && gaMaxGen > 0)
+                {
+                    this->mGAMaxGeneration = gaMaxGen;
+                }
+                else
+                {
+                    MosraLogError(<< "Invalid value specified for 'GA_MAX_GENERATION'! "
+                                  << "Please specify an int value > 0 !" << std::endl);
+                }
+
+                MosraLogInfo( << "GA_MAX_GENERATION: " << this->mGAConstraintTolerance << std::endl)
+            }
+            else if (sVarName.compare(tr("LU_LBND_FACTOR"), Qt::CaseInsensitive) == 0)
+            {
+                bool bLuConv = false;
+                double dLowBndFact = sValueStr.toDouble(&bLuConv);
+
+                if (bLuConv)
+                {
+                    // ensure value is in interval [0, 1]
+                    bool bcorr = false;
+                    if (dLowBndFact < 0)
+                    {
+                        bcorr = true;
+                    }
+                    if (dLowBndFact > 1)
+                    {
+                        bcorr = true;
+                    }
+
+                    if (bcorr)
+                    {
+                        dLowBndFact = std::min(1.0, std::max(0.0, dLowBndFact));
+                        MosraLogInfo(<< "Invalid value specified for 'LU_BND_FACTOR' := " << sValueStr.toStdString()
+                                      << "! As this values must be in the interval [0, 1], "
+                                      << "LUMASS adjusted the value to := " << dLowBndFact << " .");
+                    }
+                    this->mdLuLbndFactor = dLowBndFact;
+                }
+                else if (!bLuConv)
+                {
+                    MosraLogError(<< "Invalid value specified for 'LU_BND_FACTOR'!"
+                                  << "Please specify a value in the interval [0, 1]!" << std::endl);
+                }
+
+                MosraLogInfo( << "LU_LBND_FACTOR: " << this->mdLuLbndFactor << std::endl)
+            }
+            else if (sVarName.compare(tr("MAX_OPTION_ALLOC"), Qt::CaseInsensitive) == 0)
+            {
+                //this->msAreaField = sValueStr;
+                bool bConv = false;
+                int maxAlloc = sValueStr.toInt(&bConv);
+                if (bConv && maxAlloc > 0)
+                {
+                    this->miMaxOptAlloc = maxAlloc;
+                }
+                else
+                {
+                    MosraLogError(<< "Invalid value specified for 'MAX_OPTION_ALLOC'! "
+                                  << "Please specify an integer value >= 1 !" << std::endl);
+                }
+
+                MosraLogInfo( << "MaxOptionAllocation: " << this->miMaxOptAlloc << std::endl)
             }
             else if (sVarName.compare(tr("AREA_FIELD"), Qt::CaseInsensitive) == 0)
             {
                 this->msAreaField = sValueStr;
-                MosraLogInfo( << "AreaField: " << this->msAreaField.toStdString() << endl)
+                MosraLogInfo( << "AreaField: " << this->msAreaField.toStdString() << std::endl)
             }
             else if (sVarName.compare(tr("PERFORMANCE_SUM_ZONES"), Qt::CaseInsensitive) == 0)
             {
                 if (!sValueStr.isEmpty())
                 {
-                    this->mslPerfSumZones = sValueStr.split(" ", QString::SkipEmptyParts);
+                    this->mslPerfSumZones = sValueStr.split(" ", Qt::SkipEmptyParts);
                 }
-                MosraLogInfo( << "PerformanceSumZones: " << mslPerfSumZones.join(" ").toStdString() << endl)
+                MosraLogInfo( << "PerformanceSumZones: " << mslPerfSumZones.join(" ").toStdString() << std::endl)
             }
             else if (sVarName.compare("TIMEOUT", Qt::CaseInsensitive) == 0)
             {
@@ -2152,7 +2394,7 @@ int NMMosra::parseStringSettings(QString strSettings)
                     {
                         this->muiTimeOut = 0;
                         this->mbBreakAtFirst = true;
-                        MosraLogInfo(<< "Solver timeout: break at first feasible solution!" << endl);
+                        MosraLogInfo(<< "Solver timeout: break at first feasible solution!" << std::endl);
                     }
                     else
                     {
@@ -2162,7 +2404,7 @@ int NMMosra::parseStringSettings(QString strSettings)
                         {
                             this->mbBreakAtFirst = false;
                             this->muiTimeOut = timeout;
-                            MosraLogInfo(<< "Solver timeout: " << timeout << endl);
+                            MosraLogInfo(<< "Solver timeout: " << timeout << std::endl);
                         }
                     }
                 }
@@ -2170,14 +2412,58 @@ int NMMosra::parseStringSettings(QString strSettings)
             else if (sVarName.compare("DATAPATH", Qt::CaseInsensitive) == 0)
             {
                 this->msDataPath = sValueStr;
-                MosraLogInfo(<< "batch data path: " << this->msDataPath.toStdString() << endl);
+                MosraLogInfo(<< "batch data path: " << this->msDataPath.toStdString() << std::endl);
             }
             else if (sVarName.compare("OPT_FEATURES", Qt::CaseInsensitive) == 0)
             {
                 if (!sValueStr.isEmpty())
                 {
                     this->msOptFeatures = sValueStr;
-                    MosraLogInfo(<< "OPT_FEATURES: " << this->msOptFeatures.toStdString() << endl);
+                    MosraLogInfo(<< "OPT_FEATURES: " << this->msOptFeatures.toStdString() << std::endl);
+                }
+            }
+            else if (sVarName.compare("SOLVER", Qt::CaseInsensitive) == 0)
+            {
+                if (!sValueStr.isEmpty())
+                {
+                    this->msSolver = sValueStr;
+                    MosraLogInfo(<< "SOLVER: " << this->msSolver.toStdString() << std::endl);
+
+                    if (msSolver.compare(QStringLiteral("ipopt"), Qt::CaseInsensitive) == 0)
+                    {
+                        mSolverType = NM_SOLVER_IPOPT;
+                    }
+                    else if (   msSolver.compare(QStringLiteral("lpsolve"), Qt::CaseInsensitive) == 0
+                             || msSolver.compare(QStringLiteral("lp_solve"), Qt::CaseInsensitive) == 0
+                            )
+                    {
+                        mSolverType = NM_SOLVER_LPSOLVE;
+                    }
+                    else if (msSolver.compare(QStringLiteral("openGA"), Qt::CaseInsensitive) == 0)
+                    {
+                        mSolverType = NM_SOLVER_GA;
+                        MosraLogWarn(<< "FYI, the GA solver is still under development! So, "
+                                     << "don't be surpised if things are not working as expected, or "
+                                     << "if nothing at all is working! We're working on it!");
+                    }
+                }
+            }
+            else if (sVarName.compare(QStringLiteral("MIN_ALLOC"), Qt::CaseInsensitive) == 0)
+            {
+                if (!sValueStr.isEmpty())
+                {
+                    bool bok = false;
+                    const double minalloc = sValueStr.toDouble(&bok);
+                    if (!bok)
+                    {
+                        MosraLogError(<< "Invalid number '" << sValueStr.toStdString()
+                                      << "' specified for 'MIN_ALLOC'!" << std::endl);
+                    }
+                    else
+                    {
+                        mdMinAlloc = minalloc;
+                        MosraLogInfo(<< "MIN_ALLOC: " << mdMinAlloc << std::endl);
+                    }
                 }
             }
         }
@@ -2193,16 +2479,16 @@ int NMMosra::parseStringSettings(QString strSettings)
                     this->miNumOptions = lo;
                 else
                 {
-                    MosraLogError(<< "Line " << numline << " contains an invalid number" << endl;)
-                    sReport << "Line " << numline << " contains an invalid number" << endl;
+                    MosraLogError(<< "Line " << numline << " contains an invalid number" << std::endl;)
+                    sReport << "Line " << numline << " contains an invalid number" << Qt::endl;
                 }
 
 
-                MosraLogInfo( << "number of resource options: " << this->miNumOptions << endl)
+                MosraLogInfo( << "number of resource options: " << this->miNumOptions << std::endl)
             }
-            else if (sVarName.compare(tr("OPTIONS"), Qt::CaseInsensitive) == 0)
+            else if (sVarName.compare(msOPTIONS, Qt::CaseInsensitive) == 0)
             {
-                QStringList tmpList = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList tmpList = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (tmpList.size() == this->miNumOptions)
                 {
                     this->mslOptions.clear();
@@ -2210,48 +2496,186 @@ int NMMosra::parseStringSettings(QString strSettings)
                 }
                 else
                 {
-                    MosraLogError(<< "Line " << numline << " contains an invalid number of options" << endl)
-                    sReport << "Line " << numline << " contains an invalid number of options" << endl;
+                    MosraLogError(<< "Line " << numline << " contains an invalid number of options" << std::endl)
+                    sReport << "Line " << numline << " contains an invalid number of options" << Qt::endl;
                 }
 
-                MosraLogInfo( << "options: " << this->mslOptions.join(tr(" ")).toStdString() << endl)
+                MosraLogInfo( << "options: " << this->mslOptions.join(tr(" ")).toStdString() << std::endl)
 
+            }
+            else if (sVarName.indexOf(tr("OPT_GRP_"), Qt::CaseInsensitive) != -1)
+            {
+                QStringList grp = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
+                if (grp.size() > 0)
+                {
+                    mlslOptGrps << grp;
+                }
             }
             else if (sVarName.indexOf(tr("CRI_"), Qt::CaseInsensitive) != -1)
             {
-                QStringList criFieldNames = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList criFieldNames = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (criFieldNames.size() == this->miNumOptions + 1)
                 {
                     QString scri = criFieldNames.at(0);
                     criFieldNames.removeAt(0);
                     this->mmslCriteria.insert(scri, criFieldNames);
 
-                    MosraLogDebug( << "criterion: " << scri.toStdString() << " " << this->mmslCriteria.find(scri).value().join(tr(" ")).toStdString() << endl);
+                    MosraLogDebug( << "criterion: " << scri.toStdString() << " " << this->mmslCriteria.find(scri).value().join(tr(" ")).toStdString() << std::endl);
                 }
                 else
                 {
-                    MosraLogError(<< "Line " << numline << " contains an invalid number of criteria" << endl;)
-                    sReport << "Line " << numline << " contains an invalid number of criteria" << endl;
+                    MosraLogError(<< "Line " << numline << " contains an invalid number of criteria" << std::endl;)
+                    sReport << "Line " << numline << " contains an invalid number of criteria" << Qt::endl;
                 }
             }
             else if (sVarName.indexOf(tr("EVAL_"), Qt::CaseInsensitive) != -1)
             {
-                QStringList evalFieldNames = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList evalFieldNames = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (evalFieldNames.size() == this->miNumOptions + 1)
                 {
                     QString scri = evalFieldNames.at(0);
                     evalFieldNames.removeAt(0);
                     this->mmslEvalFields.insert(scri, evalFieldNames);
 
-                    MosraLogDebug( << "criterion evaluation fields: " << scri.toStdString() << " " << this->mmslEvalFields.find(scri).value().join(tr(" ")).toStdString() << endl);
+                    MosraLogDebug( << "criterion evaluation fields: " << scri.toStdString() << " " << this->mmslEvalFields.find(scri).value().join(tr(" ")).toStdString() << std::endl);
                 }
                 else
                 {
-                    MosraLogError(<< "Line " << numline << " contains an invalid number of criterion evaluation fields" << endl;)
-                    sReport << "Line " << numline << " contains an invalid number of criterion evaluation fields" << endl;
+                    MosraLogError(<< "Line " << numline << " contains an invalid number of criterion evaluation fields" << std::endl;)
+                    sReport << "Line " << numline << " contains an invalid number of criterion evaluation fields" << Qt::endl;
                 }
             }
 
+        }
+        break;
+        //---------------------------------------------Parameters-----------
+        case parameters:
+        {
+            if (sVarName.indexOf(tr("PAR_"), Qt::CaseInsensitive) != -1)
+            {
+                QStringList parDef = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
+                if (parDef.size() != 0)
+                {
+                    QStringList parSpec = parDef.takeAt(0).split(":");
+                    mmslParameters.insert(parSpec[0], parDef);
+                    if (parSpec.size() == 2)
+                    {
+                        mslDistinctParameters << parSpec[0];
+                    }
+                }
+            }
+        }
+        break;
+        //---------------------------------------------Variables-----------
+        case variables:
+        {
+            if (sVarName.indexOf(tr("VAR_"), Qt::CaseInsensitive) != -1)
+            {
+                const QStringList types = {"c", "i", "b"};
+                QStringList varbnds;
+                QStringList bndsep = sValueStr.split(tr(":"), Qt::SkipEmptyParts);
+
+                QStringList varDef = bndsep.at(0).split(tr(" "), Qt::SkipEmptyParts);
+                QString varName;
+                if (varDef.size() != 0)
+                {
+                    varName = varDef.takeAt(0);
+                }
+                else
+                {
+                    MosraLogError(<< "No variable name defined for '" << sVarName.toStdString() << "'!" << std::endl);
+                    return false;
+                }
+
+                if (bndsep.size() == 2)
+                {
+                    QStringList bnds = bndsep.at(1).split(tr(" "), Qt::SkipEmptyParts);
+                    if (    bnds.size() == 3
+                         && types.contains(bnds.at(0))
+                       )
+                    {
+                        varbnds << bnds;
+                    }
+                    else
+                    {
+                        MosraLogWarn(<< "Invalid Domain specification for variable '"
+                                     << varName.toStdString() << "'! We're gonna use "
+                                     << " default values: c 0 " << std::numeric_limits<double>::max()
+                                     << std::endl);
+                        varbnds << QStringLiteral("c");
+                        varbnds << QStringLiteral("0");
+                        varbnds << QString("%1").arg(std::numeric_limits<double>::max());
+                    }
+
+                    /*
+                    if (bnds.size() == 2)
+                    {
+                        for (int b=0; b < 2; ++b)
+                        {
+                            bConv = false;
+                            double minmax = bnds[b].toDouble(&bConv);
+                            if (bConv)
+                            {
+                                varbnds.push_back(minmax);
+                            }
+                            else
+                            {
+                                if (b == 0)
+                                {
+                                    varbnds.push_back(0);
+                                }
+                                else
+                                {
+                                    varbnds.push_back(std::numeric_limits<double>::max());
+                                }
+                            }
+                        }
+                    }
+                    else if (bnds.size() == 1)
+                    {
+                        bConv = false;
+                        double lower = bnds.at(0).toDouble(&bConv);
+                        if (bConv)
+                        {
+                            varbnds.push_back(lower);
+                        }
+                        else
+                        {
+                            varbnds.push_back(0);
+                        }
+
+                        varbnds.push_back(std::numeric_limits<double>::max());
+                    }*/
+                }
+                // we just fill the var domain specification with default values
+                else
+                {
+                    MosraLogWarn(<< "Domain of variable '" << varName.toStdString() << "' not specified, "
+                                 << "so we're setting default values: c 0 " << std::numeric_limits<double>::max()
+                                 << std::endl);
+                    varbnds << QStringLiteral("c");
+                    varbnds << QStringLiteral("0");
+                    varbnds << QString("%1").arg(std::numeric_limits<double>::max());
+                }
+
+                mmslVariables.insert(varName, varDef);
+                mmslVarBoundsMap.insert(varName, varbnds);
+
+            }
+        }
+        break;
+        //---------------------------------------------Equations-----------
+        case equations:
+        {
+            if (sVarName.indexOf(tr("EQN_"), Qt::CaseInsensitive) != -1)
+            {
+                QStringList eqnDef = sValueStr.split(tr(":"), Qt::SkipEmptyParts);
+                if (eqnDef.size() == 2)
+                {
+                    QString eqnName = eqnDef.at(0).simplified();
+                    mmsEquations.insert(eqnName, eqnDef.at(1).simplified());
+                }
+            }
         }
         break;
         //----------------------------------------INCENTIVES----------
@@ -2259,11 +2683,11 @@ int NMMosra::parseStringSettings(QString strSettings)
         {
             if (sVarName.indexOf(tr("INC_"), Qt::CaseInsensitive) != -1)
             {
-                QStringList incfields = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList incfields = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (!incfields.isEmpty())
                 {
                     QString incName = incfields.takeFirst();
-                    QStringList namePair = incName.split("_", QString::SkipEmptyParts);
+                    QStringList namePair = incName.split("_", Qt::SkipEmptyParts);
                     if (namePair.size() == 2)
                     {
                         mmslIncentives.insert(incName, incfields);
@@ -2276,7 +2700,7 @@ int NMMosra::parseStringSettings(QString strSettings)
                                       << "is comprised of two criteria names concatenated by and underscore \'_\'. Thereby, the "
                                       << "leading name represents the objective and the second name represents the criterion "
                                       << "whose per unit reduction is incentivised by the values specified in the column given "
-                                      << "whose name is given after the incentive name." << endl;
+                                      << "whose name is given after the incentive name." << std::endl;
                         sReport << QString(errmsg.str().c_str());
                     }
                 }
@@ -2299,18 +2723,135 @@ int NMMosra::parseStringSettings(QString strSettings)
                     this->meScalMeth = NMMosra::NM_MOSO_INTERACTIVE;
                     sAggrMeth = tr("Interactive");
                 }
-                MosraLogInfo( << "Scalarisation method is '" << sAggrMeth.toStdString() << "'" << endl)
+                MosraLogInfo( << "Scalarisation method is '" << sAggrMeth.toStdString() << "'" << std::endl)
             }
             else if (sVarName.indexOf(tr("OBJ_"), Qt::CaseInsensitive) != -1)
             {
-                 QStringList objs = sValueStr.split(tr(" "), QString::SkipEmptyParts);
-                 if (objs.size() != 0)
+                 QStringList objs = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
+                 if (objs.size() >= 2)
                  {
                      QString obj = objs.takeAt(1);
                      this->mmslObjectives.insert(obj, objs);
                      MosraLogInfo( << "obj: " << obj.toStdString() << ": "
-                             << this->mmslObjectives.find(obj).value().join(tr(" ")).toStdString() << endl)
+                             << this->mmslObjectives.find(obj).value().join(tr(" ")).toStdString() << std::endl)
                  }
+            }
+        }
+        break;
+        //------------------------------------ALGEBRAIC_LINEAR_CONS------------
+        case linearcons:
+        {
+            if (sVarName.indexOf(tr("LIN_CONS_"), Qt::CaseInsensitive) != -1)
+            {
+                QStringList operators;
+                //             1       2      3
+                operators << "<=" << ">=" << "=";
+
+                QString theop;
+                QStringList linCons;
+                for (int nlc=0; nlc < operators.size(); ++nlc)
+                {
+                    linCons = sValueStr.split(operators.at(nlc), Qt::SkipEmptyParts);
+                    if (linCons.size() == 2)
+                    {
+                        theop = operators.at(nlc);
+                        break;
+                    }
+                }
+
+                if (linCons.size() < 2)
+                {
+                    std::stringstream errmsg;
+                    errmsg << "Line " << numline << " contains a malformed algebraic linear constraint. "
+                           << "Please proivde an expression of the form " << std::endl
+                           << "\tLIN_CONS_< x >=< eqn name > < <= | >= | = > < eqn name | number >" << std::endl;
+                    sReport << QString(errmsg.str().c_str());
+                    MosraLogError(<< errmsg.str());
+                }
+                else
+                {
+                    QStringList opRhs;
+                    opRhs << theop << linCons[1].simplified();
+                    mmslLinearConstraints.insert(linCons[0].simplified(), opRhs);
+                }
+            }
+        }
+        break;
+        //------------------------------------ALGEBRAIC_NONLINEAR_CONS------------
+        case nonlinearcons:
+        {
+            if (sVarName.indexOf(tr("NONLIN_CONS_"), Qt::CaseInsensitive) != -1)
+            {
+                QStringList operators;
+                //             1       2      3
+                operators << "<=" << ">=" << "=";
+
+                QString theop;
+                QStringList nlinCons;
+                for (int nlc=0; nlc < operators.size(); ++nlc)
+                {
+                    nlinCons = sValueStr.split(operators.at(nlc), Qt::SkipEmptyParts);
+                    if (nlinCons.size() == 2)
+                    {
+                        theop = operators.at(nlc);
+                        break;
+                    }
+                }
+
+                if (nlinCons.size() < 2)
+                {
+                    std::stringstream errmsg;
+                    errmsg << "Line " << numline << " contains a malformed non-linear constraint. "
+                           << "Please proivde an expression of the form " << std::endl
+                           << "\tNLIN_CONS_< x >=< eqn name > < <= | >= | = > < eqn name | number >" << std::endl;
+                    sReport << QString(errmsg.str().c_str());
+                    MosraLogError(<< errmsg.str());
+                }
+                else
+                {
+                    QStringList opRhs;
+                    opRhs << theop << nlinCons[1].simplified();
+                    mmslNonLinearConstraints.insert(nlinCons[0].simplified(), opRhs);
+                }
+            }
+        }
+        break;
+        //------------------------------------LOGIC_CONS------------
+        case logiccons:
+        {
+            if (sVarName.indexOf(tr("LOGIC_CONS_"), Qt::CaseInsensitive) != -1)
+            {
+                QStringList operators;
+                //             1       2      3
+                operators << "<=" << ">=" << "=";
+
+                QString theop;
+                QStringList logicCons;
+                for (int logc=0; logc < operators.size(); ++logc)
+                {
+                    logicCons = sValueStr.split(operators.at(logc), Qt::SkipEmptyParts);
+                    if (logicCons.size() == 2)
+                    {
+                        theop = operators.at(logc);
+                        break;
+                    }
+                }
+
+                if (logicCons.size() < 2)
+                {
+                    std::stringstream errmsg;
+                    errmsg << "Line " << numline << " contains a malformed logic constraint. "
+                           << "Please proivde an expression of the form " << std::endl
+                           << "\tLOGIC_CONS_< x >=< eqn name > < <= | >= | = > < eqn name | number >" << std::endl;
+                    sReport << QString(errmsg.str().c_str());
+                    MosraLogError(<< errmsg.str());
+                }
+                else
+                {
+                    QStringList opRhs;
+                    opRhs << theop << logicCons[1].simplified();
+                    mmslLogicConstraints.insert(logicCons[0].simplified(), opRhs);
+                }
             }
         }
         break;
@@ -2319,23 +2860,23 @@ int NMMosra::parseStringSettings(QString strSettings)
         {
             if (sVarName.indexOf(tr("AREAL_CONS_"), Qt::CaseInsensitive) != -1)
             {
-                QStringList arCons = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList arCons = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (arCons.size() != 0)
                 {
                     this->mmslAreaCons.insert(sVarName, arCons);
                     MosraLogDebug( << "areal cons: " << sVarName.toStdString() << ": "
-                            << this->mmslAreaCons.find(sVarName).value().join(tr(" ")).toStdString() << endl);
+                            << this->mmslAreaCons.find(sVarName).value().join(tr(" ")).toStdString() << std::endl);
 
                     // check, whether we've got a zoning constraint here and if so, initialise the
                     // zones area with 0
                     QString luopt = arCons.at(0);
                     if (luopt.contains(':', Qt::CaseInsensitive))
                     {
-                        QStringList luoptlist = luopt.split(tr(":"), QString::SkipEmptyParts);
+                        QStringList luoptlist = luopt.split(tr(":"), Qt::SkipEmptyParts);
                         QString zonefield = luoptlist.at(1);
                         // allow for multiple land use options being specified separated by comata
                         // !without whitespace!
-                        QStringList options = luoptlist.at(0).split("+", QString::SkipEmptyParts);
+                        QStringList options = luoptlist.at(0).split("+", Qt::SkipEmptyParts);
 
                         // check, whether we've got already a map created for this zonefield
                         QMap<QString, QMap<QString, double> >::iterator zonesIt;
@@ -2374,12 +2915,12 @@ int NMMosra::parseStringSettings(QString strSettings)
         {
             if (sVarName.indexOf(tr("FEAT_CONS_"), Qt::CaseInsensitive) != -1)
             {
-                QStringList featCons = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList featCons = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (featCons.size() != 0)
                 {
                     this->mmslFeatCons.insert(sVarName, featCons);
                     MosraLogDebug( << "feature cons: " << sVarName.toStdString() << ": "
-                            << this->mmslFeatCons.find(sVarName).value().join(tr(" ")).toStdString() << endl);
+                            << this->mmslFeatCons.find(sVarName).value().join(tr(" ")).toStdString() << std::endl);
                 }
             }
         }
@@ -2389,11 +2930,11 @@ int NMMosra::parseStringSettings(QString strSettings)
         {
             if (sVarName.indexOf(tr("FEATSET_CONS_"), Qt::CaseInsensitive) != -1)
             {
-                QStringList featsetCons = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList featsetCons = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (featsetCons.size() != 0)
                 {
                     QString keyPair = featsetCons.at(0);
-                    QStringList keyPairList = keyPair.split(":", QString::SkipEmptyParts);
+                    QStringList keyPairList = keyPair.split(":", Qt::SkipEmptyParts);
                     QStringList consValueSpec = featsetCons.mid(1, -1);
                     // just checking whether the length of the keypair list is alright,
                     // no point to look for valid values as they could LUMASS expressions
@@ -2403,7 +2944,7 @@ int NMMosra::parseStringSettings(QString strSettings)
                          this->msFeatureSetConsLabel.insert(keyPair, sVarName);
                          this->mslFeatSetCons.insert(keyPair, consValueSpec);
                          MosraLogDebug( << "featset_cons: " << sVarName.toStdString() << ": "
-                                          << featsetCons.join(" ").toStdString() << endl);
+                                          << featsetCons.join(" ").toStdString() << std::endl);
                     }
                 }
             }
@@ -2414,11 +2955,11 @@ int NMMosra::parseStringSettings(QString strSettings)
         {
             if (sVarName.indexOf(tr("ZONE_CONS_"), Qt::CaseInsensitive) != -1)
             {
-                QStringList fullZoneCons = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList fullZoneCons = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (fullZoneCons.size() == 3)
                 {
                     QString label = sVarName;
-                    QStringList zonespec = fullZoneCons.at(0).split(":", QString::SkipEmptyParts);
+                    QStringList zonespec = fullZoneCons.at(0).split(":", Qt::SkipEmptyParts);
                     QString zoneOp = fullZoneCons.at(1);
                     QString valueCol = fullZoneCons.at(2);
 
@@ -2464,14 +3005,14 @@ int NMMosra::parseStringSettings(QString strSettings)
         {
             if (sVarName.indexOf(tr("CRI_CONS_"), Qt::CaseInsensitive) != -1)
             {
-                MosraLogDebug(<< "\tgonna split raw list: " << sValueStr.toStdString() << endl);
-                QStringList outerList = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                MosraLogDebug(<< "\tgonna split raw list: " << sValueStr.toStdString() << std::endl);
+                QStringList outerList = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (outerList.size() != 0)
                 {
                     QString criLabel = outerList.takeAt(0);
-                    MosraLogDebug( << "\tcriLabel is '" << criLabel.toStdString() << "'" << endl);
+                    MosraLogDebug( << "\tcriLabel is '" << criLabel.toStdString() << "'" << std::endl);
                     QString luLabel = outerList.takeAt(0);
-                    MosraLogDebug( << "\tland use is '" << luLabel.toStdString() << "'" << endl);
+                    MosraLogDebug( << "\tland use is '" << luLabel.toStdString() << "'" << std::endl);
 
                     QMap<QString, QStringList> innerMap;
                     innerMap.insert(luLabel, outerList);
@@ -2480,7 +3021,7 @@ int NMMosra::parseStringSettings(QString strSettings)
 
                     MosraLogDebug( << "cri cons: " << criLabel.toStdString() << ": "
                             << luLabel.toStdString() << ": "
-                            << outerList.join(tr(" ")).toStdString() << endl);
+                            << outerList.join(tr(" ")).toStdString() << std::endl);
                 }
             }
         }
@@ -2490,13 +3031,53 @@ int NMMosra::parseStringSettings(QString strSettings)
         {
             if (sVarName.indexOf(tr("OBJ_CONS_"), Qt::CaseInsensitive) != -1)
             {
-                QStringList objCons = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList objCons = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (objCons.size() > 0)
                 {
                     QString objkey = sVarName + QString(tr("_%1")).arg(objCons.value(0));
                     this->mmslObjCons.insert(objkey, objCons);
                     MosraLogInfo( << objkey.toStdString() << ": "
-                            << this->mmslObjCons.find(objkey).value().join(tr(" ")).toStdString() << endl);
+                            << this->mmslObjCons.find(objkey).value().join(tr(" ")).toStdString() << std::endl);
+                }
+            }
+        }
+        break;
+        //------------------------------------------------PARAMETER_SCALING-------
+        case scaling:
+        {
+            if (sVarName.indexOf(tr("SCALE_"), Qt::CaseInsensitive) != -1)
+            {
+                QStringList scalePara = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
+                if (scalePara.size() >= 2)
+                {
+                    const QString paraName = scalePara.at(0);
+                    bool bConv = false;
+                    const double scaleFactor = scalePara.at(1).toDouble(&bConv);
+                    if (!bConv)
+                    {
+                        MosraLogError(<< "scaling: scaling factor for '" << paraName.toStdString()
+                                      << "' is invalid! Please provide a numerical scaling factor!" << std::endl);
+                    }
+
+                    //if (    paraName.compare(QStringLiteral("AreaHa"), Qt::CaseSensitive) != 0
+                    //     && scalePara.size() < 3
+                    //   )
+                    //{
+                    //    MosraLogError( << "scaling: No equation names provied!" << std::endl);
+                    //}
+
+                    QStringList affectedEqns;
+                    for (int s=2; s < scalePara.size(); ++s)
+                    {
+                        affectedEqns << scalePara.at(s);
+                    }
+
+                    std::pair<double, QStringList> scaleInfo(scaleFactor, affectedEqns);
+                    mmParameterScaling.insert(paraName, scaleInfo);
+
+                    MosraLogInfo( << "scaling: " << paraName.toStdString()
+                                  << " * " << scaleFactor << " affecting: " << affectedEqns.join(" ").toStdString()
+                                  << std::endl);
                 }
             }
         }
@@ -2507,11 +3088,11 @@ int NMMosra::parseStringSettings(QString strSettings)
             if (sVarName.compare("DATAPATH", Qt::CaseInsensitive) == 0)
             {
                 this->msDataPath = sValueStr;
-                MosraLogInfo(<< "batch data path: " << this->msDataPath.toStdString() << endl);
+                MosraLogInfo(<< "batch data path: " << this->msDataPath.toStdString() << std::endl);
             }
             else if (sVarName.compare("PERTURB", Qt::CaseInsensitive) == 0)
             {
-                this->mslPerturbItems = sValueStr.split(" ");
+                this->mslPerturbItems = sValueStr.split(" ", Qt::SkipEmptyParts);
                 if (mslPerturbItems.size() > 0)
                 {
                     MosraLogInfo(<< "Criteria/constraints to be perturbed: ");
@@ -2519,16 +3100,16 @@ int NMMosra::parseStringSettings(QString strSettings)
                     {
                         NMDebug(<< pc.toStdString() << " ");
                     }
-                    NMDebug(<< endl);
+                    NMDebug(<< std::endl);
                 }
                 else
                 {
-                    MosraLogInfo(<< "No perturbation criteria provided!" << endl);
+                    MosraLogInfo(<< "No perturbation criteria provided!" << std::endl);
                 }
             }
             else if (sVarName.compare("UNCERTAINTIES", Qt::CaseInsensitive) == 0)
             {
-                QStringList lunsure = sValueStr.split(" ");
+                QStringList lunsure = sValueStr.split(" ", Qt::SkipEmptyParts);
                 bool bok;
                 float val;
                 foreach(const QString& vstr, lunsure)
@@ -2561,12 +3142,12 @@ int NMMosra::parseStringSettings(QString strSettings)
                         }
                         logstr << " | ";
                     }
-                    logstr << endl;
+                    logstr << std::endl;
                     MosraLogDebug(<< logstr.str())
                 }
                 else
                 {
-                    MosraLogInfo(<< "No uncertainty levels for perturbation provided!" << endl);
+                    MosraLogInfo(<< "No uncertainty levels for perturbation provided!" << std::endl);
                 }
             }
             else if (sVarName.compare("REPETITIONS", Qt::CaseInsensitive) == 0)
@@ -2578,7 +3159,7 @@ int NMMosra::parseStringSettings(QString strSettings)
                     if (bok)
                     {
                         this->mlReps = reps;
-                        MosraLogInfo(<< "Number of perturbations: " << reps << endl);
+                        MosraLogInfo(<< "Number of perturbations: " << reps << std::endl);
                     }
                 }
             }
@@ -2590,7 +3171,7 @@ int NMMosra::parseStringSettings(QString strSettings)
                     {
                         this->muiTimeOut = 0;
                         this->mbBreakAtFirst = true;
-                        MosraLogInfo(<< "Solver timeout: break at first feasible solution!" << endl);
+                        MosraLogInfo(<< "Solver timeout: break at first feasible solution!" << std::endl);
                     }
                     else
                     {
@@ -2600,7 +3181,7 @@ int NMMosra::parseStringSettings(QString strSettings)
                         {
                             this->mbBreakAtFirst = false;
                             this->muiTimeOut = timeout;
-                            MosraLogInfo(<< "Solver timeout: " << timeout << endl);
+                            MosraLogInfo(<< "Solver timeout: " << timeout << std::endl);
                         }
                     }
                 }
@@ -2613,7 +3194,7 @@ int NMMosra::parseStringSettings(QString strSettings)
     }
 
 
-    NMDebug(<< endl << "Report..." << endl << sReport.readAll().toStdString() << endl);
+    NMDebug(<< std::endl << "Report..." << std::endl << sReport.readAll().toStdString() << std::endl);
 
     NMDebugCtx(ctxNMMosra, << "done!");
 
@@ -2779,34 +3360,601 @@ int NMMosra::configureProblem(void)
     return 1;
 }
 
-void NMMosra::solveProblem(void)
+bool NMMosra::solveProblem(void)
 {
     NMDebugCtx(ctxNMMosra, << "...");
 
-    this->mLp->Solve();
-
-    if (this->calcOptPerformanceDb() == 0)
+    if (mSolverType == NM_SOLVER_LPSOLVE)
     {
-        MosraLogWarn(<< "Hit trouble calculating the optimal performance!"
-                     << " Please double check results and notification messages!")
+        this->mLp->Solve();
+
+        if (this->calcOptPerformanceDb() == 0)
+        {
+            MosraLogWarn(<< "Hit trouble calculating the optimal performance!"
+                         << " Please double check results and notification messages!")
+        }
+
+        this->createReport();
+
+        MosraLogInfo(<< "Optimisation Report ... \n" << this->getReport().toStdString() << std::endl);
+
+    }
+    else if (mSolverType == NM_SOLVER_IPOPT)
+    {
+// this must go at one point as it should always run
+#ifndef LUMASS_DEBUG
+        if (!this->checkSettings())
+        {
+            MosraLogError(<< "Didn't pass the settings check - better go and double check the *.los file!" << std::endl);
+            return false;
+        }
+#endif
+
+        this->clearInternalNLDataStructures();
+
+        if (!this->infixToPolishPrefix())
+        {
+            MosraLogError(<< "Optimisation aborted: ERROR while processing input equations!" << std::endl);
+            return false;
+        }
+
+        if (!this->makeNL2())
+        {
+            MosraLogError(<< "Failed writing the *.nl file! Did you get any other error messages that could help?" << std::endl);
+            return false;
+        }
+    }
+    else if (mSolverType == NM_SOLVER_GA)
+    {
+        // this must go at one point as it should always run
+        #ifndef LUMASS_DEBUG
+                if (!this->checkSettings())
+                {
+                    MosraLogError(<< "Didn't pass the settings check - better go and double check the *.los file!" << std::endl);
+                    return false;
+                }
+        #endif
+
+        if (!this->solveOpenGA())
+        {
+            MosraLogError(<< "OpenGA failed!" << std::endl);
+        }
     }
 
-    this->createReport();
-
-    MosraLogInfo(<< "Optimisation Report ... \n" << this->getReport().toStdString() << endl);
+    return true;
 
     NMDebugCtx(ctxNMMosra, << "done!");
 }
 
-int NMMosra::solveLp(void)
+int NMMosra::solveOpenGA(void)
 {
-    if (!this->configureProblem())
+    int ret = 1;
+
+    NMOpenGA gawrap;
+    gawrap.mProcObj = this->mProcObj;
+    GA_Type ga_obj;
+    ga_obj.mProcObj = this->mProcObj;
+
+    // ===============================================================
+    //  START high jacking some intel gathered for the NL processing
+
+    this->clearInternalNLDataStructures();
+
+    if (!this->infixToPolishPrefix())
     {
+        MosraLogError(<< "Optimisation aborted: ERROR while processing input equations!" << std::endl);
+        return false;
+    }
+
+
+    QString b_seg, x_seg;
+    long n_vars;
+    if (!processVariables(b_seg, x_seg, &n_vars, &gawrap))
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "Just got it wrong! :-( " << std::endl);
         return 0;
     }
 
-    this->solveProblem();
-    return 1;
+    // just throw this in for good measure - can't remember whether that's
+    // required for any of the subsequent routines to determine which
+    // columns to be fetched from the database
+    if (!processLoopDimensions())
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "Just got it wrong! :-( " << std::endl);
+        return 0;
+    }
+
+    if (this->mDataSet == nullptr)
+    {
+        MosraLogError(<< "ERROR - DataSet is NULL!" << endl);
+        return false;
+    }
+
+    otb::SQLiteTable::Pointer sqltab = dynamic_cast<otb::SQLiteTable*>(
+                this->mDataSet->getOtbAttributeTable().GetPointer());
+    if (sqltab.IsNull())
+    {
+        MosraLogError(<< "ERROR: DataSet is NULL!" << endl);
+        return false;
+    }
+
+    // ========================================================
+    //          PREPARE LOOPING && EQUATION POPULATION
+    // ========================================================
+    // create dimension lookup by eqn
+    // and
+    // create pos lookup by parameter/variable
+    // i.e. pos in getnames and getvalues respectively
+    // NOTE: OPTIONS dimension is ignored as values
+    // are either known already for each option and don't
+    // have to be retrieved or they just reference
+    // a column in the db
+
+    // how often does a defined variable appear
+    // in objectives and constraints (count)
+    QMap<QString, int> procVarInObjConsMap;
+
+    // <operand or dimension parameter name>,
+    //      < index of associated column name/value in
+    //        getnames/getvalues vector >
+    QMap<QString, std::vector<size_t> > nameValPosMap;
+    std::vector<std::string> getnames;
+    std::vector<otb::AttributeTable::ColumnValue> getvalues;
+
+    // track actual columns added to getnames / getvalues
+    mmLookupColsFstParam.clear();
+
+    // list of names of equations that need to be populated
+    // and written into NL file
+    QStringList eqnNames;
+    eqnNames << mmslObjectives.keys();
+    //eqnNames << mslProcessVars;
+    bool bOK;
+    double val;
+    QString rhs;
+    eqnNames << mmslLinearConstraints.keys();
+    auto linConRhs = mmslLinearConstraints.cbegin();
+    for(;  linConRhs != mmslLinearConstraints.cend(); ++linConRhs)
+    {
+        rhs = linConRhs.value().at(1);
+        val = rhs.toDouble(&bOK);
+        if (!bOK)
+        {
+            eqnNames << linConRhs.value().at(1);
+        }
+    }
+
+    eqnNames << mmslNonLinearConstraints.keys();
+    auto nlConRhs = mmslNonLinearConstraints.cbegin();
+    for(;  nlConRhs!= mmslNonLinearConstraints.cend(); ++nlConRhs)
+    {
+        rhs = nlConRhs.value().at(1);
+        val = rhs.toDouble(&bOK);
+        if (!bOK)
+        {
+            eqnNames << nlConRhs.value().at(1);
+        }
+    }
+
+    eqnNames << mmslLogicConstraints.keys();
+    auto logConRhs = mmslLogicConstraints.cbegin();
+    for(;  logConRhs!= mmslLogicConstraints.cend(); ++logConRhs)
+    {
+        rhs = logConRhs.value().at(1);
+        val = rhs.toDouble(&bOK);
+        if (!bOK)
+        {
+            eqnNames << logConRhs.value().at(1);
+        }
+    }
+
+    // <dimension parameter name>,
+    //      < set of (distinct) equation names
+    //        the parameter appears in >
+    //QMap<QString, QSet<QString> > mmDimEqnMap;
+
+    // populate the above maps
+    foreach(const QString& name, eqnNames)
+    {
+        identifyHighDimLoopEquations(name, name);
+
+        if (!createEqnElemAdminMap(
+                    mmDimEqnMap,
+                    nameValPosMap,
+                    procVarInObjConsMap,
+                    getnames,
+                    getvalues,
+                    name)
+           )
+        {
+            return false;
+        }
+    }
+
+    //make sure we've got the LUCControlField included
+    if (    !nameValPosMap.contains(msLUCControlField)
+         && !msLUCControlField.isEmpty()
+       )
+    {
+        std::vector<size_t> posvec = {getnames.size()};
+        nameValPosMap.insert(msLUCControlField, posvec);
+
+        getnames.push_back(msLUCControlField.toStdString());
+        otb::AttributeTable::ColumnValue luccval;
+        getvalues.push_back(luccval);
+    }
+
+
+    // make sure we've got the AreaHa field in there
+    if (    !nameValPosMap.contains(msAreaField)
+         && !msAreaField.isEmpty()
+       )
+    {
+        std::vector<size_t> posvec = {getnames.size()};
+        nameValPosMap.insert(msAreaField, posvec);
+
+        getnames.push_back(msAreaField.toStdString());
+        otb::AttributeTable::ColumnValue areaval;
+        getvalues.push_back(areaval);
+    }
+
+
+
+    std::vector<std::string> minFields =
+        {"dai_min_fmusw", "snb_min_fmusw", "hap_min_fmusw",
+         "hav_min_fmusw", "hbl_min_fmusw", "hch_min_fmusw",
+         "hkgr_min_fmusw", "hkgd_min_fmusw", "hgp_min_fmusw",
+         "hgs_min_fmusw", "von_min_fmusw", "vpt_min_fmusw",
+         "amz_min_fmusw", "ape_min_fmusw", "awt_min_fmusw",
+         "fst_min_fmusw", "flg_min_fmusw", "nat_min_fmusw"};
+
+    for (int f=0; f < minFields.size(); ++f)
+    {
+        QString fname = minFields[f].c_str();
+        if (!nameValPosMap.contains(fname))
+        {
+            std::vector<size_t> posvec = {getnames.size()};
+            nameValPosMap.insert(fname, posvec);
+
+            getnames.push_back(fname.toStdString());
+            otb::AttributeTable::ColumnValue propval;
+            getvalues.push_back(propval);
+        }
+    }
+
+    // make sure we've got the spatial domain total areas
+    // hard-wired at the moment (for testing)
+    // -> i.e. we're using real column names here as these
+    //    attributes are not used in the EQUATIONS
+    //    section at the moment
+
+    std::vector<std::string> zoneHaList = {"FMU_SW_ha"};
+    for (auto zn : zoneHaList)
+    {
+        QString znq = zn.c_str();
+        if (!nameValPosMap.contains(znq))
+        {
+            std::vector<size_t> posvec = {getnames.size()};
+            nameValPosMap.insert(znq, posvec);
+
+            getnames.push_back(znq.toStdString());
+            otb::AttributeTable::ColumnValue propval;
+            getvalues.push_back(propval);
+        }
+    }
+
+
+
+    //gawrap.mDimensionAttrNames = {"FMU_SW_ha"};
+
+    std::map<size_t, double> emptyMap;
+    gawrap.mDimensionArea.insert(
+           std::pair<std::string, std::map<size_t, double> >("FMU_SW", emptyMap));
+
+    for (auto dimArea : gawrap.mDimensionArea)
+    {
+        QString zone_name = dimArea.first.c_str();
+        if (!nameValPosMap.contains(zone_name))
+        {
+            std::vector<size_t> posvec = {getnames.size()};
+            nameValPosMap.insert(zone_name, posvec);
+
+            getnames.push_back(zone_name.toStdString());
+            otb::AttributeTable::ColumnValue propval;
+            getvalues.push_back(propval);
+        }
+    }
+
+    // ------------------------------------------------------
+    //          BL PERFORMANCE DATA
+
+    // below we're just summarising over zones of a given dimension;
+    // in the general case, there might more than just one zone
+
+    // using real column names here as this aspect is not coded
+    // as equation in the LOS file
+    // also using coding for a SINGLE DIMENSION here, i.e FMU_SW
+
+    // TODO: Develop representation in LOS FILE
+    gawrap.mBLSumDimensionNames = {"N_BL", "P_BL", "SW_BL", "GW_BL"};
+    std::stringstream blquery;
+
+    blquery << "select \"FMU_SW\", ";
+    std::vector<otb::AttributeTable::TableColumnType> bltypes;
+    otb::AttributeTable::TableColumnType zoneIdType = otb::AttributeTable::ATTYPE_INT;
+    bltypes.push_back(zoneIdType);
+
+    for (int bd=0; bd < gawrap.mBLSumDimensionNames.size(); ++bd)
+    {
+        const std::string bdName = gawrap.mBLSumDimensionNames[bd];
+        const int blcidx = sqltab->ColumnExists(bdName);
+        if (blcidx >=0)
+        {
+            otb::AttributeTable::TableColumnType blctype = sqltab->GetColumnType(blcidx);
+            bltypes.push_back(blctype);
+        }
+        else
+        {
+            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                          << "Couldn't find column '" << bdName << "' in database! "
+                          << "SQLite's last message: " << sqltab->getLastLogMsg() << std::endl
+                          );
+            return 0;
+        }
+
+        blquery << "sum(\"" << bdName << "\") as \"" << bdName << "\"";
+        if (bd < gawrap.mBLSumDimensionNames.size()-1)
+        {
+            blquery << ", ";
+        }
+    }
+    blquery << " from \"" << sqltab->GetTableName() << "\""
+            << " where \"" << this->msOptFeatures.toStdString() << "\" == 1 "
+            << " group by \"FMU_SW\""
+               ;
+
+    const std::string blQuery = blquery.str();
+    MosraLogDebug(<< "GA - BL Dim performance TableDataFetch query:\n" << blQuery << std::endl);
+
+    std::vector<std::vector<otb::AttributeTable::ColumnValue> > blDimData;
+    if (!sqltab->TableDataFetch(blDimData, bltypes, blquery.str()))
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << sqltab->getLastLogMsg() << std::endl);
+        return 0;
+    }
+
+    // adding zone-attribute-map for FMU_SW
+    std::map<size_t, std::vector<double> > fmuswZoneMap;
+    gawrap.mDimZoneTotalAttr.insert(
+           std::pair<std::string, std::map<size_t, std::vector<double> > >("FMU_SW", fmuswZoneMap));
+
+    for (int dr=0; dr < blDimData.size(); ++dr)
+    {
+        std::vector<double> zoneAttrVals;
+        const size_t zoneVal = gawrap.getIntColValue(blDimData[dr][0]);
+
+        // start with dc=1 since we've got FMU_SW in the result records at pos 0
+        for (int dc=1; dc <= gawrap.mBLSumDimensionNames.size(); ++dc)
+        {
+            zoneAttrVals.push_back(gawrap.getDblColValue(blDimData[dr][dc]));
+        }
+        gawrap.mDimZoneTotalAttr["FMU_SW"].insert(std::pair<size_t, std::vector<double> >(zoneVal, zoneAttrVals));
+    }
+    blDimData.clear();
+
+    //  DONE WITH high jacking some intel gathered for the NL processing
+    // ===============================================================
+
+    // ===============================================================
+    //          FETCH DATA FROM THE DATABASE
+
+    // -----------------------------------------------------
+    //          EVAL_SOLUTION DATA
+
+    // construct table fetch query and get col types
+    std::stringstream tfqss;
+    tfqss << "select ";
+
+    std::vector<otb::AttributeTable::TableColumnType> gettypes;
+    for(int s=0; s < getnames.size(); ++s)
+    {
+        const std::string cname = getnames[s];
+        const int colidx = sqltab->ColumnExists(cname);
+        if (colidx >= 0)
+        {
+            otb::AttributeTable::TableColumnType ctype = sqltab->GetColumnType(colidx);
+            gettypes.push_back(ctype);
+        }
+        else
+        {
+            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                          << "Couldn't find column '" << cname << "' in database! "
+                          << "SQLite's last message: " << sqltab->getLastLogMsg() << std::endl
+                          );
+            return 0;
+        }
+
+        tfqss << cname;
+
+        if (s < getnames.size()-1)
+        {
+            tfqss << ", ";
+        }
+    }
+
+    tfqss << " from \"" << sqltab->GetTableName() << "\""
+          << " where \"" << this->msOptFeatures.toStdString() << "\" == 1;";
+
+    const std::string theQuery = tfqss.str();
+    MosraLogDebug(<< "GA - TableDataFetch query:\n" << theQuery << std::endl);
+
+    //std::vector<std::vector<otb::AttributeTable::ColumnValue> > tabData;
+    if (!sqltab->TableDataFetch(gawrap.mData, gettypes, tfqss.str()))
+    {
+        //sqltab->EndTransaction();
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << sqltab->getLastLogMsg() << std::endl);
+        return 0;
+    }
+
+    // =====================================================================
+    //          INIT SOME DATA STRUCTURES IN NMOpenGA
+
+    if (gawrap.mData.size() == 0)
+    {
+        return 0;
+    };
+
+    // copy over the varadmin structures
+    gawrap.mVarAdminMap  = mmVarAdminMap;
+    gawrap.mMinAreaFields = minFields;
+
+    // copy name val pos map
+    auto nvpit = nameValPosMap.cbegin();
+    for (; nvpit != nameValPosMap.cend(); ++nvpit)
+    {
+        gawrap.nameValPosMap.insert(std::pair<std::string, std::vector<size_t> >(nvpit.key().toStdString(), nvpit.value()));
+    }
+
+    // -----------------------------------------------------------
+    // init mLucCtrl, the land-use control data structure
+    // calc unique dimension totals
+
+    // LAND USE CONTROL
+    // ... add a row vector for each land-use option
+    // ... the rows are going to be added below
+    for (int opt=0; opt < mslOptions.size(); ++opt)
+    {
+        std::vector<unsigned char> luvec;
+        gawrap.mLucCtrl.push_back(luvec);
+    }
+
+
+    const unsigned long lucCtrIdx = nameValPosMap[this->msLUCControlField][0];
+    const unsigned long numLu     = this->mslOptions.size();
+
+
+    const size_t fmuswId = nameValPosMap["FMU_SW"][0];
+    const size_t fmuswAreaId = nameValPosMap["FMU_SW_ha"][0];
+
+    for (int row=0; row < gawrap.mData.size(); ++ row)
+    {
+        QString ctrlstr = gawrap.mData[row][lucCtrIdx].tval;
+        QStringList lulist = ctrlstr.split(" ", Qt::SkipEmptyParts);
+
+        for (int col=0; col < numLu; ++col)
+        {
+            // if a land-use option is mentioned in the LUCControl field,
+            // it means it is NOT ALLOWED to allocated to that SDU!!
+            if (lulist.contains(mslOptions.at(col)))
+            {
+                gawrap.mLucCtrl[col].push_back(static_cast<unsigned char>(0));
+            }
+            else
+            {
+                gawrap.mLucCtrl[col].push_back(static_cast<unsigned char>(1));
+            }
+        }
+
+        // add fmu_sw total area information
+
+        const size_t dimValue = gawrap.getIntColValue(gawrap.mData[row][fmuswId]);
+        const double dimArea = gawrap.getDblColValue(gawrap.mData[row][fmuswAreaId]);
+
+        if (gawrap.mDimensionArea["FMU_SW"].find(dimValue) == gawrap.mDimensionArea["FMU_SW"].end())
+        {
+            gawrap.mDimensionArea["FMU_SW"].insert(std::pair<size_t, double>(dimValue, dimArea));
+        }
+    }
+
+
+    // =====================================================================
+    //          RUN THE GA OPTIMISATION
+
+    // log file
+    QString ga_logfilename = QString("%1/%2_%3.log")
+            .arg(this->msDataPath)
+            .arg(this->mScenarioName)
+            .arg(QDateTime::currentDateTime().toString(Qt::ISODate));
+
+    std::string galogfn = ga_logfilename.toStdString();
+    gawrap.setOutputFileName(galogfn);
+    gawrap.setConstraintTolerance(mGAConstraintTolerance);
+
+    EA::Chronometer timer;
+    timer.tic();
+
+    using std::bind;
+    using std::placeholders::_1;
+    using std::placeholders::_2;
+    using std::placeholders::_3;
+
+
+    ga_obj.problem_mode=EA::GA_MODE::SOGA;
+    ga_obj.multi_threading=mbGAMultiThreading;
+    ga_obj.idle_delay_us=10; // switch between threads quickly
+    ga_obj.dynamic_threading=true;
+    ga_obj.verbose=false;
+    ga_obj.population=mGAPopulation;//50;
+    ga_obj.generation_max=mGAMaxGeneration;//100;
+    ga_obj.calculate_SO_total_fitness= bind(&NMOpenGA::calculate_SO_total_fitness, &gawrap, _1);
+    ga_obj.init_genes= bind(&NMOpenGA::init_genes, &gawrap, _1, _2);
+    ga_obj.eval_solution= bind(&NMOpenGA::eval_solution, &gawrap, _1, _2);
+    ga_obj.mutate= bind(&NMOpenGA::mutate, &gawrap, _1, _2, _3);
+    ga_obj.crossover= bind(&NMOpenGA::crossover, &gawrap, _1, _2, _3);
+
+    ga_obj.SO_report_generation=bind(&NMOpenGA::SO_report_generation, &gawrap, _1, _2, _3);
+    ga_obj.crossover_fraction=0.7;
+    ga_obj.mutation_rate=0.2;
+    ga_obj.best_stall_max=10;
+    ga_obj.elite_count=10;
+    ga_obj.solve();
+
+    cout<<"The problem was optimized in "<<timer.toc()<<" seconds."<<endl;
+
+    std::vector<std::string> optionsvec;
+    for (int b=0; b < this->mslOptions.size(); ++b)
+    {
+        optionsvec.push_back(mslOptions.at(b).toStdString());
+    }
+
+    if (!gawrap.mapGASolutions(ga_obj,
+                               sqltab,
+                               optionsvec,
+                               this->msOptFeatures.toStdString(),
+                               this->mLogger,
+                               this->mmslParameters))
+    {
+        // somethin' happend
+        // oh oh
+    }
+
+    return ret;
+}
+
+int NMMosra::solveLp(void)
+{
+    int ret = 1;
+
+    if (this->msSolver.compare("lp_solve", Qt::CaseInsensitive) == 0)
+    {
+        if (!this->configureProblem())
+        {
+            return 0;
+        }
+
+        this->solveProblem();
+    }
+    else
+    {
+        MosraLogError(<< "Please configure: 'SOLVER=lp_solve' to run this command!");
+        ret = 0;
+    }
+
+    return ret;
 }
 
 void NMMosra::createReport(void)
@@ -2819,19 +3967,19 @@ void NMMosra::createReport(void)
     sRes.setRealNumberNotation(QTextStream::SmartNotation);
     sRes.setRealNumberPrecision(15);
 
-    sRes << endl << endl;
-    sRes << "====================================================" << endl;
-    sRes << "\t" << mScenarioName << " -- " << QDateTime::currentDateTime().toString(Qt::ISODate) << endl;
-    sRes << "====================================================" << endl;
-    sRes << endl << endl;
-    sRes << tr("\tProblem setting details") << endl;
-    sRes << tr("\t-----------------------") << endl << endl;
-    sRes << this->msSettingsReport << endl;
+    sRes <<  Qt::endl <<  Qt::endl;
+    sRes << "====================================================" <<  Qt::endl;
+    sRes << "\t" << mScenarioName << " -- " << QDateTime::currentDateTime().toString(Qt::ISODate) <<  Qt::endl;
+    sRes << "====================================================" <<  Qt::endl;
+    sRes <<  Qt::endl <<  Qt::endl;
+    sRes << tr("\tProblem setting details") <<  Qt::endl;
+    sRes << tr("\t-----------------------") <<  Qt::endl <<  Qt::endl;
+    sRes << this->msSettingsReport <<  Qt::endl;
 
     sRes << tr("\n\n\tResults from lp_solve 5.5\n"
-                   "\t-------------------------\n\n"
-          "Please read the lp_solve documentation for\n"
-          "further information about optimisation results!\n\n");
+               "\t-------------------------\n\n"
+               "Please read the lp_solve documentation for\n"
+               "further information about optimisation results!\n\n");
 
     //get return value from the solve function
     int ret = this->mLp->GetLastReturnFromSolve();
@@ -2859,14 +4007,14 @@ void NMMosra::createReport(void)
         sRes << "There was neither a sub-optimal\n"
                 "nor an optimal solution found by\n"
                 "lp_solve 5.5!\n"
-                "RETURN CODE = " << ret << " - see lp_solve doc!\n" << endl;
+                "RETURN CODE = " << ret << " - see lp_solve doc!\n" <<  Qt::endl;
     }
 
     //log the number of solutions
-    sRes << "Number of solutions: " << this->mLp->GetSolutionCount() << endl << endl;
+    sRes << "Number of solutions: " << this->mLp->GetSolutionCount() <<  Qt::endl <<  Qt::endl;
 
     //log the objective function
-    sRes << "Objective function result = " << this->mLp->GetObjective() << endl << endl;
+    sRes << "Objective function result = " << this->mLp->GetObjective() <<  Qt::endl <<  Qt::endl;
 
     //get the values of the constraints
     int iNumCons = this->mLp->GetNRows();
@@ -2884,9 +4032,9 @@ void NMMosra::createReport(void)
             int index = this->mLp->GetNameIndex(oit.key().toStdString(), true);
             if (index >= 0)
                 sRes << oit.key() << " = " << pdCons[index-1] << " ( "
-                    << oit.value().at(1) << " " << oit.value().at(2) << " )" << endl;
+                     << oit.value().at(1) << " " << oit.value().at(2) << " )" <<  Qt::endl;
         }
-        sRes << endl;
+        sRes <<  Qt::endl;
     }
 
     //log the explicit areal constraints
@@ -2908,13 +4056,13 @@ void NMMosra::createReport(void)
 
             if (ait.value().at(0).contains(":", Qt::CaseInsensitive))
             {
-                zonespec = ait.value().at(0).split(tr(":"), QString::SkipEmptyParts);
-                options = zonespec.at(0).split(tr("+"), QString::SkipEmptyParts);
+                zonespec = ait.value().at(0).split(tr(":"), Qt::SkipEmptyParts);
+                options = zonespec.at(0).split(tr("+"), Qt::SkipEmptyParts);
                 //nit = 2;
             }
             else
             {
-                options << ait.value().at(0).split(tr("+"), QString::SkipEmptyParts);
+                options << ait.value().at(0).split(tr("+"), Qt::SkipEmptyParts);
             }
 
             for (int q=0; q < nit; ++q)
@@ -2939,12 +4087,12 @@ void NMMosra::createReport(void)
                         maxval = 0;
 
                     sRes << sACL << " = " << pdCons[index-1] << " ( "
-                        << ait.value().at(1) << " " << maxval << " )" << endl;
+                         << ait.value().at(1) << " " << maxval << " )" <<  Qt::endl;
                 }
                 ++totalcount;
             }
         }
-        sRes << endl;
+        sRes <<  Qt::endl;
     }
 
     //log the attributive constraints
@@ -2973,37 +4121,37 @@ void NMMosra::createReport(void)
 
                 if (index >= 0)
                 {
-                    sRes << sCL << " " << compOp << " " << pdCons[index -1] << endl;
+                    sRes << sCL << " " << compOp << " " << pdCons[index -1] <<  Qt::endl;
                 }
                 else
                 {
                     QString tmplab = crilabit.key() + QString(tr("_%1")).arg(criit.key());
                     sRes << "error reading cirterion constraint for '"
-                            << tmplab << "'!" << endl;
+                         << tmplab << "'!" <<  Qt::endl;
                 }
             }
         }
-        sRes << endl;
+        sRes <<  Qt::endl;
     }
 
     // DEBUG - we just dump all constraints values here
-//    MosraLogDebug( << endl << "just dumping all constraint values .... " << endl);
-//	int nrows = this->mLp->GetNRows();
-//	for (int q=1; q < nrows; ++q)
-//	{
-//		QString name(this->mLp->GetRowName(q).c_str());
-//        if (name.contains("Feature") || name.contains("BaselineCons"))
-//			continue;
-//		int op = this->mLp->GetConstraintType(q-1);
-//		double cv = pdCons[q-1];
-//		char fv[256];
-//		::sprintf(fv, "%g", cv);
-//        MosraLogDebug(<< name.toStdString() << " " << op << " " << fv << endl);
-//	}
-    //NMDebug(<< endl);
+    //    MosraLogDebug( <<  Qt::endl << "just dumping all constraint values .... " <<  Qt::endl);
+    //	int nrows = this->mLp->GetNRows();
+    //	for (int q=1; q < nrows; ++q)
+    //	{
+    //		QString name(this->mLp->GetRowName(q).c_str());
+    //        if (name.contains("Feature") || name.contains("BaselineCons"))
+    //			continue;
+    //		int op = this->mLp->GetConstraintType(q-1);
+    //		double cv = pdCons[q-1];
+    //		char fv[256];
+    //		::sprintf(fv, "%g", cv);
+    //        MosraLogDebug(<< name.toStdString() << " " << op << " " << fv <<  Qt::endl);
+    //	}
+    //NMDebug(<<  Qt::endl);
 
 
-    sRes << endl;
+    sRes <<  Qt::endl;
 
     QString platz = tr("\t\t");
     sRes << "SENSITIVITY - CONSTRAINTS\n\n";
@@ -3022,12 +4170,12 @@ void NMMosra::createReport(void)
         {
             const QString consname = this->mLp->GetRowName(r).c_str();
             if (    !consname.startsWith("Feature")
-                 && !consname.startsWith("Baseline")
-                 && !consname.startsWith("Reduc")
-               )
+                    && !consname.startsWith("Baseline")
+                    && !consname.startsWith("Reduc")
+                    )
             {
                 sRes << consname << platz << tr("\t") <<
-                        pDuals[r] << platz << pDualsFrom[r] << platz << pDualsTill[r] << endl;
+                        pDuals[r] << platz << pDualsFrom[r] << platz << pDualsTill[r] <<  Qt::endl;
             }
         }
     }
@@ -3039,6 +4187,347 @@ void NMMosra::createReport(void)
     NMDebugCtx(ctxNMMosra, << "done!");
 
 }
+
+void
+NMMosra::writeSTECReport(QString fileName, std::map<int, std::map<long long, double> >& valstore)
+{
+    NMDebugCtx(ctxNMMosra, << "...");
+
+    // let's put out some info about the solution, if any
+    QString streamstring;
+    QTextStream sRes(&streamstring);
+    sRes.setRealNumberNotation(QTextStream::SmartNotation);
+    sRes.setRealNumberPrecision(15);
+
+    sRes <<  Qt::endl <<  Qt::endl;
+    sRes << "====================================================" <<  Qt::endl;
+    sRes << "\t" << mScenarioName << " -- " << QDateTime::currentDateTime().toString(Qt::ISODate) <<  Qt::endl;
+    sRes << "====================================================" <<  Qt::endl;
+    sRes <<  Qt::endl <<  Qt::endl;
+    //sRes << tr("\tProblem setting details") <<  Qt::endl;
+    //sRes << tr("\t-----------------------") <<  Qt::endl <<  Qt::endl;
+    //sRes << this->msSettingsReport <<  Qt::endl;
+
+    sRes << tr("\n\n\tResults from lp_solve 5.5\n"
+               "\t-------------------------\n\n"
+               "Please read the lp_solve documentation for\n"
+               "further information about optimisation results!\n\n");
+
+    //get return value from the solve function
+    int ret = this->mLp->GetLastReturnFromSolve();
+
+    sRes << tr("Solver returned: ");
+    switch (ret)
+    {
+    case -2: sRes << tr("NOMEMORY\n"); break;
+    case 0: sRes << tr("OPTIMAL\n"); break;
+    case 1: sRes << tr("SUBOPTIMAL\n"); break;
+    case 2: sRes << tr("INFEASIBLE\n"); break;
+    case 3: sRes << tr("UNBOUNDED\n"); break;
+    case 4: sRes << tr("DEGENERATE\n"); break;
+    case 5: sRes << tr("NUMFAILURE\n"); break;
+    case 6: sRes << tr("USERABORT\n"); break;
+    case 7: sRes << tr("TIMEOUT\n"); break;
+    case 10: sRes << tr("PROCFAIL\n"); break;
+    case 11: sRes << tr("PROCBREAK\n"); break;
+    case 12: sRes << tr("FEASFOUND\n"); break;
+    case 13: sRes << tr("NOFEASFOUND\n"); break;
+    }
+
+    if (ret != 0 && ret != 1 && ret != 12)
+    {
+        sRes << "There was neither a sub-optimal\n"
+                "nor an optimal solution found by\n"
+                "lp_solve 5.5!\n"
+                "RETURN CODE = " << ret << " - see lp_solve doc!\n" << Qt::endl;
+    }
+
+    //log the number of solutions
+    sRes << "Number of solutions: " << this->mLp->GetSolutionCount() << Qt::endl << Qt::endl;
+
+    //log the objective function
+    sRes << "Objective function result = " << this->mLp->GetObjective() << Qt::endl << Qt::endl;
+
+    //get the values of the decision variables
+    sRes << "Decision variables ... " << Qt::endl << Qt::endl;
+
+    // **************** VARIABLES **************************
+    double* pdVars;
+    this->mLp->GetPtrVariables(&pdVars);
+    int ncols = this->mLp->GetNColumns();
+    int nrows = this->mLp->GetNRows();
+
+
+    // ---------------- COH & TAN_PHI -----------------------
+    int coidx = this->mLp->GetNameIndex("coh", false);
+    int tanphiidx = this->mLp->GetNameIndex("tan_phi", false);
+    const double coh      = pdVars[coidx];
+    const double tanphi   = pdVars[tanphiidx];
+
+    //sRes << "SedNetNZ's total landslide load: " << sn_totls << Qt::endl;
+    sRes << "cohesion = " << coh << Qt::endl;
+    sRes << "tan(phi) = " << tanphi << Qt::endl << Qt::endl;
+
+
+    // ---------------- FAIL SWITCHES -----------------------
+    long long lNumCells = this->mDataSet->getNumRecs();
+    std::stringstream colname;
+    int yearCount = 1;
+
+    sRes << "fail switches: ..." << Qt::endl;
+    for (int c=1; c <= lNumCells; ++c)
+    {
+        colname << "b_" << valstore[1][c] << "_" << yearCount;
+        const int nidx = this->mLp->GetNameIndex(colname.str(), false);
+        sRes << colname.str().c_str() << " = " << pdVars[nidx] << Qt::endl;
+        colname.str("");
+        if (yearCount == this->mlNumArealDVar)
+        {
+            ++yearCount;
+        }
+    }
+    sRes << Qt::endl << Qt::endl;
+
+
+    // **************** CONSTRAINTS **************************
+    sRes << "constraints: ..." << Qt::endl;
+    double* pdConstrs;
+    this->mLp->GetPtrConstraints(&pdConstrs);
+
+    // ---------------- OBJECTIVE CONSTRAINT -----------------------
+    int objcidx = this->mLp->GetNameIndex("Obj cons #1 sn_ls >= +sum", true);
+    double objcval = pdConstrs[objcidx];
+    sRes << "Obj cons #1 sn_ls >= +sum:  = " << objcval << Qt::endl;
+
+    int cohupidx = this->mLp->GetNameIndex("cohesion_upper", true);
+    double cohupval = pdConstrs[cohupidx];
+    sRes << "cohesion_upper" << cohupval << Qt::endl;
+
+    int tanloidx = this->mLp->GetNameIndex("tan(phi)_lower", true);
+    double tanloval = pdConstrs[tanloidx];
+    sRes << "tan(phi)_lower" << tanloval << Qt::endl;
+
+    int tanupidx = this->mLp->GetNameIndex("tan(phi)_upper", true);
+    double tanupval = pdConstrs[tanupidx];
+    sRes << "tan(phi)_upper" << tanupval << Qt::endl;
+
+
+    // ---------------- FAIL SWITCH CONSTRAINTS -----------------------
+    std::stringstream consname;
+    yearCount = 1;
+
+    for (int r=1; r <= lNumCells; ++r)
+    {
+        consname << "b_" << valstore[1][r] << "_" << yearCount << "_cons";
+        const int ncidx = this->mLp->GetNameIndex(consname.str(), true);
+        sRes << consname.str().c_str() << " = " << pdConstrs[ncidx] << Qt::endl;
+        consname.str("");
+        if (yearCount == this->mlNumArealDVar)
+        {
+            ++yearCount;
+        }
+    }
+    sRes << Qt::endl << Qt::endl;
+
+    this->msReport.clear();
+    this->msReport = sRes.readAll();
+
+    this->writeReport(fileName);
+
+
+    NMDebugCtx(ctxNMMosra, << "done!");
+
+}
+
+void
+NMMosra::writeSTECReport2(QString fileName, std::map<int, std::map<long long, double> >& valstore)
+{
+    NMDebugCtx(ctxNMMosra, << "...");
+
+    // let's put out some info about the solution, if any
+    QString streamstring;
+    QTextStream sRes(&streamstring);
+    sRes.setRealNumberNotation(QTextStream::SmartNotation);
+    sRes.setRealNumberPrecision(15);
+
+    sRes <<  Qt::endl <<  Qt::endl;
+    sRes << "====================================================" <<  Qt::endl;
+    sRes << "\t" << mScenarioName << " -- " << QDateTime::currentDateTime().toString(Qt::ISODate) <<  Qt::endl;
+    sRes << "====================================================" <<  Qt::endl;
+    sRes <<  Qt::endl <<  Qt::endl;
+    //sRes << tr("\tProblem setting details") <<  Qt::endl;
+    //sRes << tr("\t-----------------------") <<  Qt::endl <<  Qt::endl;
+    //sRes << this->msSettingsReport <<  Qt::endl;
+
+    sRes << tr("\n\n\tResults from lp_solve 5.5\n"
+               "\t-------------------------\n\n"
+               "Please read the lp_solve documentation for\n"
+               "further information about optimisation results!\n\n");
+
+    //get return value from the solve function
+    int ret = this->mLp->GetLastReturnFromSolve();
+
+    sRes << tr("Solver returned: ");
+    switch (ret)
+    {
+    case -2: sRes << tr("NOMEMORY\n"); break;
+    case 0: sRes << tr("OPTIMAL\n"); break;
+    case 1: sRes << tr("SUBOPTIMAL\n"); break;
+    case 2: sRes << tr("INFEASIBLE\n"); break;
+    case 3: sRes << tr("UNBOUNDED\n"); break;
+    case 4: sRes << tr("DEGENERATE\n"); break;
+    case 5: sRes << tr("NUMFAILURE\n"); break;
+    case 6: sRes << tr("USERABORT\n"); break;
+    case 7: sRes << tr("TIMEOUT\n"); break;
+    case 10: sRes << tr("PROCFAIL\n"); break;
+    case 11: sRes << tr("PROCBREAK\n"); break;
+    case 12: sRes << tr("FEASFOUND\n"); break;
+    case 13: sRes << tr("NOFEASFOUND\n"); break;
+    }
+
+    if (ret != 0 && ret != 1 && ret != 12)
+    {
+        sRes << "There was neither a sub-optimal\n"
+                "nor an optimal solution found by\n"
+                "lp_solve 5.5!\n"
+                "RETURN CODE = " << ret << " - see lp_solve doc!\n" <<  Qt::endl;
+    }
+
+    //log the number of solutions
+    sRes << "Number of solutions: " << this->mLp->GetSolutionCount() <<  Qt::endl <<  Qt::endl;
+
+    //log the objective function
+    sRes << "Objective function result = " << this->mLp->GetObjective() <<  Qt::endl <<  Qt::endl;
+
+    //get the values of the decision variables
+    sRes << "Decision variables ... " <<  Qt::endl <<  Qt::endl;
+
+    // **************** VARIABLES **************************
+    double* pdVars;
+    this->mLp->GetPtrVariables(&pdVars);
+    int ncols = this->mLp->GetNColumns();
+    int nrows = this->mLp->GetNRows();
+
+
+    // ---------------- COH & TAN_PHI -----------------------
+    std::stringstream dbg;
+    std::string dbstr;
+    std::stringstream coh_name, tan_name;
+    const int maxColIdx = 1 * this->mlNumArealDVar;
+    for (int ct=1; ct <= maxColIdx; ++ct)
+    {
+        //coh_name << "coh_" << valstore[1][ct];
+        //tan_name << "tan_" << valstore[1][ct];
+        //
+        //const int coidx = this->mLp->GetNameIndex(coh_name.str(), false);
+        //const int tanphiidx = this->mLp->GetNameIndex(tan_name.str(), false);
+        //
+        //const double cohVal = pdVars[coidx];
+        //const double tanVal = pdVars[tanphiidx];
+        //
+        //sRes << coh_name.str().c_str() << " = " << cohVal <<  Qt::endl;
+        //sRes << tan_name.str().c_str() << " = " << tanVal <<  Qt::endl;
+        //
+        //coh_name.str("");
+        //tan_name.str("");
+
+        const std::string colname = this->mLp->GetColName(ct);
+        sRes << colname.c_str() << " = " << pdVars[ct-1] <<  Qt::endl;
+    }
+    sRes <<  Qt::endl;
+
+    // ---------------- FAIL SWITCHES -----------------------
+    long long lNumCells = this->mDataSet->getNumRecs();
+    std::stringstream fail_name;
+    int yearCount = 1;
+
+    const int startCol = maxColIdx + 1;
+
+
+    sRes << "fail switches: ..." <<  Qt::endl;
+    for (int c=startCol; c <= lNumCells; ++c)
+    {
+        //fail_name << "b_" << valstore[1][c] << "_" << yearCount;
+        //const int nidx = this->mLp->GetNameIndex(fail_name.str(), false);
+        //sRes << fail_name.str().c_str() << " = " << pdVars[nidx] <<  Qt::endl;
+        //fail_name.str("");
+        //if (yearCount == this->mlNumArealDVar)
+        //{
+        //    ++yearCount;
+        //}
+
+        const std::string switchname = this->mLp->GetColName(c);
+        sRes << switchname.c_str() << " = " << pdVars[c-1] <<  Qt::endl;
+    }
+    sRes <<  Qt::endl <<  Qt::endl;
+
+
+    // **************** CONSTRAINTS **************************
+    sRes << "constraints: ..." <<  Qt::endl;
+    double* pdConstrs;
+    this->mLp->GetPtrConstraints(&pdConstrs);
+
+    // ---------------- OBJECTIVE CONSTRAINT -----------------------
+    int objcidx = this->mLp->GetNameIndex("Obj cons #1 sn_ls >= +sum", true);
+    const double objcval = pdConstrs[objcidx];
+    sRes << "Obj cons #1 sn_ls >= +sum:  = " << objcval <<  Qt::endl;
+
+    // ---------------- COH & TAN_PHI CONSTRAINTS -------------------
+    std::stringstream coh_upper, tan_lower, tan_upper;
+    for (int a=1; a < this->mlNumArealDVar; ++a)
+    {
+        const int svid = valstore[1][a];
+
+        coh_upper << "coh_" << svid << "_upper_cons";
+        tan_lower << "tan_" << svid << "_lower_cons";
+        tan_upper << "tan_" << svid << "_upper_cons";
+
+        //const int cohupidx = this->mLp->GetNameIndex(coh_upper.str(), true);
+        //const double cohupval = pdConstrs[cohupidx];
+        //sRes << coh_upper.str().c_str() << " = " << cohupval <<  Qt::endl;
+
+        const int tanloidx = this->mLp->GetNameIndex(tan_lower.str(), true);
+        const double tanloval = pdConstrs[tanloidx];
+        sRes << tan_lower.str().c_str() << " = " << tanloval <<  Qt::endl;
+
+        const int tanupidx = this->mLp->GetNameIndex(tan_upper.str(), true);
+        const double tanupval = pdConstrs[tanupidx];
+        sRes << tan_upper.str().c_str() << " = " << tanupval <<  Qt::endl;
+
+        coh_upper.str("");
+        tan_lower.str("");
+        tan_upper.str("");
+    }
+    sRes <<  Qt::endl;
+
+    // ---------------- FAIL SWITCH CONSTRAINTS -----------------------
+    fail_name.str("");
+    yearCount = 1;
+
+    for (int r=1; r <= lNumCells; ++r)
+    {
+        fail_name << "b_" << valstore[1][r] << "_" << yearCount << "_cons";
+        const int ncidx = this->mLp->GetNameIndex(fail_name.str(), true);
+        sRes << fail_name.str().c_str() << " = " << pdConstrs[ncidx] <<  Qt::endl;
+        fail_name.str("");
+        if (yearCount == this->mlNumArealDVar)
+        {
+
+            ++yearCount;
+        }
+    }
+    sRes <<  Qt::endl <<  Qt::endl;
+
+    this->msReport.clear();
+    this->msReport = sRes.readAll();
+
+    this->writeReport(fileName);
+
+
+    NMDebugCtx(ctxNMMosra, << "done!");
+
+}
+
 
 void
 NMMosra::writeBaselineReductions(QString filename)
@@ -3054,9 +4543,9 @@ NMMosra::writeBaselineReductions(QString filename)
         {
             QTextStream incstr(&incFile);
 
-            incstr << endl << endl;
-            incstr << "Let's get a feeling for those reduction variables (r_i_r_q) ...." << endl;
-            incstr << "     with: i: feature index, r: land use index, q: incentive index" << endl << endl;
+            incstr <<  Qt::endl <<  Qt::endl;
+            incstr << "Let's get a feeling for those reduction variables (r_i_r_q) ...." <<  Qt::endl;
+            incstr << "     with: i: feature index, r: land use index, q: incentive index" <<  Qt::endl <<  Qt::endl;
 
             double* pdVars = nullptr;
             this->mLp->GetPtrVariables(&pdVars);
@@ -3094,9 +4583,9 @@ NMMosra::writeBaselineReductions(QString filename)
                         }
                     }
                 }
-                incstr << endl;
+                incstr <<  Qt::endl;
             }
-            incstr << endl << endl;
+            incstr <<  Qt::endl <<  Qt::endl;
             incFile.close();
         }
         else
@@ -3161,11 +4650,11 @@ void NMMosra::writeReport(QString fileName)
 
 
     // DEBUG WRITE BASELINE REDUCTION VALUES
-#ifdef LUMASS_DEBUG
-    QFileInfo fifo(fileName);
-    QString brfn = QString("%1/%2_%3.txt").arg(fifo.path()).arg(fifo.baseName()).arg("BL_reduction");
-    this->writeBaselineReductions(brfn);
-#endif
+//#ifdef LUMASS_DEBUG
+//    QFileInfo fifo(fileName);
+//    QString brfn = QString("%1/%2_%3.txt").arg(fifo.path()).arg(fifo.baseName()).arg("BL_reduction");
+//    this->writeBaselineReductions(brfn);
+//#endif
 }
 
 int NMMosra::checkSettings(void)
@@ -3175,7 +4664,7 @@ int NMMosra::checkSettings(void)
     QString settrep;
     QTextStream sstr(&settrep);
 
-    sstr << "type of DV (0=REAL | 1=INT | 2=BINARY): " << this->meDVType << endl;
+    sstr << "type of DV (0=REAL | 1=INT | 2=BINARY): " << this->meDVType << Qt::endl;
 
     // get the attributes of the layer
     MosraLogInfo(<< "Optimisation - Checking settings ...")
@@ -3186,6 +4675,26 @@ int NMMosra::checkSettings(void)
         MosraLogError( << "no area field specified!");
         NMDebugCtx(ctxNMMosra, << "done!");
         return 0;
+    }
+
+    // if we've got option groups, make sure the options in each group are also in
+    // the overall options list!
+    int ogcnt = 1;
+    for(int g=0; g < mlslOptGrps.size(); ++g)
+    {
+        foreach(const QString& opt, mlslOptGrps[g])
+        {
+            if (!mslOptions.contains(opt))
+            {
+                MosraLogError(<< "Option '" << opt.toStdString()
+                              << " (Grp #" << ogcnt << ") is not "
+                              << "defined in 'OPTIONS' list!");
+                NMDebugCtx(ctxNMMosra, << "done!");
+                return 0;
+            }
+            mmOptGrpMap.insert(opt, g);
+        }
+        ++ogcnt;
     }
 
     bool optfeatures = false;
@@ -3214,7 +4723,7 @@ int NMMosra::checkSettings(void)
     MosraLogInfo(<< "area field OK" << endl);
 
     // --------------------------------------------------------------------------------------------------------
-    //MosraLogInfo(<< "calculating area and counting features ..." << endl);
+    MosraLogDebug(<< "calculating area and counting features ..." << endl);
     bool nm_hole = mDataSet->hasColumn("nm_hole");
     int numTuples = mDataSet->getNumRecs();
     int numFeat = 0;
@@ -3262,8 +4771,9 @@ int NMMosra::checkSettings(void)
             optLenIt = zonesLenIt.value().begin();
             for (; optIt != zonesIt.value().end(); ++optIt, ++optLenIt)
             {
-                std::string zoneVal = mDataSet->getStrValue(zonesIt.key(), cs).toStdString();
-                if (zoneVal.find(optIt.key().toStdString()) != std::string::npos)
+                const QString zoneVal = mDataSet->getStrValue(zonesIt.key(), cs);
+                const QStringList zoneValList = zoneVal.split(" ", Qt::SkipEmptyParts);
+                if (zoneValList.contains(optIt.key()))
                 {
                     tmpVal = optIt.value() + mDataSet->getDblValue(this->msAreaField, cs);
                     tmpLen = optLenIt.value() + 1;
@@ -3277,7 +4787,7 @@ int NMMosra::checkSettings(void)
     // report total area to the user
     this->mlNumOptFeat = numFeat;
     sstr << "total area from " << this->msAreaField
-            << "(" << numTuples << " | " << numFeat << ")" << " is " << this->mdAreaTotal << endl;
+            << "(" << numTuples << " | " << numFeat << ")" << " is " << this->mdAreaTotal <<  Qt::endl;
 
 
     // iterate over the initialised zones and report areas
@@ -3297,9 +4807,9 @@ int NMMosra::checkSettings(void)
         for (; optIt != zonesIt.value().end(); ++optIt, ++optLenIt)
         {
             sstr << "total area for option '" << optIt.key() << "' with respect to zone field '" << zonesIt.key() <<
-                    "' = " << optIt.value() << endl;
+                    "' = " << optIt.value() <<  Qt::endl;
             sstr << "no of features for option '" << optLenIt.key() << "' with respect to zone field '"
-                    << zonesLenIt.key() << "' = " << optLenIt.value() << endl;
+                    << zonesLenIt.key() << "' = " << optLenIt.value() <<  Qt::endl;
         }
     }
 
@@ -3328,8 +4838,8 @@ int NMMosra::checkSettings(void)
         QString OptZone = acIt.value().at(0);
         if (OptZone.contains(":", Qt::CaseInsensitive))
         {
-            QStringList ozlist = OptZone.split(tr(":"), QString::SkipEmptyParts);
-            QStringList options = ozlist.at(0).split(tr("+"), QString::SkipEmptyParts);
+            QStringList ozlist = OptZone.split(tr(":"), Qt::SkipEmptyParts);
+            QStringList options = ozlist.at(0).split(tr("+"), Qt::SkipEmptyParts);
             QString zone = ozlist.at(1);
 
             double zval = 0;
@@ -3370,7 +4880,6 @@ int NMMosra::checkSettings(void)
     {
         MosraLogInfo(<< "areal constraints OK!");
     }
-
 
 
     // now check on the total area
@@ -3475,7 +4984,7 @@ int NMMosra::checkSettings(void)
                 QString zone = "";
                 if (criit.key().contains(tr(":"), Qt::CaseInsensitive))
                 {
-                    zonespec = criit.key().split(tr(":"), QString::SkipEmptyParts);
+                    zonespec = criit.key().split(tr(":"), Qt::SkipEmptyParts);
                     landuse = zonespec.at(0);
                     zone = zonespec.at(1);
 
@@ -3531,6 +5040,25 @@ int NMMosra::checkSettings(void)
     {
         MosraLogInfo(<< "performance constraints OK")
     }
+
+    // -------------------------------------------------------------------------
+    bool parametersValid = true;
+
+    auto pit = mmslParameters.cbegin();
+    for (; pit != mmslParameters.cend(); ++pit)
+    {
+        foreach(const QString& parCol, pit.value())
+        {
+            if (!mDataSet->hasColumn(parCol))
+            {
+                parametersValid = false;
+                MosraLogError(<< "Parameter '" << pit.key().toStdString()
+                              << "': couldn't find '" << parCol.toStdString()
+                              << "' column in the dataset!");
+            }
+        }
+    }
+
 
     // -------------------------------------------------------------------------
     // check availability of specified field names in zone constraints
@@ -3652,14 +5180,14 @@ int NMMosra::checkSettings(void)
     QMap<QString, QStringList>::ConstIterator fsconsIt = this->mslFeatSetCons.constBegin();
     while(fsconsIt != this->mslFeatSetCons.constEnd())
     {
-        QStringList keyPair = fsconsIt.key().split(":", QString::SkipEmptyParts);
+        QStringList keyPair = fsconsIt.key().split(":", Qt::SkipEmptyParts);
         if (keyPair.size() == 2)
         {
             if (    keyPair.at(0).compare(QStringLiteral("total"), Qt::CaseInsensitive) != 0
                  && !this->mslOptions.contains(keyPair.at(0))
                )
             {
-                QStringList uses = keyPair.at(0).split("+", QString::SkipEmptyParts);
+                QStringList uses = keyPair.at(0).split("+", Qt::SkipEmptyParts);
                 if (this->mslOptions.size() < uses.size())
                 {
                     featsetconsValid = false;
@@ -3730,6 +5258,26 @@ int NMMosra::checkSettings(void)
         ++fsconsIt;
     }
 
+    // the rest is only relevant for ipsolve (at this stage)
+    if (mSolverType != NM_SOLVER_LPSOLVE)
+    {
+        this->msSettingsReport = sstr.readAll();
+
+        MosraLogDebug(<< "Optimisation Settings Report ...\n"
+                   << this->msSettingsReport.toStdString() << endl);
+
+        NMDebugCtx(ctxNMMosra, << "done!");
+        if (    !parametersValid || !criValid || !criConsValid
+             || !evalValid || !arealCriValid || !incentivesValid
+             || !featsetconsValid
+           )
+        {
+            MosraLogError( << "The configuration file contains invalid settings!");
+            return 0;
+        }
+        else
+            return 1;
+    }
 
     // --------------------------------------------------------------------------------------------------------
     //MosraLogInfo(<< "calculating size of the optimsation matrix ..." << endl);
@@ -3783,7 +5331,7 @@ int NMMosra::checkSettings(void)
     this->mlNumArealDVar = this->miNumOptions * this->mlNumOptFeat;
     sstr << "mlNumArealDVar = miNumOptions * mlNumOptFeat = "
             << this->mlNumArealDVar << " = " << this->miNumOptions << " * "
-            << this->mlNumOptFeat << endl;
+            << this->mlNumOptFeat <<  Qt::endl;
 
     this->mlNumDVar =  this->mlNumArealDVar;// + this->mlNumOptFeat;
 
@@ -3804,11 +5352,11 @@ int NMMosra::checkSettings(void)
     sstr << "mlNumDvar = mlNumArealDVar" << plusRedVar
          << " = " << this->mlNumDVar << " = " << this-> mlNumArealDVar
          << addNumVar;
-            //<< " + " << this->mlNumOptFeat << endl;
+            //<< " + " << this->mlNumOptFeat <<  Qt::endl;
 
     // number of columns of the decision matrix
     this->mlLpCols = this->mlNumDVar + 1;
-    sstr << "mlLpCols = mlNumDvar + 1  = " << this->mlLpCols << endl;
+    sstr << "mlLpCols = mlNumDvar + 1  = " << this->mlLpCols <<  Qt::endl;
 
     // Scalarisation method
     QString sMeth;
@@ -3816,7 +5364,7 @@ int NMMosra::checkSettings(void)
         sMeth = tr("Weighted Sum");
     else
         sMeth = tr("Interactive");
-    sstr << "Scalarisation Method: " << sMeth << endl << endl;
+    sstr << "Scalarisation Method: " << sMeth <<  Qt::endl <<  Qt::endl;
 
     this->msSettingsReport = sstr.readAll();
 
@@ -3866,6 +5414,820 @@ int NMMosra::mapLp(void)
     return resval;
 }
 
+int NMMosra::backupLUCControl(void)
+{
+    if (this->mDataSet == nullptr)
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                     << "Dataset is undefined!");
+        return 0;
+    }
+
+    if (this->msLUCControlField.isEmpty())
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                     << "'Land use control field' is not defined!");
+
+        return 0;
+    }
+
+    bkprestoreLUCControl(true);
+
+    return 1;
+
+}
+
+int NMMosra::restoreLUCControl(void)
+{
+    if (this->mDataSet == nullptr)
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                     << "Dataset is undefined!");
+        return 0;
+    }
+
+    if (this->msLUCControlField.isEmpty())
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                     << "'Land use control field' is not defined!");
+
+        return 0;
+    }
+
+    bkprestoreLUCControl(false);
+
+    return 1;
+}
+
+bool NMMosra::bkprestoreLUCControl(bool bBackup)
+{
+    otb::SQLiteTable::Pointer sqltab = dynamic_cast<otb::SQLiteTable*>(
+                this->mDataSet->getOtbAttributeTable().GetPointer());
+    if (sqltab.GetPointer() == nullptr)
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "Failed accessing the database!");
+        return false;
+    }
+
+    if (sqltab->ColumnExists(this->msLUCControlField.toStdString()) < 0)
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << this->msLUCControlField.toStdString()
+                      << " does not exist in the database!");
+        return false;
+    }
+
+    if (sqltab->ColumnExists(this->msBkpLUCControlField.toStdString()) < 0)
+    {
+        if (!sqltab->AddColumn(this->msBkpLUCControlField.toStdString(), otb::AttributeTable::ATTYPE_STRING))
+        {
+            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                          << "Failed adding '" << this->msBkpLUCControlField.toStdString()
+                          << "' to the database!");
+            return false;
+        }
+    }
+
+    std::string toField;
+    std::string fromField;
+    if (bBackup)
+    {
+        toField = this->msBkpLUCControlField.toStdString();
+        fromField = this->msLUCControlField.toStdString();
+    }
+    else // restore
+    {
+        fromField = this->msBkpLUCControlField.toStdString();
+        toField = this->msLUCControlField.toStdString();
+    }
+
+    std::stringstream querystr;
+    querystr << "update \"" << sqltab->GetTableName() << "\" "
+             << "set \"" << toField << "\" = \"" << fromField << "\" ";
+
+    if (!this->msOptFeatures.isEmpty())
+    {
+        querystr << "where \"" << this->msOptFeatures.toStdString() << "\" = 1";
+    }
+
+    if (!sqltab->SqlExec(querystr.str()))
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                     << sqltab->getLastLogMsg());
+
+        return false;
+    }
+
+    return true;
+}
+
+
+int NMMosra::mapNL(void)
+{
+    NMDebugCtx(ctxNMMosra, << "...");
+
+    // double check whether we've got intel on decision variables yet ...
+    // ... in case we just want to map a previously prepared solutions
+    //     (i.e. not during the lifetime of this object)
+    if (mmVarAdminMap.size() == 0)
+    {
+        // parse equations
+        infixToPolishPrefix();
+
+        // create variable admin structures
+        long nvars = 0;
+        processVariables(mb_seg, mx_seg, &nvars);
+    }
+
+    double dBackScaling = 1.0;
+    auto psit = mmParameterScaling.constBegin();
+    for (; psit != mmParameterScaling.constEnd(); ++psit)
+    {
+        if (psit.key().compare(QStringLiteral("AreaHa"), Qt::CaseSensitive) == 0)
+        {
+            mdAreaScalingFactor = psit.value().first;
+            dBackScaling = 1.0/mdAreaScalingFactor;
+            break;
+        }
+    }
+
+
+    // ---------------------------------------------------------------------------
+    // look for the 'solutions' file
+
+    QFile solFile(this->msSolFileName);
+    if (!solFile.exists())
+    {
+        NMDebugAI(<< "ERROR: " << "Couldn't find Ipopt Solutions file '"
+                  << this->msSolFileName.toStdString() << "'!" << std::endl)
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "Couldn't find Ipopt Solutions file '"
+                      << this->msSolFileName.toStdString() << "'!");
+        return 0;
+    }
+
+
+    if (!solFile.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        NMDebugAI(<< "ERROR: Couldn't open Ipopt Solutions file '"
+                      << this->msSolFileName.toStdString() << "'!" << std::endl);
+
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "Couldn't open Ipopt Solutions file '"
+                      << this->msSolFileName.toStdString() << "'!");
+        return 0;
+    }
+
+
+    // =====================================================================
+    // prep the database
+    // =====================================================================
+    NMDebugAI(<< "Adding output columns to the database ... ");
+
+    otb::SQLiteTable::Pointer sqltab = dynamic_cast<otb::SQLiteTable*>(
+                this->mDataSet->getOtbAttributeTable().GetPointer());
+    if (sqltab.GetPointer() == nullptr)
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "Houston, we've got a problem: we don't have a rocket, "
+                      << "i.e. our database is NULL!'"
+                      << this->msSolFileName.toStdString() << "'!");
+        return 0;
+    }
+
+    //const long long lNumCells = sqltab->GetNumRows();
+    //const int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
+
+    QMap<QString, QVector<int> > colValuePos;
+    std::vector< std::string > colnames;
+    std::vector< otb::AttributeTable::ColumnValue > colvalues;
+
+
+    QMap<QString, QVector<int> > getValuePos;
+    std::vector< std::string > getnames;
+    std::vector< otb::AttributeTable::ColumnValue > getvalues;
+
+    // ..........................
+    // add the SDU dim
+    QVector<int> vrid;
+    vrid.push_back(getnames.size());
+
+    if (mmslParameters.constFind(msSDU) == mmslParameters.cend())
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "Compulsory '" << msSDU.toStdString()
+                      << "' dimension parameter is not defined!");
+        return 0;
+    }
+
+    getnames.push_back(mmslParameters[msSDU].at(0).toStdString());
+    getValuePos.insert(msSDU, vrid);
+
+    // ........................
+    // add LUCControlField, if LUCControl is enabled
+    if (mbEnableLUCControl)
+    {
+        QVector<int> lucid;
+        lucid.push_back(getnames.size());
+
+        if (sqltab->ColumnExists(this->msLUCControlField.toStdString()) < 0)
+        {
+            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                          << "The specified land use change control field '"
+                          << this->msLUCControlField.toStdString() << "' "
+                          << "could not be found in the database!");
+            return 0;
+        }
+
+        getnames.push_back(this->msLUCControlField.toStdString());
+        getValuePos.insert(msLUCControlField, lucid);
+    }
+
+    // -------------------------------------------------------------------------
+    // add the optimisation result columns to the table
+
+    sqltab->BeginTransaction();
+    sqltab->AddColumn("OPT_STR", otb::AttributeTable::ATTYPE_STRING);
+
+    QVector<int> ospos;
+    ospos.push_back(colnames.size());
+    colnames.push_back("OPT_STR");
+    colValuePos.insert("OPT_STR", ospos);
+
+    otb::AttributeTable::ColumnValue osval;
+    osval.type = otb::AttributeTable::ATTYPE_STRING;
+    colvalues.push_back(osval);
+
+    // the land-use variable columns
+    QVector<int> lupos;
+    QString sOptStr;
+    for (int option=0; option < this->miNumOptions; ++option)
+    {
+        QString optx_val = QString(tr("OPT%1_VAL")).arg(option+1);
+        lupos.push_back(colnames.size());
+        colnames.push_back(optx_val.toStdString());
+
+        otb::AttributeTable::ColumnValue oval;
+        oval.type = otb::AttributeTable::ATTYPE_DOUBLE;
+        oval.dval = 0;
+        colvalues.push_back(oval);
+
+        sqltab->AddColumn(optx_val.toStdString(), otb::AttributeTable::ATTYPE_DOUBLE);
+
+        // create longest possible version of sOptStr, i.e. for all options
+        sOptStr += QString(this->mslOptions.at(option)) + tr(" ");
+    }
+    colValuePos.insert("OPT_VAL", lupos);
+
+    // ...........................................
+
+    // add LUCControl field to the setter vectors for
+    // active land use change control
+    if (mbEnableLUCControl)
+    {
+        QVector<int> setlucid;
+        setlucid.push_back(colnames.size());
+        colnames.push_back(this->msLUCControlField.toStdString());
+        colValuePos.insert(this->msLUCControlField, setlucid);
+
+        otb::AttributeTable::ColumnValue lucval;
+        lucval.type = otb::AttributeTable::ATTYPE_STRING;
+        colvalues.push_back(lucval);
+    }
+
+    // ...........................................
+
+    // add all variables dimensions to the 'gettypes and getnames' vectors
+    // and all non-land-use variables to the 'setter vectors'
+    QStringList vardims;
+    auto varit = mmVarAdminMap.cbegin();
+    for (; varit != mmVarAdminMap.cend(); ++varit)
+    {
+        if (varit.key().compare(QStringLiteral("lu"), Qt::CaseInsensitive) == 0)
+        {
+            continue;
+        }
+
+        // adding dim parameter columns of the input table
+        bool bHasOptions = false;
+        foreach(const QString& dim, varit.value().dimensions)
+        {
+            if (dim.compare(msOPTIONS, Qt::CaseInsensitive) == 0)
+            {
+                bHasOptions = true;
+                continue;
+            }
+
+            if (mmslParameters.constFind(dim) == mmslParameters.cend())
+            {
+                MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                              << "Dimension parameter '" << dim.toStdString() << "' is not defined!");
+                return 0;
+            }
+
+            if (vardims.contains(dim))
+            {
+                continue;
+            }
+
+            QVector<int> vgetpos;
+            vgetpos.push_back(getnames.size());
+            getnames.push_back(mmslParameters[dim].at(0).toStdString());
+            getValuePos.insert(dim, vgetpos);
+
+            vardims << dim;
+        }
+
+        int numpar = 1;
+        if (bHasOptions)
+        {
+            numpar = miNumOptions;
+        }
+
+        QVector<int> colpos;
+        for (int i=0; i < numpar; ++i)
+        {
+            QString colName;
+            if (bHasOptions)
+            {
+                colName = QString("%1_%2").arg(varit.key()).arg(mslOptions.at(i));
+            }
+            else
+            {
+                colName = QString("%1").arg(varit.key());
+            }
+
+            colpos.push_back(colnames.size());
+            colnames.push_back(colName.toStdString());
+
+            otb::AttributeTable::ColumnValue cv;
+            if (    msBinaryVars.contains(varit.key())
+                 || msIntVars.contains(varit.key())
+               )
+            {
+                cv.type = otb::AttributeTable::ATTYPE_INT;
+                cv.ival = 0;
+            }
+            else
+            {
+                cv.type = otb::AttributeTable::ATTYPE_DOUBLE;
+                cv.dval = 0;
+            }
+            colvalues.push_back(cv);
+            sqltab->AddColumn(colName.toStdString(), cv.type);
+        }
+        colValuePos.insert(varit.key(), colpos);
+    }
+    sqltab->EndTransaction();
+    NMDebug(<< "done!" << std::endl);
+
+
+    // ---------------------------------------------------------------------
+    // prepare get and set statements
+
+    std::stringstream wclstr;
+    // where clause or not?
+    if (!msOptFeatures.isEmpty())
+    {
+        wclstr << "where \"" << msOptFeatures.toStdString() << "\" == 1";
+    }
+
+    if (!sqltab->PrepareBulkGet(getnames, wclstr.str()))
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "Failed preparing dim column read query: "
+                      << sqltab->getLastLogMsg());
+        return 0;
+    }
+
+    if (!sqltab->PrepareBulkSet(colnames, false))
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "Failed preparing dvar write column query: "
+                      << sqltab->getLastLogMsg());
+        return 0;
+    }
+
+
+    // =====================================================================
+    // read and cache solution by offset value
+    // =====================================================================
+
+    QTextStream sol(&solFile);
+    long long solPos = 0;
+    long long dvarCounter = 0;
+    bool bok = false;
+    bool bDoReadVar = false;
+
+    // <dvar offset>, <dvar value>
+    // offsets are 0-based
+    QMap<long long, double> dvarCache;
+
+    // ---------------------------------------------
+    // Find the optimal solution inside the file
+    NMDebugAI(<< "Looking for the optimal solution ... ");
+    while (!sol.atEnd())// && solPos == 0)
+    {
+        QString anyLine = sol.readLine();
+
+        if (!bDoReadVar)
+        {
+            // --------------------------------------------------
+            // looking for the right position
+            if (anyLine.contains("Optimal Solution Found"))
+            {
+                MosraLogInfo(<< anyLine.toStdString() << endl);
+            }
+            else if (anyLine.contains("Problem may be infeasible"))
+            {
+                MosraLogWarn(<< anyLine.toStdString() << endl);
+            }
+            else if (anyLine.contains("_svar[1]"))
+            {
+                solPos = sol.pos();
+                MosraLogInfo(<< "Found decision variables at pos :" << solPos << endl);
+                bDoReadVar = true;
+            }
+        }
+
+        if (bDoReadVar)
+        {
+            const QStringList elems = anyLine.split(" ", Qt::SkipEmptyParts);
+            if (elems.size() == 2)
+            {
+                const QString dVarVal = elems.at(1);
+                double dval = dVarVal.toDouble(&bok);
+                /// CANNOT DO THIS HERE AS WE DON'T KNOW WHETHER THIS IS AN AREA VAR!!!!!
+                //dval *= dBackScaling;
+                if (!bok)
+                {
+                    NMDebugAI(<< "ERROR: Failed parsing number of variables to read!" << std::endl);
+                    MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                                  << "Failed parsing value of decision _svar[" << dvarCounter+1 << "]!");
+                    solFile.close();
+                    return 0;
+                }
+                dvarCache.insert(dvarCounter, dval);
+                ++dvarCounter;
+            }
+        }
+    }
+    solFile.close();
+
+
+    // =====================================================================
+    //   go through database and write cached values
+    // =====================================================================
+    getvalues.resize(getnames.size());
+
+
+    // expected number of dvars
+    //numVars = this->mlNumDVar;
+
+    // allocate a char* that can hold the longest possible sOptStr
+    char* optstr = new char[sOptStr.length()+1];
+
+    // allocate a new LUCControl string
+    char* lucstr = new char[sOptStr.length()+1];
+
+    //double dVal = 0;
+    //varCounter = 0;
+
+    NMDebugAI(<< "Writing variable values into DB ... " << std::endl)
+    //bool bError = false;
+
+    sqltab->BeginTransaction();
+    bool brow = sqltab->DoBulkGet(getvalues);
+    if (!brow)
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "Failed fetching even the first row of the database: "
+                      << sqltab->getLastLogMsg());
+        sqltab->EndTransaction();
+        return 0;
+    }
+
+    this->miNumRecLUCChange = 0;
+    long lowAllocCounter = 0;
+    long allVarCounter = 0;
+    do
+    {
+        const long long rid = getvalues[getValuePos[msSDU].at(0)].ival;
+
+        QString curLUCControlStr;
+        if (mbEnableLUCControl)
+        {
+            curLUCControlStr = getvalues[getValuePos[msLUCControlField].at(0)].tval;
+        }
+        QMap<double, QString> luAllocMap;
+
+        varit = mmVarAdminMap.cbegin();
+        QStringList optstrList;
+        for (; varit != mmVarAdminMap.cend(); ++varit)
+        {
+            bool blu = false;
+            if (varit.key().compare(QStringLiteral("lu"), Qt::CaseInsensitive) == 0)
+            {
+                blu = true;
+            }
+
+            bool bOptions = false;
+            if (varit.value().dimensions.contains(msOPTIONS))
+            {
+                bOptions = true;
+            }
+
+            // get all other but the OPTIONS dimension
+            QVector<long long> vdimVals;
+            foreach (const QString& vdim, varit.value().dimensions)
+            {
+                if (vdim.compare(msOPTIONS, Qt::CaseInsensitive) == 0)
+                {
+                    continue;
+                }
+                const otb::AttributeTable::TableColumnType tct = getvalues.at(getValuePos[vdim].at(0)).type;
+                switch(tct)
+                {
+                case otb::AttributeTable::ATTYPE_INT:
+                    vdimVals.push_back(getvalues.at(getValuePos[vdim].at(0)).ival);
+                    break;
+                case otb::AttributeTable::ATTYPE_DOUBLE:
+                    vdimVals.push_back(getvalues.at(getValuePos[vdim].at(0)).dval);
+                    break;
+                default:
+                    MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                                  << "Got an unsupported data type for variable '" << varit.key().toStdString()
+                                  << "'!");
+                    sqltab->EndTransaction();
+                    return 0;
+                    ;
+                }
+
+            }
+
+            int nopts = bOptions ? miNumOptions : 1;
+            for (int v=0; v < nopts; ++v)
+            {
+                QVector<long long> vTempDims = vdimVals;
+                if (bOptions)
+                {
+                    vTempDims.push_back(v);
+                }
+
+                ++allVarCounter;
+                const long long voffset = varit.value().dimOffsetMap[vTempDims];
+                double dval = 0;
+
+                QString vname = varit.key();
+
+                if (blu)
+                {
+                    if (dvarCache[voffset] >= mdMinAlloc)
+                    {
+                        dval = dvarCache[voffset];
+                        /// NOW, WE 'BACK-SCALE' area values, if applicable
+                        dval *= dBackScaling;
+                    }
+                    else
+                    {
+                        ++lowAllocCounter;
+                    }
+
+                    vname = QStringLiteral("OPT_VAL");
+                    if (dval > 0)
+                    {
+                        optstrList << mslOptions.at(v);
+                    }
+
+                    if (mbEnableLUCControl && dval > 0)
+                    {
+                        luAllocMap.insert(dval, mslOptions.at(v));
+                    }
+                }
+
+                const otb::AttributeTable::TableColumnType dt = colvalues[colValuePos[vname].at(v)].type;
+                switch(dt)
+                {
+                case otb::AttributeTable::ATTYPE_INT:
+                    colvalues[colValuePos[vname].at(v)].ival = static_cast<long long>(dval);
+                    break;
+                case otb::AttributeTable::ATTYPE_DOUBLE:
+                    colvalues[colValuePos[vname].at(v)].dval = dval;
+                    break;
+                default:
+                    MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                                  << "Got an unsupported data type for variable '" << vname.toStdString()
+                                  << "'!");
+                    sqltab->EndTransaction();
+                    return 0;
+                }
+            }
+        }
+
+        optstr[0] = '\0';
+        ::sprintf(optstr, "%s", optstrList.join(" ").toStdString().c_str());
+        colvalues[colValuePos["OPT_STR"].at(0)].tval = optstr;
+
+        // do luc control, if enabled
+        if (mbEnableLUCControl)
+        {
+            QString newLUCControlString = curLUCControlStr;
+            // only add lu to LUCControl field for this SDU when
+            // - we've got more lus allocated than we want
+            // - and allocated lus are spread across more than
+            //   one lu group
+            if (luAllocMap.size() > miMaxOptAlloc)
+            {
+                bool bAllInOne = true;
+                if (mmOptGrpMap.size() > 0)
+                {
+                    // check whether lus belong to the same group
+                    auto amit = luAllocMap.cbegin();
+                    const int grp = mmOptGrpMap[amit.value()];
+                    amit++;
+
+                    while(amit != luAllocMap.cend())
+                    {
+                        if (mmOptGrpMap[amit.value()] != grp)
+                        {
+                            bAllInOne = false;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    bAllInOne = false;
+                }
+
+                // ... and if they don't belong to the same group
+                // apply land-use control
+                if (!bAllInOne)
+                {
+                    QStringList passList;
+                    // only add unwanted lus to LUCControl string
+                    auto luit = luAllocMap.constBegin();
+                    int ditch = luAllocMap.size() - miMaxOptAlloc;
+                    for (int r=0; luit != luAllocMap.cend(); ++luit, ++r)
+                    {
+                        if (r < ditch)
+                        {
+                            continue;
+                        }
+                        passList << luit.value();
+                    }
+
+                    // add all non passes to the LUCControl string if not already on it
+                    bool bcountedRec = false;
+                    for (int flu=0; flu < mslOptions.size(); ++flu)
+                    {
+                        if (   !passList.contains(mslOptions[flu])
+                            && !curLUCControlStr.contains(mslOptions[flu])
+                           )
+                        {
+                            newLUCControlString += QString(" %1").arg(mslOptions[flu]);
+                            if (!bcountedRec)
+                            {
+                                this->miNumRecLUCChange++;
+                                bcountedRec = true;
+                            }
+                        }
+                    }
+                }
+            }
+            // lock in the group we've got to minimise the number of iterations!
+            else if (this->mbLockInLuGrps)
+            {
+                QString curOpt = optstr;
+                for (int lus=0; lus < mslOptions.size(); ++lus)
+                {
+                    if (    curOpt.compare(mslOptions[lus], Qt::CaseInsensitive) != 0
+                         && !curLUCControlStr.contains(mslOptions[lus])
+                         && mmOptGrpMap[curOpt] != mmOptGrpMap[mslOptions[lus]]
+                       )
+                    {
+                        newLUCControlString += QString(" %1").arg(mslOptions[lus]);
+                    }
+                }
+            }
+
+            lucstr[0] = '\0';
+            ::sprintf(lucstr, "%s", newLUCControlString.toStdString().c_str());
+            colvalues[colValuePos[msLUCControlField].at(0)].tval = lucstr;
+        }
+
+        if (!sqltab->DoBulkSet(colvalues, rid))
+        {
+            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                          << "Failed writing solution for record #" << rid << ": "
+                          << sqltab->getLastLogMsg());
+            sqltab->EndTransaction();
+            return 0;
+        }
+
+        brow = sqltab->DoBulkGet(getvalues);
+    } while (brow);
+
+    sqltab->EndTransaction();
+
+    MosraLogInfo(<< "Ignored " << lowAllocCounter << " of " << allVarCounter
+                 << " variable values that were smaller than " << mdMinAlloc << "!" << endl);
+
+    /*
+    for (long f=0; f < lNumCells; ++f)
+    {
+        if (optFeatIdx != -1 && mDataSet->getIntValue(optFeatIdx, f) == 0)
+        {
+            continue;
+        }
+
+        // -------------------------------------------------
+        // processing variables per record / feature at a time
+        if (sol.atEnd() && varCounter < numVars)
+        {
+            NMDebugAI(<< "Got only " << varCounter << " of " << numVars << " variables. Solution '" << this->msSolFileName.toStdString() << "' does not contain "
+                          << "all variable values we expected!" << std::endl);
+            MosraLogError(<< "Got only " << varCounter << " of " << numVars << " variables. Solution '" << this->msSolFileName.toStdString() << "' does not contain "
+                          << "all variable values we expected!" << std::endl);
+            break;
+        }
+
+        sOptStr.clear();
+        for (int option=0; option < this->miNumOptions && !sol.atEnd(); ++option)
+        {
+            QString line = sol.readLine();
+            QStringList ll = line.split(" ", Qt::SkipEmptyParts);
+            if (ll.size() == 2)
+            {
+                dVal = ll.at(1).toDouble(&bok);
+                if (!bok)
+                {
+                    MosraLogError(<< "failed parsing variable _svar[" << (varCounter + 1) << "]!");
+                    bError = true;
+                    break;
+                }
+
+//////////////////////////////////////////////////////////////////
+/// ToDo: need to read in Ipopt options file to set the precision!
+//////////////////////////////////////////////////////////////////
+                if (dVal <= 1e-8)
+                {
+                    dVal = 0;
+                }
+
+                colValues[option+1].type = otb::AttributeTable::ATTYPE_DOUBLE;
+                colValues[option+1].dval = dVal;
+
+                // format sOptStr
+                if (dVal > 0)
+                {
+                    sOptStr += QString(this->mslOptions.at(option)) + tr(" ");
+                }
+            }
+            else
+            {
+                MosraLogError(<< "failed parsing variable _svar[" << (varCounter + 1) << "]!");
+                bError = true;
+                break;
+            }
+
+            ++varCounter;
+        }
+
+        if (bError)
+        {
+            break;
+        }
+
+        // ----------------------------------------------------
+        // writing feature / record variable into DB
+
+        // trim sOptStr and write into array
+        sOptStr = sOptStr.simplified();
+        colValues[0].type = otb::AttributeTable::ATTYPE_STRING;
+        optstr[0] = '\0';
+        ::sprintf(optstr, "%s", sOptStr.toStdString().c_str());
+        colValues[0].tval = optstr;
+
+        sqltab->DoBulkSet(colValues, f);
+
+        if (f % 100 == 0)
+            NMDebug(<< ".");
+    }*/
+
+
+    //sqltab->EndTransaction();
+    NMDebug(<< std::endl);
+
+    //solFile.close();
+    delete[] optstr;
+    delete[] lucstr;
+
+    NMDebugCtx(ctxNMMosra, << "done!");
+    return 1;
+}
+
 int NMMosra::mapLpDb(void)
 {
     otb::SQLiteTable::Pointer sqltab = dynamic_cast<otb::SQLiteTable*>(this->mDataSet->getOtbAttributeTable().GetPointer());
@@ -3911,7 +6273,6 @@ int NMMosra::mapLpDb(void)
     QString sColName;
     double dVal;
     int iValIndex;
-    const int iOffset = this->miNumOptions;
 
     // allocate a char* that can hold the longest possible sOptStr
     char* optstr = new char[sOptStr.length()+1];
@@ -4117,6 +6478,7 @@ int NMMosra::mapLpTab(void)
         {
             mDataSet->rollBack();
             mDataSet->endTransaction();
+            NMDebugAI(<< "ERROR: failed updating row #" << f << "!" << endl);
             NMDebugCtx(ctxNMMosra, << "done!");
             return 0;
         }
@@ -4135,6 +6497,8052 @@ int NMMosra::mapLpTab(void)
     NMDebugCtx(ctxNMMosra, << "done!");
     return 1;
 }
+
+bool NMMosra::infixToPolishPrefix()
+{
+    /// This implementation is based on
+    /// - Dijkstra EW, 1961: Algol 60 translation: An Algol 60 translator for the X1 and making a translator for Algol 60. Stichting Mathematisch Centrum rekenafdeling. Stichting Mathematisch Centrum. https://ir.cwi.nl/pub/9251 (accessed 2023-05-03)
+    /// - Gay DM, 2005: Writing .nl Files. https://ampl.github.io/nlwrite.pdf (accessed 2023-05-02)
+    /// - Borchia D, 2022: Polish Notation Converter. https://www.omnicalculator.com/math/polish-notation#examples-of-conversion-from-infix-to-the-polish-notations-and-vice-versa (accessed 2023-05-02)
+
+
+    // -----------------------------------------
+    // parse equations
+    // -----------------------------------------
+    MosraLogInfo(<< "parsing Equations ...");
+    auto eqnit = mmsEquations.cbegin();
+    while (eqnit != mmsEquations.cend())
+    {
+        EquationAdmin ea;
+        ea.name = eqnit.key();
+
+        if (mmEquationAdmins.constFind(ea.name) != mmEquationAdmins.cend())
+        {
+            MosraLogError(<< "NMMosra::infixToPolishPrefix() - ERROR: "
+                          << "Equation '" << ea.name.toStdString() << "' "
+                          << "has already been defined! Please use unique "
+                          << "equation names!" << endl);
+            return false;
+        }
+
+        MosraLogDebug(<< "  '" << ea.name.toStdString() << "' ... ");
+        // logging the end positions of equation elments as
+        // we use this EquationAdmin for reversing the
+        // equations in prep for polishing ...
+        if (!parseEquation(eqnit.value().simplified(), ea, true))
+        {
+            MosraLogError(<< "NMMosra::infixToPolishPrefix() - ERROR: "
+                          << "Equation parsing failed!");
+            return false;
+        }
+
+        mmEquationAdmins.insert(ea.name, ea);
+        ++eqnit;
+    }
+
+    //auto cit = mmsLinearConstraints.cbegin();
+    //while (cit != mmsLinearConstraints.cend())
+    //{
+    //    EquationAdmin outEa;
+    //    outEa.name = cit.key();
+    //
+    //    MosraLogInfo(<< "  '" << outEa.name.toStdString() << "' ... ");
+    //    if (!parseEquation(cit.value().simplified(), outEa, true))
+    //    {
+    //        MosraLogError(<< "NMMosra::infixToPolishPrefix() - ERROR: "
+    //                      << "Equation parsing failed!");
+    //        return false;
+    //    }
+    //
+    //    mmEquationAdmins.insert(outEa.name, outEa);
+    //    ++cit;
+    //}
+
+
+    // -----------------------------------------
+    // convert infix into polish prefix notation
+    // -----------------------------------------
+    MosraLogDebug(<< "transforming Equations ...");
+
+    auto eqnadminit = mmEquationAdmins.begin();
+    while (eqnadminit != mmEquationAdmins.end())
+    {
+        EquationAdmin pa;
+        pa.name = eqnadminit.key();
+
+        QStringList polishPrefix;
+
+        // ----------------------------------------------------------
+        // DEBUG DEBUG DEBUG
+        MosraLogDebug(<< pa.name.toStdString() << ": ...");
+        QString pEqn;
+        if (mmsEquations.constFind(pa.name) != mmsEquations.cend())
+        {
+            pEqn = mmsEquations.value(pa.name);
+            MosraLogDebug(<< pEqn.toStdString());
+        }
+        //else if (mmsLinearConstraints.constFind(pa.name) != mmsLinearConstraints.cend())
+        //{
+        //    pEqn = mmsLinearConstraints.value(pa.name);
+        //    MosraLogInfo(<< pEqn.toStdString());
+        //}
+        // DEBUG DEBUG DEBUG
+        // ----------------------------------------------------------
+
+        if (!polishingEqn(eqnadminit.value(), pa, polishPrefix))
+        {
+            MosraLogError(<< "NMMosra::infixToPolishPrefix() - ERROR: "
+                          << "Polishing equation failed!");
+            return false;
+        }
+
+        mmPrefixEquations.insert(
+                    pa.name,
+                    std::pair<EquationAdmin, QStringList>(
+                    pa,
+                    polishPrefix
+                    )
+                );
+
+        ++eqnadminit;
+    }
+
+    return true;
+}
+
+bool NMMosra::parseEquation(const QString eqn,
+        EquationAdmin &ea, bool blogEndPos)
+{
+    bool success = true;
+
+    QStack<std::pair<EqnElement,int>> procstack;
+    QStack<std::pair<EqnElement,int>> nostack;
+
+    //QList<Loop> loopList;
+    QString token;
+    QString noToken;
+
+    QString cleanStr = eqn.simplified() + QChar(' ');
+
+    //MosraLogInfo(<< "NMMosra::parseEquation(): simplified input equation: \n\n"
+    //             << cleanStr.toStdString() << endl << endl);
+    int logpos = 0;
+    for(int p=0; p < cleanStr.size(); ++p)
+    {
+        const QChar ch = cleanStr[p];
+
+        // -----------------------------------------------------
+        //              OPERATORS & NUMBERS
+        // -----------------------------------------------------
+
+        if (    mWhitespaces.contains(ch)
+             || mOpCharList.contains(ch)
+           )
+        {
+            // FINALISE PARAMETER
+            if (    (    mOpCharList.contains(ch)
+                      || p == cleanStr.size()-1
+                    )
+                 && procstack.size() > 0
+                 && procstack.last().first == EQN_PARAMETER
+               )
+            {
+                Param& param = ea.paramList[procstack.last().second];
+                logpos = blogEndPos ? param.paramEnd : param.paramStart;
+                ea.elemMap.insert(
+                            logpos,
+                            std::pair<EqnElement, int>(
+                                EQN_PARAMETER,
+                                procstack.last().second
+                                )
+                            );
+                procstack.pop();
+            }
+
+            // FINALISE NUMBER
+            if (   nostack.size() > 0
+                     && nostack.last().first == EQN_NUMBER
+                    )
+            {
+                ea.numList[nostack.last().second].numEnd = p-1;
+                bool bConv;
+                double val = noToken.toDouble(&bConv);
+                if (bConv)
+                {
+                    ea.numList[nostack.last().second].value = val;
+                }
+                else
+                {
+                    ea.numList.takeAt(nostack.last().second);
+                    MosraLogError(<< "ERROR in Equation '"
+                                  << ea.name.toStdString() << "' at position " << p-1-noToken.size()
+                                  << "' - Failed converting '" << noToken.toStdString()
+                                  << "' to double!");
+                    success = false;
+                }
+
+                logpos = blogEndPos ? p-1 : ea.numList[nostack.last().second].numStart;
+                ea.elemMap.insert(
+                            logpos,
+                            std::pair<EqnElement, int>(
+                                EQN_NUMBER,
+                                nostack.last().second
+                                )
+                            );
+
+                nostack.pop();
+                noToken.clear();
+            }
+            // LOG EQUATION
+            else if (   nostack.size() == 0
+                     && noToken.isEmpty()
+                     && !token.isEmpty()
+                    )
+            {
+                if (   (   ea.name.compare(token, Qt::CaseSensitive) != 0
+                        && (   mmsEquations.keys().contains(token)
+                            //|| mmslLinearConstraints.keys().contains(token)
+                           )
+                       )
+                    //|| (   pRevLoopMap != nullptr
+                    //    && pRevLoopMap->keys().contains(token)
+                    //   )
+                   )
+                {
+                    Equation eqn = {
+                        .eqn      = token,
+                        .eqnStart = p-(token.size()-1)-1,
+                        .eqnEnd   = p-1
+                    };
+
+                    logpos = blogEndPos ? eqn.eqnEnd : eqn.eqnStart;
+                    ea.elemMap.insert(
+                                logpos,
+                                std::pair<EqnElement, int>(
+                                    EQN_EQUATION,
+                                    ea.eqnList.size()
+                                    )
+                                );
+
+                    ea.eqnList.push_back(eqn);
+                }
+                else if (   ea.name.compare(token, Qt::CaseSensitive) != 0
+                         && mmslVariables.keys().contains(token)
+                        )
+                {
+                    // 0-dimension variable
+                    if (mmslVariables[token].size() == 0)
+                    {
+                        Param par;
+                        par.name = token;
+                        par.paramStart = p-1-token.size();
+                        par.paramEnd = p-1;
+
+                        logpos = blogEndPos ? par.paramEnd : par.paramStart;
+                        ea.elemMap.insert(
+                                    logpos,
+                                    std::pair<EqnElement, int>(
+                                        EQN_PARAMETER,
+                                        ea.paramList.size()
+                                        )
+                                    );
+
+                        ea.paramList.push_back(par);
+                    }
+                    else
+                    {
+                        MosraLogError(<< "ERROR in Equation '"
+                                      << ea.name.toStdString() << "' at position " << p-token.size()
+                                      << "' - No dimension(s) specified for variable '"
+                                      << token.toStdString() << "'!");
+                        success = false;
+                    }
+                }
+                // log 'naked' (i.e. dimensionless) parameter specification
+                else if (   procstack.size() == 0
+                         && nostack.size() == 0
+                         && mmslParameters.constFind(token) != mmslParameters.cend()
+                        )
+                {
+                    Param param = {
+                        .name       = token,
+                        .paramStart = p-(token.size()-1)-1,
+                        .paramEnd   = p-1
+                    };
+                    logpos = blogEndPos ? param.paramEnd : param.paramStart;
+                    ea.elemMap.insert(
+                                logpos,
+                                std::pair<EqnElement, int>(
+                                    EQN_PARAMETER,
+                                    ea.paramList.size()
+                                    )
+                                );
+                    ea.paramList.push_back(param);
+                }
+                else
+                {
+                    bool bisNum;
+                    token.toDouble(&bisNum);
+
+                    if (    !bisNum
+                         && !mAMPLOperators.contains(token)
+                         && !mParseOperators.contains(token)
+                       )
+                    {
+                        MosraLogError(<< "ERROR in Equation '"
+                                      << ea.name.toStdString() << "' at position " << p-token.size()
+                                      << "' - Unidentified or incomplete equation, variable, or parameter: '"
+                                      << token.toStdString()
+                                      << "'!");
+                        success = false;
+                    }
+                }
+                token.clear();
+            }
+
+            // OPERATOR
+            if (mOpCharList.contains(ch))
+            {
+                if (   noToken.isEmpty()
+                    && nostack.size() == 0
+                   )
+                {
+                    Operator op = {
+                        .opStart = p
+                    };
+
+                    nostack.push(std::pair<EqnElement,int>(EQN_OPERATOR, ea.opList.size()));
+                    ea.opList.push_back(op);
+
+                    noToken += ch;
+                }
+                else if (   nostack.size() > 0
+                         && nostack.last().first == EQN_OPERATOR
+                        )
+                {
+                    noToken += ch;
+                }
+
+            }
+
+            // FINALISE OPERATOR
+            if (mWhitespaces.contains(ch))
+            {
+                if (   nostack.size() > 0
+                    && nostack.last().first == EQN_OPERATOR
+                    && (   mParseOperators.contains(noToken)
+                        || mAMPLOperators.contains(noToken)
+                       )
+                   )
+                {
+                    ea.opList[nostack.last().second].op = noToken;
+                    ea.opList[nostack.last().second].opEnd = p-1;
+
+                    logpos = blogEndPos ? p-1 : ea.opList[nostack.last().second].opStart;
+                    ea.elemMap.insert(
+                                logpos,
+                                std::pair<EqnElement, int>(
+                                    EQN_OPERATOR,
+                                    nostack.last().second
+                                    )
+                                );
+
+                    nostack.pop();
+                    noToken.clear();
+                }
+            }
+
+            if (mOpCharList.contains(ch))
+            {
+                token.clear();
+            }
+            continue;
+        }
+        else
+        {
+            if (   nostack.size() > 0
+                && nostack.last().first == EQN_OPERATOR
+                && (   mParseOperators.contains(noToken)
+                    || mAMPLOperators.contains(noToken)
+                   )
+               )
+            {
+                ea.opList[nostack.last().second].op = noToken;
+                ea.opList[nostack.last().second].opEnd = p-1;
+
+                logpos = blogEndPos ? p-1 : ea.opList[nostack.last().second].opStart;
+                ea.elemMap.insert(
+                            logpos,
+                            std::pair<EqnElement, int>(
+                                EQN_OPERATOR,
+                                nostack.last().second
+                                )
+                            );
+
+                nostack.pop();
+                noToken.clear();
+            }
+        }
+
+
+        // -----------------------------------------------------
+        // LOOPS, FUNCTIONS, PARAMETERS/VARIABLES, EQUATIONS, BRACES
+        // -----------------------------------------------------
+
+        // LOOP DIMENSIONS
+        if (ch == QChar('{') || ch == QChar('}'))
+        {
+            // LOOP DIMENSION START
+            if (ch == QChar('{'))
+            {
+                if (mLoopNames.contains(token))
+                {
+                    int lvl = 0;
+                    for (int s=0; s < procstack.size(); ++s)
+                    {
+                        if (procstack[s].first == EQN_LOOP)
+                        {
+                            ++lvl;
+                        }
+                    }
+
+                    Loop loop = {
+                        .name = token,
+                        .level = lvl,
+                        .bodyStart = -1,
+                        .bodyEnd = -1
+                    };
+
+                    std::pair<EqnElement,int> procitem(EQN_LOOP, ea.loopList.size());
+                    ea.loopList.push_back(loop);
+                    procstack.push(procitem);
+                }
+                else
+                {
+                    // 01234567
+                    // sum{dim}
+                    MosraLogError(<< "ERROR in Equation '"
+                                  << ea.name.toStdString() << "' at position " << p-token.size()
+                                  << ": Unknwon loop type '" << token.toStdString() << "'!");
+                    success = false;
+                }
+            }
+            // LOOP DIMENSION END
+            else // ch == QChar('}')
+            {
+                if (procstack.size() > 0 && procstack.last().first == EQN_LOOP)
+                {
+                    ea.loopList[procstack.last().second].dim = token;
+                }
+            }
+            token.clear();
+        }
+        // FUNCTION BODIES, LOOP BODIES, OR ALGEBRAIC PRECEDENCE CONTROL
+        else if (ch == QChar('(') || ch == QChar(')'))
+        {
+            if (ch == QChar('('))
+            {
+                // FUNCTION BODY
+                if (mAMPLFunctions.keys().contains(token))
+                {
+                    int flvl = 0;
+                    for (int s=0; s < procstack.size(); ++s)
+                    {
+                        if (procstack[s].first == EQN_FUNCTION)
+                        {
+                            ++flvl;
+                        }
+                    }
+
+                    Func func = {
+                        .name = token,
+                        .level = flvl,
+                        .bodyStart = p,
+                        .bodyEnd = -1
+                    };
+                    std::pair<EqnElement,int> funitem(EQN_FUNCTION, ea.funcList.size());
+                    procstack.push_back(funitem);
+                    ea.funcList.push_back(func);
+                }
+                // LOOP BODY
+                else if (   procstack.size() > 0
+                         && procstack.last().first == EQN_LOOP
+                         && ea.loopList[procstack.last().second].bodyStart == -1
+                        )
+                {
+                    ea.loopList[procstack.last().second].bodyStart = p;
+                }
+                else
+                {
+                    procstack.push(std::pair<EqnElement,int>(EQN_LBRACE, -1));
+                }
+            }
+            else // ch == QChar(')')
+            {
+                // FINALISE PARAMETER
+                if (procstack.last().first == EQN_PARAMETER)
+                {
+                    Param& param = ea.paramList[procstack.last().second];
+                    logpos = blogEndPos ? param.paramEnd : param.paramStart;
+                    ea.elemMap.insert(
+                                logpos,
+                                std::pair<EqnElement, int>(
+                                    EQN_PARAMETER,
+                                    procstack.last().second
+                                    )
+                                );
+                    procstack.pop();
+                }
+
+                // LOOP BODY
+                if (procstack.size() > 0 && procstack.last().first == EQN_LBRACE)
+                {
+                    procstack.pop();
+                }
+                else if (procstack.size() > 0 && procstack.last().first == EQN_LOOP)
+                {
+                    if (ea.loopList[procstack.last().second].bodyEnd == -1)
+                    {
+                        ea.loopList[procstack.last().second].bodyEnd = p;
+
+                        logpos = blogEndPos ? p : ea.loopList[procstack.last().second].bodyStart;
+                        ea.elemMap.insert(
+                                    logpos,
+                                    std::pair<EqnElement, int>(
+                                        EQN_LOOP,
+                                        procstack.last().second
+                                        )
+                                    );
+                    }
+                    procstack.pop();
+                }
+                // FUNCTION BODY
+                else if (procstack.size() > 0 && procstack.last().first == EQN_FUNCTION)
+                {
+                    if (ea.funcList[procstack.last().second].bodyEnd = -1)
+                    {
+                        ea.funcList[procstack.last().second].bodyEnd = p;
+
+
+                        logpos = blogEndPos ? p : ea.funcList[procstack.last().second].bodyStart;
+                        ea.elemMap.insert(
+                                    logpos,
+                                    std::pair<EqnElement, int>(
+                                        EQN_FUNCTION,
+                                        procstack.last().second
+                                        )
+                                    );
+                    }
+                    procstack.pop();
+                }
+
+                if (   ea.name.compare(token, Qt::CaseSensitive) != 0
+                    && (   mmsEquations.keys().contains(token)
+                        //|| mmslLinearConstraints.keys().contains(token)
+                       )
+                   )
+                {
+                    Equation eqn = {
+                        .eqn      = token,
+                        .eqnStart = p-token.size(),
+                        .eqnEnd   = p-1
+                    };
+
+                    logpos = blogEndPos ? eqn.eqnEnd : eqn.eqnStart;
+                    ea.elemMap.insert(
+                                logpos,
+                                std::pair<EqnElement, int>(
+                                    EQN_EQUATION,
+                                    ea.eqnList.size()
+                                    )
+                                );
+
+                    ea.eqnList.push_back(eqn);
+                    token.clear();
+                }
+            }
+            token.clear();
+        }
+        // PARAMETER OR VARIABLE
+        else if (ch == QChar('[') || ch == QChar(']'))
+        {
+            if (ch == QChar('['))
+            {
+                if (    mmslParameters.keys().contains(token)
+                     || mmslVariables.keys().contains(token)
+                   )
+                {
+                    Param param;
+                    param.name = token;
+                    param.paramStart = p-token.size();
+                    std::pair<EqnElement,int> paritem(EQN_PARAMETER, ea.paramList.size());
+                    procstack.push_back(paritem);
+                    ea.paramList.push_back(param);
+                }
+                else if (    procstack.size() == 0
+                         ||  procstack.last().first != EQN_PARAMETER
+                        )
+                {
+                    MosraLogError(<< "ERROR in Equation '"
+                                  << ea.name.toStdString() << "' at position "
+                                  << p-token.size()
+                                  << ": Unrecognised parameter or variable name: "
+                                  << token.toStdString());
+                    success = false;
+                }
+            }
+            else // ch == QChar(']')
+            {
+                if (procstack.size() > 0 && procstack.last().first == EQN_PARAMETER)
+                {
+                    Param& param = ea.paramList[procstack.last().second];
+                    param.dimensions << token;
+                    param.paramEnd = p;
+
+                    // note: we finalise parameters (i.e. update paramEnd parameter
+                    // and remove the procstack entry once we hit an operator because
+                    // we're never quite sure about the number dimensons specified for
+                    // the parameter! This is different for variables as they need to
+                    // have dimensions defined for them.
+
+                    // DEPRECATED
+                    //if (mmslParameters.keys().contains(param.name))
+                    //{
+                    //    if (mmslParameters[param.name].size() == param.dimensions.size())
+                    //    {
+                    //        procstack.pop();
+                    //    }
+                    //    else if (mmslParameters[param.name].size() == param.dimensions.size())
+                    //    {
+                    //        procstack.pop();
+                    //    }
+                    //}
+                    //else
+
+                    // FINALIZE VARIABLE (PARAMETER)
+                    if (mmslVariables.keys().contains(param.name))
+                    {
+                        if (mmslVariables[param.name].size() == param.dimensions.size())
+                        {
+                            logpos = blogEndPos ? param.paramEnd : param.paramStart;
+                            ea.elemMap.insert(
+                                        logpos,
+                                        std::pair<EqnElement, int>(
+                                            EQN_PARAMETER,
+                                            procstack.last().second
+                                            )
+                                        );
+
+                            procstack.pop();
+                        }
+                    }
+                }
+            }
+            token.clear();
+        }
+        // FUNCTION ARGUMENT
+        else if (ch == QChar(','))
+        {
+            if (procstack.size() > 0 && procstack.last().first == EQN_FUNCTION)
+            {
+                ea.funcList[procstack.last().second].sep.push_back(p);
+            }
+            token.clear();
+        }
+        else
+        {
+            token += ch;
+        }
+
+        // -----------------------------------------
+        //  Operators & Numbers
+        // -----------------------------------------
+
+        // FINALISE OPERATOR
+        if (   !mOpCharList.contains(ch)
+            && nostack.size() > 0
+            && nostack.last().first == EQN_OPERATOR
+            && (   mParseOperators.contains(noToken)
+                || mAMPLOperators.contains(noToken)
+               )
+           )
+        {
+            ea.opList[nostack.last().second].op = noToken;
+            ea.opList[nostack.last().second].opEnd = p-1;
+
+            logpos = blogEndPos ? p-1 : ea.opList[nostack.last().second].opStart;
+            ea.elemMap.insert(
+                        logpos,
+                        std::pair<EqnElement, int>(
+                            EQN_OPERATOR,
+                            nostack.last().second
+                            )
+                        );
+
+            nostack.pop();
+            noToken.clear();
+        }
+
+        // INIT NUMBER
+        if (   token.size() == 1
+            && mNumCharList.contains(ch)
+           )
+        {
+            Number num = {
+                .numStart = p
+            };
+
+            noToken.clear();
+            noToken += ch;
+
+            nostack.push(std::pair<EqnElement,int>(EQN_NUMBER, ea.numList.size()));
+            ea.numList.push_back(num);
+        }
+        // FINALISE NUMBER
+        else if (   token.isEmpty()
+                 && nostack.size() > 0
+                 && nostack.last().first == EQN_NUMBER
+                )
+        {
+            ea.numList[nostack.last().second].numEnd = p-1;
+            bool bConv;
+            double val = noToken.toDouble(&bConv);
+            if (bConv)
+            {
+                ea.numList[nostack.last().second].value = val;
+            }
+            else
+            {
+                MosraLogError(<< "Failed converting '" << noToken.toStdString()
+                              << "' to double!");
+                success = false;
+            }
+
+            logpos = blogEndPos ? p-1 : ea.numList[nostack.last().second].numStart;
+            ea.elemMap.insert(
+                        logpos,
+                        std::pair<EqnElement, int>(
+                            EQN_NUMBER,
+                            nostack.last().second
+                            )
+                        );
+
+            nostack.pop();
+            noToken.clear();
+        }
+        else if (   mNumCharList.contains(ch)
+                 && nostack.size() > 0
+                 && nostack.last().first == EQN_NUMBER
+                )
+        {
+            noToken += ch;
+        }
+    }
+
+    return success;
+}
+
+bool NMMosra::polishingEqn(EquationAdmin &ea, EquationAdmin &pa,
+                           QStringList &polishPrefix)
+{
+    NMDebugCtx(ctxNMMosra, << "...");
+    /*
+    highest loop level is 0; the level increases by 1
+    each time a loop is nested inside another loop
+    e.g.
+          sum{SDU}            // level 0
+          (
+              sum{Farm}       // level 1
+              (
+
+              )
+
+              sum{...}        // level 1
+              (
+                 sum{Rec}     // level 2
+                 (
+
+                 )
+              )
+          )
+    */
+
+    // =====================================================
+    //          REVERSING LOOPS (and all that's in it)
+    // =====================================================
+
+    // bodyStart, <Loop, ReversedEquation>
+    QString eqn;
+    QString revEqn;
+
+    if (mmsEquations.constFind(ea.name) != mmsEquations.cend())
+    {
+        eqn = mmsEquations.value(ea.name);
+    }
+    //else if (mmslLinearConstraints.constFind(ea.name) != mmslLinearConstraints.cend())
+    //{
+    //    eqn = mmslLinearConstraints.value(ea.name);
+    //}
+
+    if (eqn.isEmpty())
+    {
+        MosraLogError(<< "polishingEqn() - ERROR: "
+                      << "got an empty equation!" << endl);
+        return false;
+    }
+
+    revEqn = reverseEqn(eqn, ea, 0, eqn.size()-1);
+    MosraLogDebug(<< revEqn.toStdString());
+    MosraLogDebug(<< " ");
+
+    // =====================================================
+    //   Parse reversed Equations
+    // =====================================================
+    EquationAdmin eaRev;
+    eaRev.name = ea.name;
+
+    if (!parseEquation(revEqn, eaRev, false))
+    {
+        MosraLogError(<< "Mosra - ERROR: parsing reversed equation failed!");
+        return false;
+    }
+
+    // =====================================================
+    //   SHUNTY YARD ALGORITHM : infix -> polish prefix
+    // =====================================================
+    if (!shuntyYard(revEqn, polishPrefix, eaRev, pa))
+    {
+        MosraLogError(<< "Mosra - ERROR: Shunty Yard algorithm!");
+        return false;
+    }
+
+    NMDebugCtx(ctxNMMosra, << "done!");
+    return true;
+}
+
+bool NMMosra::shuntyYard(const QString &revInEqn,
+                         QStringList &polishPrefixList,
+                         EquationAdmin &ea,
+                         EquationAdmin &pa)
+{
+    QStringList revEqnList;
+
+    EquationAdmin revEa;
+    revEa.name = ea.name;
+    revEqnList = shuntyCoreRev(revInEqn, ea, revEa, 0, 0);
+
+    // DEBUG DEBUG DEBUG
+    MosraLogDebug(<< "revPrefix(" << revEa.name.toStdString() << ")\n "
+                 << revEqnList.join("\n").toStdString() << endl << endl);
+
+    PrintElemMap(revEa);
+
+    polishPrefixList = shuntyCorePref(revEqnList, revEa, pa);
+
+    // DEBUG DEBUG DEBUG
+    MosraLogDebug(<< "polishPrefix(" << pa.name.toStdString() << ")\n "
+                 << polishPrefixList.join("\n").toStdString() << endl << endl);
+
+#ifdef LUMASS_DEBUG
+    PrintElemMap(pa);
+#endif
+    return true;
+}
+
+void NMMosra::PrintElemMap(const EquationAdmin &admin)
+{
+    // DEBUG =================================================
+    MosraLogDebug(<< admin.name.toStdString() << " elemMap positions: ..." << endl);
+    QStringList output;
+    auto it = admin.elemMap.cbegin();
+    while (it != admin.elemMap.cend())
+    {
+        QString es;
+        QString ename;
+        const EqnElement ee = it.value().first;
+        const int vpos = it.value().second;
+        switch (ee)
+        {
+        case EQN_LOOP: es = "Loop"; ename = QString("%1{%2}").arg(admin.loopList[vpos].name).arg(admin.loopList[vpos].dim); break;
+        case EQN_FUNCTION: es = "Func"; ename = admin.funcList[vpos].name; break;
+        case EQN_PARAMETER: es = "Param"; ename = QString("%1[%2]").arg(admin.paramList[vpos].name).arg(admin.paramList[vpos].dimensions.join(",")); break;
+        case EQN_EQUATION: es = "Eqn"; ename = admin.eqnList[vpos].eqn; break;
+        default: ;
+        }
+
+        QString out = QString("[%1]: %2 - %3")
+                      .arg(it.key())
+                      .arg(es)
+                      .arg(ename);
+        output << out;
+        ++it;
+    }
+    MosraLogDebug(<< endl << output.join("\n").toStdString() << endl << endl);
+    // DEBUG =================================================
+}
+
+QStringList NMMosra::shuntyCorePref(const QStringList &revList,
+                                    EquationAdmin &inEa,
+                                    EquationAdmin &outEa)
+{
+    QStringList prefList;
+    for (int p=revList.size()-1; p >= 0; --p)
+    {
+        const QString token = revList[p];
+
+        if (inEa.elemMap.constFind(p) != inEa.elemMap.constEnd())
+        {
+            const EqnElement inElem = inEa.elemMap[p].first;
+            const int inPos = inEa.elemMap[p].second;
+
+            switch (inElem)
+            {
+            case EQN_EQUATION:
+                {
+                    Equation outEqn = inEa.eqnList[inPos];
+                    outEqn.eqnStart = prefList.size();
+                    outEqn.eqnEnd = prefList.size();
+                    outEa.elemMap.insert(
+                                prefList.size(),
+                                std::pair<EqnElement, int>(
+                                    EQN_EQUATION,
+                                    outEa.eqnList.size()
+                                    )
+                                );
+                    outEa.eqnList.push_back(outEqn);
+                }
+                break;
+
+            case EQN_PARAMETER:
+                {
+                    Param outPar = inEa.paramList[inPos];
+                    outPar.paramStart = prefList.size();
+                    outPar.paramEnd = prefList.size();
+                    outEa.elemMap.insert(
+                                prefList.size(),
+                                std::pair<EqnElement, int>(
+                                    EQN_PARAMETER,
+                                    outEa.paramList.size()
+                                    )
+                                );
+                    outEa.paramList.push_back(outPar);
+                }
+                break;
+
+            case EQN_LOOP:
+                {
+                    Loop outLoop = inEa.loopList[inPos];
+                    // note these positions are from a backwards
+                    // passed list, i.e. bodyStart > bodyEnd
+                    const int loopLen = outLoop.bodyStart - outLoop.bodyEnd;
+                    outLoop.bodyStart = prefList.size();
+                    outLoop.bodyEnd = outLoop.bodyStart + loopLen;
+                    outEa.elemMap.insert(
+                                prefList.size(),
+                                std::pair<EqnElement, int>(
+                                    EQN_LOOP,
+                                    outEa.loopList.size()
+                                    )
+                                );
+                    outEa.loopList.push_back(outLoop);
+                }
+                break;
+
+            default:
+                ;
+            }
+        }
+        prefList << token;
+    }
+
+    return prefList;
+}
+
+QStringList NMMosra::shuntyCoreRev(const QString &revEqn,
+               EquationAdmin &ea, EquationAdmin &pa, int offset, int outlistoffset)
+{
+    // create 'reversed' infix string
+    // variables
+    //  vi  with 0 <= i < n_var e.g. v0, v1, v2, v...
+    // constants
+    //  n<float>  e.g. 'n1'  or 'n-3.2e-7'
+
+    /* SHUNTY YARD ALGORITHM
+     for each char in expression:
+        if operand -> output
+        if operator (a)
+            if stack has operator (b)
+                while (b)'s precedence on stack is greater than a's
+                    -> pop operator (b) from stack onto output
+
+                -> push operator (a) on `stack`
+        if '(' -> push it on the stack
+        if ')'
+            pop operators from stack onto output until hitting '('
+            pop '(' (into nothingness)
+    */
+
+    QStringList revoutList;
+    QStack<QString> stack;
+
+    // < <loop end pos in rev Eqn>, <loop pos in pa.loopList> >
+    for (int p=0; p < revEqn.size(); ++p)
+    {
+        QChar ch = revEqn.at(p);
+        bool bCharProcessed = false;
+
+
+        if (ea.elemMap.constFind(p+offset) != ea.elemMap.cend())
+        {
+            const std::pair<EqnElement, int> elemPair = ea.elemMap[p+offset];
+            const EqnElement elem = elemPair.first;
+            const int epos = elemPair.second;
+
+            switch(elem)
+            {
+            case EQN_LOOP:
+                if (ea.loopList[epos].bodyStart - offset == p)
+                {
+                    Loop& myLoop = ea.loopList[epos];
+
+                    int bstart = myLoop.bodyStart+1 - offset;
+                    int bend   = myLoop.bodyEnd-1 - offset;
+                    // 345678
+                    // (1234)
+                    int blen   = bend - bstart + 1;
+
+                    QString revBody = revEqn.mid(bstart, blen);
+                    QStringList revBodyList = shuntyCoreRev(revBody, ea, pa, myLoop.bodyStart+1, revoutList.size());
+
+                    int rbend = revoutList.size();
+                    revoutList << revBodyList;
+                    int rbstart = revoutList.size();
+                    revoutList << QString("%1{%2}").arg(myLoop.name).arg(myLoop.dim);
+
+                    pa.elemMap.insert(outlistoffset + revoutList.size() - 1,
+                                      std::pair<EqnElement, int>(
+                                          EQN_LOOP,
+                                          pa.loopList.size()
+                                          )
+                                );
+
+                    Loop outLoop = {
+                        .name = myLoop.name,
+                        .dim = myLoop.dim,
+                        .level = myLoop.level,
+                        .bodyStart = rbstart,
+                        .bodyEnd = rbend
+                    };
+                    pa.loopList.push_back(outLoop);
+
+                    p = ea.loopList[epos].bodyEnd - offset;
+                    bCharProcessed = true;
+                }
+                break;
+
+
+            case EQN_FUNCTION:
+                // 345678901234567
+                // myfun(par1, p2)
+                if (ea.funcList[epos].bodyStart - offset == p)
+                {
+                    Func& myFun = ea.funcList[epos];
+
+                    QString revArg;
+                    QStringList revArgList;
+
+                    // ------------------------------------------------
+                    //parse arguments from back to front
+
+                    int aend = myFun.bodyEnd - offset - 1;
+                    int astart;
+                    for (int s=myFun.sep.size()-1; s >= -1; --s)
+                    {
+                        if (s == -1)
+                        {
+                            astart = myFun.bodyStart - offset + 1;
+                        }
+                        else
+                        {
+                            astart = myFun.sep[s] - offset + 1;
+                        }
+
+                        revArg = revEqn.mid(astart, aend-astart+1);
+
+                        revArgList = shuntyCoreRev(revArg, ea, pa,
+                                                   astart + offset,
+                                                   outlistoffset + revoutList.size());
+                        aend = astart - 2;
+                        revoutList << revArgList;
+                    }
+                    revoutList << QString("o%1").arg(mAMPLFunctions[myFun.name]);
+
+                    p = myFun.bodyEnd - offset;
+                    bCharProcessed = true;
+                }
+                break;
+
+            case EQN_PARAMETER:
+            // Param, Var
+                if (ea.paramList[epos].paramStart - offset == p)
+                {
+                    Param param = ea.paramList.at(epos);
+                    int param_end = param.paramEnd;
+                    param.paramEnd = -1;
+                    param.paramStart = -1;
+
+                    pa.elemMap.insert(
+                                outlistoffset + revoutList.size(),
+                                std::pair<EqnElement, int>(
+                                    EQN_PARAMETER,
+                                    pa.paramList.size()
+                                    )
+                                );
+                    pa.paramList.push_back(param);
+
+                    QString pout = param.name;
+                    for (int d=0; d < param.dimensions.size(); ++d)
+                    {
+                        pout += QString("[%1]").arg(param.dimensions[d]);
+                    }
+                    revoutList << pout;
+
+                    // 34567890123
+                    // pa[d1][d2]
+                    p = param_end - offset;
+                    bCharProcessed = true;
+                }
+                break;
+
+            case EQN_EQUATION:
+                if (ea.eqnList[epos].eqnStart - offset == p)
+                {
+                    Equation eqn = ea.eqnList.at(epos);
+                    int eqn_end = eqn.eqnEnd;
+                    eqn.eqnEnd = -1;
+                    eqn.eqnStart = -1;
+
+                    pa.elemMap.insert(
+                                outlistoffset + revoutList.size(),
+                                std::pair<EqnElement, int>(
+                                    EQN_EQUATION,
+                                    pa.eqnList.size()
+                                    )
+                                );
+                    pa.eqnList.push_back(eqn);
+                    revoutList << eqn.eqn;
+
+                    p = eqn_end - offset;
+                    bCharProcessed = true;
+                }
+                break;
+
+            case EQN_OPERATOR:
+                if (ea.opList[epos].opStart - offset == p)
+                {
+                    const Operator& op = ea.opList.at(epos);
+
+                    if (stack.size() > 0)
+                    {
+                        if (mmOpLevel.keys().contains(op.op))
+                        {
+                            bool bPopedOp = false;
+                            while (stack.size() > 0 &&  mmOpLevel[stack.last()] > mmOpLevel[op.op])
+                            {
+                                revoutList << QString("o%1").arg(mParseOperators[stack.pop()]);
+                                bPopedOp = true;
+                            }
+                        }
+                        else
+                        {
+                            MosraLogError(<< "Mosra::shuntyCore() - ERROR: unknown operator '"
+                                          << stack.last().toStdString() << "' at pos " << p
+                                          << " of '" << revEqn.toStdString() << "'!");
+                            return revoutList;
+                        }
+
+                        // push operator onto stack
+                        stack.push(op.op);
+                    }
+                    else
+                    {
+                        stack.push(op.op);
+                    }
+                    p = op.opEnd - offset;
+                    bCharProcessed = true;
+                }
+                break;
+
+            case EQN_NUMBER:
+                if (ea.numList[epos].numStart - offset == p)
+                {
+                    //revout += QString("n%1\n").arg(ea.numList[n].value);
+                    revoutList << QString("n%1").arg(ea.numList[epos].value);
+
+                    p = ea.numList[epos].numEnd - offset;
+
+                    bCharProcessed = true;
+                }
+
+            default:
+                ;
+            }
+
+        }
+
+        // algebraic '(' or ')'
+        if (!bCharProcessed)
+        {
+            if  (ch == QChar('('))
+            {
+                stack.push(QString(ch));
+                bCharProcessed = true;
+            }
+            else if (ch == QChar(')'))
+            {
+                while (stack.size() > 0 && stack.last().compare("(") != 0)
+                {
+                    QString sop = stack.pop();
+                    if (mParseOperators.keys().contains(sop))
+                    {
+                        revoutList << QString("o%1").arg(mParseOperators[sop]);
+                    }
+                }
+
+                if (stack.size() > 0 && stack.last().compare("(") == 0)
+                {
+                    stack.pop();
+                }
+                bCharProcessed = true;
+            }
+        }
+    }
+
+    // pop the rest of the operators
+    while (stack.size() > 0)
+    {
+        QString op = stack.pop();
+        if (mParseOperators.keys().contains(op))
+        {
+            revoutList << QString("o%1").arg(mParseOperators[op]);
+        }
+    }
+
+    return revoutList;
+
+}
+
+QString NMMosra::reverseEqn(const QString &eqn, EquationAdmin &ea,
+                            int offset, int end)
+{
+    QString revEqn;
+    int orgpos = end;
+
+    // 123456789
+    //   1234
+
+    for (int p=eqn.size()-1; p >= 0; --p, --orgpos)
+    {
+        QChar ch = eqn.at(p);
+        bool bCharProcessed = false;
+
+        if (ea.elemMap.constFind(orgpos) != ea.elemMap.cend())
+        {
+            const std::pair<EqnElement, int> elemPair = ea.elemMap[orgpos];
+            const EqnElement elem = elemPair.first;
+            const int epos = elemPair.second;
+
+            switch(elem)
+            {
+            case EQN_LOOP:
+                if (ea.loopList[epos].bodyEnd == orgpos)
+                {
+                    Loop& myLoop = ea.loopList[epos];
+
+                    const int llen = orgpos - (myLoop.bodyStart + 1);
+                    const int localStart = p-llen;
+                    const int globalStart = localStart + offset;
+                    const int globalEnd   = orgpos-1;
+
+                    QString preamble = QString("%1{%2}(")
+                            .arg(ea.loopList[epos].name)
+                            .arg(ea.loopList[epos].dim);
+                    revEqn += preamble;
+
+                    QString loopBody = eqn.mid(localStart, llen);
+                    QString revBody = reverseEqn(loopBody, ea, globalStart, globalEnd);
+
+                    revEqn += revBody;
+                    revEqn += QChar(')');
+
+                    p -= (myLoop.bodyEnd - myLoop.bodyStart) + preamble.size()-1;
+                    orgpos -= (myLoop.bodyEnd - myLoop.bodyStart) + preamble.size()-1;
+
+                    bCharProcessed = true;
+                    break;
+                }
+                break;
+
+            case EQN_FUNCTION:
+                if (ea.funcList[epos].bodyEnd == orgpos)
+                {
+                    Func& myFun = ea.funcList[epos];
+
+                    // local fun coordinates
+                    // 0123456789012345
+                    //    01234567890
+                    //       012345
+                    // pow( 10, 3)
+                    //
+                    const int flen = orgpos - (myFun.bodyStart + 1);
+                    const int localStart = p-flen;
+
+                    // add function name
+                    revEqn += ea.funcList[epos].name + '(';
+
+                    // add arguments
+                    int argStart = localStart;
+                    QString argN;
+                    QString revArg;
+                    for (int sp=0; sp < myFun.sep.size(); ++sp)
+                    {
+                        const int seppos    = myFun.sep[sp] - offset;       //local
+                        const int argOffset = argStart+offset;              //global
+                        const int argEnd    = (seppos-1) + offset;          //global
+                        const int argLen    = seppos-argStart;              //local
+
+                        argN = eqn.mid(argStart, argLen);
+                        revArg = reverseEqn(argN, ea, argOffset, argEnd);
+                        revEqn += revArg;
+
+                        if (sp < myFun.sep.size()-1)
+                        {
+                            revEqn += QString(", ");
+                        }
+
+                        argStart = seppos + 1;
+                    }
+
+                    // add comma, if we've got more than one argument
+                    if (myFun.sep.size() > 0)
+                    {
+                        revEqn += QString(", ");
+                    }
+
+                    // add last argument
+
+                    argN = eqn.mid(argStart, p-argStart);
+                    revArg = reverseEqn(argN, ea, argStart+offset, orgpos-1);
+                    revEqn += revArg;
+                    revEqn += QChar(')');
+
+                    // 123456
+                    // tan(4)
+                    p -= (myFun.bodyEnd - myFun.bodyStart) + myFun.name.size();
+                    orgpos -= (myFun.bodyEnd - myFun.bodyStart) + myFun.name.size();
+                    bCharProcessed = true;
+                    break;
+                }
+                break;
+
+            case EQN_PARAMETER:
+                if (ea.paramList[epos].paramEnd == orgpos)
+                {
+                    Param& myPar = ea.paramList[epos];
+
+                    revEqn += myPar.name;
+                    QString revDim;
+                    // 1234567890123456
+                    // name[dim1][dim2]
+                    int dStart = myPar.paramStart +
+                            myPar.name.size() + 1;
+                    for (int d=0; d < myPar.dimensions.size(); ++d)
+                    {
+                        revEqn += QChar('[');
+                        bool allLetters = true;
+                        for (int z=0; z < myPar.dimensions[d].size(); ++z)
+                        {
+                            const QChar tc = myPar.dimensions[d].at(z);
+                            if (!tc.isLetter())
+                            {
+                                allLetters = false;
+                            }
+                        }
+
+                        if (allLetters)
+                        {
+                            revEqn += myPar.dimensions[d];
+                        }
+                        else
+                        {
+                            //revDim = reverseEqn(myPar.dimensions[d], ea, revLoopMap,
+                            //         dStart, dStart+myPar.dimensions[d].size()-1);
+                            revDim = reverseEqn(myPar.dimensions[d], ea,
+                                                dStart, dStart+myPar.dimensions[d].size()-1);
+                            revEqn += revDim;
+                        }
+
+                        revEqn += QChar(']');
+                        dStart = dStart+myPar.dimensions[d].size()+2;
+                    }
+
+                    p -= (myPar.paramEnd - myPar.paramStart);
+                    orgpos -= (myPar.paramEnd - myPar.paramStart);
+                    bCharProcessed = true;
+                }
+                break;
+
+            case EQN_OPERATOR:
+                if (ea.opList[epos].opEnd == orgpos)
+                {
+                    revEqn += ea.opList[epos].op;
+
+                    // 1 12 123
+                    // + && and
+                    p -= (ea.opList[epos].op.size()) - 1;
+                    orgpos -= (ea.opList[epos].op.size()) - 1;
+                    bCharProcessed = true;
+                }
+                break;
+
+            case EQN_NUMBER:
+                if (ea.numList[epos].numEnd == orgpos)
+                {
+                    Number& num = ea.numList[epos];
+                    // 1234567
+                    // 1.34e-7
+
+
+                    revEqn += eqn.mid(num.numStart-offset, (num.numEnd - num.numStart) + 1);
+                    p -= (num.numEnd - num.numStart);
+                    orgpos -= (num.numEnd - num.numStart);
+                    bCharProcessed = true;
+                }
+                break;
+
+            case EQN_EQUATION:
+                if (ea.eqnList[epos].eqnEnd == orgpos)
+                {
+                    Equation& esub = ea.eqnList[epos];
+                    QString esubStr = eqn.mid(esub.eqnStart-offset, esub.eqn.size());
+                    revEqn += esubStr;
+
+                    p -= (esub.eqnEnd - esub.eqnStart);
+                    orgpos -= (esub.eqnEnd - esub.eqnStart);
+                    bCharProcessed = true;
+                }
+                break;
+
+            default:
+                ;
+            }
+        }
+        // algebraic ')', function ')' or param ']
+        else if (ch == QChar('(') || ch == QChar(')') && !bCharProcessed)
+        {
+            if (mReverseRight.contains(ch))
+            {
+                revEqn += mReverseRight[ch];
+            }
+            else
+            {
+                revEqn += mReverseLeft[ch];
+            }
+            bCharProcessed = true;
+        }
+
+        // ... otherwise
+        if (!bCharProcessed)
+        {
+            revEqn += ch;
+        }
+     }
+
+    return revEqn;
+}
+
+void NMMosra::identifyHighDimLoopEquations(
+        const QString &rootEqnName,
+        const QString &subEqnName
+        )
+{
+    auto eait = mmEquationAdmins.constFind(subEqnName);
+    if (eait == mmEquationAdmins.cend())
+    {
+        return;
+    }
+
+    const EquationAdmin& ea = eait.value();
+
+    if (    !mmslObjectives.keys().contains(rootEqnName)
+         && !mmslLinearConstraints.keys().contains(rootEqnName)
+         && !mmslNonLinearConstraints.keys().contains(rootEqnName)
+         && !mmslLogicConstraints.keys().contains(rootEqnName)
+       )
+    {
+        return;
+    }
+
+    // check all referenced 'sub' equations, if not done already
+    for (int eqn=0; eqn < ea.eqnList.size(); ++eqn)
+    {
+        const QString& ename = ea.eqnList[eqn].eqn;
+        if (mmslHighDimLoopEquations.constFind(ename) == mmslHighDimLoopEquations.cend())
+        {
+            identifyHighDimLoopEquations(rootEqnName, ename);
+        }
+    }
+
+
+    // need to traverse eqn's loops twice:
+    // 1. determine whether this is a high dim loop equation at all
+    // 2. add dimensions of all nested loops to it (.first dim list)
+    // 3. keep a record of ALL its dimensions
+
+    // ... do we have a high dim loop equation?
+    for (int loop=0; loop < ea.loopList.size(); ++loop)
+    {
+        int llvl = ea.loopList[loop].level;
+
+        if (    llvl == 0
+             && ea.loopList[loop].dim.compare(msOPTIONS) != 0
+             && ea.loopList[loop].dim.compare(QStringLiteral("SDU")) != 0
+           )
+        {
+            if (mmslHighDimLoopEquations.constFind(rootEqnName) == mmslHighDimLoopEquations.cend())
+            {
+                std::pair<QStringList, QStringList> dimtracker;
+                dimtracker.first << ea.loopList[loop].dim;
+                mmslHighDimLoopEquations.insert(rootEqnName, dimtracker);
+            }
+            else if (!mmslHighDimLoopEquations[rootEqnName].first.contains(ea.loopList[loop].dim))
+            {
+                mmslHighDimLoopEquations[rootEqnName].first << ea.loopList[loop].dim;
+            }
+
+            // add dims for nested loops (except for OPTIONS)
+            for (int nl=loop+1; nl < ea.loopList.size(); ++nl)
+            {
+                if (    ea.loopList[nl].bodyStart > ea.loopList[loop].bodyStart
+                     && ea.loopList[nl].bodyEnd   < ea.loopList[loop].bodyEnd
+                     && ea.loopList[nl].level > llvl
+                     && ea.loopList[nl].dim.compare(msOPTIONS) != 0
+                     && ea.loopList[nl].dim.compare(msSDU) != 0
+                   )
+                {
+                    mmslHighDimLoopEquations[rootEqnName].first << ea.loopList[nl].dim;
+                    ++llvl;
+                }
+            }
+        }
+    }
+
+    // ... now note all dimensions if this equation qualifies
+    if (mmslHighDimLoopEquations.constFind(rootEqnName) != mmslHighDimLoopEquations.cend())
+    {
+        for (int loop=0; loop < ea.loopList.size(); ++loop)
+        {
+            if (!mmslHighDimLoopEquations[rootEqnName].second.contains(ea.loopList[loop].dim))
+            {
+                mmslHighDimLoopEquations[rootEqnName].second << ea.loopList[loop].dim;
+            }
+        }
+
+        // ... now add parameter and variable dimensions
+        for (int par=0; par < ea.paramList.size(); ++par)
+        {
+            foreach (const QString& pdim, ea.paramList[par].dimensions)
+            {
+                if (!mmslHighDimLoopEquations[rootEqnName].second.contains(pdim))
+                {
+                    mmslHighDimLoopEquations[rootEqnName].second << pdim;
+                }
+            }
+        }
+    }
+
+    return;
+}
+
+bool NMMosra::processLoopDimensions(void)
+{
+
+    if (this->mDataSet == nullptr)
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "DataSet is NULL!" << endl);
+        return false;
+    }
+
+    otb::SQLiteTable::Pointer sqltab = dynamic_cast<otb::SQLiteTable*>(
+                this->mDataSet->getOtbAttributeTable().GetPointer());
+    if (sqltab.IsNull())
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "DataSet is NULL!" << endl);
+        return false;
+    }
+
+    QSet<QString> dimensionSet;
+    mmslHighDimLoopEquations.clear();
+
+    // split variables and fill first part of orderedVars
+    // with decision variable names
+    auto eait = mmEquationAdmins.cbegin();
+    for(; eait != mmEquationAdmins.cend(); ++eait)
+    {
+        const QList<Loop>& loopList = eait.value().loopList;
+        for (int el=0; el < loopList.size(); ++el)
+        {
+            dimensionSet << loopList.at(el).dim;
+        }
+    }
+
+    sqltab->BeginTransaction();
+    QStringList dimSetList = dimensionSet.values();
+    for (int di=0; di < dimSetList.size(); ++di)
+    {
+        const QString dimname = dimSetList.at(di);
+        if (dimname.compare(msOPTIONS) == 0)
+        {
+            mmDimLengthMap.insert(dimname, miNumOptions);
+            continue;
+        }
+
+        std::vector<otb::AttributeTable::TableColumnType> colTypes = {
+                        otb::AttributeTable::ATTYPE_INT
+        };
+        std::vector<std::vector<otb::AttributeTable::ColumnValue> > colValues;
+
+
+        // fetch actual column values
+        std::string dimColName;
+        if (mmslParameters.constFind(dimname) != mmslParameters.cend())
+        {
+            if (mmslParameters[dimname].size() > 0)
+            {
+                dimColName = mmslParameters[dimname].at(0).toStdString();
+            }
+            else
+            {
+                sqltab->EndTransaction();
+                MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                              << "Parameter '" << dimname.toStdString() << "' has no "
+                              << "database columns assigned to it!"
+                              << std::endl);
+                return false;
+            }
+        }
+
+        std::stringstream query;
+        query << "with C as (select distinct \"" << dimColName << "\" "
+              << "from \"" << sqltab->GetTableName() << "\" "
+              << "where \"" << msOptFeatures.toStdString() << "\" == 1) "
+                           << "select count(*) from C;";
+
+        if (!sqltab->TableDataFetch(
+                    colValues,
+                    colTypes,
+                    query.str()))
+        {
+            sqltab->EndTransaction();
+            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                          << sqltab->getLastLogMsg() << std::endl);
+            return false;
+        }
+
+        long long dimLen = -1;
+        if (colValues.size() > 0)
+        {
+            if (colValues.at(0).size() > 0)
+            {
+                dimLen = colValues.at(0).at(0).ival;
+            }
+        }
+
+        mmDimLengthMap.insert(dimname, static_cast<long>(dimLen));
+    }
+    sqltab->EndTransaction();
+
+
+    return true;
+}
+
+bool NMMosra::processVariables(QString& b_seg, QString &x_seg, long* n_vars, NMOpenGA *oga)
+{
+    NMDebugCtx(ctxNMMosra, << "...");
+
+    // for good performance, this relies on the 'optFeat' column to be indexed!
+
+    if (this->mDataSet == nullptr)
+    {
+        MosraLogError(<< "::processVariables() - ERROR: DataSet is NULL!" << endl);
+        return false;
+    }
+
+    otb::SQLiteTable::Pointer sqltab = dynamic_cast<otb::SQLiteTable*>(
+                this->mDataSet->getOtbAttributeTable().GetPointer());
+    if (sqltab.IsNull())
+    {
+        MosraLogError(<< "NMMosra::processVariables() - ERROR: DataSet is NULL!" << endl);
+        return false;
+    }
+
+    // DEEPRECATED:
+    // ----------------------------------------------------------
+    // split vars in to decision vars and process (defined) vars
+    // ----------------------------------------------------------
+    // we need to process all decision variables first as the NL file
+    // requires variable offsets of decision variables to be
+    //      0 <= dv_offset < n_var   with n_var: number of decision variables
+    //
+    // Defined or process variables have variable offset values
+    //      pv_offset >= n_var
+
+    QStringList orderedVars;
+
+    // while analysing variables, generate set of dimensions
+    // note: assumption is that any dimension appearing in any of the
+    // equations (<EQUATION>) needs to be assigned to at least one
+    // of the variables
+    QSet<QString> dimensionSet;
+
+    // DEPRECATED:
+    // split variables into decision and process vars and fill
+    // first part of orderedVars with decision variables
+
+    // create list of binary and integer variables as they will
+    // appear in that order at the end of the NL 'b' segement,
+    // i.e. variable boundaries definition
+    //QStringList msBinaryVars;
+    //QStringList msIntVars;
+
+    auto allit = mmslVariables.cbegin();
+    while (allit != mmslVariables.cend())
+    {
+        // if process variables
+        if (mmsEquations.constFind(allit.key()) != mmsEquations.cend())
+        {
+            mslProcessVars << allit.key();
+        }
+        // decision variables
+        else
+        {
+            const QString type = mmslVarBoundsMap[allit.key()].at(0).toStdString().c_str();
+            const QString vn = allit.key();
+
+            if (type.compare(QStringLiteral("c"), Qt::CaseInsensitive) == 0)
+            {
+                mslDecisionVars << vn;
+            }
+            else if (type.compare(QStringLiteral("i"), Qt::CaseInsensitive) == 0)
+            {
+                msIntVars << vn;
+            }
+            else if (type.compare(QStringLiteral("b"), Qt::CaseInsensitive) == 0)
+            {
+                msBinaryVars << vn;
+            }
+            else
+            {
+                MosraLogError(<< "Couldn't find a valid variable type "
+                              << "for '" << vn.toStdString() << "'!"
+                              << std::endl);
+                return false;
+            }
+        }
+
+        // fill set of dimension
+        foreach(const QString& vdim, allit.value())
+        {
+            dimensionSet << vdim;
+        }
+
+        ++allit;
+    }
+
+    // now add the binary and then integer variables
+    // to the list of continuous decision variables
+    mslDecisionVars << msBinaryVars << msIntVars;
+
+    // --------------------------------------------
+    // keep track of dimensions
+
+
+    // construct orderedVars starting with DecisionVars to ensure that
+    // variable offset i meets
+    //                        0 <= i < mslDecisionVars.size()   for decision variables and
+    //   mslDecisionVars.size() <= i < mslProcessVars.size()    for process variables
+    //
+    orderedVars << mslDecisionVars;
+    orderedVars << mslProcessVars;
+
+    // double check we've got something to work with
+    if (orderedVars.size() == 0)
+    {
+        MosraLogInfo(<< "NMMosra::processVariables() - no variables !?" << endl);
+        return false;
+    }
+
+
+    // ---------------------------------------------------------------------------------
+    // process variables
+    // ---------------------------------------------------------------------------------
+    MosraLogInfo(<< "Processing Optimisation Variables ..." << endl);
+    NMDebugAI(<< "Processing Optimisation Variables ..." << endl);
+
+    // variable offset counter: starts at 0;
+    // tracks global offset for *.nl file in IpOpt mode
+    long varoff = 0;
+    long xcount = 0;
+
+
+    const QChar sp = QChar(' ');
+    const QChar eol = QChar('\n');
+    const QChar zero = QChar('0');
+
+    QTextStream xstr(&x_seg);
+    QTextStream bstr(&b_seg);
+    bstr << QStringLiteral("b\n");
+
+    // add variable dimension parameters to the list of values to
+    // be retrieved from the database
+    for (int v=0; v < orderedVars.size(); ++v)
+    {
+        auto vit = mmslVariables.constFind(orderedVars[v]);
+
+        NMDebugAI(<< vit.key().toStdString() << "[" << vit.value().join(",").toStdString() << "] ..." << endl);
+
+        std::vector<std::string> getnames;
+        std::vector<otb::AttributeTable::ColumnValue> getvalues;
+        bool bOptions = false;
+
+        foreach(const QString& dim, vit.value())
+        {
+            if (mmslParameters.constFind(dim) != mmslParameters.cend())
+            {
+                const std::string dimpar = mmslParameters.value(dim).at(0).toStdString();
+                const int colid = sqltab->ColumnExists(dimpar);
+
+                if (colid == -1)
+                {
+                    MosraLogError(<< "NMMosra::processVariables() - ERROR: Could not "
+                                  << "find dimension parameter '" << dimpar
+                                  << "' in the database!" << endl);
+                    return false;
+                }
+
+                otb::AttributeTable::TableColumnType type = sqltab->GetColumnType(colid);
+                if (type == otb::AttributeTable::ATTYPE_DOUBLE)
+                {
+                    MosraLogWarn( << "NMMosra::processVariables() - WARNING: Dimension parameter '"
+                                   << dimpar << "' is of type REAL and will be converted "
+                                   << "to INTEGER. This may result in data loss and hard to "
+                                   << " detect ERRORS in the results! Please ensure all dimension "
+                                   << " parameters are of type INTEGER!"
+                                   << endl);
+                }
+                else if (type == otb::AttributeTable::ATTYPE_STRING)
+                {
+                    MosraLogError( << "NMMosra::processVariables() - ERROR: Unsupported data type "
+                                   << " STRING of dimension parameter '"
+                                   << dimpar << "' detected! Please ensure all dimension "
+                                   << " parameters are of type INTEGER!"
+                                   << endl);
+                    return false;
+
+                }
+
+                otb::AttributeTable::ColumnValue colval;
+                colval.type = type;
+
+                getnames.push_back(mmslParameters.value(dim).at(0).toStdString());
+                getvalues.push_back(colval);
+            }
+            else if (dim.compare(msOPTIONS) == 0)
+            {
+                bOptions = true;
+            }
+            else
+            {
+                MosraLogError(<< "::processVariables() - ERROR: Dimension field '"
+                              << dim.toStdString() << "' needs to be defined in the "
+                              << "PARMETERS section of the *.los file!" << endl);
+                return false;
+            }
+        }
+
+        const int numDimValues = getnames.size();
+
+        // ------------------------------------------------------------
+        //      VARIABLE BOUNDS
+
+        // we add the bounds information or not
+        // outer vector: one inner vec each for lower & upper bnds
+        // inner vector:
+        //  [0]: if 1 then [1] == bound value
+        //       if 0 then [1][2...n-1] == offsetValues into getnames & getvalues
+        std::vector<std::vector<double> > bndsVec;
+
+        // keep track of scaling requirements of variable bounds
+        std::vector<double> vBndScalingFactors;
+
+        auto vbm = mmslVarBoundsMap.constFind(orderedVars[v]);
+        if (vbm != mmslVarBoundsMap.cend())
+        {
+            // we'll skip the first entry in the bounds list
+            // as it is actually the variable type, i.e.
+            // continuous, integer, or binary
+            for (int b=1; b < vbm.value().size(); ++b)
+            {
+                const QString& vbnd = vbm.value().at(b);
+
+                std::vector<double> innerVec;
+                bool bConv;
+                double bval = vbnd.toDouble(&bConv);
+
+                // bnd info can be converted to number
+                if (bConv)
+                {
+                    innerVec.push_back(1);
+                    innerVec.push_back(bval);
+                    bndsVec.push_back(innerVec);
+                }
+                // bnd info refers to parameter
+                else
+                {
+                    auto vbpar = mmslParameters.constFind(vbnd);
+                    if (vbpar != mmslParameters.cend())
+                    {
+                        // check whether the boundary parameter
+                        // is scaled ...
+                        double scalingFactor = 1.0;
+                        auto spit = mmParameterScaling.constFind(vbnd);
+                        if (spit != mmParameterScaling.cend())
+                        {
+                            scalingFactor = spit.value().first;
+                        }
+
+                        innerVec.push_back(0);
+                        for (int pp=0; pp < vbpar.value().size(); ++pp)
+                        {
+                            innerVec.push_back(getnames.size());
+                            getnames.push_back(vbpar.value().at(pp).toStdString());
+                            otb::AttributeTable::ColumnValue bcv;
+                            getvalues.push_back(bcv);
+
+                            // store a scaling factor for each parameter
+                            vBndScalingFactors.push_back(scalingFactor);
+                        }
+                        bndsVec.push_back(innerVec);
+                    }
+                    else
+                    {
+                        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "()- ERROR: "
+                                      << "Variable's bounds parameter '" << vbnd.toStdString()
+                                      << "' needs to be defined in the "
+                                      << "PARAMETERS section of the *.los file!" << endl);
+                        return false;
+                    }
+                }
+            }
+        }
+
+        // note whether we're processing 'lu' (OPTIONS) variables
+        //  and if so, add the LAND_USE_FIELD to the db values we want to fetch
+        bool bLU = false;
+        if (vit.key().compare(QStringLiteral("lu")) == 0)
+        {
+            bLU = true;
+
+            getnames.push_back(msLandUseField.toStdString());
+            otb::AttributeTable::ColumnValue lucv;
+            getvalues.push_back(lucv);
+        }
+
+        // ---------------------------------------------------------------
+        //          VARIABLE ADMIN STRUCTURES
+
+        VarAdmin vad;
+        vad.name = vit.key();
+        vad.dimensions = vit.value();
+        QMap<QVector<long long>, long long>& doffMap = vad.dimOffsetMap;
+        //QMap<long long, std::vector<long long> >& dimMap = vad.offsetDimMap;
+
+        QString whereClause;
+        if (!msOptFeatures.isEmpty())
+        {
+            whereClause = QString("where %1 == 1").arg(msOptFeatures);
+        }
+
+        // prepare distinct value retrieval
+        if (!sqltab->PrepareBulkGet(getnames, whereClause.toStdString(), true))
+        {
+            MosraLogError(<< "NMMosra::processVariables() - ERROR: Failed fetching data from "
+                          << "the database: " << sqltab->getLastLogMsg() << ".");
+            sqltab->EndTransaction();
+            return false;
+        }
+        sqltab->BeginTransaction();
+        bool brow = sqltab->DoBulkGet(getvalues);
+        if (!brow)
+        {
+            MosraLogError(<< "NMMosra::processVariables() - ERROR: Failed fetching data from "
+                          << "the database: " << sqltab->getLastLogMsg() << ". "
+                          << "Double check your OPT_FEATURES setting and table values!");
+            sqltab->EndTransaction();
+            return false;
+        }
+
+        // --------------------------------------------------------------
+        //          DB VALUE PROCESSING
+        // iterate over distinct dim value tuples and store
+
+        // tracks local variable offset (for OpenGA mode)
+        long dbiter = 0;
+        do
+        {
+            // ..................................................
+            //          get dimension parameter values
+            QVector<long long> vids;
+            for (int d=0; d < numDimValues; ++d)
+            {
+                if (getvalues[d].type == otb::AttributeTable::ATTYPE_INT)
+                {
+                    vids.push_back(getvalues[d].ival);
+                }
+                else if (getvalues[d].type == otb::AttributeTable::ATTYPE_DOUBLE)
+                {
+                    const double dval = getvalues[d].dval;
+                    const int ival = static_cast<int>(dval);
+                    vids.push_back(ival);
+                }
+                else
+                {
+                    MosraLogError( << "NMMosra::processVariables() - ERROR: Unsupported data type "
+                                   << "detected for dimension parameter '"
+                                   << getnames[d] << "'! "
+                                   << "All dimension parameters must refer to INTEGER fields!"
+                                   << endl);
+                    sqltab->EndTransaction();
+                    return false;
+                }
+            }
+
+            // prep var bounds writing
+            QString boundRow;
+            QTextStream rowStr(&boundRow);
+
+            // ..................................................................
+            //  - generate dimension parameter values for OPTIONS, if applicable
+            //  - store dimension parameter values
+            //
+            //  - fetch variable bounds from db, if applicable
+            //  - write variable bound to b_seg string and txt file
+            //
+            //  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .
+            //  primal initial guess based on current land-use
+            //  - bLU == true
+            //
+            QString curLU;
+            if (bLU)
+            {
+                curLU = getvalues[getvalues.size()-1].tval;
+            }
+
+            // format 'alternative' in case we're dealing with a 'lu' variable here
+            // and need to account for a potential LuLbndFactor >= 0 !
+            QString luBndRow;
+            QTextStream luBndRowStr(&luBndRow);
+            std::vector<double> luBndValVec{0.0, 0.0};
+            bool bApplyLuLbndFactor = false;
+
+            // only if we haven't added the index info yet
+            if (oga != nullptr)
+            {
+                if (oga->varIdxMap.find(vad.name.toStdString()) == oga->varIdxMap.cend())
+                {
+                    oga->varIdxMap.insert(std::pair<string, size_t >(vad.name.toStdString(), oga->varBnds.size()));
+                    std::vector<std::vector<std::pair<float, float> > > bv;
+                    oga->varBnds.push_back(bv);
+
+                    // regardless of whether this variable is defined over OPTIONS, we need at least one vector
+                    // for each variable that stores the boundary values for each distinct 'location' for
+                    // which this variable is defined
+                    std::vector<std::pair<float, float> > optVarBndVec;
+                    oga->varBnds[oga->varIdxMap[vad.name.toStdString()]].push_back(optVarBndVec);
+                }
+            }
+
+            // OPTIONS has been specified as a parameter / variable dimension
+            if (bOptions)
+            {
+                for (int opt=0; opt < mslOptions.size(); ++opt)
+                {
+                    QVector<long long> dimids = vids;
+                    dimids.push_back(opt);
+
+
+                    if (oga != nullptr)
+                    {
+                        // track 'local' variable offset
+                        // in NMSolution.dvars and NMOpenGA.varBnds
+                        doffMap.insert(dimids, dbiter);
+
+                        // make sure we've got a boundary vector for this variable
+                        // for each land-use option
+                        if (oga->varBnds[oga->varIdxMap[vad.name.toStdString()]].size() < opt+1)
+                        {
+                            std::vector<std::pair<float, float> > optVarBndVec;
+                            oga->varBnds[oga->varIdxMap[vad.name.toStdString()]].push_back(optVarBndVec);
+                        }
+                    }
+                    else
+                    {
+                        // track global variable offset for *.nl file
+                        doffMap.insert(dimids, varoff);
+                    }
+
+                    rowStr << zero << sp;
+
+                    // process lower (b=0) and upper (b=1) bounds
+                    double boundVal;
+                    for (int b=0; b < 2; ++b)
+                    {
+                        if (bndsVec[b][0] == 1)
+                        {
+                            boundVal = bndsVec[b][1];
+                        }
+                        else
+                        {
+                            // lookup could be just one column or one for each land use
+                            int lookup = bndsVec[b].size() == 2 ? bndsVec[b][1] : bndsVec[b][opt+1];
+
+                            // do we have to scale area values ?
+                            auto apnit = mmslParameters.constFind(QStringLiteral("AreaHa"));
+                            if (apnit == mmslParameters.cend())
+                            {
+                                MosraLogError(<< "'AreaHa' parameter not defined!");
+                                sqltab->EndTransaction();
+                                return false;
+                            }
+
+                            const otb::AttributeTable::ColumnValue lcv = getvalues[lookup];
+                            switch(lcv.type)
+                            {
+                            case otb::AttributeTable::ATTYPE_INT:
+                                boundVal = static_cast<double>(lcv.ival);
+                                break;
+                            case otb::AttributeTable::ATTYPE_DOUBLE:
+                                boundVal = static_cast<double>(lcv.dval);
+                                break;
+                            default: ;
+                            }
+
+                            // scaling
+                            assert(lookup >= 0);
+                            boundVal *= vBndScalingFactors[lookup-1];
+                        }
+                        luBndValVec[b] = boundVal;
+                        rowStr << QString("%1").arg(boundVal);
+
+
+                        // .....................................................
+                        // mostly for DEBUG ...
+                        // - append comment with variable name + dimension info
+
+                        if (b==0)
+                        {
+                            rowStr << sp;
+                        }
+                        else
+                        {
+                            rowStr << "     #" << vbm.key();
+                            rowStr << ": ";
+                            for (int di=0; di < vids.size(); di++)
+                            {
+                                rowStr << QString("%1").arg(vids[di]) << sp;
+                            }
+                            rowStr << QString("%1").arg(opt) << eol;
+
+                            // accounting for LU lower bound factor and
+                            // processing of x segment, i.e. primal guess processing
+                            if (bLU)
+                            {
+                                if (luBndValVec[0] == 0 && mdLuLbndFactor > 0)
+                                {
+                                    bApplyLuLbndFactor = true;
+
+                                    luBndRowStr << zero << sp
+                                                << (luBndValVec[1] * mdLuLbndFactor)
+                                                << sp
+                                                << luBndValVec[1];
+
+                                    luBndRowStr << "     #" << vbm.key();
+                                    luBndRowStr << ": ";
+                                    for (int di=0; di < vids.size(); di++)
+                                    {
+                                        luBndRowStr << QString("%1").arg(vids[di]) << sp;
+                                    }
+                                    luBndRowStr << QString("%1").arg(opt) << eol;
+                                }
+
+                                if (curLU.compare(mslOptions[opt]) == 0)
+                                {
+                                    xstr << varoff << sp << boundVal << eol;
+                                    ++xcount;
+                                }
+                            }
+                        }
+                        // .....................................................
+                    }
+
+                    if (oga != nullptr)
+                    {
+                        std::pair<float, float> ogaBndVals;
+                        ogaBndVals.first = luBndValVec[0];
+                        ogaBndVals.second = luBndValVec[1];
+                        oga->varBnds[oga->varIdxMap[vad.name.toStdString()]][opt].push_back(ogaBndVals);
+                    }
+
+                    mNonZeroJColCount.insert(varoff, 0);
+                    ++varoff;
+                }
+            }
+            else
+            {
+                if (oga != nullptr)
+                {
+                    doffMap.insert(vids, dbiter);
+                }
+                else
+                {
+                    doffMap.insert(vids, varoff);
+                }
+
+
+                // write variable boundaries
+                // var boundaries
+                rowStr << zero << sp;
+
+                // if we're running in GA mode, we fill this pair
+                std::pair<float, float> ogaBndVals;
+                double boundVal;
+                for (int b=0; b < 2; ++b)
+                {
+                    if (bndsVec[b][0] == 1)
+                    {
+                        boundVal = bndsVec[b][1];
+                    }
+                    else
+                    {
+                        const otb::AttributeTable::ColumnValue lcv = getvalues[bndsVec[b][1]];
+                        switch(lcv.type)
+                        {
+                        case otb::AttributeTable::ATTYPE_INT:
+                            boundVal = static_cast<double>(lcv.ival);
+                            break;
+                        case otb::AttributeTable::ATTYPE_DOUBLE:
+                            boundVal = static_cast<double>(lcv.dval);
+                            break;
+                        default: ;
+                        }
+
+                        // scaling
+                        boundVal *= vBndScalingFactors[bndsVec[b][1]];
+                    }
+                    rowStr << QString("%1").arg(boundVal);
+                    if (b == 0) rowStr << sp;
+
+                    // fill GA structure with bound values
+                    if (b == 0)
+                    {
+                        ogaBndVals.first = boundVal;
+                    }
+                    else
+                    {
+                        ogaBndVals.second = boundVal;
+                    }
+                }
+                rowStr << "     #" << vbm.key();
+                rowStr << ": ";
+                for (int di=0; di < vids.size(); di++)
+                {
+                    rowStr << QString("%1").arg(vids[di]) << sp;
+                }
+                rowStr << eol;
+
+                if (oga != nullptr)
+                {
+                    oga->varBnds[oga->varIdxMap[vad.name.toStdString()]][0].push_back(ogaBndVals);
+                }
+
+                mNonZeroJColCount.insert(varoff, 0);
+                ++varoff;
+
+            }
+            // add row to
+            if (bApplyLuLbndFactor)
+            {
+                bstr << luBndRow;
+            }
+            else
+            {
+                bstr << boundRow;
+            }
+
+            // get the next row
+            brow = sqltab->DoBulkGet(getvalues);
+
+            // count rows in 'NMOpenGA::NMSolution::mData' structure
+            ++dbiter;
+
+        } while (brow);
+
+        sqltab->EndTransaction();
+
+        // add VarAdmin to map
+        mmVarAdminMap.insert(vad.name, vad);
+
+        // DEBUG DEBUG
+        NMDebugAI(<< "... distinct variables added: " << vad.dimOffsetMap.size() << endl);
+
+        MosraLogInfo(<< vit.key().toStdString()
+                     << "[" << vit.value().join(",").toStdString()
+                     << "] -> " << vad.dimOffsetMap.size()
+                     << " variables added" << endl);
+    }
+    *n_vars = varoff;
+
+    // finalize x_segement
+    xstr.flush();
+    const QString xhead = QString("x%1 \n").arg(xcount);
+    mx_seg.prepend(xhead);
+
+
+    NMDebugCtx(ctxNMMosra, << "done!");
+    return true;
+}
+
+/*
+bool NMMosra::processVariableBounds(QStringList &b_seg)
+{
+    // ========================================================
+    //          GENERATE VARIABLE BOUNDS SECTION
+    // ========================================================
+
+    QMap<QString, std::vector<int> > varBndOffsetMap;
+    QMap<QString, std::vector<double> > varNumericBoundsMap;
+    std::vector<std::string> varnames;
+    std::vector<otb::AttributeTable::ColumnValue> varbounds;
+
+    foreach(const QString& vname, mslDecisionVars)
+    {
+        auto vbm = mmslVarBoundsMap.constFind(vname);
+        if (vbm != mmslVarBoundsMap.cend())
+        {
+            bool bConv;
+            double lbound = 0;
+            double ubound = std::numeric_limits<double>::max();
+            std::vector<double> realBnds;
+            std::vector<int>    offsetMap;
+            if (vbm.value().size() == 0)
+            {
+                realBnds.push_back(lbound);
+                realBnds.push_back(ubound);
+            }
+            else if (vbm.value().size() == 1)
+            {
+                const QString lbndName = vbm.value().at(0);
+                lbound = lbndName.toDouble(&bConv);
+                if (!bConv)
+                {
+                    realBnds.push_back(-9);
+
+                    if (mmslParameters.constFind(lbndName) != mmslParameters.cend())
+                    {
+                        foreach(const QString& lbcol, mmslParameters[lbndName])
+                        {
+                            offsetMap.push_back(varnames.size());
+                            varnames.push_back(lbcol.toStdString());
+                            otb::AttributeTable::ColumnValue bv;
+                            varbounds.push_back(bv);
+                        }
+                    }
+                    else
+                    {
+                        MosraLogError(<< "NMMosra::processVariableBounds() - ERROR: "
+                                      << "Couldn't find parameter '" << lbndName.toStdString()
+                                      << "' in optimisation dataset!" << endl);
+                        return false;
+                    }
+                }
+                else
+                {
+                    realBnds.push_back(lbound);
+                }
+                realBnds.push_back(ubound);
+            }
+            else if (vbm.value().size() == 2)
+            {
+                lbound = vbm.value().at(0).toDouble(&bConv);
+                if (!bConv)
+                {
+                    realBnds.push_back(-9);
+                    offsetMap.push_back(varnames.size());
+                    varnames.push_back(vbm.value().at(0).toStdString());
+                    otb::AttributeTable::ColumnValue bv;
+                    varbounds.push_back(bv);
+                }
+                else
+                {
+                    realBnds.push_back(lbound);
+                }
+
+                ubound = vbm.value().at(1).toDouble(&bConv);
+                if (!bConv)
+                {
+                    realBnds.push_back(-9);
+                    offsetMap.push_back(varnames.size());
+                    varnames.push_back(vbm.value().at(1).toStdString());
+                    otb::AttributeTable::ColumnValue bv;
+                    varbounds.push_back(bv);
+                }
+                else
+                {
+                    realBnds.push_back(ubound);
+                }
+            }
+
+            // go over the var and fetch/set bounds
+
+
+
+
+
+
+
+            // if offsetMap.size() > 0 then retrieve value(s) from DB
+            // if offsetMap.size() == 0 then set 'realBnds'
+            //varBndOffsetMap.insert(vname, offsetMap);
+            //varNumericBoundsMap.insert(vname, realBnds);
+        }
+        // variable not specified in the *.los file
+        else
+        {
+            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__
+                          << "(): Variable is not defined in "
+                          << "*.los file!" << endl);
+            return false;
+        }
+    }
+
+
+
+
+    return true;
+}
+*/
+
+bool NMMosra::createSegmentFile(QFile*& file, const NLSegment segType, const QString& abbr)
+{
+    bool ret = true;
+
+    QString suffix = "";
+    if (!abbr.isEmpty())
+    {
+        suffix = QString("%1_").arg(abbr);
+    }
+
+    QString fn;
+    switch(segType)
+    {
+    case NL_SEG_C:
+        fn = QString("%1/C_seg_%2%3.txt").arg(msDataPath).arg(suffix).arg(mConsCounter);
+        break;
+    case NL_SEG_L:
+        fn = QString("%1/L_seg_%2%3.txt").arg(msDataPath).arg(suffix).arg(mLogicConsCounter);
+        break;
+    case NL_SEG_O:
+        fn = QString("%1/O_seg_%2%3.txt").arg(msDataPath).arg(suffix).arg(mObjCounter);
+        break;
+    case NL_SEG_J:
+        fn = QString("%1/J_seg_%2%3.txt").arg(msDataPath).arg(suffix).arg(mConsCounter);
+        break;
+    case NL_SEG_G:
+        fn = QString("%1/G_seg_%2%3.txt").arg(msDataPath).arg(suffix).arg(mObjCounter);
+        break;
+    default:
+        ret = false;
+    }
+
+    if (file == nullptr)
+    {
+        file = new QFile(fn, this);
+    }
+    if (!file->open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text))
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "Failed creating file '" << fn.toStdString()
+                      << "'!" << std::endl);
+        ret = false;
+    }
+
+    return ret;
+}
+
+void NMMosra::removeNLFiles(void)
+{
+    QFileInfo fifo(this->getLosFileName());
+    QString nlFileName = QString("%1/%2.nl").arg(this->msDataPath).arg(fifo.baseName());
+    QFileInfo nlfifo(nlFileName);
+    if (nlfifo.isWritable())
+    {
+        QFile::remove(nlFileName);
+    }
+
+    QStringList filterList = {"C_seg*.txt", "L_seg*.txt", "J_seg*.txt", "G_seg*.txt", "O_seg*.txt"};
+    QDirIterator dit(msDataPath, filterList, QDir::Files);
+    while (dit.hasNext())
+    {
+        QFile(dit.next()).remove();
+    }
+
+    QFile::remove(QString("%1/header_seg.txt").arg(msDataPath));
+    QFile::remove(QString("%1/x_seg.txt").arg(msDataPath));
+    QFile::remove(QString("%1/r_seg.txt").arg(msDataPath));
+    QFile::remove(QString("%1/k_seg.txt").arg(msDataPath));
+    QFile::remove(QString("%1/b_seg.txt").arg(msDataPath));
+
+}
+
+void NMMosra::clearInternalNLDataStructures(void)
+{
+    mvNonLinearConsVarCounter.clear();
+    mvNonLinearObjVarCounter.clear();
+    mslDecisionVars.clear();
+    mslProcessVars.clear();
+    msBinaryVars.clear();
+    msIntVars.clear();
+    mmLookupColsFstParam.clear();
+    mmVarAdminMap.clear();
+    mmDimLengthMap.clear();
+    mmDimEqnMap.clear();
+    mmHighDimEqnMap.clear();
+    mmslHighDimValComboTracker.clear();
+    mmvHighDimLoopIterLength.clear();
+    mvvFSCUniqueIDCounterMap.clear();
+    mvvFSCUniqueIDSegmentRHSMap.clear();
+
+    //mvC_seg.clear();
+    //mvL_seg.clear();
+    //mvO_seg.clear();
+    //mvJ_seg.clear();
+    //mvG_seg.clear();
+
+    if (mpNLFile != nullptr)
+    {
+        mpNLFile->close();
+        delete mpNLFile;
+        mpNLFile = nullptr;
+    }
+
+    // remove the segment files
+    for(int fi=0; fi < mvfC_seg.size(); ++fi)
+    {
+        mvfC_seg[fi]->close();
+        //mvfC_seg[fi]->remove();
+        delete mvfC_seg[fi];
+    }
+    for(int fi=0; fi < mvfL_seg.size(); ++fi)
+    {
+        mvfL_seg[fi]->close();
+        //mvfL_seg[fi]->remove();
+        delete mvfL_seg[fi];
+    }
+    for(int fi=0; fi < mvfO_seg.size(); ++fi)
+    {
+        mvfO_seg[fi]->close();
+        //mvfO_seg[fi]->remove();
+        delete mvfO_seg[fi];
+    }
+    for(int fi=0; fi < mvfJ_seg.size(); ++fi)
+    {
+        mvfJ_seg[fi]->close();
+        //mvfJ_seg[fi]->remove();
+        delete mvfJ_seg[fi];
+    }
+    for(int fi=0; fi < mvfG_seg.size(); ++fi)
+    {
+        mvfG_seg[fi]->close();
+        //mvfG_seg[fi]->remove();
+        delete mvfG_seg[fi];
+    }
+    mvfC_seg.clear();
+    mvfL_seg.clear();
+    mvfO_seg.clear();
+    mvfJ_seg.clear();
+    mvfG_seg.clear();
+    mx_seg.clear();
+    mb_seg.clear();
+    mr_seg.clear();
+    mk_seg.clear();
+
+    mvExplicitAreaConsVarOffsets.clear();
+    mvvImplicitAreaConsSegments.clear();
+    mmslHighDimLoopEquations.clear();
+
+    mNonZeroJColCount.clear();
+
+    mmEquationAdmins.clear();
+    mmPrefixEquations.clear();
+}
+
+int NMMosra::makeNL2(void)
+{
+    // delete old files
+    removeNLFiles();
+
+    // ---------------------------------------
+    // initiate header
+
+    QString nlheader;
+    QTextStream nlstr(&nlheader);
+
+    QString sp = " ";
+    QString eol = "\n";
+
+    // first line never changes
+    nlstr << "g3 1 1 0" << eol;
+
+    // num variables
+    long cnt_nvars = 0;
+
+    // set the area scaling factor
+    auto psit = mmParameterScaling.constBegin();
+    for (; psit != mmParameterScaling.constEnd(); ++psit)
+    {
+        if (psit.key().compare(QStringLiteral("AreaHa"), Qt::CaseSensitive) == 0)
+        {
+            mdAreaScalingFactor = psit.value().first;
+            break;
+        }
+    }
+
+    // ----------------------------------------------------
+    //          b segment
+
+    if (!processVariables(mb_seg, mx_seg, &cnt_nvars))
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "Just got it wrong! :-( " << std::endl);
+        return 0;
+    }
+
+    if (!processLoopDimensions())
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "Just got it wrong! :-( " << std::endl);
+        return 0;
+    }
+
+
+    MosraLogInfo(<< "Number of decision variables for '" << mScenarioName.toStdString()
+                 << "' : " << std::to_string(cnt_nvars) << std::endl);
+
+    // DEBUG / TESTING OUTPUT ONLY
+    //std::stringstream ndvstr;
+    //long calc_nvars = 0;
+    //for (int dv=0; dv < mslDecisionVars.size(); ++dv)
+    //{
+    //    auto vait = mmVarAdminMap.constFind(mslDecisionVars[dv]);
+    //    if (vait != mmVarAdminMap.cend())
+    //    {
+    //        ndvstr << "   " << mslDecisionVars.at(dv).toStdString()
+    //               << ": "  << vait.value().dimOffsetMap.size()
+    //               << std::endl;
+    //        calc_nvars += vait.value().dimOffsetMap.size();
+    //    }
+    //}
+    //MosraLogInfo(<< std::endl << ndvstr.str() << std::endl
+    //             << "   Total number of decision variables: "
+    //             << std::to_string(calc_nvars) << std::endl);
+
+    this->mlNumDVar = cnt_nvars;
+
+    // add number of variables to the header
+    nlstr << cnt_nvars << sp;
+
+
+    // -------------------------------------------------------
+    //      NON-LINEAR C, L & O; LINEAR J, k, and r segments
+
+    if (!processNLSegmentData2())
+    {
+        MosraLogError(<< "NMMosra::makeNL2() - ERROR: "
+                      << "Oh no! Something didn't work! "
+                      << "You better check your *.los file "
+                      << "- I don't have a clue what went wrong!"
+                      << std::endl);
+        return 0;
+    }
+
+    // add number of contraints & objectives to the header
+    //const int allConsRanges = mConsCounter = mLogicConsCounter;
+    nlstr << mConsCounter << sp << mObjCounter << sp << mConsCounter << sp << 0 << sp << mLogicConsCounter << eol;
+
+    // add non-linear constraints & objectives
+    //    for now: all non- and linear constraints explicitly specified are treated as non-linear
+    //             so we reduce the amount of work involved with identifying linear and non-linear
+    //             parts thereof
+    const int nnlcons = mmslLinearConstraints.size() + mmslNonLinearConstraints.size() + mmslLogicConstraints.size();
+    nlstr << nnlcons << sp << mvfO_seg.size() << eol;
+
+    // network constraints: non-linear, linear
+    nlstr << 0 << sp << 0 << eol;
+
+    // non-linear vars in objectives, constraints, both
+    int commonVar = 0;
+    for (auto it = mvNonLinearConsVarCounter.constBegin(); it != mvNonLinearConsVarCounter.cend(); ++it)
+    {
+        if (mvNonLinearObjVarCounter.constFind(it.key()) != mvNonLinearObjVarCounter.cend())
+        {
+            ++commonVar;
+        }
+    }
+
+    nlstr << mvNonLinearConsVarCounter.size() << sp << mvNonLinearObjVarCounter.size() << sp << commonVar << eol;
+
+    // -----------------------------------------------------
+    //    OTHER INFO ON FEATURES NOT SUPPORTED BY LUMASS
+
+    // linear network vars, functions, arith, flags
+    nlstr << 0 << sp << 0 << sp << 0 << sp << 0 << eol;
+
+
+    // calc number of binary and integer vars
+    int nbvar = 0, nivar = 0;
+    foreach(const QString& bvn, msBinaryVars)
+    {
+        nbvar += mmVarAdminMap[bvn].dimOffsetMap.size();
+    }
+    foreach(const QString& ivn, msIntVars)
+    {
+        nivar += mmVarAdminMap[ivn].dimOffsetMap.size();
+    }
+
+    // discrete variables : binary, integer, nonlinear (b, c, o)
+    nlstr << nbvar << sp << nivar << sp;
+
+    for (int t=0; t < 3; ++t)
+    {
+        nlstr << 0 << sp;
+    }
+    nlstr << eol;
+
+    // non-zeros in Jacobian, gradients
+    long nonzeroJacobian = 0;
+    const long klen = mNonZeroJColCount.size();
+    auto jit = mNonZeroJColCount.cbegin();
+    for (int k=0; k < klen && jit != mNonZeroJColCount.cend(); ++k, ++jit)
+    {
+        nonzeroJacobian += jit.value();
+    }
+
+    // num vars in objectives
+    nlstr << nonzeroJacobian << sp << 0 << eol;
+           //mvNonLinearObjVarCounter.size() << eol;
+
+    // max name length: constraints, variables
+    nlstr << 0 << sp << 0 << eol;
+
+    // common expr. b,c,o,c1,o1
+    for (int ce=0; ce < 5; ++ce)
+    {
+        nlstr << 0 << sp;
+    }
+    nlstr << eol;
+
+    // ---------------------------------------------------------
+    //              NL FILE
+    QFile* dF = nullptr;
+    QString dS;
+
+    writeNLSegment(nlheader, dF, NL_SEG_NL, 0);
+
+    // NL file segments
+    for (int cs=0; cs < mvfC_seg.size(); ++cs)
+    {
+        writeNLSegment(dS, mvfC_seg[cs], NL_SEG_C, 1);
+    }
+
+    for (int ls=0; ls < mvfL_seg.size(); ++ls)
+    {
+        writeNLSegment(dS, mvfL_seg[ls], NL_SEG_L, 1);
+    }
+
+    for (int os=0; os < mvfO_seg.size(); ++os)
+    {
+        writeNLSegment(dS, mvfO_seg[os], NL_SEG_O, 1);
+    }
+
+    writeNLSegment(mx_seg, dF, NL_SEG_x, 0);
+    writeNLSegment(mr_seg, dF, NL_SEG_r, 0);
+    writeNLSegment(mb_seg, dF, NL_SEG_b, 0);
+    writeNLSegment(mk_seg, dF, NL_SEG_k, 0);
+
+    for (int js=0; js < mvfJ_seg.size(); ++js)
+    {
+        writeNLSegment(dS, mvfJ_seg[js], NL_SEG_J, 1);
+    }
+
+    for (int gs=0; gs < mvfG_seg.size(); ++gs)
+    {
+        if (mvfG_seg[gs] != nullptr && mvfG_seg[gs]->size() > 0)
+        {
+            writeNLSegment(dS, mvfG_seg[gs], NL_SEG_G, 1);
+        }
+    }
+
+    mpNLFile->close();
+
+    clearInternalNLDataStructures();
+
+
+    return 1;
+}
+
+
+bool NMMosra::populateHDLE(
+        const QString &hdeqn,
+        otb::SQLiteTable::Pointer &sqltab,
+        QMap<QString, std::vector<size_t> >& nameValPosMap,
+        std::vector<std::string>& getnames,
+        std::vector<otb::AttributeTable::ColumnValue>& getvalues
+        )
+{
+
+
+    return true;
+}
+
+bool NMMosra::populateHighDimLoopEquations(const QString &hdeqn,
+        otb::SQLiteTable::Pointer &sqltab,
+        QMap<QString, std::vector<size_t> > &nameValPosMap,
+        std::vector<std::string> &getnames,
+        std::vector<otb::AttributeTable::ColumnValue> &getvalues
+        )
+{
+    foreach(const QString eqn, mmslHighDimLoopEquations.keys())
+    {
+
+        // create queries for determining the size of the
+        // individeual sum dimensions, i.e. the number of
+        // iterations for each dimension
+
+        QStringList hdims = mmslHighDimLoopEquations[eqn].first;
+        if (hdims.last().compare(QStringLiteral("SDU")) != 0)
+        {
+            hdims << QStringLiteral("SDU");
+        }
+
+        QStringList dimCols;
+        foreach(const QString& hd, hdims)
+        {
+            if (mmslParameters.constFind(hd) != mmslParameters.cend())
+            {
+                dimCols << mmslParameters[hd].at(0);
+            }
+            else
+            {
+                MosraLogDebug(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: Failed "
+                              << "fetching table column for dimension parameter '"
+                              << hd.toStdString() << "'!");
+                return false;
+            }
+        }
+
+        /*
+        const int numHighDims = dimCols.size();
+        for (int dims=0; dims < numHighDims; ++dims)
+        {
+            std::stringstream sqlstr, gbcl;
+            sqlstr << "select ";
+            gbcl << "group by ";
+
+            std::vector<std::vector<otb::AttributeTable::ColumnValue> > tab;
+            std::vector<otb::AttributeTable::TableColumnType> coltypes;
+
+            otb::AttributeTable::TableColumnType tct = otb::AttributeTable::ATTYPE_INT;
+
+            // numHighDims - dims = 3, 2, 1
+            const int ncols = numHighDims - dims;
+            for (int len=0; len < ncols ; ++len)
+            {
+                if (ncols == 1)
+                {
+                    sqlstr << "count(distinct \""
+                           << dimCols.at(len).toStdString()
+                           << "\")";
+                    coltypes.push_back(tct);
+                }
+                else if (len == ncols-1)
+                {
+                    sqlstr << "count(\"" << dimCols.at(len).toStdString()
+                           << "\")";
+                    coltypes.push_back(tct);
+                }
+                else
+                {
+                    sqlstr << "\"" << dimCols.at(len).toStdString()
+                           << "\"";
+                    coltypes.push_back(tct);
+                }
+
+                // fmu, rowidx
+                if (ncols > 1 && len < ncols-1)
+                {
+                    gbcl << "\"" << dimCols.at(len).toStdString()
+                         << "\"";
+                }
+
+                if (len < ncols-1)
+                {
+                    sqlstr << ", ";
+                }
+
+                //   0      1    2      3
+                // region, fmu, farm, rowidx
+                if (ncols > 2 && len < ncols-2)
+                {
+                    gbcl   << ", ";
+                }
+            }
+
+            // complete the query string
+            sqlstr << " from \"" << sqltab->GetTableName() << "\" "
+                   << " where " << msOptFeatures.toStdString() << " == 1 ";
+            if (ncols > 1)
+            {
+                sqlstr << gbcl.str();
+            }
+
+            std::string thequery = sqlstr.str();
+
+            if (!sqltab->TableDataFetch(tab, coltypes, thequery))
+            {
+                MosraLogDebug(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                              << "Round #" << dims << " populating HighDimLoopIterLength failed: "
+                              << thequery);
+                return false;
+            }
+
+
+            for (int row=0; row < tab.size(); ++row)
+            {
+                QVector<long long> key;
+                for (int col=0; col < tab[0].size()-1; ++col)
+                {
+                    key.push_back(tab[row][col].ival);
+                }
+                mmvHighDimLoopIterLength.insert(key, tab[row][tab[0].size()-1].ival);
+            }
+
+            NMDebug(<< "--------------- \n")
+            NMDebug(<< "mmvHiDimLoopIterLengths ...\n");
+            auto dimit = mmvHighDimLoopIterLength.cbegin();
+            for (; dimit != mmvHighDimLoopIterLength.cend(); ++dimit)
+            {
+                for (int c=0; c < dimit.key().size(); ++c)
+                {
+                    NMDebug(<< dimit.key().at(c) << " => ");
+                }
+                NMDebug(<< endl);
+            }
+            NMDebug(<< "END ---------\n\n");
+        }
+        */
+
+        if (!determineHighDimLoopIterLength(eqn, sqltab))
+        {
+            MosraLogError(<< "Unable to determine the size of high dimensions sets!");
+            sqltab->EndTransaction();
+            return false;
+        }
+
+        // prepare the whereClause for this equation to ensure that a sequantial
+        // traversal of the records enables proper loop processing
+        // ... i.e. sequential summing of dimensions starting with most deeply
+        //     nested dimension to the top most dimension
+        std::stringstream whereClause;
+        whereClause << "where \"" << msOptFeatures.toStdString() << "\" == 1 ";
+
+        if (dimCols.size() > 0)
+        {
+            whereClause << "order by ";
+            for (int dim=0; dim < dimCols.size(); dim++)
+            {
+                whereClause << "\"" << dimCols.at(dim).toStdString() << "\"";
+
+                if (dim < dimCols.size()-1)
+                {
+                    whereClause << ", ";
+                }
+            }
+        }
+        else
+        {
+            continue;
+        }
+
+        const std::string wcstr = whereClause.str();
+        MosraLogDebug(<< ctxNMMosra << "::" << __FUNCTION__ << "() - DEBUG: Table prep for "
+                      << eqn.toStdString() << ": " << wcstr);
+
+        bool brow = sqltab->PrepareBulkGet(getnames, wcstr);
+        if (!brow)
+        {
+            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                          << "Populating equations failed: "
+                          << sqltab->getLastLogMsg());
+            sqltab->EndTransaction();
+            return false;
+        }
+
+        sqltab->BeginTransaction();
+        brow = sqltab->DoBulkGet(getvalues);
+
+        if (!brow)
+        {
+            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                          << "Populating equations failed: "
+                          << sqltab->getLastLogMsg());
+            sqltab->EndTransaction();
+            return false;
+        }
+
+        // -----------------------------------------------------------
+        // create lookup for last value of a dimension
+        // dimValueMap: NOTE: OPTIONS values for
+        // variable offset look up are stored 0-based!
+        QMap<QString, double> dimValueMap;
+        QMap<QString, bool> dimChangeMap;
+
+        const QStringList& dimensions = mmslHighDimLoopEquations[eqn].second;
+        foreach(const QString& td, dimensions)
+        {
+            dimValueMap[td] = -1;
+            dimChangeMap[td] = false;
+        }
+
+
+        // this map is empty to begin with, if an inner
+        // loop is iterated over multiple times, the
+        // after the last iteration, the loop counter
+        // is reset to '0'
+
+        //<eqn name>, <loop dim, counter value 1-based!> >
+        QMap<QString, QMap<QString, int> > eqnLoopCounterMap;
+        QMap<QString, QStack<std::vector<int> > > eqnActiveSegmentMap;
+
+
+        long recCounter = 0;
+        do
+        {
+            // -----------------------------------------------------
+            //          HAVE DIMENSION VALUES CHANGED?
+            // get dimension values
+            foreach (const QString& dim, dimensions)
+            {
+                // as OPTIONS differ even at the smallest spatial
+                // dimension, i.e. at SDU level, we trigger processing
+                // each time it appears in an equation
+                if (dim.compare(msOPTIONS) == 0)
+                {
+                    dimValueMap[dim] = -9999;
+                    dimChangeMap[dim] = true;
+                    continue;
+                }
+
+                double dimValue = getRecordValue(
+                            nameValPosMap,
+                            getvalues,
+                            dim
+                            );
+
+                if (dimValue != dimValueMap[dim])
+                {
+                    dimValueMap[dim] = dimValue;
+                    dimChangeMap[dim] = true;
+                }
+                else
+                {
+                    dimChangeMap[dim] = false;
+                }
+            }
+
+            // -----------------------------------------------------
+            //          populate eqns
+
+
+
+
+            // if the equation is only evaluated on 'higher' (i.e. above SDU)
+            // dimensions, we double check whether we have actually already
+            // processed this specific combination of dimension values,
+            // in which case we'd have found a record for the given combination
+            // of higher dimension values ...
+            if (    mmHighDimEqnMap.contains(eqn)
+                    && (   mmslNonLinearConstraints.constFind(eqn) != mmslNonLinearConstraints.cend()
+                           || mmslLinearConstraints.constFind(eqn) != mmslLinearConstraints.cend()
+                           || mmslObjectives.constFind(eqn) != mmslObjectives.cend()
+                           )
+                    )
+            {
+                QVector<long long> highDimValues;
+                foreach(const QString& hdim, mmHighDimEqnMap[eqn])
+                {
+                    highDimValues.push_back(dimValueMap[hdim]);
+                }
+
+                if (    mmslHighDimValComboTracker[eqn].constFind(highDimValues)
+                        != mmslHighDimValComboTracker[eqn].cend()
+                        )
+                {
+                    continue;
+                }
+                else
+                {
+                    mmslHighDimValComboTracker[eqn].insert(highDimValues);
+                }
+            }
+
+            // ---------------------------------------------
+            //  C    (Non-linear) algebraic constraints
+            // ---------------------------------------------
+            if (    mmslNonLinearConstraints.constFind(eqn) != mmslNonLinearConstraints.cend()
+                    || mmslLinearConstraints.constFind(eqn) != mmslLinearConstraints.cend()
+                    //|| mmslLogicConstraints.constFind(eqn) != mmslLogicConstraints.cend()
+                    )
+            {
+                /*
+                        if (mmslLogicConstraints.constFind(eqn) != mmslLogicConstraints.cend())
+                        {
+                            if (!populateEquations(
+                                        eqn,
+                                        eqnActiveSegmentMap,
+                                        0,
+                                        NL_SEG_L,
+                                        mLogicConsCounter,
+                                        eqnLoopCounterMap,
+                                        dimValueMap,
+                                        nameValPosMap,
+                                        getvalues
+                                        )
+                               )
+                            {
+                                MosraLogError(<< "ERROR in constraint eqn!" << std::endl);
+                                sqltab->EndTransaction();
+                                return false;
+                            }
+                        }
+                        else
+                        */
+
+                // ATTENTION:
+                // - if we've got a constraint defined over OPTIONS (for at least one par,
+                //   var, or loop) and
+                // - we don't have a loop at the beginning of the constraint,
+                // - and we can find the OPTIONS dimension parameter somewhere in the eqn
+                //   that indicates that this eqn does not just apply to a single element
+                //   of OPTIONS
+                // ==> we assume that this constraint is meant to be defined
+                //     individually for each <other dims> + OPTIONS combination ...
+
+                if (mmDimEqnMap[msOPTIONS].constFind(eqn) != mmDimEqnMap[msOPTIONS].cend())
+                {
+                    if (    mmEquationAdmins[eqn].elemMap[0].first != EQN_LOOP
+                            && mmsEquations[eqn].contains(msOPTIONS)
+                            )
+                    {
+                        for (int opt=0; opt < mslOptions.size(); ++opt)
+                        {
+                            dimValueMap[msOPTIONS] = opt;
+
+                            if (!populateEquations(
+                                        eqn,
+                                        eqnActiveSegmentMap,
+                                        0,
+                                        NL_SEG_C,
+                                        mConsCounter,
+                                        eqnLoopCounterMap,
+                                        dimValueMap,
+                                        nameValPosMap,
+                                        getvalues
+                                        )
+                                    )
+                            {
+                                MosraLogError(<< "ERROR in constraint eqn!" << std::endl);
+                                sqltab->EndTransaction();
+                                return false;
+                            }
+                        }
+
+                        dimValueMap[msOPTIONS] = -9999;
+                    }
+                }
+                else
+                {
+                    if (!populateEquations(
+                                eqn,
+                                eqnActiveSegmentMap,
+                                0,
+                                NL_SEG_C,
+                                mConsCounter,
+                                eqnLoopCounterMap,
+                                dimValueMap,
+                                nameValPosMap,
+                                getvalues
+                                )
+                            )
+                    {
+                        MosraLogError(<< "ERROR in constraint eqn!" << std::endl);
+                        sqltab->EndTransaction();
+                        return false;
+                    }
+
+                }
+            }
+
+            // --------------------------------------------------
+            //  O    Non-linear algebraic OBJECTIVE segment
+            // --------------------------------------------------
+            if (mmslObjectives.constFind(eqn) != mmslObjectives.cend())
+            {
+                if (!populateEquations(
+                            eqn,
+                            eqnActiveSegmentMap,
+                            0,
+                            NL_SEG_O,
+                            mObjCounter,
+                            eqnLoopCounterMap,
+                            dimValueMap,
+                            nameValPosMap,
+                            getvalues
+                            )
+                        )
+                {
+                    MosraLogError(<< "ERROR in objctive eqn!" << std::endl);
+                    sqltab->EndTransaction();
+                    return false;
+                }
+            }
+
+
+            // get new record with values
+            brow = sqltab->DoBulkGet(getvalues);
+            ++recCounter;
+
+        } while (brow);
+
+        sqltab->EndTransaction();
+
+        MosraLogDebug(<< ctxNMMosra << "::" << __FUNCTION__ << "() - INFO: "
+                      << "processed " << recCounter << " records while "
+                      << "poplulating the equations!" << endl);
+
+    }
+
+
+
+    return true;
+}
+
+bool NMMosra::populateLowDimAndOtherEquations(
+        otb::SQLiteTable::Pointer &sqltab,
+        QMap<QString, std::vector<size_t> > &nameValPosMap,
+        std::vector<std::string> &getnames,
+        std::vector<otb::AttributeTable::ColumnValue> &getvalues
+        )
+{
+    // --------------------------------------------------------
+    //      prepare linear explict area constraints
+    // --------------------------------------------------------
+    QChar eol('\n');
+    QChar sp(' ');
+
+    std::vector<QString> vsConsLabel;
+    std::vector<int> vnZoneLength;
+    std::vector<QString> vsZoneField;
+    std::vector<std::vector<unsigned int> > vvnOptionIndex;
+    std::vector<unsigned int> vnConsType;
+    std::vector<double> vdRHS;
+
+    if (!processExplicitArealCons(vsConsLabel, vnZoneLength, vsZoneField,
+                             vvnOptionIndex, vnConsType, vdRHS))
+    {
+        return false;
+    }
+
+    std::vector<QString> vsFSCZoneField;
+    std::vector<std::vector<unsigned int> > vvnFSCOptionIndex;
+    if (!processFeatureSetConstraints(vsFSCZoneField, vvnFSCOptionIndex))
+    {
+        return false;
+    }
+
+
+    // add zone fields to getnames & getvalues
+    for (int z=0; z < vsZoneField.size(); ++z)
+    {
+        if (    !vsZoneField.at(z).isEmpty()
+             && nameValPosMap.constFind(vsZoneField[z]) == nameValPosMap.cend()
+           )
+        {
+            std::vector<size_t> zfoff = {getnames.size()};
+            nameValPosMap.insert(vsZoneField[z], zfoff);
+
+            getnames.push_back(vsZoneField[z].toStdString());
+            otb::AttributeTable::ColumnValue zcv;
+            getvalues.push_back(zcv);
+        }
+    }
+
+    // add zone fields for featureset constraints, if not already present
+    for (int fscf=0; fscf < vsFSCZoneField.size(); ++fscf)
+    {
+        if (    !vsFSCZoneField.at(fscf).isEmpty()
+             && nameValPosMap.constFind(vsFSCZoneField.at(fscf)) == nameValPosMap.cend()
+           )
+        {
+            std::vector<size_t> vfsczone = {getnames.size()};
+            nameValPosMap.insert(vsFSCZoneField.at(fscf), vfsczone);
+
+            getnames.push_back(vsFSCZoneField.at(fscf).toStdString());
+            otb::AttributeTable::ColumnValue fscfv;
+            getvalues.push_back(fscfv);
+        }
+    }
+
+    // add criterion column for each FS constraint
+    auto fsit = this->mslFeatSetCons.constBegin();
+    for (; fsit != this->mslFeatSetCons.constEnd(); ++fsit)
+    {
+        QString criName = fsit.value().at(0);
+        if (nameValPosMap.constFind(criName) == nameValPosMap.cend())
+        {
+            std::vector<size_t> ccpos;
+
+            QStringList criColNames = mmslCriteria.value(criName);
+            foreach(const QString& cname, criColNames)
+            {
+                ccpos.push_back(getnames.size());
+                getnames.push_back(cname.toStdString());
+                otb::AttributeTable::ColumnValue ccval;
+                getvalues.push_back(ccval);
+            }
+            nameValPosMap.insert(criName, ccpos);
+        }
+    }
+
+    // make sure we've got the SDU field (rowidx) in the namValPosMap
+    if (nameValPosMap.constFind(msSDU) == nameValPosMap.cend())
+    {
+        if (mmslParameters.constFind(msSDU) == mmslParameters.cend())
+        {
+            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                          << "Compulsory parameter 'SDU' is not defined!");
+            return false;
+
+        }
+
+        std::vector<size_t> rowoff = {getnames.size()};
+        nameValPosMap.insert(msSDU, rowoff);
+
+        getnames.push_back(mmslParameters.value(msSDU).at(0).toStdString());
+        otb::AttributeTable::ColumnValue rowval;
+        getvalues.push_back(rowval);
+    }
+
+    // add the AreaHa field to the parameters to be fetched
+    const int areaValueIdx = getnames.size();
+    getnames.push_back(msAreaField.toStdString());
+    otb::AttributeTable::ColumnValue areaColVal;
+    getvalues.push_back(areaColVal);
+
+
+    // fetch the first record of the optimisation table/dataset
+    std::stringstream whereClause;
+    whereClause << "where \"" << msOptFeatures.toStdString() << "\" == 1";
+    bool brow = sqltab->PrepareBulkGet(getnames, whereClause.str());
+    if (!brow)
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "Populating equations failed: "
+                      << sqltab->getLastLogMsg());
+        sqltab->EndTransaction();
+        return false;
+    }
+
+    sqltab->BeginTransaction();
+    brow = sqltab->DoBulkGet(getvalues);
+
+    if (!brow)
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "Populating equations failed: "
+                      << sqltab->getLastLogMsg());
+        sqltab->EndTransaction();
+        return false;
+    }
+
+
+
+    // -----------------------------------------------------------
+    // create lookup for last value of a dimension
+    // dimValueMap: NOTE: OPTIONS values for
+    // variable offset look up are stored 0-based!
+    QMap<QString, double> dimValueMap;
+    QMap<QString, bool> dimChangeMap;
+
+    const QStringList dimensions = mmDimEqnMap.keys();
+    foreach(const QString& td, dimensions)
+    {
+        dimValueMap[td] = -1;
+        dimChangeMap[td] = false;
+    }
+
+    // this map is empty to begin with, if an inner
+    // loop is iterated over multiple times, the
+    // after the last iteration, the loop counter
+    // is reset to '0'
+
+    //<eqn name>, <loop dim, counter value 1-based!> >
+    QMap<QString, QMap<QString, int> > eqnLoopCounterMap;
+    QMap<QString, QStack<std::vector<int> > > eqnActiveSegmentMap;
+    long recCounter = 0;
+    do
+    {
+        // -----------------------------------------------------
+        //          HAVE DIMENSION VALUES CHANGED?
+        // get dimension values
+        foreach (const QString& dim, dimensions)
+        {
+            // as OPTIONS differ even at the smallest spatial
+            // dimension, i.e. at SDU level, we trigger processing
+            // each time it appears in an equation
+            if (dim.compare(msOPTIONS) == 0)
+            {
+                dimValueMap[dim] = -9999;
+                dimChangeMap[dim] = true;
+                continue;
+            }
+
+            double dimValue = getRecordValue(
+                        nameValPosMap,
+                        getvalues,
+                        dim
+                        );
+
+            if (dimValue != dimValueMap[dim])
+            {
+                dimValueMap[dim] = dimValue;
+                dimChangeMap[dim] = true;
+            }
+            else
+            {
+                dimChangeMap[dim] = false;
+            }
+        }
+
+        // -----------------------------------------------------
+        //          populate eqns
+
+        QStringList processedEqns;
+        auto dimChMapIt = dimChangeMap.cbegin();
+        for(; dimChMapIt != dimChangeMap.cend(); ++dimChMapIt)
+        {
+            if (dimChMapIt.value() == true)
+            {
+                auto dimEqnIt = mmDimEqnMap.constFind(dimChMapIt.key());
+
+                // keep moving, if we can't find the equation
+                if (dimEqnIt == mmDimEqnMap.cend())
+                {
+                    continue;
+                }
+
+                foreach(const QString& eqn, dimEqnIt.value())
+                {
+                    // keep moving if we've processed this eqn already
+                    if (    processedEqns.contains(eqn)
+                         || mmslHighDimLoopEquations.contains(eqn)
+                       )
+                    {
+                        continue;
+                    }
+
+                    // if the equation is only evaluated on 'higher' (i.e. above SDU)
+                    // dimensions, we double check whether we have actually already
+                    // processed this specific combination of dimension values,
+                    // in which case we'd have found a record for the given combination
+                    // of higher dimension values ...
+                    if (    mmHighDimEqnMap.contains(eqn)
+                         && (   mmslNonLinearConstraints.constFind(eqn) != mmslNonLinearConstraints.cend()
+                             || mmslLinearConstraints.constFind(eqn) != mmslLinearConstraints.cend()
+                             || mmslObjectives.constFind(eqn) != mmslObjectives.cend()
+                            )
+                       )
+                    {
+                        QVector<long long> highDimValues;
+                        foreach(const QString& hdim, mmHighDimEqnMap[eqn])
+                        {
+                            highDimValues.push_back(dimValueMap[hdim]);
+                        }
+
+                        if (    mmslHighDimValComboTracker[eqn].constFind(highDimValues)
+                             != mmslHighDimValComboTracker[eqn].cend()
+                           )
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            mmslHighDimValComboTracker[eqn].insert(highDimValues);
+                        }
+                    }
+
+                    // ---------------------------------------------
+                    //  C    (Non-linear) algebraic constraints
+                    // ---------------------------------------------
+                    if (    mmslNonLinearConstraints.constFind(eqn) != mmslNonLinearConstraints.cend()
+                         || mmslLinearConstraints.constFind(eqn) != mmslLinearConstraints.cend()
+                         //|| mmslLogicConstraints.constFind(eqn) != mmslLogicConstraints.cend()
+                       )
+                    {
+                        /*
+                        if (mmslLogicConstraints.constFind(eqn) != mmslLogicConstraints.cend())
+                        {
+                            if (!populateEquations(
+                                        eqn,
+                                        eqnActiveSegmentMap,
+                                        0,
+                                        NL_SEG_L,
+                                        mLogicConsCounter,
+                                        eqnLoopCounterMap,
+                                        dimValueMap,
+                                        nameValPosMap,
+                                        getvalues
+                                        )
+                               )
+                            {
+                                MosraLogError(<< "ERROR in constraint eqn!" << std::endl);
+                                sqltab->EndTransaction();
+                                return false;
+                            }
+                        }
+                        else
+                        */
+
+                        // ATTENTION:
+                        // - if we've got a constraint defined over OPTIONS (for at least one par,
+                        //   var, or loop) and
+                        // - we don't have a loop at the beginning of the constraint,
+                        // - and we can find the OPTIONS dimension parameter somewhere in the eqn
+                        //   that indicates that this eqn does not just apply to a single element
+                        //   of OPTIONS
+                        // ==> we assume that this constraint is meant to be defined
+                        //     individually for each <other dims> + OPTIONS combination ...
+
+                        if (mmDimEqnMap[msOPTIONS].constFind(eqn) != mmDimEqnMap[msOPTIONS].cend())
+                        {
+                            if (    mmEquationAdmins[eqn].elemMap[0].first != EQN_LOOP
+                                 && mmsEquations[eqn].contains(msOPTIONS)
+                               )
+                            {
+                                for (int opt=0; opt < mslOptions.size(); ++opt)
+                                {
+                                    dimValueMap[msOPTIONS] = opt;
+
+                                    if (!populateEquations(
+                                                eqn,
+                                                eqnActiveSegmentMap,
+                                                0,
+                                                NL_SEG_C,
+                                                mConsCounter,
+                                                eqnLoopCounterMap,
+                                                dimValueMap,
+                                                nameValPosMap,
+                                                getvalues
+                                                )
+                                       )
+                                    {
+                                        MosraLogError(<< "ERROR in constraint eqn!" << std::endl);
+                                        sqltab->EndTransaction();
+                                        return false;
+                                    }
+                                }
+
+                                dimValueMap[msOPTIONS] = -9999;
+                            }
+                        }
+                        else
+                        {
+                            if (!populateEquations(
+                                        eqn,
+                                        eqnActiveSegmentMap,
+                                        0,
+                                        NL_SEG_C,
+                                        mConsCounter,
+                                        eqnLoopCounterMap,
+                                        dimValueMap,
+                                        nameValPosMap,
+                                        getvalues
+                                        )
+                               )
+                            {
+                                MosraLogError(<< "ERROR in constraint eqn!" << std::endl);
+                                sqltab->EndTransaction();
+                                return false;
+                            }
+
+                        }
+
+
+                        // book keeping
+                        processedEqns << eqn;
+                    }
+
+                    // --------------------------------------------------
+                    //  O    Non-linear algebraic OBJECTIVE segment
+                    // --------------------------------------------------
+                    if (mmslObjectives.constFind(eqn) != mmslObjectives.cend())
+                    {
+                        if (!populateEquations(
+                                    eqn,
+                                    eqnActiveSegmentMap,
+                                    0,
+                                    NL_SEG_O,
+                                    mObjCounter,
+                                    eqnLoopCounterMap,
+                                    dimValueMap,
+                                    nameValPosMap,
+                                    getvalues
+                                    )
+                           )
+                        {
+                            MosraLogError(<< "ERROR in objctive eqn!" << std::endl);
+                            sqltab->EndTransaction();
+                            return false;
+                        }
+                        processedEqns << eqn;
+                    }
+                }
+            }
+        }
+
+        // --------------------------------------------------
+        //  process values for J linear explicit area constraints
+        // --------------------------------------------------
+        QMap<QString, QStringList>::const_iterator it = this->mmslAreaCons.constBegin();
+        for (int r=0; it != this->mmslAreaCons.constEnd(); ++it, ++r)
+        {
+            QStringList luOptions = mslOptions;
+            if (!vsZoneField.at(r).isEmpty())
+            {
+                const QString zoneStr = getvalues[nameValPosMap[vsZoneField[r]][0]].tval;
+                luOptions = zoneStr.split(" ", Qt::SkipEmptyParts);
+            }
+
+            std::vector<size_t> vLuOff;
+            for (int opt=0; opt < vvnOptionIndex.at(r).size(); ++opt)
+            {
+                const int luIdx = vvnOptionIndex.at(r).at(opt);
+                const QVector<long long> luDims = {
+                            static_cast<long long>(dimValueMap[msSDU]),
+                            static_cast<long long>(luIdx)
+                            };
+
+                const long long luOffset = mmVarAdminMap[QStringLiteral("lu")].dimOffsetMap[luDims];
+                if (mNonZeroJColCount.constFind(luOffset) == mNonZeroJColCount.cend())
+                {
+                    assert(0);
+                }
+
+                if (luOptions.contains(mslOptions.at(luIdx)))
+                {
+                    mvExplicitAreaConsVarOffsets[r].push_back(luOffset);
+                    mNonZeroJColCount[luOffset] += 1;
+                }
+            }
+        }
+
+        // --------------------------------------------------
+        //  process values for J linear implicit area constraints
+        // --------------------------------------------------
+        // stores three strings per SDU
+        // 0: SDU (rowidx) dim value
+        // 1: J segment body
+        // 2: rhs segement body
+        QString sduVal;
+        QString jseg  ;
+        QString rhsseg;
+        for (int opt=0; opt < mslOptions.size(); ++opt)
+        {
+            const QVector<long long> iacDim = {
+                        static_cast<long long>(dimValueMap[msSDU]),
+                        static_cast<long long>(opt)
+                        };
+
+            const long long iacOffset = mmVarAdminMap[QStringLiteral("lu")].dimOffsetMap[iacDim];
+
+            double areahaval = 0;
+            const otb::AttributeTable::TableColumnType tct = getvalues[areaValueIdx].type;
+            switch(tct)
+            {
+            case otb::AttributeTable::ATTYPE_INT:
+                areahaval = getvalues[areaValueIdx].ival;
+                break;
+
+            case otb::AttributeTable::ATTYPE_DOUBLE:
+                areahaval = getvalues[areaValueIdx].dval;
+                break;
+            default: ;
+            }
+
+            // account for area scaling (if no scaling is specified, factor is 1)
+            areahaval *= mdAreaScalingFactor;
+
+            if (opt == 0)
+            {
+                sduVal.append(QString("%1").arg(iacDim[0]));
+                rhsseg.append(QString("1 %1    #iac SDU[%2]\n")
+                              .arg(areahaval)
+                              .arg(iacDim[0])
+                              );
+            }
+            jseg.append(QString("%1 1\n").arg(iacOffset));
+
+            if (mNonZeroJColCount.constFind(iacOffset) == mNonZeroJColCount.cend())
+            {
+                assert(0);
+            }
+            mNonZeroJColCount[iacOffset] += 1;
+        }
+        const std::vector<QString> iacinfo = {sduVal, jseg, rhsseg};
+        mvvImplicitAreaConsSegments.push_back(iacinfo);
+        // -------------------------------------------------------------------------------
+
+
+        // --------------------------------------------------
+        //  process values for J linear FeatureSet Constraints
+        // --------------------------------------------------
+        QMap<QString, QStringList>::ConstIterator fscIt = this->mslFeatSetCons.constBegin();
+        for(size_t fsCnt=0; fscIt != this->mslFeatSetCons.constEnd(); ++fscIt, ++fsCnt)
+        {
+            MosraLogDebug(<< "processing " << fscIt.key().toStdString());
+
+            QString criName = fscIt.value().at(0);
+
+            QString fsIdField = vsFSCZoneField.at(fsCnt);
+            if (nameValPosMap.constFind(fsIdField) == nameValPosMap.cend())
+            {
+                MosraLogDebug(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                              << "ZoneField '" << fsIdField.toStdString() << "' "
+                              << "not found while poplulating FeatureSet constraints!" << endl);
+                sqltab->EndTransaction();
+                return false;
+            }
+            size_t fsId = getvalues.at(nameValPosMap[fsIdField].at(0)).ival;
+
+            if (mvvFSCUniqueIDCounterMap.at(fsCnt).constFind(fsId) != mvvFSCUniqueIDCounterMap.at(fsCnt).cend())
+            {
+                // get offset for each lu variable
+                // associate the criterion value
+                // append entries for current id and options
+                // keep track of number of offsets by inrcrementing the counter
+
+                // increment Non-zero Col Pos
+                for (int fso=0; fso < vvnFSCOptionIndex.at(fsCnt).size(); ++fso)
+                {
+                    const int fso_id = vvnFSCOptionIndex.at(fsCnt).at(fso);
+
+                    // get options offset
+                    const QVector<long long> fsoDim = {
+                                static_cast<long long>(dimValueMap[msSDU]),
+                                static_cast<long long>(fso_id)
+                                };
+                    const long long fsoOffset = mmVarAdminMap[QStringLiteral("lu")].dimOffsetMap[fsoDim];
+
+                    // get criterion coefficient
+                    if (nameValPosMap.constFind(criName) != nameValPosMap.cend())
+                    {
+                        const size_t criidx = nameValPosMap.value(criName).at(vvnFSCOptionIndex.at(fsCnt).at(fso));
+                        const double criVal = getvalues.at(criidx).dval;
+
+                        QString segstr = QString("%1 %2\n").arg(fsoOffset).arg(criVal);
+                        mvvFSCUniqueIDSegmentRHSMap.at(fsCnt)[fsId][0].append(segstr);
+
+                        mvvFSCUniqueIDCounterMap.at(fsCnt)[fsId] += 1;
+                        mNonZeroJColCount[fsoOffset] += 1;
+                    }
+                }
+            }
+        }
+
+        // -------------------------------------------------
+        // get new record with values
+        brow = sqltab->DoBulkGet(getvalues);
+        ++recCounter;
+
+    } while (brow);
+
+    sqltab->EndTransaction();
+
+    MosraLogDebug(<< ctxNMMosra << "::" << __FUNCTION__ << "() - INFO: "
+                  << "processed " << recCounter << " records while "
+                  << "poplulating the equations!" << endl);
+
+
+    // ---------------------------------------------------------
+    //      LINEAR J section
+
+    QTextStream rhsStr(&mr_seg);
+    rhsStr.setRealNumberNotation(QTextStream::SmartNotation);
+    if (mConsCounter == 0)
+    {
+        rhsStr << QStringLiteral("r \n");
+    }
+
+    // ..............................................
+    // implicit area constraints
+    // just one file for the C / J implict are constraints
+    // as they're short and otherwise create an error
+    QFile* iacfj_seg = nullptr;
+    if (!createSegmentFile(iacfj_seg, NMMosra::NL_SEG_J, "iac"))
+    {
+        return false;
+    }
+    QTextStream iacJStr(iacfj_seg);
+    mvfJ_seg.push_back(iacfj_seg);
+
+    QFile* iacfc_seg = nullptr;
+    if (!createSegmentFile(iacfc_seg, NMMosra::NL_SEG_C, "iac"))
+    {
+        return false;
+    }
+    QTextStream iacCStr(iacfc_seg);
+    mvfC_seg.push_back(iacfc_seg);
+
+    for (int iac=0; iac < mvvImplicitAreaConsSegments.size(); ++iac, ++mConsCounter)
+    {
+        // constraint body
+        QString sj_seg = mvvImplicitAreaConsSegments.at(iac).at(1);
+        sj_seg.prepend(QString("J%1 %2   # iac SDU[%3]\n")
+                        .arg(mConsCounter)
+                        .arg(mslOptions.size())
+                        .arg(mvvImplicitAreaConsSegments[iac][0])
+                      );
+        iacJStr << sj_seg;
+
+        // rhs
+        rhsStr << mvvImplicitAreaConsSegments[iac][2];
+
+        // non-linear pendant
+        iacCStr << QString("C%1    # iac SDU[%3]\n")
+                            .arg(mConsCounter)
+                            .arg(mvvImplicitAreaConsSegments[iac][0]);
+        iacCStr << QString("n0\n");
+    }
+    iacJStr.flush();
+    iacCStr.flush();
+    ++mJAccessCounter;
+    ++mCAccessCounter;
+
+
+    // ..............................................
+    // explicit area constraints
+    QFile* eacfc_seg = nullptr;
+    if (!createSegmentFile(eacfc_seg, NMMosra::NL_SEG_C, "eac"))
+    {
+        return false;
+    }
+    mvfC_seg.push_back(eacfc_seg);
+    QTextStream eaccStr(mvfC_seg[mCAccessCounter]);
+
+    QFile* eacfj_seg = nullptr;
+    if (!createSegmentFile(eacfj_seg, NMMosra::NL_SEG_J, "eac"))
+    {
+        return false;
+    }
+    mvfJ_seg.push_back(eacfj_seg);
+    QTextStream eacjStr(mvfJ_seg[mJAccessCounter]);
+
+    QMap<QString, QStringList>::const_iterator it = this->mmslAreaCons.constBegin();
+    for (int r=0; it != this->mmslAreaCons.constEnd(); ++it, ++r, ++mConsCounter)
+         //, ++mCAccessCounter, ++mJAccessCounter)
+    {
+
+        const QString consLabel = QString("    #%1").arg(it.key());
+
+        eaccStr << QString("C%1    # %2\n").arg(mConsCounter).arg(it.key());
+        eaccStr << QString("n0\n");
+
+
+        // body <= rhs
+        if (vnConsType.at(r) == 1)
+        {
+            rhsStr << 1 << sp << vdRHS.at(r) << consLabel << eol;
+        }
+        // body >= rhs
+        else if (vnConsType.at(r) == 2)
+        {
+            rhsStr << 2 << sp << vdRHS.at(r) << consLabel << eol;
+        }
+        // body = rhs
+        else if (vnConsType.at(r) == 3)
+        {
+            rhsStr << 4 << sp << vdRHS.at(r) << consLabel << eol;
+        }
+        // no constraints on body
+        else
+        {
+            rhsStr << 3 << eol;
+        }
+
+
+        // .................... J seg ....................
+
+        std::vector<size_t> luOff = mvExplicitAreaConsVarOffsets.at(r);
+        eacjStr << QString("J%1 %2    # %3\n").arg(mConsCounter).arg(luOff.size()).arg(it.key());
+
+        // sort offsets in ascending order
+        std::sort(luOff.begin(), luOff.end());
+
+        for (int lu=0; lu < luOff.size(); ++lu)
+        {
+            eacjStr << luOff[lu] << sp << 1 << eol;
+        }
+    }
+    eaccStr.flush();
+    eacjStr.flush();
+    ++mCAccessCounter;
+    ++mJAccessCounter;
+
+    // ....................................................
+    // FeatureSet Constraints
+    QFile* fscc_seg = nullptr;
+    if (!createSegmentFile(fscc_seg, NMMosra::NL_SEG_C, "fsc"))
+    {
+        return false;
+    }
+    mvfC_seg.push_back(fscc_seg);
+    QTextStream fsccStr(mvfC_seg[mCAccessCounter]);
+
+    QFile* fscj_seg = nullptr;
+    if (!createSegmentFile(fscj_seg, NMMosra::NL_SEG_J, "fsc"))
+    {
+        return false;
+    }
+    mvfJ_seg.push_back(fscj_seg);
+    QTextStream fscjStr(mvfJ_seg[mJAccessCounter]);
+
+
+    QMap<QString, QStringList>::ConstIterator fsIt = this->mslFeatSetCons.constBegin();
+    for (int f=0; fsIt != this->mslFeatSetCons.constEnd(); ++fsIt, ++f)
+    {
+        QStringList optColPair = fsIt.key().split(":", Qt::SkipEmptyParts);
+
+        QMap<size_t, QStringList>::ConstIterator fsidIt = mvvFSCUniqueIDSegmentRHSMap.at(f).constBegin();
+        for (int fid=0; fsidIt != mvvFSCUniqueIDSegmentRHSMap.at(f).constEnd();
+                 ++fid, ++fsidIt, ++mConsCounter
+             //, ++mCAccessCounter, ++mJAccessCounter
+             )
+        {
+            const QString consLabel = QString("    #%1 FSC_%2_%3_%4").arg(f)
+                                                                  .arg(vsFSCZoneField.at(f))
+                                                                  .arg(fsidIt.key())
+                                                                  .arg(optColPair.at(0));
+
+            fsccStr << QString("C%1    # %2\n").arg(mConsCounter).arg(consLabel);
+            fsccStr << QString("n0\n");
+
+            QString idrhs = fsidIt.value().at(1);
+            rhsStr << idrhs << consLabel << eol;
+
+            // .................... J seg ....................
+
+            fscjStr << QString("J%1 %2    # %3\n").arg(mConsCounter)
+                                               .arg(mvvFSCUniqueIDCounterMap.at(f)[fsidIt.key()])
+                                               .arg(consLabel);
+
+            QString idjstr = fsidIt.value().at(0);
+            fscjStr << idjstr;
+        }
+    }
+    fsccStr.flush();
+    fscjStr.flush();
+    ++mCAccessCounter;
+    ++mJAccessCounter;
+
+    // --------------------------------------------------------------------------------
+
+    return true;
+}
+
+bool NMMosra::determineHighDimLoopIterLength(
+        const QString &eqn,
+        otb::SQLiteTable::Pointer &sqltab
+        )
+{
+    if (!mmslHighDimLoopEquations.keys().contains(eqn))
+    {
+        MosraLogError(<< "No registered high dim loop equation specified!" << std::endl);
+        return false;
+    }
+
+    QStringList hdims = mmslHighDimLoopEquations[eqn].first;
+    if (hdims.last().compare(QStringLiteral("SDU")) != 0)
+    {
+        hdims << QStringLiteral("SDU");
+    }
+
+    QStringList dimCols;
+    foreach(const QString& hd, hdims)
+    {
+        if (mmslParameters.constFind(hd) != mmslParameters.cend())
+        {
+            dimCols << mmslParameters[hd].at(0);
+        }
+        else
+        {
+            MosraLogDebug(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: Failed "
+                          << "fetching table column for dimension parameter '"
+                          << hd.toStdString() << "'!");
+            return false;
+        }
+    }
+
+
+    const int numHighDims = dimCols.size();
+    for (int dims=0; dims < numHighDims; ++dims)
+    {
+        std::stringstream sqlstr, gbcl;
+        sqlstr << "select ";
+        gbcl << "group by ";
+
+        std::vector<std::vector<otb::AttributeTable::ColumnValue> > tab;
+        std::vector<otb::AttributeTable::TableColumnType> coltypes;
+
+        otb::AttributeTable::TableColumnType tct = otb::AttributeTable::ATTYPE_INT;
+
+        // numHighDims - dims = 3, 2, 1
+        const int ncols = numHighDims - dims;
+        for (int len=0; len < ncols ; ++len)
+        {
+            if (ncols == 1)
+            {
+                sqlstr << "count(distinct \""
+                       << dimCols.at(len).toStdString()
+                       << "\")";
+                coltypes.push_back(tct);
+            }
+            else if (len == ncols-1)
+            {
+                sqlstr << "count(\"" << dimCols.at(len).toStdString()
+                       << "\")";
+                coltypes.push_back(tct);
+            }
+            else
+            {
+                sqlstr << "\"" << dimCols.at(len).toStdString()
+                       << "\"";
+                coltypes.push_back(tct);
+            }
+
+            // fmu, rowidx
+            if (ncols > 1 && len < ncols-1)
+            {
+                gbcl << "\"" << dimCols.at(len).toStdString()
+                     << "\"";
+            }
+
+            if (len < ncols-1)
+            {
+                sqlstr << ", ";
+            }
+
+            //   0      1    2      3
+            // region, fmu, farm, rowidx
+            if (ncols > 2 && len < ncols-2)
+            {
+                gbcl   << ", ";
+            }
+        }
+
+        // complete the query string
+        sqlstr << " from \"" << sqltab->GetTableName() << "\" "
+               << " where " << msOptFeatures.toStdString() << " == 1 ";
+        if (ncols > 1)
+        {
+            sqlstr << gbcl.str();
+        }
+
+        std::string thequery = sqlstr.str();
+
+        if (!sqltab->TableDataFetch(tab, coltypes, thequery))
+        {
+            MosraLogDebug(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                          << "Round #" << dims << " populating HighDimLoopIterLength failed: "
+                          << thequery);
+            return false;
+        }
+
+        for (int row=0; row < tab.size(); ++row)
+        {
+            QVector<long long> key;
+            for (int col=0; col < tab[0].size()-1; ++col)
+            {
+                key.push_back(tab[row][col].ival);
+            }
+            // skip empty keys (might be some null values around ...
+            if (key.size() > 0)
+            {
+                mmvHighDimLoopIterLength.insert(key, tab[row][tab[0].size()-1].ival);
+            }
+        }
+
+        //NMDebug(<< "--------------- \n")
+        //NMDebug(<< "mmvHiDimLoopIterLengths ...\n");
+        //auto dimit = mmvHighDimLoopIterLength.cbegin();
+        //for (; dimit != mmvHighDimLoopIterLength.cend(); ++dimit)
+        //{
+        //    for (int c=0; c < dimit.key().size(); ++c)
+        //    {
+        //        NMDebug(<< dimit.key().at(c) << " => ");
+        //    }
+        //    NMDebug(<< endl);
+        //}
+        //NMDebug(<< "END ---------\n\n");
+    }
+
+    return true;
+}
+
+bool NMMosra::processNLSegmentData2()
+{
+
+    if (this->mDataSet == nullptr)
+    {
+        MosraLogError(<< "ERROR - DataSet is NULL!" << endl);
+        return false;
+    }
+
+    otb::SQLiteTable::Pointer sqltab = dynamic_cast<otb::SQLiteTable*>(
+                this->mDataSet->getOtbAttributeTable().GetPointer());
+    if (sqltab.IsNull())
+    {
+        MosraLogError(<< "ERROR: DataSet is NULL!" << endl);
+        return false;
+    }
+
+    // ========================================================
+    //          PREPARE LOOPING && EQUATION POPULATION
+    // ========================================================
+    // create dimension lookup by eqn
+    // and
+    // create pos lookup by parameter/variable
+    // i.e. pos in getnames and getvalues respectively
+    // NOTE: OPTIONS dimension is ignored as values
+    // are either known already for each option and don't
+    // have to be retrieved or they just reference
+    // a column in the db
+
+    // how often does a defined variable appear
+    // in objectives and constraints (count)
+    QMap<QString, int> procVarInObjConsMap;
+
+    // <operand or dimension parameter name>,
+    //      < index of associated column name/value in
+    //        getnames/getvalues vector >
+    QMap<QString, std::vector<size_t> > nameValPosMap;
+    std::vector<std::string> getnames;
+    std::vector<otb::AttributeTable::ColumnValue> getvalues;
+
+    // track actual columns added to getnames / getvalues
+    mmLookupColsFstParam.clear();
+
+    // list of names of equations that need to be populated
+    // and written into NL file
+    QStringList eqnNames;
+    eqnNames << mmslObjectives.keys();
+    //eqnNames << mslProcessVars;
+    bool bOK;
+    double val;
+    QString rhs;
+    eqnNames << mmslLinearConstraints.keys();
+    auto linConRhs = mmslLinearConstraints.cbegin();
+    for(;  linConRhs != mmslLinearConstraints.cend(); ++linConRhs)
+    {
+        rhs = linConRhs.value().at(1);
+        val = rhs.toDouble(&bOK);
+        if (!bOK)
+        {
+            eqnNames << linConRhs.value().at(1);
+        }
+    }
+
+    eqnNames << mmslNonLinearConstraints.keys();
+    auto nlConRhs = mmslNonLinearConstraints.cbegin();
+    for(;  nlConRhs!= mmslNonLinearConstraints.cend(); ++nlConRhs)
+    {
+        rhs = nlConRhs.value().at(1);
+        val = rhs.toDouble(&bOK);
+        if (!bOK)
+        {
+            eqnNames << nlConRhs.value().at(1);
+        }
+    }
+
+    eqnNames << mmslLogicConstraints.keys();
+    auto logConRhs = mmslLogicConstraints.cbegin();
+    for(;  logConRhs!= mmslLogicConstraints.cend(); ++logConRhs)
+    {
+        rhs = logConRhs.value().at(1);
+        val = rhs.toDouble(&bOK);
+        if (!bOK)
+        {
+            eqnNames << logConRhs.value().at(1);
+        }
+    }
+
+    // <dimension parameter name>,
+    //      < set of (distinct) equation names
+    //        the parameter appears in >
+    //QMap<QString, QSet<QString> > mmDimEqnMap;
+
+    // populate the above maps
+    foreach(const QString& name, eqnNames)
+    {
+        identifyHighDimLoopEquations(name, name);
+
+        if (!createEqnElemAdminMap(
+                    mmDimEqnMap,
+                    nameValPosMap,
+                    procVarInObjConsMap,
+                    getnames,
+                    getvalues,
+                    name)
+           )
+        {
+            return false;
+        }
+    }
+
+
+    // ========================================================
+    //          POPULATE EQUATIONS
+    // ========================================================
+
+    mCAccessCounter = 0;
+    mJAccessCounter = 0;
+    mConsCounter = 0;
+    mObjCounter = 0;
+    mLogicConsCounter = 0;
+
+    // ---------------------------------------------------------
+    //          LOW-DIM EQUATIONS
+    // ---------------------------------------------------------
+
+    populateLowDimAndOtherEquations(
+                sqltab,
+                nameValPosMap,
+                getnames,
+                getvalues
+                );
+
+    // ---------------------------------------------------------
+    //          HIGH-DIM EQUATIONS
+    // ---------------------------------------------------------
+    foreach(const QString& eqn, mmslHighDimLoopEquations.keys())
+    {
+        if (mmPrefixEquations.constFind(eqn) == mmPrefixEquations.cend())
+        {
+            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                          << "Couldn't find HighDim Equation '"
+                          << eqn.toStdString()
+                          << "' in EquationAdmins, so we'll skip it!" << endl);
+            continue;
+        }
+
+        EquationAdmin& pea = mmPrefixEquations[eqn].first;
+
+        // check whether we've got a non-nested for loop
+        if (    pea.loopList.size() > 0
+             && pea.loopList.at(0).name.compare(QStringLiteral("for"), Qt::CaseInsensitive) == 0
+             && pea.loopList.at(0).level == 0
+            )
+        {
+            // bail out if the loop does not encompass the whole equation
+            // 0123456789012
+            // for{FMU_QL}( )  --> loop preamble = 5 + dim.length
+            if (    pea.loopList.at(0).bodyStart > 0
+                 || mmslNonLinearConstraints.constFind(eqn) == mmslNonLinearConstraints.cend()
+               )
+            {
+                MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - LUMASS PANIC: "
+                              << "Bear with me, please, but I've got no clue what you want me to do, really! "
+                              << " I can only handle "
+                              << " for-loops in constraints and only if they apply to the whole "
+                              << " equation!");
+                return false;
+            }
+
+            // --------------------------------------------------------------------
+            // determine number of iterations for each dimension
+
+            if (!determineHighDimLoopIterLength(eqn, sqltab))
+            {
+                MosraLogError(<< "Uable to determine high-dim loop length!");
+                return false;
+            }
+
+            /*
+            // pepare table fetch of distinct values of the for-loop dimension
+            std::vector< std::vector<otb::AttributeTable::ColumnValue> > fortab;
+            std::vector<otb::AttributeTable::TableColumnType> fortypes;
+            fortypes.push_back(otb::AttributeTable::ATTYPE_INT);
+
+            std::stringstream forsql;
+            forsql << "select distinct \"" << pea.loopList.at(0).dim.toStdString() << "\" "
+                 << "from \"" << sqltab->GetTableName() << "\" "
+                 << "where \"" << msOptFeatures.toStdString() << "\" == 1";
+
+            if (!sqltab->TableDataFetch(fortab, fortypes, forsql.str()))
+            {
+                MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                              << "Unable to fetch distinct for-loop dimension values: "
+                              << sqltab->getLastLogMsg());
+                return false;
+            }
+            */
+
+            mmLookupColsFstParam.clear();
+            QMap<QString, QSet<QString> > hdimEqnMap;
+            QMap<QString, std::vector<size_t> > hdValPosMap;
+            QMap<QString, int> pvicm;
+            std::vector<std::string> hdgetnames;
+            std::vector<otb::AttributeTable::ColumnValue> hdgetvalues;
+
+            if (!createEqnElemAdminMap(
+                        hdimEqnMap,
+                        hdValPosMap,
+                        pvicm,
+                        hdgetnames,
+                        hdgetvalues,
+                        eqn))
+            {
+                MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                              << "Failed creating EqnElemAdminMap!");
+                return false;
+            }
+
+
+            // ---------------------------------------------------------------
+            // ------------- DISTINCT VALUE ITERATION ------------------------
+
+            // number of iterations ( == unique values in for-set)
+            //const int numForElems = fortab.size() > 0 ? fortab.at(0).size() : 0;
+
+            // iterate over the distinct values in set <for-dim>
+            //for (int dfv=0; dfv < numForElems; ++dfv)
+
+            QStringList dims = this->mmslHighDimLoopEquations[eqn].first;
+
+            auto hditer = mmvHighDimLoopIterLength.cbegin();
+            for (; hditer != mmvHighDimLoopIterLength.cend(); ++hditer)
+            {
+                // select set of SDUs for the given distinct for-value/element
+                std::stringstream vwclStr;
+                vwclStr << "where \"" << msOptFeatures.toStdString() << "\" == 1 ";
+                for (int d=0; d < dims.size(); ++d)
+                {
+                    //if (d < dims.size()-1)
+                    //{
+                    //    vwclStr << " and ";
+                    //}
+
+                    vwclStr << " and \"" << dims.at(d).toStdString() << "\" == " << hditer.key().at(d);
+                }
+
+                std::string wcstr = vwclStr.str();
+
+                bool brow = sqltab->PrepareBulkGet(hdgetnames, vwclStr.str());
+                if (!brow)
+                {
+                    MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                                  << "Populating for-loop equation '" << eqn.toStdString() << "' "
+                                  << "failed: " << sqltab->getLastLogMsg());
+                    sqltab->EndTransaction();
+                    return false;
+                }
+
+                sqltab->BeginTransaction();
+                brow = sqltab->DoBulkGet(hdgetvalues);
+                if (!brow)
+                {
+                    MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                                  << "Populating for-loop equation '" << eqn.toStdString() << "' "
+                                  << "failed: " << sqltab->getLastLogMsg());
+                    sqltab->EndTransaction();
+                    return false;
+                }
+
+/// TODO!! - the following piece of code is a modified copy from ::processNLSegmentData() which also
+/// appears in this or a slightly modified form in ::populateLowDimAndOtherEquations!
+/// very bad practice, low maintainability, error prone --> nees to be rectified with more time
+
+                // -----------------------------------------------------------
+
+                // clear HighDimValueComboTracker for this equation
+                mmslHighDimValComboTracker[eqn].clear();
+
+                // create lookup for last value of a dimension
+                // dimValueMap: NOTE: OPTIONS values for
+                // variable offset look up are stored 0-based!
+                QMap<QString, double> dimValueMap;
+                QMap<QString, bool> dimChangeMap;
+
+                const QStringList dimensions = hdimEqnMap.keys();
+                foreach(const QString& td, dimensions)
+                {
+                    dimValueMap[td] = -1;
+                    dimChangeMap[td] = false;
+                }
+
+                // this map is empty to begin with, if an inner
+                // loop is iterated over multiple times, the
+                // after the last iteration, the loop counter
+                // is reset to '0'
+
+                //<eqn name>, <loop dim, counter value 1-based!> >
+                QMap<QString, QMap<QString, int> > eqnLoopCounterMap;
+
+                // set the eqn's active segment map to account for the leading for loop
+                QMap<QString, QStack<std::vector<int> > > eqnActiveSegmentMap;
+                QStack<std::vector<int> > segStack;
+                std::vector<int> aseg = {pea.loopList.at(0).bodyStart+1, mmPrefixEquations[eqn].second.size()-1};
+                segStack.push_back(aseg);
+                eqnActiveSegmentMap.insert(eqn, segStack);
+
+                long recCounter = 0;
+                do
+                {
+                    // -----------------------------------------------------
+                    //          HAVE DIMENSION VALUES CHANGED?
+                    // get dimension values
+                    foreach (const QString& dim, dimensions)
+                    {
+                        // as OPTIONS differ even at the smallest spatial
+                        // dimension, i.e. at SDU level, we trigger processing
+                        // each time it appears in an equation
+                        if (dim.compare(msOPTIONS) == 0)
+                        {
+                            dimValueMap[dim] = -9999;
+                            dimChangeMap[dim] = true;
+                            continue;
+                        }
+
+                        double dimValue = getRecordValue(
+                                    hdValPosMap,
+                                    hdgetvalues,
+                                    dim
+                                    );
+
+                        if (dimValue != dimValueMap[dim])
+                        {
+                            dimValueMap[dim] = dimValue;
+                            dimChangeMap[dim] = true;
+                        }
+                        else
+                        {
+                            dimChangeMap[dim] = false;
+                        }
+                    }
+
+                    // --------------------------------------------------
+                    //          populate equation
+
+                    //auto dimChMapIt = dimChangeMap.cbegin();
+                    //for(; dimChMapIt != dimChangeMap.cend(); ++dimChMapIt)
+                    {
+                        //if (dimChMapIt.value() == true)
+                        {
+
+                            // track high dim combinations
+                            //QVector<long long> highDimValues;
+                            ////foreach(const QString& hdim, mmHighDimEqnMap[eqn])
+                            //foreach(const QString& hdim, mmslHighDimLoopEquations[eqn].first)
+                            //{
+                            //    highDimValues.push_back(dimValueMap[hdim]);
+                            //}
+
+                            //if (    mmslHighDimValComboTracker[eqn].constFind(highDimValues)
+                            //     != mmslHighDimValComboTracker[eqn].cend()
+                            //   )
+                            //{
+                            //    continue;
+                            //}
+                            //else
+                            //{
+                            //    mmslHighDimValComboTracker[eqn].insert(highDimValues);
+                            //}
+
+                            // ---------------------------------------------
+                            //  C    (Non-linear) algebraic constraints
+                            // ---------------------------------------------
+                            if (    mmslNonLinearConstraints.constFind(eqn) != mmslNonLinearConstraints.cend()
+                                 || mmslLinearConstraints.constFind(eqn) != mmslLinearConstraints.cend()
+                               )
+                            {
+                                // ATTENTION:
+                                // - if we've got a constraint defined over OPTIONS (for at least one parameter,
+                                //   variable, or loop) and
+                                // - we don't have a loop at the beginning of the constraint,
+                                // - and we can find the OPTIONS dimension parameter somewhere in the eqn
+                                //   that indicates that this eqn does not just apply to a single element
+                                //   of OPTIONS
+                                // ==> we assume that this constraint is meant to be defined
+                                //     individually for each <other dims> + OPTIONS combination ...
+
+                                // set the eqn's active segment map
+
+
+                                if (mmDimEqnMap[msOPTIONS].constFind(eqn) != mmDimEqnMap[msOPTIONS].cend())
+                                {
+                                    if (    mmEquationAdmins[eqn].elemMap[0].first != EQN_LOOP
+                                         && mmsEquations[eqn].contains(msOPTIONS)
+                                       )
+                                    {
+                                        for (int opt=0; opt < mslOptions.size(); ++opt)
+                                        {
+                                            dimValueMap[msOPTIONS] = opt;
+
+                                            if (!populateEquations(
+                                                        eqn,
+                                                        eqnActiveSegmentMap,
+                                                        0,
+                                                        NL_SEG_C,
+                                                        mConsCounter,
+                                                        eqnLoopCounterMap,
+                                                        dimValueMap,
+                                                        hdValPosMap,
+                                                        hdgetvalues
+                                                        )
+                                               )
+                                            {
+                                                MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                                                              << "Populating for-loop equation '" << eqn.toStdString() << "' "
+                                                              << "failed: " << sqltab->getLastLogMsg());
+                                                sqltab->EndTransaction();
+                                                return false;
+                                            }
+                                        }
+
+                                        dimValueMap[msOPTIONS] = -9999;
+                                    }
+                                }
+                                else
+                                {
+                                    if (!populateEquations(
+                                                eqn,
+                                                eqnActiveSegmentMap,
+                                                0,
+                                                NL_SEG_C,
+                                                mConsCounter,
+                                                eqnLoopCounterMap,
+                                                dimValueMap,
+                                                hdValPosMap,
+                                                hdgetvalues
+                                                )
+                                       )
+                                    {
+                                        MosraLogError(<< "ERROR in constraint eqn!" << std::endl);
+                                        sqltab->EndTransaction();
+                                        return false;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+
+
+                    // get new record with values
+                    brow = sqltab->DoBulkGet(hdgetvalues);
+                    ++recCounter;
+
+                } while (brow);
+
+                sqltab->EndTransaction();
+
+                MosraLogDebug(<< ctxNMMosra << "::" << __FUNCTION__ << "() - INFO: "
+                              << "processed " << recCounter << " records while "
+                              << "poplulating the equations!" << endl);
+
+
+
+
+
+
+
+                // for each set create a new constraint
+                   //-> - process equation with sums and all
+
+            }
+
+        }
+        // HIGH DIM SUM EQUATION?
+        else
+        {
+            MosraLogDebug(<< ctxNMMosra << "::" << __FUNCTION__ << "() - INFO: "
+                          << "Asked to process eqn '" << pea.name.toStdString() << "' but don't a clue how!"
+                          << " We'll skip the action on this one and see how it goes - shall we?");
+        }
+    }
+
+    // ========================================================
+
+
+    /*
+    // ..............................................
+    // implicit area constraints
+    for (int iac=0; iac < mvvImplicitAreaConsSegments.size(); ++iac, ++mConsCounter)
+    {
+
+        // constraint body
+        QString j_seg = mvvImplicitAreaConsSegments.at(iac).at(1);
+        j_seg.prepend(QString("J%1 %2   # iac SDU[%3]\n")
+                        .arg(mConsCounter)
+                        .arg(mslOptions.size())
+                        .arg(mvvImplicitAreaConsSegments[iac][0])
+                      );
+        mvJ_seg.push_back(j_seg);
+
+        // rhs
+        rhsStr << mvvImplicitAreaConsSegments[iac][2];
+
+        // corresponding non-linear C part
+        QString c_seg;
+        mvC_seg.push_back(c_seg);
+        QTextStream cStr(&mvC_seg[mConsCounter]);
+
+        cStr << QString("C%1    # iac SDU[%3]\n")
+                            .arg(mConsCounter)
+                            .arg(mvvImplicitAreaConsSegments[iac][0]);
+        cStr << QString("n0\n");
+    }
+    */
+
+
+    // ---------------------------------------------------------
+    //      k Segment - Jacobian column count
+
+    QTextStream kStr(&mk_seg);
+
+    const int klen = mNonZeroJColCount.size()-1;
+    kStr << QString("k%1    # cumulative non-zeros in Jacobian\n").arg(klen);
+    long cumVar = 0;
+    auto jcolit = mNonZeroJColCount.constBegin();
+    for (int k=0; k < klen; ++k, ++jcolit)
+    {
+        cumVar += jcolit.value();
+        kStr << cumVar << Qt::endl;
+    }
+
+    return true;
+}
+
+/*
+bool NMMosra::processNLSegmentData()
+{
+
+    QChar eol('\n');
+    QChar sp(' ');
+
+    if (this->mDataSet == nullptr)
+    {
+        MosraLogError(<< "ERROR - DataSet is NULL!" << endl);
+        return false;
+    }
+
+    otb::SQLiteTable::Pointer sqltab = dynamic_cast<otb::SQLiteTable*>(
+                this->mDataSet->getOtbAttributeTable().GetPointer());
+    if (sqltab.IsNull())
+    {
+        MosraLogError(<< "ERROR: DataSet is NULL!" << endl);
+        return false;
+    }
+
+    // ========================================================
+    //          PREPARE LOOPING && EQUATION POPULATION
+    // ========================================================
+    // create dimension lookup by eqn
+    // and
+    // create pos lookup by parameter/variable
+    // i.e. pos in getnames and getvalues respectively
+    // NOTE: OPTIONS dimension is ignored as values
+    // are either known already for each option and don't
+    // have to be retrieved or they just reference
+    // a column in the db
+
+    // how often does a defined variable appear
+    // in objectives and constraints (count)
+    QMap<QString, int> procVarInObjConsMap;
+
+    // <operand or dimension parameter name>,
+    //      < index of associated column name/value in
+    //        getnames/getvalues vector >
+    QMap<QString, std::vector<size_t> > nameValPosMap;
+    std::vector<std::string> getnames;
+    std::vector<otb::AttributeTable::ColumnValue> getvalues;
+
+    // track actual columns added to getnames / getvalues
+    mmLookupColsFstParam.clear();
+
+    // list of names of equations that need to be populated
+    // and written into NL file
+    QStringList eqnNames;
+    eqnNames << mmslObjectives.keys();
+    //eqnNames << mslProcessVars;
+    bool bOK;
+    double val;
+    QString rhs;
+    eqnNames << mmslLinearConstraints.keys();
+    auto linConRhs = mmslLinearConstraints.cbegin();
+    for(;  linConRhs != mmslLinearConstraints.cend(); ++linConRhs)
+    {
+        rhs = linConRhs.value().at(1);
+        val = rhs.toDouble(&bOK);
+        if (!bOK)
+        {
+            eqnNames << linConRhs.value().at(1);
+        }
+    }
+
+    eqnNames << mmslNonLinearConstraints.keys();
+    auto nlConRhs = mmslNonLinearConstraints.cbegin();
+    for(;  nlConRhs!= mmslNonLinearConstraints.cend(); ++nlConRhs)
+    {
+        rhs = nlConRhs.value().at(1);
+        val = rhs.toDouble(&bOK);
+        if (!bOK)
+        {
+            eqnNames << nlConRhs.value().at(1);
+        }
+    }
+
+    eqnNames << mmslLogicConstraints.keys();
+    auto logConRhs = mmslLogicConstraints.cbegin();
+    for(;  logConRhs!= mmslLogicConstraints.cend(); ++logConRhs)
+    {
+        rhs = logConRhs.value().at(1);
+        val = rhs.toDouble(&bOK);
+        if (!bOK)
+        {
+            eqnNames << logConRhs.value().at(1);
+        }
+    }
+
+    // <dimension parameter name>,
+    //      < set of (distinct) equation names
+    //        the parameter appears in >
+    //QMap<QString, QSet<QString> > mmDimEqnMap;
+
+    // populate the above maps
+    foreach(const QString& name, eqnNames)
+    {
+        if (!createEqnElemAdminMap(
+                    mmDimEqnMap,
+                    nameValPosMap,
+                    procVarInObjConsMap,
+                    getnames,
+                    getvalues,
+                    name)
+           )
+        {
+            return false;
+        }
+    }
+
+    // ========================================================
+    // create data structure for higher equation dim combos
+    // ========================================================
+    //const QStringList lowDims = {msSDU, msOPTIONS};
+    const QStringList dimensions = mmDimEqnMap.keys();
+
+
+    //std::vector<std::string> highDimNames;
+    //std::vector<otb::AttributeTable::ColumnValue> highDimValues;
+
+    //std::vector<otb::AttributeTable::TableColumnType> colTypes;
+    //std::vector<std::vector<otb::AttributeTable::ColumnValue> > colValues;
+
+
+    //otb::SQLiteTable::Pointer uctab = otb::SQLiteTable::New();
+    //const QString ucfn = QString("%1/uctab_%2.ldb").arg(this->msDataPath).arg(uctab->GetRandomString(8).c_str());
+    //uctab->SetTableName("uctab");
+    //if (uctab->CreateTable(ucfn.toStdString()) != otb::SQLiteTable::ATCREATE_CREATED)
+    //{
+    //    sqltab->EndTransaction();
+    //    MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+    //                  << "Couldn't create in-memory helper DB!" << std::endl);
+    //    return false;
+    //}
+
+    //uctab->BeginTransaction();
+    //std::stringstream ucstr;
+    //ucstr << "select count(*) from " << uctab->GetTableName()
+    //      << " where ";
+
+    //int highdimcnt = 0;
+    //foreach(const QString& adim, dimensions)
+    //{
+    //    if (!lowDims.contains(adim))
+    //    {
+    //        if (!uctab->AddColumn(adim.toStdString(), otb::AttributeTable::ATTYPE_INT))
+    //        {
+    //            uctab->EndTransaction();
+    //            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+    //                          << "Couldn't add column '" << adim.toStdString()
+    //                          << "' to in-memory helper DB!" << std::endl);
+    //            return false;
+    //        }
+
+    //        ucstr << adim.toStdString() << " == ? ";
+    //        if (highdimcnt < dimensions.size()-1 - lowDims.size())
+    //        {
+    //            ucstr << "and ";
+    //        }
+
+    //        highDimNames.push_back(adim.toStdString());
+    //        otb::AttributeTable::ColumnValue hdval;
+    //        hdval.type = otb::AttributeTable::ATTYPE_INT;
+    //        highDimValues.push_back(hdval);
+
+    //        otb::AttributeTable::TableColumnType tcol = otb::AttributeTable::ATTYPE_INT;
+    //        colTypes.push_back(tcol);
+
+
+    //        ++highdimcnt;
+    //    }
+    //}
+    //uctab->EndTransaction();
+    //const std::string rowCountWhereClause = ucstr.str();
+
+    // --------------------------------------------------------
+    //      prepare linear explict area constraints
+    // --------------------------------------------------------
+
+    std::vector<QString> vsConsLabel;
+    std::vector<int> vnZoneLength;
+    std::vector<QString> vsZoneField;
+    std::vector<std::vector<unsigned int> > vvnOptionIndex;
+    std::vector<unsigned int> vnConsType;
+    std::vector<double> vdRHS;
+
+    if (!processExplicitArealCons(vsConsLabel, vnZoneLength, vsZoneField,
+                             vvnOptionIndex, vnConsType, vdRHS))
+    {
+        return false;
+    }
+
+    // add zone fields to getnames & getvalues
+    for (int z=0; z < vsZoneField.size(); ++z)
+    {
+        if (    !vsZoneField.at(z).isEmpty()
+             && nameValPosMap.constFind(vsZoneField[z]) == nameValPosMap.cend()
+           )
+        {
+            std::vector<size_t> zfoff = {getnames.size()};
+            nameValPosMap.insert(vsZoneField[z], zfoff);
+
+            getnames.push_back(vsZoneField[z].toStdString());
+            otb::AttributeTable::ColumnValue zcv;
+            getvalues.push_back(zcv);
+        }
+    }
+    // make sure we've got the SDU field (rowidx) in the namValPosMap
+    if (nameValPosMap.constFind(msSDU) == nameValPosMap.cend())
+    {
+        std::vector<size_t> rowoff = {getnames.size()};
+        nameValPosMap.insert(msSDU, rowoff);
+
+        getnames.push_back(msSDU.toStdString());
+        otb::AttributeTable::ColumnValue rowval;
+        getvalues.push_back(rowval);
+    }
+
+    // add the AreaHa field to the parameters to be fetched
+    const int areaValueIdx = getnames.size();
+    getnames.push_back(msAreaField.toStdString());
+    otb::AttributeTable::ColumnValue areaColVal;
+    getvalues.push_back(areaColVal);
+
+    // -----------------------------------------------------------
+    // create lookup for last value of a dimension
+
+    // dimValueMap: NOTE: OPTIONS values for
+    // variable offset look up are stored 0-based!
+    QMap<QString, double> dimValueMap;
+    QMap<QString, bool> dimChangeMap;
+
+    // const QStringList dimensions = mmDimEqnMap.keys();
+    //      defined above
+    foreach(const QString& td, dimensions)
+    {
+        dimValueMap[td] = -1;
+        dimChangeMap[td] = false;
+    }
+
+    // fetch the first record of the optimisation table/dataset
+    std::stringstream whereClause;
+    whereClause << "where \"" << msOptFeatures.toStdString() << "\" == 1";
+    bool brow = sqltab->PrepareBulkGet(getnames, whereClause.str());
+    if (!brow)
+    {
+        MosraLogError(<< "NMMosra::processNLSegementData() - ERROR: "
+                      << "Populating equations failed: "
+                      << sqltab->getLastLogMsg());
+        sqltab->EndTransaction();
+        return false;
+    }
+
+    sqltab->BeginTransaction();
+    brow = sqltab->DoBulkGet(getvalues);
+
+    if (!brow)
+    {
+        MosraLogError(<< "NMMosra::processNLSegmentData() - ERROR: "
+                      << "Populating equations failed: "
+                      << sqltab->getLastLogMsg());
+        sqltab->EndTransaction();
+        return false;
+    }
+
+
+    // start transaction on mem db for fast retrieval & insert
+    //uctab->BeginTransaction();
+    //uctab->PrepareRowCount(rowCountWhereClause);
+    //uctab->PrepareBulkSet(highDimNames, true);
+
+    // ========================================================
+    //          POPULATE EQUATIONS RECORD by RECORD
+    // ========================================================
+    mConsCounter = 0;
+    mObjCounter = 0;
+    mLogicConsCounter = 0;
+
+    // this map is empty to begin with, if an inner
+    // loop is iterated over multiple times, the
+    // after the last iteration, the loop counter
+    // is reset to '0'
+
+    //<eqn name>, <loop dim, counter value 1-based!> >
+    QMap<QString, QMap<QString, int> > eqnLoopCounterMap;
+    QMap<QString, QStack<std::vector<int> > > eqnActiveSegmentMap;
+    long recCounter = 0;
+    do
+    {
+        // -----------------------------------------------------
+        //          HAVE DIMENSION VALUES CHANGED?
+        // get dimension values
+        long dimcnt = 0;
+        foreach (const QString& dim, dimensions)
+        {
+            // as OPTIONS differ even at the smallest spatial
+            // dimension, i.e. at SDU level, we trigger processing
+            // each time it appears in an equation
+            if (dim.compare(msOPTIONS) == 0)
+            {
+                dimValueMap[dim] = -9999;
+                dimChangeMap[dim] = true;
+                continue;
+            }
+
+            double dimValue = getRecordValue(
+                        nameValPosMap,
+                        getvalues,
+                        dim
+                        );
+
+            if (dimValue != dimValueMap[dim])
+            {
+                dimValueMap[dim] = dimValue;
+                dimChangeMap[dim] = true;
+            }
+            else
+            {
+                dimChangeMap[dim] = false;
+            }
+        }
+
+
+        //QString queryStr = QString("%1").arg(ucstr.str().c_str());
+        //std::string ucquery = ucstr.str();
+
+        //// check for higher dims
+        //long long highDimRowCount = -1;
+        ////if (!uctab->DoRowCount(highDimValues, highDimRowCount))
+        ////{
+        ////    sqltab->EndTransaction();
+        ////    //uctab->EndTransaction();
+        ////    MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+        ////                  << "Querying in-memory helper DB for higher dimension values failed!" << std::endl);
+        ////    return false;
+        ////
+        ////}
+        //if (!uctab->TableDataFetch(colValues, colTypes, queryStr.toStdString()))
+        //{
+        //    MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+        //                  << "Querying in-memory helper DB for higher dimension values failed: "
+        //                  << uctab->getLastLogMsg() << std::endl);
+        //    sqltab->EndTransaction();
+        //    //uctab->EndTransaction();
+
+        //    return false;
+        //}
+
+
+        //const long ucnr = uctab->GetNumRows();
+        //MosraLogDebug(<< "uctab #recs = " << ucnr << std::endl);
+
+        //if (colValues.size() > 0)
+        //{
+        //    if (colValues.at(0).size() > 0)
+        //    {
+        //        highDimRowCount = colValues.at(0).at(0).ival;
+        //    }
+        //}
+
+
+        // -----------------------------------------------------
+        //          populate eqns
+
+        QStringList processedEqns;
+        auto dimChMapIt = dimChangeMap.cbegin();
+        for(; dimChMapIt != dimChangeMap.cend(); ++dimChMapIt)
+        {
+            if (dimChMapIt.value() == true)
+            {
+                auto dimEqnIt = mmDimEqnMap.constFind(dimChMapIt.key());
+
+                // keep moving, if we can't find the equation
+                if (dimEqnIt == mmDimEqnMap.cend())
+                {
+                    continue;
+                }
+
+                foreach(const QString& eqn, dimEqnIt.value())
+                {
+                    // keep moving if we've processed this eqn already
+                    if (processedEqns.contains(eqn))
+                    {
+                        continue;
+                    }
+
+                    // if the equation is only evaluated on 'higher' (i.e. above SDU)
+                    // dimensions, we double check whether we have actually already
+                    // processed this specific combination of dimension values,
+                    // in which case we'd have found a record for the given combination
+                    // of higher dimension values ...
+                    if (    mmHighDimEqnMap.contains(eqn)
+                         && (   mmslNonLinearConstraints.constFind(eqn) != mmslNonLinearConstraints.cend()
+                             || mmslLinearConstraints.constFind(eqn) != mmslLinearConstraints.cend()
+                             || mmslObjectives.constFind(eqn) != mmslObjectives.cend()
+                            )
+                       )
+                    {
+                        QVector<long long> highDimValues;
+                        foreach(const QString& hdim, mmHighDimEqnMap[eqn])
+                        {
+                            highDimValues.push_back(dimValueMap[hdim]);
+                        }
+
+                        if (    mmslHighDimValComboTracker[eqn].constFind(highDimValues)
+                             != mmslHighDimValComboTracker[eqn].cend()
+                           )
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            mmslHighDimValComboTracker[eqn].insert(highDimValues);
+                        }
+                    }
+
+                    // ---------------------------------------------
+                    //  C    (Non-linear) algebraic constraints
+                    // ---------------------------------------------
+                    if (    mmslNonLinearConstraints.constFind(eqn) != mmslNonLinearConstraints.cend()
+                         || mmslLinearConstraints.constFind(eqn) != mmslLinearConstraints.cend()
+                         //|| mmslLogicConstraints.constFind(eqn) != mmslLogicConstraints.cend()
+                       )
+                    {
+
+                        //if (mmslLogicConstraints.constFind(eqn) != mmslLogicConstraints.cend())
+                        //{
+                        //    if (!populateEquations(
+                        //                eqn,
+                        //                eqnActiveSegmentMap,
+                        //                0,
+                        //                NL_SEG_L,
+                        //                mLogicConsCounter,
+                        //                eqnLoopCounterMap,
+                        //                dimValueMap,
+                        //                nameValPosMap,
+                        //                getvalues
+                        //                )
+                        //       )
+                        //    {
+                        //        MosraLogError(<< "ERROR in constraint eqn!" << std::endl);
+                        //        sqltab->EndTransaction();
+                        //        return false;
+                        //    }
+                        //}
+                        //else
+
+
+                        // ATTENTION:
+                        // - if we've got a constraint defined over OPTIONS (for at least one par,
+                        //   var, or loop) and
+                        // - we don't have a loop at thAre you available this Thursday or Friday? e beginning of the constraint,
+                        // - and we can find the OPTIONS dimension parameter somewhere in the eqn
+                        //   that indicates that this eqn does not just apply to a single element
+                        //   of OPTIONS
+                        // ==> we assume that this constraint is meant to be defined
+                        //     individually for each <other dims> + OPTIONS combination ...
+
+                        if (mmDimEqnMap[msOPTIONS].constFind(eqn) != mmDimEqnMap[msOPTIONS].cend())
+                        {
+                            if (    mmEquationAdmins[eqn].elemMap[0].first != EQN_LOOP
+                                 && mmsEquations[eqn].contains(msOPTIONS)
+                               )
+                            {
+                                for (int opt=0; opt < mslOptions.size(); ++opt)
+                                {
+                                    dimValueMap[msOPTIONS] = opt;
+// do we need to add an opt counter to the eqnLoopCounterMap? would that overlap with a potential other options counter?
+                                    if (!populateEquations(
+                                                eqn,
+                                                eqnActiveSegmentMap,
+                                                0,
+                                                NL_SEG_C,
+                                                mConsCounter,
+                                                eqnLoopCounterMap,
+                                                dimValueMap,
+                                                nameValPosMap,
+                                                getvalues
+                                                )
+                                       )
+                                    {
+                                        MosraLogError(<< "ERROR in constraint eqn!" << std::endl);
+                                        sqltab->EndTransaction();
+                                        return false;
+                                    }
+                                }
+
+                                dimValueMap[msOPTIONS] = -9999;
+                            }
+                        }
+                        else
+                        {
+                            if (!populateEquations(
+                                        eqn,
+                                        eqnActiveSegmentMap,
+                                        0,
+                                        NL_SEG_C,
+                                        mConsCounter,
+                                        eqnLoopCounterMap,
+                                        dimValueMap,
+                                        nameValPosMap,
+                                        getvalues
+                                        )
+                               )
+                            {
+                                MosraLogError(<< "ERROR in constraint eqn!" << std::endl);
+                                sqltab->EndTransaction();
+                                return false;
+                            }
+
+                        }
+
+
+                        // book keeping
+                        processedEqns << eqn;
+                    }
+
+                    // --------------------------------------------------
+                    //  O    Non-linear algebraic OBJECTIVE segment
+                    // --------------------------------------------------
+                    if (mmslObjectives.constFind(eqn) != mmslObjectives.cend())
+                    {
+                        if (!populateEquations(
+                                    eqn,
+                                    eqnActiveSegmentMap,
+                                    0,
+                                    NL_SEG_O,
+                                    mObjCounter,
+                                    eqnLoopCounterMap,
+                                    dimValueMap,
+                                    nameValPosMap,
+                                    getvalues
+                                    )
+                           )
+                        {
+                            MosraLogError(<< "ERROR in objctive eqn!" << std::endl);
+                            sqltab->EndTransaction();
+                            return false;
+                        }
+                        processedEqns << eqn;
+                    }
+                }
+            }
+        }
+
+        // --------------------------------------------------
+        //  process values for J linear explicit area constraints
+        // --------------------------------------------------
+        QMap<QString, QStringList>::const_iterator it = this->mmslAreaCons.constBegin();
+        for (int r=0; it != this->mmslAreaCons.constEnd(); ++it, ++r)
+        {
+            QStringList luOptions = mslOptions;
+            if (!vsZoneField.at(r).isEmpty())
+            {
+                const QString zoneStr = getvalues[nameValPosMap[vsZoneField[r]][0]].tval;
+                luOptions = zoneStr.split(" ", Qt::SkipEmptyParts);
+            }
+
+            std::vector<size_t> vLuOff;
+            for (int opt=0; opt < vvnOptionIndex.at(r).size(); ++opt)
+            {
+                const int luIdx = vvnOptionIndex.at(r).at(opt);
+                const QVector<long long> luDims = {
+                            static_cast<long long>(dimValueMap[msSDU]),
+                            static_cast<long long>(luIdx)
+                            };
+
+                const long long luOffset = mmVarAdminMap[QStringLiteral("lu")].dimOffsetMap[luDims];
+                if (mNonZeroJColCount.constFind(luOffset) == mNonZeroJColCount.cend())
+                {
+                    assert(0);
+                }
+
+                if (luOptions.contains(mslOptions.at(luIdx)))
+                {
+                    mvExplicitAreaConsVarOffsets[r].push_back(luOffset);
+                    mNonZeroJColCount[luOffset] += 1;
+                }
+            }
+        }
+
+
+        //// --------------------------------------------------
+        ////  process values for J linear implicit area constraints
+        //// --------------------------------------------------
+        //// stores three strings per SDU
+        //// 0: SDU (rowidx) dim value
+        //// 1: J segment body
+        //// 2: rhs segement body
+        //QString sduVal;
+        //QString jseg  ;
+        //QString rhsseg;
+        //for (int opt=0; opt < mslOptions.size(); ++opt)
+        //{
+        //    const QVector<long long> iacDim = {
+        //                static_cast<long long>(dimValueMap[msSDU]),
+        //                static_cast<long long>(opt)
+        //                };
+
+        //    const long long iacOffset = mmVarAdminMap[QStringLiteral("lu")].dimOffsetMap[iacDim];
+
+        //    double areahaval = 0;
+        //    const otb::AttributeTable::TableColumnType tct = getvalues[areaValueIdx].type;
+        //    switch(tct)
+        //    {
+        //    case otb::AttributeTable::ATTYPE_INT:
+        //        areahaval = getvalues[areaValueIdx].ival;
+        //        break;
+
+        //    case otb::AttributeTable::ATTYPE_DOUBLE:
+        //        areahaval = getvalues[areaValueIdx].dval;
+        //        break;
+        //    default: ;
+        //    }
+
+        //    if (opt == 0)
+        //    {
+        //        sduVal.append(QString("%1").arg(iacDim[0]));
+        //        rhsseg.append(QString("1 %1    # SDU[%2]\n")
+        //                      .arg(areahaval)
+        //                      .arg(iacDim[0])
+        //                      );
+        //    }
+        //    jseg.append(QString("%1 1\n").arg(iacOffset));
+
+        //    if (mNonZeroJColCount.constFind(iacOffset) == mNonZeroJColCount.cend())
+        //    {
+        //        assert(0);
+        //    }
+        //    mNonZeroJColCount[iacOffset] += 1;
+        //}
+        //const std::vector<QString> iacinfo = {sduVal, jseg, rhsseg};
+        //mvvImplicitAreaConsSegments.push_back(iacinfo);
+
+
+        // get new record with values
+        brow = sqltab->DoBulkGet(getvalues);
+        ++recCounter;
+
+    } while (brow);
+
+    sqltab->EndTransaction();
+
+    MosraLogDebug(<< ctxNMMosra << "::" << __FUNCTION__ << "() - INFO: "
+                  << "processed " << recCounter << " records while "
+                  << "poplulating the equations!" << endl);
+
+
+
+    // ---------------------------------------------------------
+    //      LINEAR J section
+
+    // ..............................................
+    // explicit area constraints
+
+    QTextStream rhsStr(&mr_seg);
+    rhsStr.setRealNumberNotation(QTextStream::SmartNotation);
+    if (mConsCounter == 0)
+    {
+        rhsStr << QStringLiteral("r \n");
+    }
+    QMap<QString, QStringList>::const_iterator it = this->mmslAreaCons.constBegin();
+    for (int r=0; it != this->mmslAreaCons.constEnd(); ++it, ++r, ++mConsCounter)
+    {
+        QString c_seg;
+        mvC_seg.push_back(c_seg);
+        QTextStream cStr(&mvC_seg[mConsCounter]);
+
+        QString j_seg;
+        mvJ_seg.push_back(j_seg);
+        QTextStream jStr(&mvJ_seg[mConsCounter]);
+
+        cStr << QString("C%1    # %2\n").arg(mConsCounter).arg(it.key());
+        cStr << QString("n0\n");
+
+
+        // body <= rhs
+        if (vnConsType.at(r) == 1)
+        {
+            rhsStr << 1 << sp << vdRHS.at(r) << eol;
+        }
+        // body >= rhs
+        else if (vnConsType.at(r) == 2)
+        {
+            rhsStr << 2 << sp << vdRHS.at(r) << eol;
+        }
+        // body = rhs
+        else if (vnConsType.at(r) == 3)
+        {
+            rhsStr << 4 << sp << vdRHS.at(r) << eol;
+        }
+        // no constraints on body
+        else
+        {
+            rhsStr << 3 << eol;
+        }
+
+
+        // .................... J seg ....................
+
+        std::vector<size_t> luOff = mvExplicitAreaConsVarOffsets.at(r);
+        jStr << QString("J%1 %2    # %3\n").arg(mConsCounter).arg(luOff.size()).arg(it.key());
+
+        // sort offsets in ascending order
+        std::sort(luOff.begin(), luOff.end());
+
+        for (int lu=0; lu < luOff.size(); ++lu)
+        {
+            jStr << luOff[lu] << sp << 1 << eol;
+        }
+    }
+
+
+
+    //// ..............................................
+    //// implicit area constraints
+    //for (int iac=0; iac < mvvImplicitAreaConsSegments.size(); ++iac, ++mConsCounter)
+    //{
+
+    //    // constraint body
+    //    QString j_seg = mvvImplicitAreaConsSegments.at(iac).at(1);
+    //    j_seg.prepend(QString("J%1 %2   # iac SDU[%3]\n")
+    //                    .arg(mConsCounter)
+    //                    .arg(mslOptions.size())
+    //                    .arg(mvvImplicitAreaConsSegments[iac][0])
+    //                  );
+    //    mvJ_seg.push_back(j_seg);
+
+    //    // rhs
+    //    rhsStr << mvvImplicitAreaConsSegments[iac][2];
+
+    //    // corresponding non-linear C part
+    //    QString c_seg;
+    //    mvC_seg.push_back(c_seg);
+    //    QTextStream cStr(&mvC_seg[mConsCounter]);
+
+    //    cStr << QString("C%1    # iac SDU[%3]\n")
+    //                        .arg(mConsCounter)
+    //                        .arg(mvvImplicitAreaConsSegments[iac][0]);
+    //    cStr << QString("n0\n");
+    //}
+
+
+
+    // ---------------------------------------------------------
+    //      k Segment - Jacobian column count
+
+    QTextStream kStr(&mk_seg);
+
+    const int klen = mNonZeroJColCount.size()-1;
+    kStr << QString("k%1    # cumulative non-zeros in Jacobian\n").arg(klen);
+    long cumVar = 0;
+    auto jcolit = mNonZeroJColCount.constBegin();
+    for (int k=0; k < klen; ++k, ++jcolit)
+    {
+        cumVar += jcolit.value();
+        kStr << cumVar << eol;
+    }
+
+    return true;
+}
+*/
+
+bool NMMosra::writeNLSegment(const QString& sseg, QFile* &fseg, const NLSegment &segType, int writeFile)
+{
+    if (    (writeFile == 1 && (fseg == nullptr || !fseg->isOpen()))
+         || (writeFile == 0 && sseg.isEmpty())
+         || (writeFile == 0 && segType == NL_SEG_UNKNOWN)
+       )
+    {
+         MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "(): "
+                       << "NL segment file/string is not open or empty!" << std::endl);
+         return false;
+    }
+
+    QString ofn;
+    if (writeFile == 0)
+    {
+        switch(segType)
+        {
+        case NL_SEG_x: ofn = QString("%1/x_seg.txt").arg(msDataPath); break;
+        case NL_SEG_r: ofn = QString("%1/r_seg.txt").arg(msDataPath); break;
+        case NL_SEG_b: ofn = QString("%1/b_seg.txt").arg(msDataPath); break;
+        case NL_SEG_k: ofn = QString("%1/k_seg.txt").arg(msDataPath); break;
+        case NL_SEG_NL: ofn = QString("%1/header_seg.txt").arg(msDataPath); break;
+        default:
+            ;
+        }
+
+        QFile ofile(ofn);
+        if (!ofile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text))
+        {
+            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                          << "Failed writing NL-segement file!" << std::endl);
+            return false;
+        }
+
+        QTextStream sstr(&ofile);
+        sstr << sseg;
+        ofile.close();
+    }
+
+
+    if (mpNLFile == nullptr)
+    {
+        QFileInfo fifo(this->getLosFileName());
+        this->msNlFileName = QString("%1/%2.nl").arg(this->msDataPath).arg(fifo.baseName());
+        this->msSolFileName = QString("%1/%2.dvars").arg(this->msDataPath).arg(fifo.baseName());
+
+        mpNLFile = new QFile(this->msNlFileName, this);
+        if (!mpNLFile->open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)
+           )
+        {
+                MosraLogError(<< "failed creating '" << msNlFileName.toStdString()
+                              << "'!");
+                return false;
+        }
+    }
+    QTextStream writeNL(mpNLFile);
+
+    if (writeFile)
+    {
+        if (mpNLFile == nullptr || !mpNLFile->isWritable())
+        {
+            MosraLogError(<< "mmh, nl file not writable! ...");
+            return false;
+        }
+
+        if (!fseg->isReadable())
+        {
+            fseg->close();
+            if (!fseg->open(QIODevice::ReadOnly | QIODevice::Text))
+            {
+                MosraLogError(<< "failed opening '" << fseg->fileName().toStdString()
+                              << "' for reading!");
+                return false;
+            }
+        }
+
+        QByteArray fbar;
+        for (long long bw=0; bw < fseg->size(); bw += fbar.size())
+        {
+            fbar = fseg->read(4096);
+            if (fbar.size() > 0)
+            {
+                writeNL << fbar;
+            }
+            else
+            {
+                MosraLogError(<< "NL writing ... but there's nothing there! ");
+                return false;
+            }
+        }
+        //mpNLFile->flush();
+        fseg->close();
+    }
+    else
+    {
+        writeNL << sseg;
+        //mpNLFile->flush();
+    }
+
+    return true;
+}
+
+bool NMMosra::populateEquations(
+        const QString& eqnName,
+        QMap<QString, QStack<std::vector<int> > > &activeSegment,
+        int nestingLevel,
+        const NLSegment& nlSeg,
+        long& segCounter,
+        QMap<QString, QMap<QString, int> > &eqnLoopCounterMap,
+        QMap<QString, double>& dimValueMap,
+        QMap<QString, std::vector<size_t> > &nameValPosMap,
+        std::vector<otb::AttributeTable::ColumnValue> &getvalues
+        )
+{
+    if (mmPrefixEquations.constFind(eqnName) == mmPrefixEquations.cend())
+    {
+        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                      << "Mmmh, did we overlook this equation? It is not "
+                      << "in our list of (pre-)fixed ones ;-)!" << std::endl);
+        return false;
+    }
+
+    const QChar eol('\n');
+    const QChar sp(' ');
+
+    QTextStream nlStr;
+    nlStr.setRealNumberNotation(QTextStream::SmartNotation);
+    QTextStream linStr;
+    linStr.setRealNumberNotation(QTextStream::SmartNotation);
+    QTextStream rhsStr;
+    rhsStr.setRealNumberNotation(QTextStream::SmartNotation);
+
+    QString segmentName;
+    switch(nlSeg)
+    {
+    case NL_SEG_C:
+        segmentName = QStringLiteral("NL Constraint");
+        if (mvfC_seg.size() > 0)
+        {
+            nlStr.setDevice(mvfC_seg[mCAccessCounter - 1]);
+            linStr.setDevice(mvfJ_seg[mJAccessCounter - 1]);
+            rhsStr.setString(&mr_seg);
+        }
+        break;
+
+    case NL_SEG_L:
+        segmentName = QStringLiteral("NL Constraint");
+        if (mvfL_seg.size() > 0)
+        {
+            nlStr.setDevice(  mvfL_seg[segCounter - 1]);
+            linStr.setDevice( mvfJ_seg[mJAccessCounter - 1]);
+            rhsStr.setString(&mr_seg);
+        }
+        break;
+
+    case NL_SEG_O:
+        segmentName = QStringLiteral("NL Objective");
+        if (mvfO_seg.size() > 0)
+        {
+            nlStr.setDevice(  mvfO_seg[segCounter - 1]);
+            linStr.setDevice( mvfG_seg[segCounter - 1]);
+        }
+        break;
+
+    default:
+        {
+            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                          << "Ooops, how did this segment end up in here? "
+                          << "We actually don't support type #" << nlSeg << " !" << std::endl);
+            return false;
+        }
+        break;
+    }
+
+    // get the prefix equation element list and
+    // associated EquationAdmin
+    const EquationAdmin oea = mmPrefixEquations[eqnName].first;
+    const QStringList oeqn = mmPrefixEquations[eqnName].second;
+
+    // copy the range as it won't change until processed
+    std::vector<int> segrange;
+    if (activeSegment.constFind(eqnName) == activeSegment.cend())
+    {
+        segrange.push_back(0);
+        segrange.push_back(mmPrefixEquations[eqnName].second.size()-1);
+        QStack<std::vector<int>> rangeStack;
+        rangeStack.push_back(segrange);
+        activeSegment.insert(eqnName, rangeStack);
+    }
+    else
+    {
+        segrange = activeSegment[eqnName].last();
+    }
+
+
+    QStringList removeDimCounter;
+
+    int expectedNewSegStartValue = 0;
+    if (    mmPrefixEquations[eqnName].first.loopList.size() > 0
+         && mmPrefixEquations[eqnName].first.loopList.at(0).name.compare(QStringLiteral("for"), Qt::CaseInsensitive) == 0
+       )
+    {
+        // 012345678901
+        // for{FMU_QL}(
+        expectedNewSegStartValue = mmPrefixEquations[eqnName].first.loopList.at(0).bodyStart+1;
+    }
+
+    // for given range of eqn elements ...
+    for (int oep=segrange[0]; oep <= segrange[1]; ++oep)
+    {
+        // check whether we need to feed in some
+        // data from the db
+
+        // ------------------------------------------------------
+        //          NEW NL SEGMENT
+
+        if (    nestingLevel == 0
+             && oep == expectedNewSegStartValue
+             && eqnLoopCounterMap.constFind(eqnName) == eqnLoopCounterMap.cend()
+           )
+        {
+            //QString nl_seg;
+            //QString lin_seg;
+            QFile* nl_seg = nullptr;
+            QFile* lin_seg = nullptr;
+
+            if (nlSeg == NL_SEG_O || nlSeg == NL_SEG_L)
+            {
+                if (nlSeg == NL_SEG_L)
+                {
+                    if (createSegmentFile(nl_seg, nlSeg))
+                    {
+                        return false;
+                    }
+                    mvfL_seg.push_back(nl_seg);
+                    nlStr.setDevice(mvfL_seg[segCounter]);
+                    nlStr << QString("L%1 ").arg(segCounter);
+                }
+                else
+                {
+                    if (!createSegmentFile(nl_seg, nlSeg))
+                    {
+                        return false;
+                    }
+                    nlStr.setDevice(nl_seg);
+                    mvfO_seg.push_back(nl_seg);
+
+                    if (!createSegmentFile(lin_seg, nlSeg))
+                    {
+                        return false;
+                    }
+                    //nlStr.setDevice(lin_seg);
+                    mvfG_seg.push_back(lin_seg);
+
+                    nlStr << QString("O%1 ").arg(segCounter);
+                    //linStr << QString("G%1 1 ").arg(segCounter);
+
+                    // min/max?
+                    auto objIt = mmslObjectives.constFind(eqnName);
+                    if (objIt != mmslObjectives.cend())
+                    {
+                        const QString minmaxStr = objIt.value().at(0).left(3);
+                        int minmax = 0;
+                        if (minmaxStr.contains("max"))
+                        {
+                            minmax = 1;
+                        }
+                        nlStr << QString("%1 ").arg(minmax);
+                    }
+                    else
+                    {
+                        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                                      << "That's not good! We were pretty sure we had and objective here ..."
+                                      << " Sorry about that - we got it wrong!" << std::endl);
+                        return false;
+                    }
+                }
+            }
+            // NL_SEG_C
+            else if (nlSeg == NL_SEG_C) //|| nlSeg == NL_SEG_L)
+            {
+                // -----------------------------------------
+                //    CONSTRAINT HEADER AND RANGE BODY
+
+                if (nlSeg == NL_SEG_C)
+                {
+                    if (!createSegmentFile(nl_seg, nlSeg))
+                    {
+                        return false;
+                    }
+                    mvfC_seg.push_back(nl_seg);
+                    nlStr.setDevice(mvfC_seg[mCAccessCounter]);
+                    nlStr << QString("C%1 ").arg(segCounter);
+                    ++mCAccessCounter;
+                }
+                //else // nlSeg == NL_SEG_L
+                //{
+                //    mvL_seg.push_back(nl_seg);
+                //    nlStr.setString(&mvL_seg[segCounter]);
+                //    nlStr << QString("L%1 ").arg(segCounter);
+                //}
+
+                //if (!createSegmentFile(lin_seg, nlSeg))
+                //{
+                //    return false;
+                //}
+                //mvfJ_seg.push_back(lin_seg);
+                //++mJAccessCounter;
+                //linStr.setString(&mvJ_seg[segCounter]);
+                //linStr << QString("J%1 1 ").arg(segCounter);
+
+                // add constaints' right hand sides (thresholds)
+                rhsStr.setString(&mr_seg);
+                if (segCounter == 0)
+                {
+                    rhsStr << QString("r ") << eol;
+                }
+
+                QStringList oprhs;
+                if (mmslLinearConstraints.contains(eqnName))
+                {
+                    oprhs = mmslLinearConstraints[eqnName];
+                }
+                else if (mmslNonLinearConstraints.contains(eqnName))
+                {
+                    oprhs = mmslNonLinearConstraints[eqnName];
+                }
+                else if (mmslLogicConstraints.contains(eqnName))
+                {
+                    oprhs = mmslLogicConstraints[eqnName];
+                }
+
+                // -------------------------------------------------
+                //     CONSTRAINT THRESHOLDS (RIGHT-HAND SIDES)
+
+                // try converting to double first ...
+                bool btd = false;
+                double rhsVal = oprhs[1].toDouble(&btd);
+                // ... lookup parameter value, if conversion failed
+                if (!btd)
+                {
+                    if (mmPrefixEquations.constFind(oprhs[1]) != mmPrefixEquations.cend())
+                    {
+                        const EquationAdmin& pea = mmPrefixEquations[oprhs[1]].first;
+                        if (pea.paramList.size() == 1)
+                        {
+                            if (!getParameterValue(
+                                        rhsVal,
+                                        eqnName,
+                                        pea.paramList[0],
+                                        getvalues,
+                                        nameValPosMap,
+                                        eqnLoopCounterMap,
+                                        dimValueMap
+                                        )
+                               )
+                            {
+                                MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                                              << "Lookup of parameter value for '" << pea.paramList[0].name.toStdString()
+                                              << "' failed in " << segmentName.toStdString()
+                                              << " #" << segCounter << std::endl );
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                                          << "Invalid constraint threshold definition '"
+                                          << oprhs[1].toStdString()
+                                          << "' for contstraint '"
+                                          << oprhs[0].toStdString() << " ("
+                                          << segmentName.toStdString()
+                                          << " #" << segCounter << ")! "
+                                          << "Only a single parameter may be specified "
+                                          << " as constraint threshold!" << std::endl );
+                            return false;
+
+                        }
+                    }
+                    else
+                    {
+                        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                                      << "Lookup of constraint threshold parameter definition '"
+                                      << oprhs[1].toStdString()
+                                      << "' failed for contstraint '"
+                                      << oprhs[0].toStdString() << " ("
+                                      << segmentName.toStdString()
+                                      << " #" << segCounter << ")" << std::endl );
+                        return false;
+                    }
+                }
+
+
+                if (oprhs.size() == 2)
+                {
+                    if (oprhs[0].compare(QStringLiteral("<=")) == 0)
+                    {
+                        rhsStr << 1 << sp << rhsVal << "     # " << eqnName << eol;
+                    }
+                    // body >= rhs
+                    else if (oprhs[0].compare(QStringLiteral(">=")) == 0)
+                    {
+                        rhsStr << 2 << sp << rhsVal << "     # " << eqnName << eol;
+                    }
+                    // body = rhs
+                    else if (oprhs[0].compare(QStringLiteral("=")) == 0)
+                    {
+                        rhsStr << 4 << sp << rhsVal << "     # " << eqnName << eol;
+                    }
+                    // no constraints on body
+                    else
+                    {
+                        rhsStr << 3 << "     # " << eqnName << eol;
+                    }
+
+                    rhsStr.flush();
+                }
+            }
+            nlStr << "     # " << eqnName;
+
+            if (mmslHighDimLoopEquations.constFind(oea.name) != mmslHighDimLoopEquations.cend())
+            {
+                auto dvmit = dimValueMap.begin();
+                for (; dvmit != dimValueMap.cend(); ++dvmit)
+                {
+                    nlStr << " " << QString("%1(%2)")
+                                        .arg(dvmit.key())
+                                        .arg(dvmit.value());
+                }
+            }
+            nlStr << eol;
+            nlStr.flush();
+
+            //if (nlSeg != NL_SEG_L)
+            //{
+            //    linStr << "     # " << eqnName << eol;
+            //    linStr << QStringLiteral("0 0") << eol;
+            //}
+
+            ++segCounter;
+        }
+
+        // -------------------------------------------------------------
+        //          PROCESS EQUATION ELEMENTS
+
+        auto oeait = oea.elemMap.constFind(oep);
+        if (oeait != oea.elemMap.cend())
+        {
+            const EqnElement oee = oeait.value().first;
+            switch(oee)
+            {
+            case EQN_LOOP:
+                {
+                    // get the loop
+                    const Loop& ol = oea.loopList[oeait.value().second];
+                    long numiter = 0;
+                    if (mmslHighDimLoopEquations.constFind(oea.name) != mmslHighDimLoopEquations.cend())
+                    {
+                        QVector<long long> hdVals;
+                        foreach(const QString& hd, mmslHighDimLoopEquations[oea.name].first)
+                        {
+                            if (dimValueMap.constFind(hd) != dimValueMap.cend())
+                            {
+                                hdVals.push_back(dimValueMap[hd]);
+                            }
+                        }
+
+                        if (    hdVals.size() == mmslHighDimLoopEquations[oea.name].first.size()
+                             && mmvHighDimLoopIterLength.constFind(hdVals) != mmvHighDimLoopIterLength.cend()
+                           )
+                        {
+                            numiter = mmvHighDimLoopIterLength[hdVals];
+                        }
+
+                        // as nested loops in high dim equations are 're-entry' loops, we add the active segment
+                        // again, if the loop has not finished yet (and hence is still in the countermap)
+                        // NOTE: we need to do this as re-entry loops' active segments are removed after each iteration
+                        if (eqnLoopCounterMap.constFind(eqnName) != eqnLoopCounterMap.cend())
+                        {
+                            if (eqnLoopCounterMap[eqnName].constFind(ol.dim) != eqnLoopCounterMap[eqnName].cend())
+                            {
+                                std::vector<int> loopseg = {ol.bodyStart, ol.bodyEnd};
+                                activeSegment[eqnName].push(loopseg);
+                            }
+                        }
+                    }
+                    else if (mmDimLengthMap.constFind(ol.dim) != mmDimLengthMap.cend())
+                    {
+                        numiter = mmDimLengthMap[ol.dim];
+                    }
+
+                    // have we entered this loop already? (yes, if we've tracked a loop with that dimension already ...
+                    if (    eqnLoopCounterMap.constFind(eqnName) != eqnLoopCounterMap.cend()
+                         && eqnLoopCounterMap.value(eqnName).constFind(ol.dim) != eqnLoopCounterMap.value(eqnName).cend())
+                    {
+                        eqnLoopCounterMap[eqnName][ol.dim] += 1;
+
+                        if (ol.dim.compare(msOPTIONS) == 0)
+                        {
+                            dimValueMap[msOPTIONS] += 1;
+                        }
+
+                        // check whether we've reached the end of the loop
+                        // and reset if applicable
+                        if(eqnLoopCounterMap[eqnName][ol.dim] == numiter)
+                        {
+                            removeDimCounter << ol.dim;
+                        }
+
+                        //NMDebug(<< ol.dim.toStdString() << " #" << eqnLoopCounterMap[eqnName][ol.dim] << std::endl);
+                    }
+                    // ... nope, first time we come across a loop with this dimension
+                    // ... however, don't want OPTIONS or HighDim as we count those elsewhere ...
+                    else if (    ol.dim.compare(msOPTIONS) != 0
+                              && !(    mmslHighDimLoopEquations.constFind(oea.name) != mmslHighDimLoopEquations.cend()
+                                    && mmslHighDimLoopEquations[oea.name].first.contains(ol.dim)
+                                  )
+                            )
+                    {
+                        if (eqnLoopCounterMap.constFind(eqnName) != eqnLoopCounterMap.cend())
+                        {
+                            eqnLoopCounterMap[eqnName].insert(ol.dim, 1);
+                        }
+                        else
+                        {
+                            QMap<QString, int> imDimCnt;
+                            imDimCnt.insert(ol.dim, 1);
+                            eqnLoopCounterMap.insert(eqnName, imDimCnt);
+                        }
+
+                        // need to adjust the operator depending on the number of operands
+                        if (numiter >= 3)
+                        {
+                            nlStr << QString("o%1\n").arg(mAMPLFunctions["sum"])
+                                  << QString("%1\n").arg(numiter);
+                        }
+                        else if (numiter == 2)
+                        {
+                            nlStr << QString("o%1\n").arg(mParseOperators["+"]);
+                        }
+                        nlStr.flush();
+
+                        // limit the active segment of this equation to the loop
+                        // until we're done with it
+                        std::vector<int> loopseg = {ol.bodyStart, ol.bodyEnd};
+                        activeSegment[eqnName].push(loopseg);
+                    }
+                    // locally loop over OPTIONS section
+                    else if (ol.dim.compare(msOPTIONS) == 0)
+                    {
+                        // need to adjust the operator depending on the number of operands
+                        if (numiter >= 3)
+                        {
+                            nlStr << QString("o%1\n").arg(mAMPLFunctions["sum"])
+                                  << QString("%1\n").arg(numiter);
+                        }
+                        else if (numiter == 2)
+                        {
+                            nlStr << QString("o%1\n").arg(mParseOperators["+"]);
+                        }
+                        nlStr.flush();
+
+                        std::vector<int> segrange = {ol.bodyStart+1, ol.bodyEnd};
+                        activeSegment[eqnName].push(segrange);
+
+                        for (int opt=0; opt < mslOptions.size(); ++opt)
+                        {
+                            eqnLoopCounterMap[eqnName][msOPTIONS] = opt+1;
+                            dimValueMap[msOPTIONS] = opt;
+
+                            if (!populateEquations(
+                                        eqnName,
+                                        activeSegment,
+                                        nestingLevel+1,
+                                        nlSeg,
+                                        segCounter,
+                                        eqnLoopCounterMap,
+                                        dimValueMap,
+                                        nameValPosMap,
+                                        getvalues
+                                        )
+                               )
+                            {
+                                MosraLogError(<< "ERROR in " << segmentName.toStdString() << "!" << std::endl);
+                                return false;
+                            }
+                        }
+
+                        // 'forward' execution to the last step of the loop, i.e.
+                        // step we're about to complete ...
+                        oep = activeSegment[eqnName].last()[1];
+
+                        // pop the current 'loop-range' range out of the stack
+                        activeSegment[eqnName].pop();
+
+                        // reset OPTIONS to -9999
+                        dimValueMap[msOPTIONS] = -9999.0;
+
+                        // remove dimension OPTIONS form the eqnLoopCounter list
+                        removeLoopCounter(
+                               eqnLoopCounterMap,
+                               msOPTIONS,
+                               eqnName
+                                    );
+                    }
+                }
+                break;
+
+            case EQN_PARAMETER:
+                {
+                    const Param& op = oea.paramList[oeait.value().second];
+
+                    // ----------------------------------------
+                    //    VARIABLE
+
+                    if (mslDecisionVars.contains(op.name))
+                    {
+                        bool bNum = false;
+                        long long voff;
+                        QVector<long long> dimValues;
+                        foreach(const QString& dim, op.dimensions)
+                        {
+                            // need to double check whether we've got an explicitly
+                            // assigned dimension value - and convert that into an actual number,
+                            // or whether we got the dimension name
+                            double dimVal = dim.toDouble(&bNum);
+                            if (bNum)
+                            {
+                                dimValues.push_back(static_cast<long long>(dimVal-1));
+                            }
+                            else
+                            {
+                                dimValues.push_back(static_cast<long long>(dimValueMap[dim]));
+                            }
+                        }
+
+                        if (    mmVarAdminMap[op.name].dimOffsetMap.constFind(dimValues)
+                             != mmVarAdminMap[op.name].dimOffsetMap.cend()
+                           )
+                        {
+                            voff = mmVarAdminMap[op.name].dimOffsetMap[dimValues];
+                            nlStr << QString("v%1\n").arg(voff);
+                            nlStr.flush();
+                        }
+                        else
+                        {
+                            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                                          << "Lookup of variable offset for '" << op.name.toStdString()
+                                          << "' failed in " << segmentName.toStdString() << " #" << segCounter << std::endl );
+                            return false;
+                        }
+
+                        if (nlSeg == NL_SEG_O)
+                        {
+                            if (mvNonLinearObjVarCounter.constFind(voff) == mvNonLinearObjVarCounter.cend())
+                            {
+                                mvNonLinearObjVarCounter.insert(voff, 1);
+                            }
+                            else
+                            {
+                                mvNonLinearObjVarCounter[voff] += 1;
+                            }
+                        }
+                        else
+                        {
+                            if (mvNonLinearConsVarCounter.constFind(voff) == mvNonLinearConsVarCounter.cend())
+                            {
+                                mvNonLinearConsVarCounter.insert(voff, 1);
+                            }
+                            else
+                            {
+                                mvNonLinearConsVarCounter[voff] += 1;
+                            }
+
+                            //if (mNonZeroJColCount.constFind(voff) == mNonZeroJColCount.cend())
+                            //{
+                            //    mNonZeroJColCount.insert(voff, 1);
+                            //}
+                            //else
+                            //{
+                            //    mNonZeroJColCount[voff] += 1;
+                            //}
+                        }
+                    }
+                    // -----------------------------------------
+                    //    OPERAND or DIMENSION PARAMETER
+                    else if (nameValPosMap.constFind(op.name) != nameValPosMap.cend())
+                    {
+                        // are we part of an iteration over OPTIONS,
+                        // and if yes, what iterator value are we?
+
+                        //const std::vector<size_t> offvec = namValPos[op.name];
+
+                        // if we've got more than one offset
+                        //long lookupIdx = -1;
+                        //double pVal = 0;
+                        /*
+                        if (nameValPosMap[op.name].size() == mslOptions.size())
+                        {
+                            // either we've been given the exact 'OPTION' to look for
+                            bool bConv = false;
+                            foreach(const QString& dim, op.dimensions)
+                            {
+                                lookupIdx = dim.toDouble(&bConv);
+                                if (bConv)
+                                {
+                                    break;
+                                }
+                                else
+                                {
+                                    lookupIdx = -1;
+                                }
+                            }
+
+                            if (!bConv)
+                            {
+                                lookupIdx = eqnLoopCounterMap[eqnName][msOPTIONS]-1;
+                            }
+                        }
+                        else
+                        {
+                            lookupIdx = 0;
+                        }
+
+                        bool bError = false;
+                        if (lookupIdx >= 0 and lookupIdx < nameValPosMap[op.name].size())
+                        {
+                            pVal = getRecordValue(
+                                        nameValPosMap,
+                                        getvalues,
+                                        op.name,
+                                        lookupIdx
+                                        );
+                            if (pVal == -9999)
+                            {
+                                bError = true;
+                            }
+                            else
+                            {
+                                nlStr << QString("n%1\n").arg(pVal);
+                            }
+                        }
+                        else
+                        {
+                            bError = true;
+                        }
+                        */
+
+                        double pVal = 0;
+                        if (!getParameterValue(
+                                    pVal,
+                                    eqnName,
+                                    op,
+                                    getvalues,
+                                    nameValPosMap,
+                                    eqnLoopCounterMap,
+                                    dimValueMap
+                                    )
+                           )
+                        {
+                            MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                                          << "Lookup of parameter value for '" << op.name.toStdString()
+                                          << "' failed in " << segmentName.toStdString()
+                                          << " #" << segCounter << std::endl );
+                            return false;
+                        }
+                        nlStr << QString("n%1\n").arg(pVal);
+                        nlStr.flush();
+                    }
+                }
+                break;
+
+            case EQN_EQUATION:
+                {
+                    const Equation& nestedEqn = oea.eqnList[oeait.value().second];
+                    if (mmPrefixEquations.constFind(nestedEqn.eqn) == mmPrefixEquations.cend())
+                    {
+                        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                                      << "That's odd, I couldn't find the nested equation '" << nestedEqn.eqn.toStdString()
+                                      << "' in the prefixed equations list!" << std::endl);
+                        return false;
+                    }
+                    const QStringList& eqnList = mmPrefixEquations[nestedEqn.eqn].second;
+                    QStack<std::vector<int> > rangeStack;
+                    std::vector<int> actSeg = {0, eqnList.size()-1};
+                    rangeStack.push(actSeg);
+                    activeSegment.insert(nestedEqn.eqn, rangeStack);
+
+                    // 'forward' any active loops to nested equation, as
+                    // it may need access to loop counter values ...
+                    auto elcmit = eqnLoopCounterMap.constFind(eqnName);
+                    if (elcmit != eqnLoopCounterMap.cend())
+                    {
+                        eqnLoopCounterMap.insert(nestedEqn.eqn, elcmit.value());
+                    }
+
+                    // nested equations ...
+                    if (!populateEquations(
+                                nestedEqn.eqn,
+                                activeSegment,
+                                nestingLevel+1,
+                                nlSeg,
+                                segCounter,
+                                eqnLoopCounterMap,
+                                dimValueMap,
+                                nameValPosMap,
+                                getvalues
+                                )
+                       )
+                    {
+                        MosraLogError(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                                      << "Manno! Wrong again! " << std::endl );
+                        return false;
+                    }
+
+                    // clean up ...
+                    // remove active segments
+                    auto asit = activeSegment.find(nestedEqn.eqn);
+                    if (asit != activeSegment.end())
+                    {
+                        asit.value().pop();
+                        if (asit.value().size() == 0)
+                        {
+                            activeSegment.erase(asit);
+                        }
+                    }
+
+                    // remove eqn loop counters
+                    auto nestedEqnLoops = eqnLoopCounterMap.find(nestedEqn.eqn);
+                    if (nestedEqnLoops != eqnLoopCounterMap.end())
+                    {
+                        eqnLoopCounterMap.erase(nestedEqnLoops);
+                    }
+                }
+                break;
+            }
+        }
+        else
+        {
+            // paste the command in
+            nlStr << oeqn[oep] << eol;
+            nlStr.flush();
+        }
+
+        // if we've worked through the equation, we can drop
+        // the active range entry
+        if (segrange[0] == expectedNewSegStartValue && oep == segrange[1])
+        {
+            activeSegment[eqnName].pop();
+            auto arsv = activeSegment.find(eqnName);
+            if (arsv.value().size() == 0)
+            {
+                activeSegment.erase(arsv);
+            }
+        }
+    }
+
+    // clean up ...
+    if (eqnLoopCounterMap.constFind(eqnName) != eqnLoopCounterMap.cend())
+    {
+        foreach(const QString& dimname, removeDimCounter)
+        {
+            /*
+            auto rmit = eqnLoopCounterMap[eqnName].find(dimname);
+            if (rmit != eqnLoopCounterMap[eqnName].end())
+            {
+                eqnLoopCounterMap[eqnName].erase(rmit);
+
+                auto ecm = eqnLoopCounterMap.find(eqnName);
+                if (ecm != eqnLoopCounterMap.end())
+                {
+                    if (ecm.value().size() == 0)
+                    {
+                        eqnLoopCounterMap.erase(ecm);
+                    }
+                }
+            }
+            */
+            removeLoopCounter(eqnLoopCounterMap,
+                              dimname,
+                              eqnName);
+
+            if (dimname.compare(msOPTIONS) == 0)
+            {
+                dimValueMap[msOPTIONS] = -9999.0;
+            }
+        }
+    }
+
+
+    return true;
+}
+
+void NMMosra::removeLoopCounter(
+        QMap<QString, QMap<QString, int> > &eqnLoopCounterMap,
+        const QString& dimName,
+        const QString& eqnName
+        )
+{
+    if (eqnLoopCounterMap.constFind(eqnName) != eqnLoopCounterMap.cend())
+    {
+        auto opit = eqnLoopCounterMap[eqnName].find(dimName);
+        if (opit != eqnLoopCounterMap[eqnName].end())
+        {
+            eqnLoopCounterMap[eqnName].erase(opit);
+
+            auto ecm = eqnLoopCounterMap.find(eqnName);
+            if (ecm != eqnLoopCounterMap.end())
+            {
+                if (ecm.value().size() == 0)
+                {
+                    eqnLoopCounterMap.erase(ecm);
+                }
+            }
+        }
+    }
+}
+
+
+bool NMMosra::getParameterValue(double &pVal,
+        const QString& eqnName,
+        const NMMosra::Param &pa,
+        std::vector<otb::AttributeTable::ColumnValue> &getvalues,
+        QMap<QString, std::vector<size_t> > &nameValPosMap,
+        QMap<QString, QMap<QString, int> > &eqnLoopCounterMap,
+        QMap<QString, double> &dimValueMap
+        )
+{
+    pVal = -9999;
+    long lookupIdx = -1;
+    if (nameValPosMap[pa.name].size() == mslOptions.size())
+    {
+        // either we've been given the exact 'OPTION' to look for
+        bool bConv = false;
+        QString lastDim;
+        foreach(const QString& dim, pa.dimensions)
+        {
+            lastDim = dim;
+            lookupIdx = dim.toDouble(&bConv);
+            if (bConv)
+            {
+                break;
+            }
+            else
+            {
+                lookupIdx = -1;
+            }
+        }
+
+        // need to account for the fact the user-specified
+        // OPTIONS indices 1-based
+        if (    bConv
+             && lastDim.compare(msOPTIONS) == 0
+             && lookupIdx > 0
+           )
+        {
+            lookupIdx -= 1;
+        }
+
+        // ... or we take it from the loop, if we're in a loop ...
+        if (!bConv)
+        {
+            lookupIdx = eqnLoopCounterMap[eqnName][msOPTIONS]-1;
+        }
+
+        // ... or we get it from the dimValueMap when we're not in a loop
+        // but processing a full equation for each OPTION
+        if (lookupIdx == -1)
+        {
+            lookupIdx = dimValueMap[msOPTIONS];
+        }
+    }
+    else
+    {
+        lookupIdx = 0;
+    }
+
+    if (lookupIdx >= 0 and lookupIdx < nameValPosMap[pa.name].size())
+    {
+        pVal = getRecordValue(
+                    nameValPosMap,
+                    getvalues,
+                    pa.name,
+                    lookupIdx
+                    );
+        if (pVal == -9999)
+        {
+            return false;
+        }
+
+        if (mmParameterScaling.contains(pa.name))
+        {
+            pVal *= mmParameterScaling[pa.name].first;
+        }
+    }
+    else
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool NMMosra::createEqnElemAdminMap(
+        QMap<QString, QSet<QString> > &dimEqnMap,
+        QMap<QString, std::vector<size_t> > &nameValPosMap,
+        QMap<QString, int> &procVarInObjConsMap,
+        std::vector<std::string> &getnames,
+        std::vector<otb::AttributeTable::ColumnValue> &getvalues,
+        const QString& eqnname)
+{
+    if (mmPrefixEquations.constFind(eqnname) != mmPrefixEquations.cend())
+    {
+        bool bHighOnly = true;
+        QStringList eqnDims;
+        QSet<QVector<long long> > highDimCombo;
+        const EquationAdmin& ea = mmPrefixEquations.value(eqnname).first;
+        foreach(const Loop& loop, ea.loopList)
+        {
+            // is there a dimension parameter defined under this name?
+            if (mmslParameters.constFind(loop.dim) != mmslParameters.cend())
+            {
+                // dimension parameters may only be defined over a single column
+                if (mmslParameters.value(loop.dim).size() == 1)
+                {
+                    // map the dimension name to the equation
+                    dimEqnMap[loop.dim] << eqnname;
+                    if (nameValPosMap.constFind(loop.dim) == nameValPosMap.cend())
+                    {
+                        const QString epname = mmslParameters.value(loop.dim).at(0);
+                        std::vector<size_t> ldpos;
+
+                        if (mmLookupColsFstParam.constFind(epname) != mmLookupColsFstParam.cend())
+                        {
+                            const QString fstpara = mmLookupColsFstParam[epname];
+                            ldpos = nameValPosMap[fstpara];
+                        }
+                        else
+                        {
+                            ldpos = {getnames.size()};
+                            getnames.push_back(epname.toStdString());
+                            otb::AttributeTable::ColumnValue cval;
+                            getvalues.push_back(cval);
+
+                            mmLookupColsFstParam.insert(epname, loop.dim);
+
+                        }
+                        nameValPosMap.insert(loop.dim, ldpos);
+                    }
+
+                    if (!mslLowDims.contains(loop.dim))
+                    {
+                        if (!eqnDims.contains(loop.dim))
+                        {
+                            eqnDims.push_back(loop.dim);
+                        }
+                    }
+                    else
+                    {
+                        bHighOnly = false;
+                    }
+                }
+                else if (mmslParameters.value(loop.dim).size() > 1)
+                {
+                    MosraLogError(<< "NMMosra::createEqnElemAdminMap() - ERROR: "
+                                  << "Invalid definition of dimension parameter '"
+                                  << loop.dim.toStdString()
+                                  << "'! Individual dimensions may only be defined "
+                                  << " over a single column of the dataset!")
+                    return false;
+                }
+                else
+                {
+                    MosraLogError(<< "NMMosra::createEqnElemAdminMap() - ERROR: "
+                                  << "Invalid definition of dimension parameter '"
+                                  << loop.dim.toStdString()
+                                  << "'! Please specify dataset column defining "
+                                  << "the set of dimension values!");
+                    return false;
+
+                }
+            }
+            // do we have 'OPTIONS' here? ...
+            // and we need 'OPTIONS' in the dimEqnMap!
+            else if (loop.dim.compare(msOPTIONS) == 0)
+            {
+                dimEqnMap[loop.dim] << eqnname;
+            }
+        }
+
+        foreach(const Param& param, ea.paramList)
+        {
+            // keep track of parameter dimension values
+            foreach(const QString& pdim, param.dimensions)
+            {
+                // check that we've got a definition for that dimension parameter
+                if (mmslParameters.constFind(pdim) != mmslParameters.cend())
+                {
+                    // keep track of individual columns
+                    if(mmslParameters.value(pdim).size() == 1)
+                    {
+                        dimEqnMap[pdim] << eqnname;
+                        if (nameValPosMap.constFind(pdim) == nameValPosMap.cend())
+                        {
+                            const QString ppname = mmslParameters.value(pdim).at(0);
+                            std::vector<size_t> pdpos;// = {getnames.size()};
+
+                            if (mmLookupColsFstParam.constFind(ppname) != mmLookupColsFstParam.cend())
+                            {
+                                const QString fstpara = mmLookupColsFstParam[ppname];
+                                pdpos = nameValPosMap[fstpara];
+                            }
+                            else
+                            {
+                                pdpos = {getnames.size()};
+
+                                getnames.push_back(ppname.toStdString());
+                                otb::AttributeTable::ColumnValue cval;
+                                getvalues.push_back(cval);
+
+                                mmLookupColsFstParam.insert(ppname, pdim);
+                            }
+                            nameValPosMap.insert(pdim, pdpos);
+                        }
+                    }
+                    else if (mmslParameters.value(pdim).size() > 1)
+                    {
+                        MosraLogError(<< "NMMosra::createEqnElemAdminMap() - ERROR: "
+                                      << "Invalid definition of dimension parameter '"
+                                      << pdim.toStdString()
+                                      << "'! Individual dimensions may only be defined "
+                                      << " over a single column of the dataset!")
+                        return false;
+                    }
+                    else
+                    {
+                        MosraLogError(<< "NMMosra::createEqnElemAdminMap() - ERROR: "
+                                      << "Invalid definition of dimension parameter '"
+                                      << pdim.toStdString()
+                                      << "'! Please specify dataset column defining "
+                                      << "the set of dimension values!");
+                        return false;
+
+                    }
+                }
+                // do we have 'OPTIONS' here? ...
+                // and we need 'OPTIONS' in the dimEqnMap!
+                else if (pdim.compare(msOPTIONS) == 0)
+                {
+                    dimEqnMap[pdim] << eqnname;
+                }
+                else
+                {
+/// ToDo : generalize
+                    bool bconv = false;
+                    const double tval = pdim.toDouble(&bconv);
+                    if (bconv)
+                    {
+                        if (param.dimensions.size() > 1 && param.dimensions.last().compare(pdim) == 0)
+                        {
+                            dimEqnMap[msOPTIONS] << eqnname;
+                        }
+                        continue;
+                    }
+                }
+
+                // high dimension tracking ...
+                if (!mslLowDims.contains(pdim))
+                {
+                    if (!eqnDims.contains(pdim))
+                    {
+                        eqnDims.push_back(pdim);
+                    }
+                }
+                else
+                {
+                    bHighOnly = false;
+                }
+            }
+
+            // keep track of parameter values
+            if (mmslParameters.constFind(param.name) != mmslParameters.cend())
+            {
+                if (mmslParameters.value(param.name).size() == 0)
+                {
+                    MosraLogError(<< "NMMosra::createEqnElemAdminMap() - ERROR: "
+                                  << "No dataset columns referenced by parameter '"
+                                  << param.name.toStdString() << "'! Please specify "
+                                  << "(a) dataset column(s) defining the parameter's "
+                                  << "values!");
+                    return false;
+                }
+
+                if (nameValPosMap.constFind(param.name) == nameValPosMap.cend())
+                {
+                    std::vector<size_t> pcpos;
+                    foreach(const QString& pcol, mmslParameters.value(param.name))
+                    {
+                        //if (mmLookupColsFstParam.constFind(pcol) != mmLookupColsFstParam.cend())
+                        //{
+                        //    const QString fstParam = mmLookupColsFstParam[pcol];
+                        //    pcpos = nameValPosMap[fstParam];
+                        //}
+                        //else
+                        //{
+                            pcpos.push_back(getnames.size());
+                            getnames.push_back(pcol.toStdString());
+                            otb::AttributeTable::ColumnValue cval;
+                            getvalues.push_back(cval);
+
+                            //mmLookupColsFstParam.insert(pcol, param.name);
+                        //}
+                    }
+                    nameValPosMap.insert(param.name, pcpos);
+                }
+            }
+
+            // count how often a given variable
+            if(mslProcessVars.contains(param.name))
+            {
+                if (procVarInObjConsMap.constFind(param.name) == procVarInObjConsMap.cend())
+                {
+                    procVarInObjConsMap[param.name] = 1;
+                }
+                else
+                {
+                    procVarInObjConsMap[param.name] += 1;
+                }
+            }
+        }
+
+        foreach(const Equation& equation, ea.eqnList)
+        {
+            if (!createEqnElemAdminMap(
+                        dimEqnMap,
+                        nameValPosMap,
+                        procVarInObjConsMap,
+                        getnames,
+                        getvalues,
+                        equation.eqn
+               ))
+            {
+                 return false;
+            }
+        }
+
+        if (bHighOnly && eqnDims.size() > 0)
+        {
+            mmslHighDimValComboTracker.insert(eqnname, highDimCombo);
+            mmHighDimEqnMap.insert(eqnname, eqnDims);
+        }
+    }
+
+
+    return true;
+}
+
+double NMMosra::getRecordValue(QMap<QString, std::vector<size_t> > &nameValPosMap,
+        std::vector<otb::AttributeTable::ColumnValue> &getvalues,
+        const QString &paramName,
+        const size_t optionsIdx
+        )
+{
+    double retVal = -9999;
+
+    if (nameValPosMap.constFind(paramName) != nameValPosMap.cend())
+    {
+        const size_t offset = nameValPosMap[paramName][optionsIdx];
+        const otb::AttributeTable::ColumnValue cval = getvalues[offset];
+        const otb::AttributeTable::TableColumnType vtype = cval.type;
+        switch(vtype)
+        {
+        case otb::AttributeTable::ATTYPE_INT:
+            retVal = static_cast<double>(cval.ival);
+            break;
+        case otb::AttributeTable::ATTYPE_DOUBLE:
+            retVal = cval.dval;
+            break;
+        default:
+            ;
+        }
+    }
+
+    return retVal;
+}
+
+
+int NMMosra::makeNL(void)
+{
+    NMDebugCtx(ctxNMMosra, << "...");
+
+    //if (!this->calcBaseline())
+    //{
+    //    return 0;
+    //}
+    //MosraLogInfo(<< "calculating baseline - OK");
+
+
+    /*
+     *  param ha_min {PARCEL} >= 0
+     *  param ha_max {j in PARCEL} >= ha_min[i]
+     *
+     *  param nleach {USE, PARCEL} >= 0
+     *
+     *  var LuHa {i in USE, j in PARCEL} >= 0, <= ha_max[j]
+     *
+     *
+     *
+     *  minimize leaching: sum {i in USE, j in PARCEL} nleach[i,j] * LuHa[i,j]
+     *
+     *  s.t. max_alloc {j in PARCEL}: sum {i in USE} LuHa[i,j] <= ha_max[j]
+     *  s.t. max_dai: sum {j in PARCEL} LuHa[1,j] >= 24480
+     *  s.t. max_dai_i: sum {j in PARCEL} LuHa[2,j] >= 8000
+     *  s.t. ...
+     *
+     *  - calc number of variables
+     *  - count number of constraints
+     *  - count non-zeros in constraint columns, i.e. the number of times a non-zero
+     *    constraint coefficient is used
+     *  - count non-zeros in gradient columns, i.e. the number of times a non-zero
+     *    objective function coefficient is used
+     *
+     *
+     */
+
+    QFileInfo fifo(this->getLosFileName());
+
+    QString nlFileName = QString("%1/%2.nl").arg(this->msDataPath).arg(fifo.baseName());
+    this->msSolFileName = QString("%1/%2.sol").arg(this->msDataPath).arg(fifo.baseName());
+    QFile nlFile(nlFileName);
+    if (!nlFile.open(QIODevice::WriteOnly))
+    {
+        MosraLogError(<< "failed creating '" << nlFileName.toStdString()
+                      << "'!");
+        return 0;
+    }
+
+    // ---------------------------------------
+    // initiate header
+
+    QString nlheader;
+    QTextStream nlstr(&nlheader);
+
+    QString sp = " ";
+    QString endl = "\n";
+
+    // first line never changes
+    nlstr << "g3 1 1 0" << endl;
+
+    // num variables
+    long nvars = 0;
+    //QString b_seg;
+    //if (!processVariables(b_seg, &nvars))
+    //{
+    //    return 0;
+    //}
+
+
+    for (int dv=0; dv < mslDecisionVars.size(); ++dv)
+    {
+        auto vait = mmVarAdminMap.constFind(mslDecisionVars[dv]);
+        nvars += vait.value().dimOffsetMap.size();
+    }
+
+    MosraLogInfo(<< "Number of variables for '" << mScenarioName.toStdString()
+                 << "': " << nvars);
+
+    nlstr << nvars << sp;
+
+    // num constraints
+    const int n_cons = this->mlNumOptFeat + this->mmslAreaCons.size() +
+            this->mmslCriCons.size() + this->mmslFeatCons.size() +
+            this->mmslAreaZoneCons.size();
+    nlstr << n_cons << sp;
+
+    // num objectives, ranges,
+    const int n_objs = this->mmslObjectives.size();
+    nlstr << n_objs << sp << n_cons << " 0 0" << endl;
+
+    // non-linear constraints, objectives
+    const int n_nlin_cons = this->mmslNonLinearConstraints.size();
+    int n_nlin_objs = 0;
+    auto oit = this->mmslObjectives.cbegin();
+    while (oit != this->mmslObjectives.cend())
+    {
+        if (this->mmsEquations.find(oit.key()) != mmsEquations.end())
+        {
+            ++n_nlin_objs;
+        }
+        ++oit;
+    }
+    nlstr << n_nlin_cons << sp << n_nlin_objs << sp << endl;
+
+    // network constraints: non-linear, linear
+    nlstr << "0 0" << endl;
+
+    // non-linear vars in constraints, objectives, both
+    // non-linear vars:
+    //   - defined vars popping up in defined equations
+    //   - defined vars popping up in non-linear constraints
+    // we count the coccurence of uniqe non-linear vars in
+    // (non-linear) constraints and (non-linear) objectives
+
+    QSet<QString> nlVars;
+    foreach(const QString& var, mmslVariables.keys())
+    {
+        // check equation 'names'
+        if (mmEquationAdmins.keys().contains(var))
+        {
+            nlVars << var;
+        }
+        else
+        {
+            // now look inside each equation ...
+            auto eit = mmEquationAdmins.cbegin();
+            while (eit != mmEquationAdmins.cend())
+            {
+                // check each parameter in the equation (as it could
+                // be actually a variable)
+                foreach(const Param& par, eit.value().paramList)
+                {
+                    // if we found a match, we double check whether the
+                    // dimensions also match, just to be sure ...
+                    if (var.compare(par.name, Qt::CaseSensitive) == 0)
+                    {
+                        // checking the number, order, and names of
+                        // the dimensions
+                        const QString ds1 = mmslVariables[var].join(" ");
+                        const QString ds2 = par.dimensions.join(" ");
+
+                        if (ds1.compare(ds2, Qt::CaseSensitive) == 0)
+                        {
+                            // need to query / calc the actual number of vars
+                            // involved here
+
+
+                            nlVars << var;
+                        }
+                    }
+                }
+                ++eit;
+            }
+        }
+    }
+
+    // now determine how many of the nl vars occur in nl constraints and nl objectives respectively
+    int num_nlConsVars = 0;
+    int num_nlObjsVars = 0;
+    int num_nlConsObjVars = 0;
+
+    foreach(const QString nlvar, nlVars)
+    {
+        int sum = 0;
+        if (mmslObjectives.keys().contains(nlvar))
+        {
+            ++num_nlObjsVars;
+            ++sum;
+        }
+
+        if (mmslNonLinearConstraints.contains(nlvar))
+        {
+            ++num_nlConsVars;
+            ++sum;
+        }
+
+        if (sum == 2)
+        {
+            ++num_nlConsObjVars;
+        }
+    }
+
+    // non-linear vars in constraints, objectives, both
+    nlstr << num_nlConsVars << sp
+          << num_nlObjsVars << sp
+          << num_nlConsObjVars << endl;
+
+    // linear network vars, functions, arith, flags
+    nlstr << "0 0 0 0" << endl;
+
+    // discrete variables: binary, integer, non-linear binary, non-linear integer
+    nlstr << "0 0 0 0 0" << endl;
+
+    //QString newString;
+    //nlstr.setString(&newString);
+
+    /*
+     *  # stuff we know
+     *
+     *  msAreaField     - name of AreaHa column
+     *  mdAreaTotal     - total area of SDUs
+     *  mlNumOptFeat    - number of SDUs
+     *  miNumOptions    - number of land uses
+     *  mlNumArealDVar  - number of spatial desc vars (no SDUs * no land-uses)
+     *  mlNumDVar       = mlNumArealDVar
+     *
+     *  mslOptions      - list of land uses
+     *  mmslAreaCons    - areal constraints
+     *  mmslCriCons     - performance constraints
+     */
+
+    //
+    long long lNumCells = mDataSet->getNumRecs();
+    int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
+    int sduIdx = 0;
+
+    std::vector<int> viDVarConsNonZeros(this->mlNumDVar, 0);
+    std::vector<int> viDVarObjNonZeros(this->mlNumDVar, 0);
+
+    // =======================================================================
+    // explicit area constraints
+
+    std::vector<QString> vsConsLabel;
+    std::vector<int> vnZoneLength;
+    std::vector<QString> vsZoneField;
+    std::vector<std::vector<unsigned int> > vvnOptionIndex;
+    std::vector<unsigned int> vnConsType;
+    std::vector<double> vdRHS;
+
+    if (!processExplicitArealCons(vsConsLabel, vnZoneLength, vsZoneField,
+                             vvnOptionIndex, vnConsType, vdRHS))
+    {
+        return false;
+    }
+
+    QString Cpart;
+    QTextStream strC(&Cpart);
+
+    QString Jpart;
+    QTextStream strJ(&Jpart);
+
+    QString rpart;
+    QTextStream strr(&rpart);
+
+    int constrIdx = 0;
+
+    // initiate 'r' section
+    strr << "r" << sp << "   # constraints' RHS (thresholds)" << endl;
+
+    QMap<QString, QStringList>::const_iterator it = this->mmslAreaCons.constBegin();
+    for (int r=0; it != this->mmslAreaCons.constEnd(); ++it, ++r, ++constrIdx)
+    {
+        // -----------------------
+        // C - algebraic constraints body
+        // -----------------------
+
+        strC << "C" << constrIdx << sp << "   # " << it.key() << endl;
+        strC << "n0" << endl;
+
+        // ------------------------
+        // r - bounds on algebraic constraint bodies ("ranges") (RHS)
+        // -----------------------
+
+        // body <= rhs
+        if (vnConsType.at(r) == 1)
+        {
+            strr << 1 << sp << vdRHS.at(r) << endl;
+        }
+        // body >= rhs
+        else if (vnConsType.at(r) == 2)
+        {
+            strr << 2 << sp << vdRHS.at(r) << endl;
+        }
+        // body = rhs
+        else if (vnConsType.at(r) == 3)
+        {
+            strr << 4 << sp << vdRHS.at(r) << endl;
+        }
+        // no constraints on body
+        else
+        {
+            strr << 3 << endl;
+        }
+
+        // ---------------------------
+        // J - Jacobian sparsity, linear  terms
+        // ---------------------------
+
+        QStringList consOptions = this->mslOptions;
+        strJ << "J" << constrIdx << sp << vnZoneLength.at(r) * vvnOptionIndex.at(r).size() << sp;
+        strJ << "   # " << it.key() << endl;
+
+        sduIdx = 0;
+        for (int feat=0; feat < lNumCells; ++feat)
+        {
+            if (optFeatIdx != -1 && this->mDataSet->getIntValue(optFeatIdx, feat) == 0)
+            {
+                continue;
+            }
+
+            if (!vsZoneField.at(r).isEmpty())
+            {
+                const QString zoneVal = mDataSet->getStrValue(vsZoneField.at(r), feat);
+                consOptions = zoneVal.split(" ", Qt::SkipEmptyParts);
+            }
+
+            for (int oi=0; oi < vvnOptionIndex.at(r).size(); ++oi)
+            {
+                const int optIdx = vvnOptionIndex.at(r).at(oi);
+                if (consOptions.contains(this->mslOptions.at(optIdx)))
+                {
+                    const int offset = optIdx + sduIdx * this->miNumOptions;
+                    strJ << offset << sp << 1 << endl;
+                    viDVarConsNonZeros[offset] += 1;
+                }
+            }
+
+            // sdu counter
+            ++sduIdx;
+        }
+    }
+
+    //===============================================
+    // add implicit areal constraints  (&& and bounds on spatial desc. var)
+    QString bpart;
+    QTextStream strb(&bpart);
+
+    strb << "b" << sp << "  # variable bounds" << endl;
+
+    const int AreaFieldIdx = this->mDataSet->getColumnIndex(this->msAreaField);
+    if (AreaFieldIdx == -1)
+    {
+        MosraLogError(<< "Oh, this went horribly wrong! "
+                      << "Couldn't get the area column!");
+        return 0;
+    }
+
+    sduIdx = 0;
+    for (int cell=0; cell < lNumCells; ++cell)
+    {
+        // SDU or not?
+        if (optFeatIdx != -1 && mDataSet->getIntValue(optFeatIdx, cell) == 0)
+        {
+            continue;
+        }
+
+        // -----------------
+        // C
+
+        strC << "C" << constrIdx << sp
+             << "   # feat=" << cell << " sdu=" << sduIdx << endl;
+        strC << "n0" << endl;
+
+        // -----------------
+        // r
+
+        const double dCellArea = this->mDataSet->getDblValue(AreaFieldIdx, cell);
+
+        // body <= rhs
+        strr << 1 << sp << dCellArea << endl;
+
+        // -----------------
+        // J
+
+        strJ << "J" << constrIdx << sp << this->miNumOptions << sp;
+        strJ << "   # feat=" << cell << " sdu=" << sduIdx << endl;
+
+        for (int o=0; o < this->miNumOptions; ++o)
+        {
+            // var bounds
+            strb << 0 << sp << 0 << sp << dCellArea << sp
+                 << "  # feat=" << cell << " sdu=" << sduIdx << " option=" << this->mslOptions.at(o) << endl;
+
+            // non-zero jacobian values
+            const int varoffset = o + sduIdx * this->miNumOptions;
+            strJ << varoffset << sp << 1 << endl;
+            viDVarConsNonZeros[varoffset] += 1;
+        }
+
+        // -------------------
+        // counters
+        ++constrIdx;
+        ++sduIdx;
+    }
+
+
+    //========================================================
+    // objective function - non-linear 'O' & linear 'G' part
+
+    QString Opart;
+    QTextStream strO(&Opart);
+
+    QString Gpart;
+    QTextStream strG(&Gpart);
+
+    oit = this->mmslObjectives.constBegin();
+    for (int no=0; oit != this->mmslObjectives.constEnd(); ++oit, ++no)
+    {
+        // -------------------------
+        // O - objective function (non-linear part)
+
+        const QString minmaxStr = oit.value().at(0).left(3);
+        int minmax = 0;
+        if (minmaxStr.contains("max"))
+        {
+            minmax = 1;
+        }
+
+        strO << "O" << no << sp << minmax << sp << "   # " << oit.key() << endl;
+        strO << "n0" << endl;
+
+        // --------------------------
+        // G - objective function (linear part)
+
+        strG << "G" << no << sp << this->mlNumDVar << sp << "   # " << oit.key() << endl;
+
+        const QString sCriterion = oit.key();
+        const QStringList criFieldList = this->mmslCriteria.value(sCriterion);
+
+        sduIdx = 0;
+        for (long cell=0; cell < lNumCells; ++cell)
+        {
+            if (optFeatIdx != -1 && mDataSet->getIntValue(optFeatIdx, cell) == 0)
+            {
+                continue;
+            }
+
+            for (int option=0; option < this->miNumOptions; ++option)
+            {
+                QString sField = "";
+                if (option <= criFieldList.size()-1)
+                {
+                    sField = criFieldList.at(option);
+                }
+
+                const int fieldIdx = this->mDataSet->getColumnIndex(sField);
+                if (fieldIdx == -1)
+                {
+                    MosraLogError(<< "Oh, this went horribly wrong!"
+                                  << "Couldn't get the performance indicator '"
+                                  << oit.key().toStdString() << "' for '"
+                                  << this->mslOptions.at(option).toStdString() << "'!");
+                    return 0;
+                }
+
+                const double dValue = this->mDataSet->getDblValue(fieldIdx, cell);
+                const int varOffset = option + sduIdx * this->miNumOptions;
+                viDVarObjNonZeros[varOffset] += 1;
+
+                strG << varOffset << sp << dValue << endl;
+            }
+
+            //-----------
+            //counters
+            ++sduIdx;
+        }
+    }
+
+
+    // =========================================
+    // finalise header
+
+    // count non zeros in jacobian
+    int nonZerosJ = 0;
+    for (int j=0; j < viDVarConsNonZeros.size(); ++j)
+    {
+        nonZerosJ += viDVarConsNonZeros[j];
+    }
+
+    // count non zeros in objective function
+    int nonZerosG = 0;
+    for (int g=0; g < viDVarObjNonZeros.size(); ++g)
+    {
+        nonZerosG += viDVarObjNonZeros[g];
+    }
+
+    // non-zeros constraint and objective func. coefficients
+    nlstr << nonZerosJ << sp << nonZerosG << endl;
+
+    // max name length: constraints, variables
+    nlstr << "0 0" << endl;
+
+    // common exprs: b,c,o,c1,o1
+    nlstr << "0 0 0 0 0" << endl;
+
+    // write the header
+    QByteArray nlbar(nlstr.readAll().toStdString().c_str());
+    nlFile.write(nlbar);
+    nlFile.flush();
+    nlbar.clear();
+    nlheader.clear();
+
+
+    // =========================================
+    // write 'C' part
+    nlbar.push_back(strC.readAll().toStdString().c_str());
+    nlFile.write(nlbar);
+    nlFile.flush();
+    nlbar.clear();
+
+    Cpart.clear();
+    strC.setString(&Cpart);
+
+
+    // =========================================
+    // write 'O' part
+    nlbar.push_back(strO.readAll().toStdString().c_str());
+    nlFile.write(nlbar);
+    nlFile.flush();
+    nlbar.clear();
+
+    Opart.clear();
+    strO.setString(&Cpart);
+
+
+    //===========================================
+    // write 'r' part
+    nlbar.push_back(strr.readAll().toStdString().c_str());
+    nlFile.write(nlbar);
+    nlFile.flush();
+    nlbar.clear();
+
+    rpart.clear();
+    strr.setString(&rpart);
+
+    //===========================================
+    // write the 'b' part
+    nlbar.push_back(strb.readAll().toStdString().c_str());
+    nlFile.write(nlbar);
+    nlFile.flush();
+    nlbar.clear();
+
+    bpart.clear();
+    strb.setString(&bpart);
+
+    //====================================================
+    // writing the 'k' section
+    // cumulative sum of J-columns' non-zeros
+
+    const int klen = viDVarConsNonZeros.size()-1;
+    QString kpart;
+    QTextStream strk(&kpart);
+
+    strk << "k" << klen << sp << "    # cumulative non-zeros in jacobian" << endl;
+    int cumVar = 0;
+    for (int k=0; k < klen; ++k)
+    {
+        cumVar += viDVarConsNonZeros.at(k);
+        strk << cumVar << endl;
+    }
+
+    nlbar.push_back(strk.readAll().toStdString().c_str());
+    nlFile.write(nlbar);
+    nlFile.flush();
+    nlbar.clear();
+
+    kpart.clear();
+    strk.setString(&kpart);
+
+    //======================================================
+    // write the J part
+    nlbar.push_back(strJ.readAll().toStdString().c_str());
+    nlFile.write(nlbar);
+    nlFile.flush();
+    nlbar.clear();
+
+    Jpart.clear();
+    strJ.setString(&Jpart);
+
+    //======================================================
+    // write the G part
+    nlbar.push_back(strG.readAll().toStdString().c_str());
+    nlFile.write(nlbar);
+    nlFile.flush();
+    nlbar.clear();
+
+    Gpart.clear();
+    strG.setString(&Gpart);
+
+
+    // close file
+    nlFile.close();
+
+    NMDebugCtx(ctxNMMosra, << "done!");
+    return 1;
+}
+
+int NMMosra::makeSTECLp(int proc)
+{
+    NMDebugCtx(ctxNMMosra, << "...");
+
+    /* STEC Lp structure
+     *
+     * i     : feature index (SVID) only for units with long-term annual avg landslide > 0
+     * j     : daily time step index (0-based)
+     * b_i_j : fail indicator (i=239, j=365, ixj=87235)
+     *     - we doe have 365 time steps
+     *
+     * cho     : global decision variable for cohesion parameter (1)
+     * tan_phi : global decision variable for angle of inner friction (1)
+     *
+     *col/row :     0      1         2      3           4          5
+     *                 |  coh | tan_phi |   b_1_1 |   b_2_1 |   b_1_2 |   b_2_2 ...  OP  RHS
+     *obj fun:                            -tl_1_1 | -tl_2_1 | -tl_1_2 | -tl_2_2
+     *b_1_1_cons                     1    cst_1_1     maxS                                     >=  SS_1_1
+     *b_2_1_cons                     1    cst_2_1               maxS                           >=  SS_2_1
+     * ...
+     * ...
+     *coh_upper                      1                                                         <=  400000
+     *tan_phi_lower                         1                                                  >=  0.083
+     *tan_phi_upper                         1                                                  <=  0.83
+     *
+     */
+
+    // structure of the input dataset
+    // columns: rowidx, recid, TimeStamp, lscoeff, costress, shstress
+    // rows: 1254 x 365 = 457710
+    //
+
+    // --------------------------------------------------
+    //              GET BEARINGS ...
+    // --------------------------------------------------
+
+
+    long long lNumCells = mDataSet->getNumRecs();
+    this->mlNumArealDVar = lNumCells / 365;
+    this->mlNumDVar = lNumCells + 2;
+    this->mlLpCols = this->mlNumDVar + 1;
+    this->meScalMeth == NMMosra::NM_MOSO_INTERACTIVE;
+
+    this->mLp->MakeLp(0, this->mlLpCols);
+
+    // --------------------------------------------------
+    //          GREEDY DATA GRAB
+    // --------------------------------------------------
+    NMMsg(<< "Greedily fetching required values from the table ..." << endl);
+
+    otb::SQLiteTable* sqltab = static_cast<otb::SQLiteTable*>(mDataSet->getOtbAttributeTable().GetPointer());
+    if (sqltab == nullptr)
+    {
+        NMMsg(<< "BAD LUCK folks! This is gonna take until the end of time ...!" << endl);
+        return 0;
+    }
+
+    std::vector<std::string> colnames;
+    colnames.push_back("rowidx");       //0
+    colnames.push_back("SVID");         //1
+    colnames.push_back("lscoeff");      //2
+    colnames.push_back("costress");     //3
+    colnames.push_back("shstress");     //4
+
+    std::map<int, std::map<long long, double> > valstore;
+    for (int c=1; c < colnames.size(); ++c)
+    {
+        std::map<long long, double> dblmap;
+        valstore.insert(std::pair<int, std::map<long long, double> >(c, dblmap));
+    }
+
+    if (!sqltab->GreedyNumericFetch(colnames, valstore))
+    {
+        NMMsg(<< "Greedy fetch didn't work :-( ... " << endl);
+        return 0;
+    }
+
+    // --------------------------------------------------
+    //              CREATE EMPTY LP MATRIX
+    // --------------------------------------------------
+    MosraLogInfo(<< "Creating LP matrix ...");
+    NMMsg(<< "Creating LP matrix ..." << endl);
+
+    //std::vector<std::string> mainColNames = {"snl_sum", "coh", "tan_phi"};
+    std::vector<std::string> mainColNames = {"coh", "tan_phi"};
+
+    long colPos = 1;
+    int featCount = 1;
+    int yearCount = 1;
+
+    for (int i=0; i < 2 ; ++i, ++colPos)
+    {
+        this->mLp->SetColName(colPos, mainColNames[i]);
+    }
+
+
+    std::stringstream colname;
+    for (int cell=1; cell <= lNumCells; ++cell, ++colPos, ++featCount)
+    {
+        //colname << "b_" << featCount << "_" << yearCount;
+        colname << "b_" << valstore[1][cell] << "_" << yearCount;
+        //std::cout << "adding column '" << colname.str() << "'" << endl;
+        this->mLp->SetColName(colPos, colname.str());
+        this->mLp->SetBinary(colPos, true);
+        colname.str("");
+        if (featCount == this->mlNumArealDVar)
+        {
+            featCount = 0;
+            ++yearCount;
+        }
+    }
+
+
+    // --------------------------------------------------
+    //              ADD THE OBJECTIVE FUNCTION
+    // --------------------------------------------------
+    MosraLogInfo(<< "Adding the objective function ...");
+    NMMsg(<< "Adding the objective function:  " << endl);
+
+    const long objsize = lNumCells;
+    double* pcval = new double[objsize];
+    int* pcid = new int[objsize];
+
+    //pcid[0] = 1;
+    //pcval[0] = 1.0;
+
+    int colID = 3;
+    int arpos = 0;
+
+    featCount = 1;
+    yearCount = 1;
+
+    for (int feat=1; feat <= lNumCells; ++feat, ++featCount, ++arpos, ++colID)
+    {
+        pcval[arpos] = valstore[2][feat];
+        pcid[arpos]  = colID;
+
+        if (featCount == this->mlNumArealDVar)
+        {
+            featCount = 0;
+            if (std::fmod(feat, lNumCells*0.1) == 0) std::cout << ".";
+            ++yearCount;
+        }
+    }
+    std::cout << endl << endl;
+
+    this->mLp->SetAddRowmode(true);
+    this->mLp->SetObjFnEx(objsize, pcval, pcid);
+    this->mLp->SetAddRowmode(false);
+    this->mLp->SetMinim();
+
+    NMMsg(<< " done!" << endl << endl);
+
+    delete[] pcval;
+    delete[] pcid;
+
+
+    // --------------------------------------------------
+    //              ADD CONSTRAINTS
+    // --------------------------------------------------
+    MosraLogInfo(<< "Adding objective constraints to LP ...");
+    NMMsg(<< "Adding objective constraints to LP: " << endl);
+
+    const double sn_tls = 1364256.0;
+    const double sn_tls_98 = 1336971;
+    const double sn_tls_up = 1364256.0 + 68212;
+    const double sn_tls_lo = 1364256.0 - 68212;
+    pcval = new double[objsize];
+    pcid = new int[objsize];
+
+    //pcval2 = new double[objsize-1];
+
+    arpos = 0;
+    colID = 3;
+
+    featCount = 1;
+    yearCount = 1;
+
+    for (int ff=1; ff <= lNumCells; ++ff, ++arpos, ++featCount, ++colID)
+    {
+        pcval[arpos] = valstore[2][ff];
+        //pcval2[arpos] = -valstore[1][feat];
+        pcid[arpos]  = colID;
+
+        if (featCount == this->mlNumArealDVar)
+        {
+            featCount = 0;
+            if (std::fmod(ff, lNumCells*0.1) == 0) std::cout << ".";
+            ++yearCount;
+        }
+    }
+    std::cout << endl << endl;
+
+    this->mLp->SetAddRowmode(true);
+    long lRowCounter = this->mLp->GetNRows();
+
+    this->mLp->AddConstraintEx(objsize, pcval, pcid, 2, sn_tls);
+    ++lRowCounter;
+    this->mLp->SetRowName(lRowCounter, "Obj cons #1 sn_ls >= +sum");
+
+    //this->mLp->AddConstraintEx(objsize-1, pcval, pcid, 2, sn_tls_lo);
+    //++lRowCounter;
+    //this->mLp->SetRowName(lRowCounter, "Obj cons #2 sn_ls >= -sum");
+
+    delete[] pcval;
+    //delete[] pcval2;
+    delete[] pcid;
+
+
+    // -------------------------------------------
+    // add the limit constraints for c and tan(phi)
+
+    double co_lim_up = 0;//40000;
+    double tanphi_lim[2] = {0.08, 0.83};
+    double dvcoeff = 1.0;
+    int colCoh = 1;
+    int colTanPhi = 2;
+
+    this->mLp->AddConstraintEx(1, &dvcoeff, &colCoh, 1, co_lim_up);
+    ++lRowCounter;
+    this->mLp->SetRowName(lRowCounter, "cohesion_upper_cons");
+
+    this->mLp->AddConstraintEx(1, &dvcoeff, &colTanPhi, 2, tanphi_lim[0]);
+    ++lRowCounter;
+    this->mLp->SetRowName(lRowCounter, "tan(phi)_lower_cons");
+
+    this->mLp->AddConstraintEx(1, &dvcoeff, &colTanPhi, 1, tanphi_lim[1]);
+    ++lRowCounter;
+    this->mLp->SetRowName(lRowCounter, "tan(phi)_upper_cons");
+
+    // -------------------------------------------
+    //     add binary & stress coeff constraints
+    MosraLogInfo(<< "Adding switch & stress constraints to LP ...");
+    NMMsg(<< "Adding switch and stress constraints to LP: " << endl);
+
+    double pdRow[3]   = {1,0,500000};
+    int piColno[3] = {1,2,3};
+    featCount = 1;
+    yearCount = 1;
+
+    std::stringstream rowname;
+    for (int feat=1; feat <= lNumCells; ++feat, ++featCount)
+    {
+        const double shstress = valstore[4][feat];
+        pdRow[1] = valstore[3][feat];
+
+        this->mLp->AddConstraintEx(3, pdRow, piColno, 2, shstress);
+        ++lRowCounter;
+
+        rowname << "b_" << valstore[1][feat] << "_" << yearCount << "_cons";
+        this->mLp->SetRowName(lRowCounter, rowname.str());
+        rowname.str("");
+
+        ++piColno[2];
+
+        if (featCount == this->mlNumArealDVar)
+        {
+            featCount = 0;
+            ++yearCount;
+        }
+    }
+    NMMsg(<< " done!" << endl << endl);
+
+    this->mLp->SetAddRowmode(false);
+
+    // --------------------------------------------------
+    //              Write LP
+    // --------------------------------------------------
+    MosraLogInfo(<< "Exporting your problem ...");
+    NMMsg( << "Exporting your problem ...");
+
+    // if the user wishes, we write out the problem we've just created ...
+    //otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(this->mDataSet->getOtbAttributeTable().GetPointer());
+    //NMSqlTableModel* sqltab = static_cast<NMSqlTableModel*>(mDataSet->getQSqlTableModel());
+    //if (sqltab == nullptr)
+    //{
+    //    MosraLogError(<< "Mmmh, didn't get the underlying table model ... I quit!");
+    //    return 0;
+    //}
+
+    QString pathname;
+    QString basename = this->mScenarioName;
+
+    if (sqltab != nullptr)
+    {
+        QString tabFN = sqltab->GetDbFileName().c_str();
+        QFileInfo fifo(tabFN);
+        pathname = fifo.canonicalPath();
+        QString lpname = QString("%1/%2.lp").arg(pathname).arg(basename);
+
+        this->mProblemFilename = lpname;
+        if (!this->mProblemFilename.isEmpty())
+        {
+            if (this->mProblemType == NM_MOSO_LP)
+            {
+                this->mLp->WriteLp(this->mProblemFilename.toStdString());
+            }
+            else
+            {
+                this->mLp->WriteMps(this->mProblemFilename.toStdString());
+            }
+        }
+    }
+
+    // --------------------------------------------------
+    //              SOLVE LP
+    // --------------------------------------------------
+    MosraLogInfo(<< "Solving your problem ...");
+    NMMsg(<< "Solving your problem ..." << endl);
+
+    this->mLp->SetBreakAtFirst(true);
+    //this->mLp->SetBreakAtValue(1405184);
+    //this->mLp->SetTimeout(-1);
+    //this->mLp->SetTimeout(180);
+    this->mbCanceled = false;
+
+    this->mLp->SetAbortFunc((void*)this, NMMosra::callbackIsSolveCanceled);
+    this->mLp->SetLogFunc((void*)this, NMMosra::lpLogCallback);
+
+    //this->mLp->SetPresolve(PRESOLVE_COLS |
+    //                       PRESOLVE_ROWS |
+    //                       PRESOLVE_IMPLIEDFREE |
+    //                       PRESOLVE_REDUCEGCD |
+    //                       PRESOLVE_MERGEROWS |
+    //                       PRESOLVE_ROWDOMINATE |
+    //                       PRESOLVE_COLDOMINATE |
+    //                       PRESOLVE_KNAPSACK |
+    //                       PRESOLVE_PROBEFIX);
+    //
+    //this->mLp->SetScaling(SCALE_GEOMETRIC |
+    //                      SCALE_DYNUPDATE);
+
+    this->mLp->Solve();
+
+    // --------------------------------------------------
+    //              Report results
+    // --------------------------------------------------
+    MosraLogInfo(<< "Report results ...");
+    NMMsg(<< "Report results ..." << endl);
+
+    QString stecReport = QString("%1/report_%2.txt").arg(pathname).arg("ParaOpt_STEC_landslide");
+    // this is where the desc vars for landslideing are retrieved and reported
+    this->writeSTECReport(stecReport, valstore);
+
+    MosraLogInfo(<< this->msReport.toStdString() << endl);
+    NMMsg(<< this->msReport.toStdString() << endl << endl);
+
+
+    NMDebugCtx(ctxNMMosra, << "done!");
+    return 1;
+}
+
+int NMMosra::makeSTECLp2(int proc)
+{
+    NMDebugCtx(ctxNMMosra, << "...");
+
+    /* STEC Lp structure
+     *
+     * i     : feature index (0-based)
+     * j     : time step index (0-based)
+     * b_i_j : fail indicator (i=239, j=365, ixj=87235)
+     *     - we doe have 365 time steps
+     *
+     * cho     : global decision variable for cohesion parameter (1)
+     * tan_phi : global decision variable for angle of inner friction (1)
+     *                                                               |  failOffset = 2 * i + 1
+     *col/row :     0      1         2            2 * i-1   2 * i    | 2 x i + 1 |  offset+1  offset+i-1
+     *                |  coh_1 | tan_phi_1 | ... | coh_i | tan_phi_i |   b_1_1   |   b_2_1 |  b_i_1      | b_i_j          ...  OP  RHS
+     *obj fun (min z):                                                    tl_1        tl_2     tl_i        tl_i
+     *tot sn ls                                                           tl_1        tl_2     tl_i        tl_i          >= SedNetNZ landslide
+     *b_1_1_cons           1      cst_1_1                                 maxS                                           >=  SS_1_1
+     *b_i_j_cons                                     1      st_i_j                                          maxS         >=  SS_2_1
+     * ...
+     * ...
+     *coh_1_upper          1                                                                                             <=  400000
+     *tan_phi_1_lower               1                                                                                    >=  0.083
+     *tan_phi_1_upper               1                                                                                    <=  0.83
+     *coh_2_upper                                    1                                                                   <=  400000
+     *tan_phi_2_lower                                         1                                                          >=  0.083
+     *tan_phi_2_upper                                         1                                                          <=  0.83
+     *
+     */
+
+    // structure of the input dataset
+    // columns: rowidx, recid, TimeStamp, lscoeff, costress, shstress
+    // rows: 239 x 365 = 87235
+    //
+
+    // --------------------------------------------------
+    //              GET BEARINGS ...
+    // --------------------------------------------------
+
+
+    long long lNumCells = mDataSet->getNumRecs();
+    this->mlNumArealDVar = lNumCells / 365;
+    //this->mlNumDVar = lNumCells + 2 * this->mlNumArealDVar;
+    this->mlNumDVar = lNumCells + 1 * this->mlNumArealDVar;
+    this->mlLpCols = this->mlNumDVar + 1;
+    this->meScalMeth == NMMosra::NM_MOSO_INTERACTIVE;
+
+    this->mLp->MakeLp(0, this->mlLpCols);
+
+    // --------------------------------------------------
+    //          GREEDY DATA GRAB
+    // --------------------------------------------------
+    NMMsg(<< "Greedily fetching required values from the table ..." << endl);
+
+    otb::SQLiteTable* sqltab = static_cast<otb::SQLiteTable*>(mDataSet->getOtbAttributeTable().GetPointer());
+    if (sqltab == nullptr)
+    {
+        NMMsg(<< "BAD LUCK folks! This is gonna take until the end of time ...!" << endl);
+        return 0;
+    }
+
+    std::vector<std::string> colnames;
+    colnames.push_back("rowidx");       //0
+    colnames.push_back("SVID");         //1
+    colnames.push_back("lscoeff");      //2
+    colnames.push_back("costress");     //3
+    colnames.push_back("shstress");     //4
+
+    std::map<int, std::map<long long, double> > valstore;
+    for (int c=1; c < colnames.size(); ++c)
+    {
+        std::map<long long, double> dblmap;
+        valstore.insert(std::pair<int, std::map<long long, double> >(c, dblmap));
+    }
+
+    if (!sqltab->GreedyNumericFetch(colnames, valstore))
+    {
+        NMMsg(<< "Greedy fetch didn't work :-( ... " << endl);
+        return 0;
+    }
+
+    // --------------------------------------------------
+    //              CREATE EMPTY LP MATRIX
+    // --------------------------------------------------
+    MosraLogInfo(<< "Creating LP matrix ...");
+    NMMsg(<< "Creating LP matrix ..." << endl);
+
+    long colPos = 1;
+    int featCount = 1;
+    int yearCount = 1;
+    std::stringstream coh_name, tan_name, fail_name;
+
+    for (int i=1; i <= this->mlNumArealDVar; ++i)
+    {
+        //coh_name << "coh_" << valstore[1][i];
+        tan_name << "tan_" << valstore[1][i];
+
+        //this->mLp->SetColName(colPos, coh_name.str());
+        //coh_name.str("");
+        //++colPos;
+        this->mLp->SetColName(colPos, tan_name.str());
+        tan_name.str("");
+        ++colPos;
+    }
+
+    for (int cell=1; cell <= lNumCells; ++cell, ++colPos, ++featCount)
+    {
+        fail_name << "b_" << valstore[1][cell] << "_" << yearCount;
+        this->mLp->SetColName(colPos, fail_name.str());
+        this->mLp->SetBinary(colPos, true);
+        fail_name.str("");
+        if (featCount == this->mlNumArealDVar)
+        {
+            featCount = 0;
+            ++yearCount;
+        }
+    }
+
+
+    // --------------------------------------------------
+    //              ADD THE OBJECTIVE FUNCTION
+    // --------------------------------------------------
+    MosraLogInfo(<< "Adding the objective function ...");
+    NMMsg(<< "Adding the objective function:  " << endl);
+
+    const long objsize = lNumCells;
+    double* pcval = new double[objsize];
+    int* pcid = new int[objsize];
+
+    //const int failOffset = 2 * this->mlNumArealDVar + 1;
+    const int failOffset = 1 * this->mlNumArealDVar + 1;
+
+    int colID = failOffset;
+    int arpos = 0;
+
+    featCount = 1;
+    yearCount = 1;
+
+    for (int feat=1; feat <= lNumCells; ++feat, ++featCount, ++arpos, ++colID)
+    {
+        pcval[arpos] = valstore[2][feat];
+        pcid[arpos]  = colID;
+
+        if (featCount == this->mlNumArealDVar)
+        {
+            featCount = 0;
+            if (std::fmod(feat, lNumCells*0.1) == 0) std::cout << ".";
+            ++yearCount;
+        }
+    }
+    std::cout << endl << endl;
+
+    this->mLp->SetAddRowmode(true);
+    this->mLp->SetObjFnEx(objsize, pcval, pcid);
+    this->mLp->SetAddRowmode(false);
+    this->mLp->SetMinim();
+
+    NMMsg(<< " done!" << endl << endl);
+
+    delete[] pcval;
+    delete[] pcid;
+
+
+    // --------------------------------------------------
+    //              ADD CONSTRAINTS
+    // --------------------------------------------------
+    MosraLogInfo(<< "Adding objective constraints to LP ...");
+    NMMsg(<< "Adding objective constraints to LP: " << endl);
+
+    const double sn_tls = 1364256.0;
+    const double sn_tls_98 = 1336971;
+    const double sn_tls_up = 1364256.0 + 68212;
+    const double sn_tls_lo = 1364256.0 - 68212;
+    pcval = new double[objsize];
+    pcid = new int[objsize];
+
+    //pcval2 = new double[objsize-1];
+
+    arpos = 0;
+    colID = failOffset;
+
+    featCount = 1;
+    yearCount = 1;
+
+    for (int ff=1; ff <= lNumCells; ++ff, ++arpos, ++featCount, ++colID)
+    {
+        pcval[arpos] = valstore[2][ff];
+        pcid[arpos]  = colID;
+
+        if (featCount == this->mlNumArealDVar)
+        {
+            featCount = 0;
+            if (std::fmod(ff, lNumCells*0.1) == 0) std::cout << ".";
+            ++yearCount;
+        }
+    }
+    std::cout << endl << endl;
+
+    this->mLp->SetAddRowmode(true);
+    long lRowCounter = this->mLp->GetNRows();
+
+    this->mLp->AddConstraintEx(objsize, pcval, pcid, 2, sn_tls);
+    ++lRowCounter;
+    this->mLp->SetRowName(lRowCounter, "Obj cons #1 sn_ls >= +sum");
+
+    //this->mLp->AddConstraintEx(objsize-1, pcval, pcid, 2, sn_tls_lo);
+    //++lRowCounter;
+    //this->mLp->SetRowName(lRowCounter, "Obj cons #2 sn_ls >= -sum");
+
+    delete[] pcval;
+    //delete[] pcval2;
+    delete[] pcid;
+
+
+    // -------------------------------------------
+    // add the limit constraints for c and tan(phi)
+
+    double co_lim_up = 0;//400000;
+    double tanphi_lim[2] = {0.08, 0.83};
+    double dvcoeff = 1.0;
+    //int colCoh = 1;
+    //int colTanPhi = 2;
+    int colTanPhi = 1;
+
+    std::stringstream coh_upper, tan_lower, tan_upper;
+    for (int a=1; a < this->mlNumArealDVar; ++a)
+    {
+        const int svid = valstore[1][a];
+
+        //coh_upper << "coh_" << svid << "_upper_cons";
+        //this->mLp->AddConstraintEx(1, &dvcoeff, &colCoh, 3, co_lim_up);
+        //++lRowCounter;
+        //this->mLp->SetRowName(lRowCounter, coh_upper.str());
+
+        tan_lower << "tan_" << svid << "_lower_cons";
+        this->mLp->AddConstraintEx(1, &dvcoeff, &colTanPhi, 2, tanphi_lim[0]);
+        ++lRowCounter;
+        this->mLp->SetRowName(lRowCounter, tan_lower.str());
+
+        tan_upper << "tan_" << svid << "_upper_cons";
+        this->mLp->AddConstraintEx(1, &dvcoeff, &colTanPhi, 1, tanphi_lim[1]);
+        ++lRowCounter;
+        this->mLp->SetRowName(lRowCounter, tan_upper.str());
+
+        coh_upper.str("");
+        tan_lower.str("");
+        tan_upper.str("");
+        //colCoh += 2;
+        //colTanPhi += 2;
+        ++colTanPhi;
+    }
+
+    // -------------------------------------------
+    //     add binary & stress coeff constraints
+    MosraLogInfo(<< "Adding switch & stress constraints to LP ...");
+    NMMsg(<< "Adding switch and stress constraints to LP: " << endl);
+
+    //double pdRow[3]   = {1,0,500000};
+    double pdRow[2]   = {0,500000};
+    //int piColno[3] = {1,2,failOffset};
+    int piColno[2] = {1,failOffset};
+
+    featCount = 1;
+    yearCount = 1;
+
+
+    std::stringstream rowname;
+    for (int feat=1; feat <= lNumCells; ++feat, ++featCount)
+    {
+        const double shstress = valstore[4][feat];
+        pdRow[0] = valstore[3][feat];
+
+        this->mLp->AddConstraintEx(2, pdRow, piColno, 2, shstress);
+        ++lRowCounter;
+
+        rowname << "b_" << valstore[1][feat] << "_" << yearCount << "_cons";
+        this->mLp->SetRowName(lRowCounter, rowname.str());
+        rowname.str("");
+
+        //piColno[0] += 2;
+        //piColno[1] += 2;
+        //++piColno[2];
+
+        ++piColno[0];
+        ++piColno[1];
+
+        if (featCount == this->mlNumArealDVar)
+        {
+            //piColno[0] = 1;
+            //piColno[1] = 2;
+            piColno[0] = 1;
+            featCount = 0;
+            ++yearCount;
+        }
+    }
+    NMMsg(<< " done!" << endl << endl);
+
+    this->mLp->SetAddRowmode(false);
+
+    // --------------------------------------------------
+    //              Write LP
+    // --------------------------------------------------
+    MosraLogInfo(<< "Exporting your problem ...");
+    NMMsg( << "Exporting your problem ...");
+
+    // if the user wishes, we write out the problem we've just created ...
+    //otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(this->mDataSet->getOtbAttributeTable().GetPointer());
+    //NMSqlTableModel* sqltab = static_cast<NMSqlTableModel*>(mDataSet->getQSqlTableModel());
+    //if (sqltab == nullptr)
+    //{
+    //    MosraLogError(<< "Mmmh, didn't get the underlying table model ... I quit!");
+    //    return 0;
+    //}
+
+    QString pathname;
+    QString basename = this->mScenarioName;
+
+    if (sqltab != nullptr)
+    {
+        QString tabFN = sqltab->GetDbFileName().c_str();
+        QFileInfo fifo(tabFN);
+        pathname = fifo.canonicalPath();
+        QString lpname = QString("%1/%2.lp").arg(pathname).arg(basename);
+
+        this->mProblemFilename = lpname;
+        if (!this->mProblemFilename.isEmpty())
+        {
+            if (this->mProblemType == NM_MOSO_LP)
+            {
+                this->mLp->WriteLp(this->mProblemFilename.toStdString());
+            }
+            else
+            {
+                this->mLp->WriteMps(this->mProblemFilename.toStdString());
+            }
+        }
+    }
+
+    // --------------------------------------------------
+    //              SOLVE LP
+    // --------------------------------------------------
+    MosraLogInfo(<< "Solving your problem ...");
+    NMMsg(<< "Solving your problem ..." << endl);
+
+    //this->mLp->SetBreakAtFirst(true);
+    this->mLp->SetBreakAtValue(1432468); // +5%
+    //this->mLp->SetTimeout(-1);
+    //this->mLp->SetTimeout(180);
+    this->mbCanceled = false;
+
+    this->mLp->SetAbortFunc((void*)this, NMMosra::callbackIsSolveCanceled);
+    this->mLp->SetLogFunc((void*)this, NMMosra::lpLogCallback);
+
+    //this->mLp->SetPresolve(PRESOLVE_COLS |
+    //                       PRESOLVE_ROWS |
+    //                       PRESOLVE_IMPLIEDFREE |
+    //                       PRESOLVE_REDUCEGCD |
+    //                       PRESOLVE_MERGEROWS |
+    //                       PRESOLVE_ROWDOMINATE |
+    //                       PRESOLVE_COLDOMINATE |
+    //                       PRESOLVE_KNAPSACK |
+    //                       PRESOLVE_PROBEFIX);
+    //
+    //this->mLp->SetScaling(SCALE_GEOMETRIC |
+    //                      SCALE_DYNUPDATE);
+
+    this->mLp->Solve();
+
+    // --------------------------------------------------
+    //              Report results
+    // --------------------------------------------------
+    MosraLogInfo(<< "Report results ...");
+    NMMsg(<< "Report results ..." << endl);
+
+    QString stecReport = QString("%1/report_%2.txt").arg(pathname).arg("ParaOpt_STEC_landslide_multi");
+    // this is where the desc vars for landslideing are retrieved and reported
+    this->writeSTECReport2(stecReport, valstore);
+
+    MosraLogInfo(<< this->msReport.toStdString() << endl);
+    NMMsg(<< this->msReport.toStdString() << endl << endl);
+
+
+    NMDebugCtx(ctxNMMosra, << "done!");
+    return 1;
+}
+
 
 int NMMosra::makeLp(void)
 {
@@ -4316,7 +14724,7 @@ NMMosra::perturbCriterion(const QString& criterion,
     // criterion identifier: "Nleach,Sediment"
     // -> split by ','
 
-    QStringList metaList = criterion.split(",", QString::SkipEmptyParts);
+    QStringList metaList = criterion.split(",", Qt::SkipEmptyParts);
 
     // check for criterion or constraint
     if (metaList.size() == 0)
@@ -4355,7 +14763,7 @@ NMMosra::perturbCriterion(const QString& criterion,
         {
             // get the incentives field
             const QString incSpec = metaList.at(m).trimmed();
-            const QStringList incDetails = incSpec.split(":", QString::SkipEmptyParts);
+            const QStringList incDetails = incSpec.split(":", Qt::SkipEmptyParts);
 
             QString incField;
             if (incDetails.size() >= 2)
@@ -4394,7 +14802,7 @@ NMMosra::perturbCriterion(const QString& criterion,
             QString isolatedCriterion = metaList.at(ptbItem).trimmed();
 
             // extract the land use
-            QStringList splitCriterion = isolatedCriterion.split(":", QString::SkipEmptyParts);
+            QStringList splitCriterion = isolatedCriterion.split(":", Qt::SkipEmptyParts);
             if (splitCriterion.size() < 2)
             {
                 MosraLogError( << "Invalid criterion identifier: '"
@@ -5198,8 +15606,8 @@ int NMMosra::addFeatureSetConsDb(void)
     {
         MosraLogInfo(<< "   -> " << this->msFeatureSetConsLabel[fsIt.key()].toStdString() << "...");
         // extract the options & feature-set id column index
-        QStringList optColPair = fsIt.key().split(":", QString::SkipEmptyParts);
-        QStringList optraw = optColPair.at(0).split("+", QString::SkipEmptyParts);
+        QStringList optColPair = fsIt.key().split(":", Qt::SkipEmptyParts);
+        QStringList optraw = optColPair.at(0).split("+", Qt::SkipEmptyParts);
         QStringList options;
         if (optraw.size() == 1)
         {
@@ -5513,7 +15921,7 @@ int NMMosra::addZoneCons(void)
                 {
                     QVector<int> resIdx;
                     QStringList perfFields;
-                    QStringList zoneRes = mDataSet->getStrValue(resField, f).split(" ", QString::SkipEmptyParts);
+                    QStringList zoneRes = mDataSet->getStrValue(resField, f).split(" ", Qt::SkipEmptyParts);
                     foreach(const QString& res, zoneRes)
                     {
                         int idx = mslOptions.indexOf(QRegExp(res, Qt::CaseInsensitive,  QRegExp::FixedString));
@@ -5715,7 +16123,7 @@ int NMMosra::addFeatureCons(void)
         QString sConsLabel = it.key() + QString(tr("_%1")).arg(it.value().at(0));
         vsConsLabel.push_back(sConsLabel);
 
-        QStringList options = it.value().at(0).split(tr("+"), QString::SkipEmptyParts);
+        QStringList options = it.value().at(0).split(tr("+"), Qt::SkipEmptyParts);
         std::vector<unsigned int> noptidx;
         for(int no=0; no < options.size(); ++no)
         {
@@ -5839,6 +16247,310 @@ int NMMosra::addFeatureCons(void)
     return 1;
 }
 
+bool NMMosra::processExplicitArealCons(
+        std::vector<QString> &vsConsLabel,
+        std::vector<int> &vnZoneLength,
+        std::vector<QString> &vsZoneField,
+        std::vector<std::vector<unsigned int> > &vvnOptionIndex,
+        std::vector<unsigned int> &vnConsType,
+        std::vector<double> &vdRHS)
+{
+    //long lNumCells = mDataSet->getNumRecs();
+    double dUserVal;
+    double dUserArea = 0.0;
+//    double dAreaTotal = this->mdAreaTotal;
+//    double dAreaSelected = this->mdAreaSelected <= 0 ? this->mdAreaTotal : this->mdAreaSelected;
+
+    QMap<QString, QStringList>::const_iterator it =
+            this->mmslAreaCons.constBegin();
+
+    MosraLogDebug( << this->mmslAreaCons.size() << " cons to process" << endl);
+
+    mvExplicitAreaConsVarOffsets.clear();
+
+    // ----------------------------------------------------for each constraint
+    for(int iConsCounter=1; it != this->mmslAreaCons.constEnd(); it++, iConsCounter++)
+    {
+        MosraLogDebug( << it.key().toStdString() << " "
+                << it.value().join(tr(" ")).toStdString() << " - reading props" << endl);
+
+        // set the constraint label
+        QString sConsLabel = it.key() + QString(tr("_%1")).arg(it.value().at(0));
+        vsConsLabel.push_back(sConsLabel);
+
+        // look for a 'zoned' constraint
+        QString zone;
+        QStringList optzones;
+        QStringList options;
+        if (it.value().at(0).contains(tr(":"), Qt::CaseInsensitive))
+        {
+            optzones = it.value().at(0).split(tr(":"), Qt::SkipEmptyParts);
+            options = optzones.at(0).split(tr("+"), Qt::SkipEmptyParts);
+            zone = optzones.at(1);
+        }
+        else
+        {
+            options = it.value().at(0).split(tr("+"), Qt::SkipEmptyParts);
+            zone = "";
+        }
+        vsZoneField.push_back(zone);
+
+
+        // set the user value
+        bool bConvOK;
+        dUserVal = it.value().at(2).toDouble(&bConvOK);
+        dUserVal *= mdAreaScalingFactor;
+        double dtval = 0;
+        MosraLogDebug( << "dUserVal (" << dUserVal << ") as '" << it.value().at(3).toStdString() << "' = " << dtval << endl);
+
+        int maxzonelen = 0;
+
+        // set the option index
+        // and the right hand side value
+        std::vector<unsigned int> noptidx;
+        for(int no=0; no < options.size(); ++no)
+        {
+            unsigned int idx = this->mslOptions.indexOf(
+                    QRegExp(options.at(no), Qt::CaseInsensitive, QRegExp::FixedString));
+            if (    !mslOptions.contains(options.at(no).simplified())
+                 || idx > mslOptions.size()
+               )
+            {
+                MosraLogDebug(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                              << "Invalid OPTION '" << options.at(no).toStdString() << "' "
+                              << "specified for Areal Constraint #" << iConsCounter << "!");
+                return false;
+            }
+
+
+            noptidx.push_back(idx);
+            MosraLogDebug( << "option index for '" << options.at(no).toStdString() << "' = " << idx + 1 << endl);
+
+            QStringList ozspec;
+            ozspec << options.at(no) << zone;
+
+            double oval = this->convertAreaUnits(dUserVal, it.value().at(3), ozspec);
+            dtval = oval > dtval ? oval : dtval;
+            dtval *= mdAreaScalingFactor;
+
+            int zonelen = 0;
+            if (!zone.isEmpty())
+            {
+                zonelen = this->mmslZoneLength.find(zone).value().find(options.at(no)).value();
+            }
+            maxzonelen = zonelen > maxzonelen ? zonelen : maxzonelen;
+        }
+        vvnOptionIndex.push_back(noptidx);
+        vdRHS.push_back(dtval);
+
+        if (zone.isEmpty())
+        {
+            vnZoneLength.push_back(this->mlNumOptFeat);
+        }
+        else
+        {
+            vnZoneLength.push_back(maxzonelen);
+        }
+
+        dUserArea += dtval;
+
+        // set the constraint type
+        if (it.value().at(1).compare(tr("<=")) == 0)
+            vnConsType.push_back(1);
+        else if (it.value().at(1).compare(tr(">=")) == 0)
+            vnConsType.push_back(2);
+        else
+            vnConsType.push_back(3);
+        MosraLogDebug( << "constraint type (1: <= | 2: >= | 3: =): " << vnConsType.at(iConsCounter-1) << endl);
+
+        // add offset OPTIONS offset vector for each explicit areal constraint
+        std::vector<size_t> luOffSets;
+        mvExplicitAreaConsVarOffsets.push_back(luOffSets);
+    }
+
+    return true;
+}
+
+bool NMMosra::processFeatureSetConstraints(
+        std::vector<QString> &vsFSCZoneField,
+        std::vector<std::vector<unsigned int> > &vvnFSCOptionIndex
+        )
+{
+    NMDebugCtx(ctxNMMosra, << "...");
+    MosraLogInfo(<<"processing feature-set constraints ...");
+
+    // get a list of feature-set ids
+    otb::SQLiteTable::Pointer sqltab = static_cast<otb::SQLiteTable*>(
+                this->mDataSet->getOtbAttributeTable().GetPointer());
+
+    if (sqltab.IsNull())
+    {
+        MosraLogError(<< "Failed fetching the SQLite-based attribute table (*.ldb)!");
+        NMDebugCtx(ctxNMMosra, << "done!");
+        return false;
+    }
+
+    QMap<QString, QStringList>::ConstIterator fsIt = this->mslFeatSetCons.constBegin();
+    for(; fsIt != this->mslFeatSetCons.constEnd(); ++fsIt)
+    {
+        MosraLogInfo(<< "   -> " << fsIt.key().toStdString() << "...");
+        // extract the options & feature-set id column index
+        std::vector<unsigned int> optionsIndex;
+
+        QStringList optColPair = fsIt.key().split(":", Qt::SkipEmptyParts);
+        QStringList optraw = optColPair.at(0).split("+", Qt::SkipEmptyParts);
+        QStringList options;
+        if (optraw.size() == 1)
+        {
+            if (this->mslOptions.contains(optraw.at(0).simplified()))
+            {
+                unsigned int idx = this->mslOptions.indexOf(
+                        QRegExp(optraw.at(0).simplified(), Qt::CaseInsensitive, QRegExp::FixedString));
+                if (idx == -1)
+                {
+                    MosraLogDebug(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                                  << "Invalid OPTION '" << optraw.at(0).simplified().toStdString() << "' "
+                                  << "specified for FeatureSet Constraint '" << fsIt.key().toStdString() << "'!");
+                    return false;
+                }
+                options << optraw.at(0).simplified();
+                optionsIndex.push_back(idx);
+            }
+            else if (optraw.at(0).simplified().compare(QStringLiteral("total"), Qt::CaseInsensitive) == 0)
+            {
+                for (int i=0; i < this->mslOptions.size(); ++i)
+                {
+                    options << this->mslOptions.at(i);
+                    optionsIndex.push_back(i);
+                }
+            }
+        }
+        else
+        {
+            for (int r=0; r < optraw.size(); ++r)
+            {
+                if (this->mslOptions.contains(optraw.at(r).simplified()))
+                {
+                    options << optraw.at(r).simplified();
+                    unsigned int idx = this->mslOptions.indexOf(
+                            QRegExp(optraw.at(r).simplified(), Qt::CaseInsensitive, QRegExp::FixedString));
+                    if (idx == -1)
+                    {
+                        MosraLogDebug(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+                                      << "Invalid OPTION '" << optraw.at(0).simplified().toStdString() << "' "
+                                      << "specified for FeatureSet Constraint '" << fsIt.key().toStdString() << "'!");
+                        return false;
+                    }
+                    optionsIndex.push_back(idx);
+                }
+            }
+        }
+
+        vvnFSCOptionIndex.push_back(optionsIndex);
+
+        // workout operator
+        unsigned int operatorId = 0;
+        QString compOp = fsIt.value().at(1);
+        QString compTypeLabel;
+        if (compOp.compare(QStringLiteral("<=")) == 0)
+        {
+            operatorId = 1;
+            compTypeLabel = "upper";
+        }
+        else if (compOp.compare(QStringLiteral(">=")) == 0)
+        {
+            operatorId = 2;
+            compTypeLabel = "lower";
+        }
+        else if (compOp.compare(QStringLiteral("=")) == 0)
+        {
+            operatorId = 3;
+            compTypeLabel = "equals";
+        }
+
+        //if (operatorId > 0)
+        //{
+        //    vnFSCConsType.push_back(operatorId);
+        //}
+        //else
+        //{
+        //    MosraLogDebug(<< ctxNMMosra << "::" << __FUNCTION__ << "() - ERROR: "
+        //                  << "Invalid comparison operator '" << compOp.toStdString() << "' "
+        //                  << "specified for FeatureSet Constraint #" << iConsCounter << "!");
+        //    return false;
+        //}
+
+        // -----------------------------------------------------------------------------
+        // fetch a table of unique feature set ids and the associated threshold values
+        // EXAMPLE: select distinct cat_n, TN_MAL from luopt_hl2_1 where optFeat == 1 and cat_n > 0;
+
+        //SQLiteTable::TableDataFetch(std::vector<std::vector<ColumnValue> > &restab,
+        //                            const std::vector<TableColumnType> &coltypes,
+        //                            const std::string &query)
+
+        QString criterion = fsIt.value().at(0);
+        std::string idColName = optColPair.at(1).toStdString();
+        vsFSCZoneField.push_back(idColName.c_str());
+        std::string rhsColName = fsIt.value().at(2).toStdString();
+
+        bool bOptFeat = false;
+        std::string optfeatColName = "";
+        if (!this->msOptFeatures.isEmpty())
+        {
+            bOptFeat = true;
+            optfeatColName = this->msOptFeatures.toStdString();
+        }
+
+        std::vector< std::vector< otb::AttributeTable::ColumnValue > > fsids;
+        std::vector<otb::AttributeTable::TableColumnType> types;
+        types.push_back(otb::AttributeTable::ATTYPE_INT);
+        types.push_back(otb::AttributeTable::ATTYPE_DOUBLE);
+
+        std::stringstream q_fstable;
+        q_fstable << "SELECT distinct \"" << idColName << "\", "
+                  << "\"" << rhsColName << "\" from \"" << sqltab->GetTableName() << "\" "
+                  << "where \"" << idColName << "\" > 0";
+        if (bOptFeat)
+        {
+            q_fstable << " and \"" << optfeatColName << "\" == 1";
+        }
+        q_fstable << ";";
+
+        //MosraLogInfo(<< "   -> query:" << q_fstable.str() << std::endl);
+
+        if (!sqltab->TableDataFetch(fsids, types, q_fstable.str()))
+        {
+            MosraLogError(<< "NMMosra::addFeatureSetCons() - " << sqltab->getLastLogMsg());
+            return 0;
+        }
+
+        // get option index/position within option set / criterion score field sets
+        //std::vector<int> optionIdx;
+        //for (int k=0; k < options.size(); ++k)
+        //{
+        //    optionIdx.push_back(this->mslOptions.indexOf(options[k]));
+        //}
+        QMap<size_t, unsigned int> fscCntMap;
+        QMap<size_t, QStringList> fscMap;
+        for (int fs=0; fs < fsids.size(); ++fs)
+        {
+            QString fsc_seg;
+            QString rhs_seg = QString("%1 %2").arg(operatorId)
+                                              .arg(fsids.at(fs).at(1).dval);
+            size_t fid = fsids.at(fs).at(0).ival;
+            QStringList segs_list;
+            segs_list << fsc_seg << rhs_seg;
+            fscMap.insert(fid, segs_list);
+            fscCntMap.insert(fid, 0);
+        }
+        mvvFSCUniqueIDSegmentRHSMap.push_back(fscMap);
+        mvvFSCUniqueIDCounterMap.push_back(fscCntMap);
+    }
+
+    NMDebugCtx(ctxNMMosra, << "done!");
+    return true;
+}
+
 int NMMosra::addExplicitAreaCons(void)
 {
     NMDebugCtx(ctxNMMosra, << "...");
@@ -5881,13 +16593,13 @@ int NMMosra::addExplicitAreaCons(void)
         QStringList options;
         if (it.value().at(0).contains(tr(":"), Qt::CaseInsensitive))
         {
-            optzones = it.value().at(0).split(tr(":"), QString::SkipEmptyParts);
-            options = optzones.at(0).split(tr("+"), QString::SkipEmptyParts);
+            optzones = it.value().at(0).split(tr(":"), Qt::SkipEmptyParts);
+            options = optzones.at(0).split(tr("+"), Qt::SkipEmptyParts);
             zone = optzones.at(1);
         }
         else
         {
-            options = it.value().at(0).split(tr("+"), QString::SkipEmptyParts);
+            options = it.value().at(0).split(tr("+"), Qt::SkipEmptyParts);
             zone = "";
         }
         vsZoneField.push_back(zone);
@@ -6035,10 +16747,10 @@ int NMMosra::addExplicitAreaCons(void)
                 for (int no=0; no < numOptions; ++no)
                 {
                     // set coefficients for zone polygons
-                    std::string zoneArVal = mDataSet->getStrValue(vsZoneField.at(r), f).toStdString();
+                    const QString zoneArVal = mDataSet->getStrValue(vsZoneField.at(r), f);
 
-                    if (zoneArVal.find(this->mslOptions.at(vvnOptionIndex.at(r).at(no)).toStdString())
-                              != std::string::npos)
+                    const QStringList zoneValueList = zoneArVal.split(" ", Qt::SkipEmptyParts);
+                    if (zoneValueList.contains(this->mslOptions.at(vvnOptionIndex.at(r).at(no))))
                     {
                         // set the coefficient
                         switch(this->meDVType)
@@ -6354,7 +17066,7 @@ int NMMosra::addCriCons(void)
 
             if (criit.key().contains(tr(":"), Qt::CaseInsensitive))
             {
-                zonespec = criit.key().split(tr(":"), QString::SkipEmptyParts);
+                zonespec = criit.key().split(tr(":"), Qt::SkipEmptyParts);
                 opt = zonespec.at(0);
                 zone = zonespec.at(1);
             }
@@ -6446,8 +17158,9 @@ int NMMosra::addCriCons(void)
                 // for the current land use option shall be restricted to this zone
                 if (!vZones.at(labelidx).isEmpty())
                 {
-                    const std::string zoneArVal = mDataSet->getStrValue(vZones.at(labelidx), f).toStdString();
-                    if (zoneArVal.find(this->mslOptions.at(optIdx).toStdString()) == std::string::npos)
+                    const QString zoneArVal = mDataSet->getStrValue(vZones.at(labelidx), f);
+                    const QStringList zoneArValList = zoneArVal.split(" ", Qt::SkipEmptyParts);
+                    if (!zoneArValList.contains(this->mslOptions.at(optIdx)))
                     {
                         bAddCoeff = false;
                     }
@@ -6962,7 +17675,9 @@ int NMMosra::calcOptPerformanceDb(void)
             double dScore = 0.0;
             for (int i=0; i < this->miNumOptions; ++i)
             {
-                if (opt_str.find(this->mslOptions[i].toStdString()) != std::string::npos)
+                const QString optStr = opt_str.c_str();
+                const QStringList optStrList = optStr.split(" ", Qt::SkipEmptyParts);
+                if (optStrList.contains(this->mslOptions[i]))
                 {
                     const int scoreOffset = k * this->miNumOptions + 2 + i;
                     const int areaOffset = slCrit.size() * this->miNumOptions + 2 + i;
@@ -7501,7 +18216,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
         // make sure, we're not fooled by any leading or trailing white spaces
         curResource = curResource.simplified();
         QString optResource = colvalues.at(valOffsets["optLU"]).toString();
-        QStringList optResList = optResource.split(tr(" "), QString::SkipEmptyParts);
+        QStringList optResList = optResource.split(tr(" "), Qt::SkipEmptyParts);
         const double curArea = colvalues.at(valOffsets["cellArea"]).toDouble();
 
         // ===============================================================================
@@ -7968,17 +18683,11 @@ double NMMosra::convertAreaUnits(double dUserVal, const QString& otype, const QS
 
     if (otype.compare(tr("percent_of_total"), Qt::CaseInsensitive) == 0)
     {
-//		if (this->meDVType == NMMosra::NM_MOSO_INT)
-//			dtval = vtkMath::Floor(this->mdAreaTotal * dUserVal/100.0);
-//		else
             dtval = this->mdAreaTotal * dUserVal/100.0;
     }
     else if (otype.compare(tr("percent_of_selected"), Qt::CaseInsensitive) == 0)
     {
 
-//		if (this->meDVType == NMMosra::NM_MOSO_INT)
-//			dtval = vtkMath::Floor(this->mdAreaSelected * dUserVal/100.0);
-//		else
             dtval = this->mdAreaSelected * dUserVal/100.0;
     }
     else if (otype.compare(tr("percent_of_zone"), Qt::CaseInsensitive) == 0)
@@ -7986,9 +18695,6 @@ double NMMosra::convertAreaUnits(double dUserVal, const QString& otype, const QS
         // if there is no zone spec given, we interpret it as percent_of_total
         if (zoneSpec.size() == 0)
         {
-//			if (this->meDVType == NMMosra::NM_MOSO_INT)
-//				dtval = vtkMath::Floor(this->mdAreaTotal * dUserVal/100.0);
-//			else
                 dtval = this->mdAreaTotal * dUserVal/100.0;
 
             // todo: issue a warning message, that a percent_of_total is used instead
@@ -7996,17 +18702,11 @@ double NMMosra::convertAreaUnits(double dUserVal, const QString& otype, const QS
         else
         {
             double zonearea = this->mmslZoneAreas.find(zoneSpec.at(1)).value().find(zoneSpec.at(0)).value();
-//			if (this->meDVType == NMMosra::NM_MOSO_INT)
-//				dtval = vtkMath::Floor(zonearea * dUserVal/100.0);
-//			else
                 dtval = zonearea * dUserVal/100.0;
         }
     }
     else
     { // -> "map_units"
-//		if (this->meDVType == NMMosra::NM_MOSO_INT)
-//			dtval = vtkMath::Floor(dUserVal);
-//		else
             dtval = dUserVal;
     }
 

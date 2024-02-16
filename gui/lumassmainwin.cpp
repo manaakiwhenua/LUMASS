@@ -4531,6 +4531,7 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
+/*
     ///*************************************************************************
     ///********              NMMOSRA :: IPOPT                           ********
     ///*************************************************************************
@@ -4632,7 +4633,7 @@ void LUMASSMainWin::test()
         this->showBusyEnd();
 
     }
-
+*/
     return;
 
     /*

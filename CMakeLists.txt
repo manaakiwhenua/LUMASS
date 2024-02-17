@@ -506,15 +506,16 @@ endif(PYTHONSUPPORT)
 #====================================================================
 # ask for YAML library and header dir
 #====================================================================
-    find_package(yaml-cpp
-        HINTS
-            /usr/lib/x86_64-linux-gnu/cmake/yaml-cpp/yaml-cpp-cdonfig.cmake
-                    c:/opt/yaml-cpp/yaml-cpp-config.cmake
-        PATHS
-            /usr/lib/x86_64-linux-gnu/cmake
-            /usr/lib/cmake
-                c:/opt/yaml-cpp
-    )
+# the yaml-cpp-config.cmake does not work properly, so we make do without it for now
+#find_package(yaml-cpp
+#    HINTS
+#        /usr/lib/x86_64-linux-gnu/cmake/yaml-cpp/yaml-cpp-config.cmake
+#                c:/opt/yaml-cpp/yaml-cpp-config.cmake
+#    PATHS
+#        /usr/lib/x86_64-linux-gnu/cmake
+#        /usr/lib/cmake
+#            c:/opt/yaml-cpp
+#)
 
 if (NOT YAML_CPP_CMAKE_DIR)
         set(YAML_CPP_CMAKE_DIR "YAML_CPP_CMAKE_DIR-NOTFOUND" CACHE STRING "Please specify the path of yaml-cpp-config.cmake" )
@@ -522,6 +523,7 @@ if (NOT YAML_CPP_CMAKE_DIR)
 else()
         include(${YAML_CPP_CMAKE_DIR}/yaml-cpp-config-version.cmake)
         SET(LUMASS_yaml_version "${PACKAGE_VERSION}")
+        set(YAML_CPP_LIBRARIES "yaml-cpp")
         message(STATUS "yaml-cpp version: ${LUMASS_yaml_version}")
 endif()
 

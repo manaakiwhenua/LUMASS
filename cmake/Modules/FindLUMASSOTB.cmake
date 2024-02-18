@@ -56,7 +56,8 @@ IF(NOT OTB_DIR)
       /opt/OTB-8.1-bin/install/lib/cmake
       /usr/lib/cmake
       /usr/lib/x86_64-linux-gnu
-      /home/users/herziga/garage/build/OTB-8.1.2/install/lib/cmake
+      /home/$ENV{USER}/garage/build/OTB-8.1.2
+      /home/users/$ENV{USER}/garage/build/OTB-8.1.2/install/lib/cmake
       C:/build/OTB-debug
       C:/opt/OTB-debug
       C:/build/OTB-reldebinfo
@@ -156,7 +157,7 @@ if(ITK_FOUND)
         )
     endif()
 endif(ITK_FOUND)
-if (${LUMASS_ITK_VERSION} VERSION_LESS "4.11")
+if ("${LUMASS_ITK_VERSION}" VERSION_LESS "4.11")
     message(FATAL_ERROR "LUMASS >= 0.9.60 requires ITK >= 4.11")
 endif ()
 

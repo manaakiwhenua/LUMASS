@@ -605,7 +605,7 @@
   <customwidget>
    <class>QVTKOpenGLNativeWidget</class>
    <extends>QWidget</extends>
-   <header>/home/users/herziga/garage/cpp/VTK-9.3.0.rc1/GUISupport/Qt/QVTKOpenGLNativeWidget.h</header>
+   <header>QVTKOpenGLNativeWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

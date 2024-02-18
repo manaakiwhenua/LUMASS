@@ -10,6 +10,7 @@ INCLUDE_DIRECTORIES(
     ${shared_SOURCE_DIR}
     ${QT5_INCLUDE_DIRS}
     ${OTB_DIR}/Code/Common
+    ${OTB_INCLUDE_DIRS}
     ${muparser_SOURCE_DIR}
     ${muParserX_SOURCE_DIR}
     ${OTBSupplCore_SOURCE_DIR}

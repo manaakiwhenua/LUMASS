@@ -36,6 +36,7 @@ INCLUDE_DIRECTORIES(
     #"/opt/netcdf-c-4.8.1/install/include"
     ${pybind11_INCLUDE_DIRS}
     ${lumass_SOURCE_DIR}/bmi
+    ${lumass_BINARY_DIR}/bmi
     ${bmi_SOURCE_DIR}
     ${bmi_BINARY_DIR}
     ${YAML_CPP_INCLUDE_DIR}

@@ -181,7 +181,7 @@ if (NOT HAVEDEBUG AND NOT WIN32)
     set(LINKLIBS ${MFW_WRAPPER_LINK_LIBS})
     message(STATUS "${wrapper}'s LINK_LIBS: ${LINKLIBS}")
 
-    SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -g -fPIC -fno-aggressive-loop-optimizations")
+    SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O0 -g -fPIC -fno-aggressive-loop-optimizations")
 
     include(GenerateExportHeader)
     ADD_LIBRARY(${wrapper} SHARED ${MFW_WRAPPER_SOURCE_FILES})

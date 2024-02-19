@@ -42,6 +42,7 @@ INCLUDE_DIRECTORIES(
     ${gui_SOURCE_DIR}
     ${lumass_SOURCE_DIR}/utils/ITK
     ${lumass_SOURCE_DIR}
+    ${lumass_SOURCE_DIR}/modellingframework/wrapper
     ${OTBSupplCore_SOURCE_DIR}
     ${OTBSupplCore_BINARY_DIR}
     ${OTB_INCLUDE_DIRS}

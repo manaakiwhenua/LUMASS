@@ -131,6 +131,7 @@ INCLUDE_DIRECTORIES(
     ${bmi_SOURCE_DIR}
     ${bmi_BINARY_DIR}
     ${lumass_SOURCE_DIR}/bmi
+    ${lumass_BINARY_DIR}/bmi
     ${YAML_CPP_INCLUDE_DIR}
     ${MPI_CXX_INCLUDE_DIRS}
 )
@@ -216,7 +217,9 @@ set(LUMASS_LINKLIBS
     curl xml2
     ${MPI_CXX_LIBRARIES}
     ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
-    NMModFrameCore ${MFW_WRAPPER_NAMES}
+    NMOTBSupplCore
+    NMModFrameCore 
+    ${MFW_WRAPPER_NAMES}
     ${LUMASS_GUI_VTK_LIBRARIES}
     ${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
     ${OPENGL_glu_LIBRARY} ${OPENGL_gl_LIBRARY}

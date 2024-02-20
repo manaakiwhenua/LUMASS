@@ -27,10 +27,11 @@ INCLUDE_DIRECTORIES(
     ${NMVtk_SOURCE_DIR}
     ${gui_SOURCE_DIR}
     ${bmi_SOURCE_DIR}
+    ${lumass_SOURCE_DIR}
     ${lumass_SOURCE_DIR}/bmi
     ${shared_SOURCE_DIR}
     ${lumass_BINARY_DIR}
-    ${lumass_SOURCE_DIR}
+    ${lumass_BINARY_DIR}/bmi
     ${GDALRATImageIO_SOURCE_DIR}
     ${GDALRATImageIO_BINARY_DIR}
     ${OTBSupplCore_SOURCE_DIR}

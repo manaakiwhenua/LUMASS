@@ -130,6 +130,7 @@ INCLUDE_DIRECTORIES(
     ${pybind11_INCLUDE_DIRS}
     ${bmi_SOURCE_DIR}
     ${bmi_BINARY_DIR}
+    ${lumass_SOURCE_DIR}/bmi
     ${YAML_CPP_INCLUDE_DIR}
     ${MPI_CXX_INCLUDE_DIRS}
 )

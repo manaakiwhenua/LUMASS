@@ -93,7 +93,9 @@ set(ENGINE_LINKLIBS Qt5Core Qt5Sql Qt5Xml
         ${MPI_CXX_LIBRARIES}
         LumassBMI
         NMNetCDFIO
-        NMModFrameCore ${MFW_WRAPPER_NAMES}
+        NMOTBSupplCore
+        NMModFrameCore
+        ${MFW_WRAPPER_NAMES}
         ${LUMASS_ENGINE_VTK_LIBRARIES} ${PostgreSQL_LIBRARIES}
         ${LPSOLVE_LIBRARY}
         ${YAML_CPP_LIBRARIES}

@@ -93,6 +93,7 @@ set(ENGINE_LINKLIBS Qt5Core Qt5Sql Qt5Xml
         ${MPI_CXX_LIBRARIES}
         LumassBMI
         NMNetCDFIO
+        NMOTBSupplFilters
         NMOTBSupplCore
         NMModFrameCore
         ${MFW_WRAPPER_NAMES}

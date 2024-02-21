@@ -217,6 +217,7 @@ set(LUMASS_LINKLIBS
     curl xml2
     ${MPI_CXX_LIBRARIES}
     ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
+    NMOTBSupplFilters
     NMOTBSupplCore
     NMModFrameCore 
     ${MFW_WRAPPER_NAMES}

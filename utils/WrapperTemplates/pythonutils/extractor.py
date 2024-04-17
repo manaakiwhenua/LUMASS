@@ -150,8 +150,8 @@ class Extractor:
             return len(templateParams)
 
     def extractComponentName(self, line: str) -> str:
-        # TODO
-        return None
+        # TODO: there may be a way to refine this
+        return self._getClassName(line)
 
     def extractComponentIsSink(self, line: str) -> str:
         templateParams = self._getTemplateParameters(line)

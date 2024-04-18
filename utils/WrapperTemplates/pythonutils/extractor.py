@@ -153,17 +153,4 @@ class Extractor:
         # TODO: there may be a way to refine this
         return self._getClassName(line)
 
-    def extractComponentIsSink(self, line: str) -> str:
-        templateParams = self._getTemplateParameters(line)
-
-        # Return value is undefined if class is not templated
-        if not templateParams:
-            return None
-        # Only one template parameter - must be a sink
-        elif len(templateParams) == 1:
-            return 1
-        # Anything else - not a sink
-        else:
-            return 0
-
     # TODO: functions for Property, InputTypeFunc

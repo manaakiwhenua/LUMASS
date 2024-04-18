@@ -10,7 +10,7 @@ WrapperClassName            = NMScriptableKernelFilter2Wrapper
 ComponentName               = ImageBufferWriter
 
 # indicates whether this processing component is a SINK or not;
-# Sink components are executable and can from the 'bottom end'
+# Sink components are executable and can form the 'bottom end'
 # of a processing pipeline
 ComponentIsSink             = 1
 

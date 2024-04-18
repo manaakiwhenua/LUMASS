@@ -31,6 +31,17 @@ if __name__ == "__main__":
         type=str,
         help="the path to the output config file (currently produces a .lwp file)",
     )
+    parser.add_argument(
+        "--componentName",
+        type=str,
+        help="an optional separate name for the component when it's displayed",
+        default=None,
+    )
+    parser.add_argument(
+        "--componentIsSink",
+        action="store_true",
+        help="a flag to set if the wrapped component is a sink",
+    )
 
     # Parse the command line arguments
     args = parser.parse_args()
@@ -60,10 +71,18 @@ if __name__ == "__main__":
             args.inputHeaderFile
         )
 
+        # Whether the component is a sink or a source/(source, sink) combination
+        # needs to come from the command line
+        # TODO: investigate reliable criteria for parsing this from the command line.
+        if args.componentIsSink:
+            config["ComponentIsSink"] = 1
+        else:
+            config["ComponentIsSink"] = 0
+
         # Read input file one line at a time
         while line := source.readline():
-            # Trim leading and trailing whitespace
-            line.strip()
+            # Trim leading and trailing whitespace, turn all internal spaces into a single blank
+            line = " ".join(line.split())
 
             if line.startswith("namespace"):
                 namespaceIdentifier = extractor.extractNamespace(line)
@@ -74,7 +93,7 @@ if __name__ == "__main__":
                 if not line.endswith("{"):
                     # Keep reading - but not past EOF
                     while line := source.readline():
-                        line.strip()
+                        line = " ".join(line.split())
                         # Break at start of member declarations
                         if line.startswith("{"):
                             break
@@ -102,13 +121,14 @@ if __name__ == "__main__":
                     "NumTemplateArgs", extractedValue, config
                 )
 
-                # Try to infer if the component is a sink or a source/(source, sink) combination
-                extractedValue = extractor.extractComponentIsSink(bufferedLine)
-                config = extractor.addToConfigIfNotNone(
-                    "ComponentIsSink", extractedValue, config
-                )
-
-                # TODO: extract ComponentName if possible
+                # Set or extract component name for display
+                if not args.componentName:
+                    extractedValue = extractor.extractComponentName(bufferedLine)
+                    config = extractor.addToConfigIfNotNone(
+                        "ComponentName", extractedValue, config
+                    )
+                else:
+                    config["ComponentName"] = args.componentName
 
             # Check for an access specifier
             elif line.startswith(ACCESS_SPECIFIERS):
@@ -117,16 +137,19 @@ if __name__ == "__main__":
 
             # Only process public blocks
             if accessLevel == "public":
+                if line.startswith("AttributeTable::Pointer getRAT"):
+                    config["RATGetSupport"] = 1
+
                 # The functions we're interested in always return null
                 # TODO: this will also pick up a member variable of type void* that may be
                 #       typecast to something specific later (gross but possible)
-                if line.startswith("void"):
+                elif line.startswith("void"):
                     # The function signature could be across more than one line
                     bufferedLine = line
                     if not line.endswith(";"):
                         # Keep reading - but not past EOF
                         while line := source.readline():
-                            line.strip()
+                            line = " ".join(line.split())
                             # Break at end of function signature
                             if line.endswith(";"):
                                 break
@@ -134,9 +157,21 @@ if __name__ == "__main__":
                             else:
                                 bufferedLine = " ".join([bufferedLine, line])
 
-                    # TODO: extract InputTypeFunc entry
+                    # Turn the function signature into a list of word-like elements
+                    tokens = bufferedLine.split()
 
-            # TODO: unclear how to extract RATGetSupport, RATSetSupport, ForwardInputUserIDs
+                    # The function name will be in the token that comes after the return type
+                    token = tokens[1]
+
+                    # Functions for RAT set support all have the same name
+                    if token.startswith("setRAT"):
+                        config["RATSetSupport"] = 1
+                    # We have a candidate for an InputTypeFunc
+                    else:
+                        # TODO: extract InputTypeFunc entry from function signature
+                        pass
+
+            # TODO: unclear how to ForwardInputUserIDs
             # TODO: unclear how to decide what should be captured as a Property (and how to detect it)
 
     # Sanity check: dictionary contents need to meet a few minimum requirements

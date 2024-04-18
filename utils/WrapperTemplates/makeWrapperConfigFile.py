@@ -35,7 +35,9 @@ if __name__ == "__main__":
         "--componentName",
         type=str,
         help="an optional separate name for the component when it's displayed",
-        default=None,
+    )
+    parser.add_argument(
+        "--forwardInputUserIDs", type=str, help="optional function name"
     )
     parser.add_argument(
         "--componentIsSink",
@@ -70,6 +72,10 @@ if __name__ == "__main__":
         config["FilterClassFileName"] = extractor.extractFilterClassFileName(
             args.inputHeaderFile
         )
+
+        # Record function to forward user input IDs if given
+        if args.forwardInputUserIDs:
+            config["ForwardInputUserIDs"] = args.forwardInputUserIDs
 
         # Whether the component is a sink or a source/(source, sink) combination
         # needs to come from the command line
@@ -171,7 +177,6 @@ if __name__ == "__main__":
                         # TODO: extract InputTypeFunc entry from function signature
                         pass
 
-            # TODO: unclear how to ForwardInputUserIDs
             # TODO: unclear how to decide what should be captured as a Property (and how to detect it)
 
     # Sanity check: dictionary contents need to meet a few minimum requirements

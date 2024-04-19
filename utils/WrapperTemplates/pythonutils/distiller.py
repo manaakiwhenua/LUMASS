@@ -57,7 +57,7 @@ class Distiller:
     def distilListEntry(self, key: str, value: str) -> str:
         # Assemble output line
         keyEntry = "".join([key, "_", str(self._listIndex)])
-        line = "".join([keyEntry, self._getWhitespace(keyEntry), value])
+        line = "".join([keyEntry, self._getWhitespace(keyEntry), value, "\n"])
 
         # Need to keep track of how many entries we're up to
         self._listIndex = self._listIndex + 1

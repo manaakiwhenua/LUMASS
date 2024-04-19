@@ -9,6 +9,10 @@ class Extractor:
     def __init__(self) -> None:
         self._classname = None
         self._templateParams = None
+        self._inputTypeFunctionIndex = 0
+        self._propertyIndex = 0
+        self._inImgType = "InImgType"
+        self._outImgType = "OutImgType"
 
     # ---Internal utils--- #
     def _getClassName(self, line: str) -> str:
@@ -43,16 +47,7 @@ class Extractor:
 
         return self._templateParams
 
-    # ---Non-dictionary functions--- #
-    def extractAccessSpecifier(self, line, accessSpecifiers: list[str]) -> str:
-        # Pack up the list of words of interests in a regex
-        pattern = "|".join(accessSpecifiers)
-
-        # Extract and return the first match
-        accessLevel = re.match(pattern, line).group()
-
-        return accessLevel
-
+    # ---Dictionary functions--- #
     def addToConfigIfNotNone(
         self, key: str, value: Any, dictionary: dict[str, Any]
     ) -> dict[str, Any]:
@@ -61,7 +56,18 @@ class Extractor:
 
         return dictionary
 
-    # ---Dictionary functions--- #
+    def addToConfigListIfNotNone(
+        self, key: str, value: Any, dictionary: dict[str, Any]
+    ):
+        if value is not None:
+            if key not in dictionary:
+                dictionary[key] = list()
+
+            dictionary[key] = dictionary[key] + [value]
+
+        return dictionary
+
+    # ---Extraction functions for dictionary--- #
     def extractNamespace(self, line: str) -> str:
         namespaceIdentifier = line.split()[1]
         return namespaceIdentifier
@@ -117,9 +123,9 @@ class Extractor:
         #       need to be able to handle list lengths of more than 2
         #       need to be able to handle non-image template types
         if templateParams is not None and len(templateParams) == 2:
-            templateParams[0] = "InImgType"
+            templateParams[0] = self._inImgType
             if len(templateParams) > 1:
-                templateParams[1] = "OutImgType"
+                templateParams[1] = self._outImgType
 
             # Append the extracted template types and combine with classname
             return "".join([classname, "<", ",".join(templateParams), ">"])
@@ -127,18 +133,6 @@ class Extractor:
         # Just need to return what we already have if there's nothing to add
         else:
             return classname
-
-    def extractRATGetSupport(self, line: str) -> str:
-        # TODO
-        return None
-
-    def extractRATSetSupport(self, line: str) -> str:
-        # TODO
-        return None
-
-    def extractForwardInputUserIDs(self, line: str) -> str:
-        # TODO
-        return None
 
     def extractNumTemplateArgs(self, line: str) -> str:
         templateParams = self._getTemplateParameters(line)
@@ -153,4 +147,57 @@ class Extractor:
         # TODO: there may be a way to refine this
         return self._getClassName(line)
 
-    # TODO: functions for Property, InputTypeFunc
+    def extractInputTypeFunc(self, functionName, inputType):
+        if not functionName or not inputType:
+            return None
+
+        entry = ":".join([str(self._inputTypeFunctionIndex), inputType, functionName])
+        self._inputTypeFunctionIndex = self._inputTypeFunctionIndex + 1
+
+        return entry
+
+    # TODO: function for extracting Property
+
+    # ---Other extraction functions--- #
+    def extractAccessSpecifier(self, line, accessSpecifiers: list[str]) -> str:
+        # Pack up the list of words of interests in a regex
+        pattern = "|".join(accessSpecifiers)
+
+        # Extract and return the first match
+        accessLevel = re.match(pattern, line).group()
+
+        return accessLevel
+
+    def extractFunctionName(self, token: str) -> str:
+        bracket = token.find("(")
+        if bracket > 0:
+            return token[:bracket]
+        else:
+            return None
+
+    def extractInputArgumentType(self, line):
+        openBracket = line.find("(")
+        closeBracket = line.find(")")
+        if openBracket > 0 and closeBracket > 0 and closeBracket > openBracket:
+            # Function arguments have to be between the brackets
+            functionArgs = line[openBracket + 1 : closeBracket].split()
+
+            # We need at least the const keyword and an argument type
+            if len(functionArgs) < 2 or functionArgs[0] != "const":
+                return None
+
+            # We expect the argument type to be related to the template type
+            # TODO: this is too focused on template types following a specific pattern
+            if not (
+                functionArgs[1].startswith("In") or functionArgs[1].startswith("Out")
+            ):
+                return None
+
+            if functionArgs[1].startswith("In"):
+                return self._inImgType
+            else:
+                return self._outImgType
+
+        # There's not enough information in the input line to extract anything
+        else:
+            return None

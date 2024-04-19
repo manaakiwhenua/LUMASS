@@ -68,22 +68,25 @@ if __name__ == "__main__":
         # Value extractor utility
         extractor = Extractor()
 
-        # Extract file name without extension
-        config["FilterClassFileName"] = extractor.extractFilterClassFileName(
-            args.inputHeaderFile
-        )
-
         # Record function to forward user input IDs if given
+        # TODO: there seem to be only two examples of function names, SetImageNames
+        #      and SetInputNames. Investigate if this is the case and the entry could
+        #      be parsed out of the header file directly instead.
         if args.forwardInputUserIDs:
             config["ForwardInputUserIDs"] = args.forwardInputUserIDs
 
         # Whether the component is a sink or a source/(source, sink) combination
         # needs to come from the command line
-        # TODO: investigate reliable criteria for parsing this from the command line.
+        # TODO: investigate reliable criteria for parsing this from the header instead.
         if args.componentIsSink:
             config["ComponentIsSink"] = 1
         else:
             config["ComponentIsSink"] = 0
+
+        # Extract file name without extension
+        config["FilterClassFileName"] = extractor.extractFilterClassFileName(
+            args.inputHeaderFile
+        )
 
         # Read input file one line at a time
         while line := source.readline():
@@ -147,8 +150,6 @@ if __name__ == "__main__":
                     config["RATGetSupport"] = 1
 
                 # The functions we're interested in always return null
-                # TODO: this will also pick up a member variable of type void* that may be
-                #       typecast to something specific later (gross but possible)
                 elif line.startswith("void"):
                     # The function signature could be across more than one line
                     bufferedLine = line
@@ -163,19 +164,29 @@ if __name__ == "__main__":
                             else:
                                 bufferedLine = " ".join([bufferedLine, line])
 
-                    # Turn the function signature into a list of word-like elements
-                    tokens = bufferedLine.split()
+                    # We're interested in function signatures, not member variables of type void*
+                    # that may be typecast to something else later (gross but not impossible)
+                    if "(" in bufferedLine and ")" in bufferedLine:
+                        # Turn the function signature into a list of word-like elements
+                        tokens = bufferedLine.split()
 
-                    # The function name will be in the token that comes after the return type
-                    token = tokens[1]
+                        # The function name will be in the token that comes after the return type
+                        token = tokens[1]
 
-                    # Functions for RAT set support all have the same name
-                    if token.startswith("setRAT"):
-                        config["RATSetSupport"] = 1
-                    # We have a candidate for an InputTypeFunc
-                    else:
-                        # TODO: extract InputTypeFunc entry from function signature
-                        pass
+                        # Functions for RAT set support all have the same name
+                        if token.startswith("setRAT"):
+                            config["RATSetSupport"] = 1
+
+                        # We have a candidate for an InputTypeFunc
+                        else:
+                            functionName = extractor.extractFunctionName(token)
+                            inputType = extractor.extractInputArgumentType(bufferedLine)
+                            extractedValue = extractor.extractInputTypeFunc(
+                                functionName, inputType
+                            )
+                            config = extractor.addToConfigListIfNotNone(
+                                "InputTypeFunc", extractedValue, config
+                            )
 
             # TODO: unclear how to decide what should be captured as a Property (and how to detect it)
 

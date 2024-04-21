@@ -5,6 +5,23 @@ import re
 
 
 class Extractor:
+    """Functions to parse config-specific entries out of lines from a C++ header file for an ITK/OTB filer
+
+    The class provides a bunch of functions to parse and buffer information for specific entries that will
+    need to go into the output wrapper config later. It covers the keys given in makeNMItkProcessObjWrapper.py
+    with - currently - the exception of the Property entries.
+
+    Since many of the entries are optional within the config file, the class implements convenience functions
+    for adding atomic values and lists to the internal config buffer as well. They check if there's anything
+    to add at all before modifying the buffer, leaving it along if there's no new information.
+
+    An additional small set of utility functions handles information that will not be captured in the buffered
+    config, or consists of partial information for it. We're only interested in the section of the C++ header
+    that's declared as public, for example, and we need a way of finding that section. Or for an unrelated one,
+    extracting a function name has multiple uses but we usually embed it in a longer string when formatting
+    the output.
+    """
+
     # ---Constructor--- #
     def __init__(self) -> None:
         self._classname = None

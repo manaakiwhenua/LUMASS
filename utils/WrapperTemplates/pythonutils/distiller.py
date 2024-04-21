@@ -2,6 +2,17 @@ from typing import Any, TextIO
 
 
 class Distiller:
+    """Provides general-purpose functions to write dictionary entries to a file
+
+    The class implements write functions for three generic types of values, namely
+    int, string and list of string. That set covers the types found in a wrapper
+    config file for LUMASS. They keys are expected to be strings.
+
+    Since many of the entries are optional within the config file, the class also
+    implements a convenience function for each type of entry that checks if the
+    value is missing or None before deciding whether to write anything to file.
+    """
+
     # ---Constructor--- #
     def __init__(self, padTo: int = 28) -> None:
         self._padTo = padTo

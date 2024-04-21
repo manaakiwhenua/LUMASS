@@ -13,7 +13,21 @@ SCRIPT_NAME = "makeWrapperConfigFile"
 # Tuple of C/C++ access specifiers
 ACCESS_SPECIFIERS = ("public", "protected", "private")
 
+
 if __name__ == "__main__":
+    """Ingests a C++ header file for an ITK/OTB filter and turns it into a wrapper config file for LUMASS
+
+    The script consists of three major sections: handling of command line input, assembling the information
+    for the wrapper config, and writing the config information to the wrapper config file. It makes extensive
+    use of the Extractor and Distiller classes for dealing with specific entries.
+
+    It's not implemented to handle sets of header files in batch mode because the information for some config
+    entries comes from the command line only if it's there at all.
+
+    Run ./makeWrapperConfigFile.py on the command line with no arguments to make it print the usage message.
+    """
+
+    # ---Command line wrangling--- #
     # Argument parser for command line arguments
     parser = ap.ArgumentParser(
         prog=SCRIPT_NAME,
@@ -54,39 +68,46 @@ if __name__ == "__main__":
             "Invalid input file. Please specify a .h header file containing your filter declaration."
         )
 
+    # Initialise dictionary of output values
+    config = dict()
+
+    # Record function to forward user input IDs if given
+    # TODO: there seem to be only two examples of function names, SetImageNames
+    #      and SetInputNames. Investigate if this is the case and the entry could
+    #      be parsed out of the header file directly instead.
+    if args.forwardInputUserIDs:
+        config["ForwardInputUserIDs"] = args.forwardInputUserIDs
+
+    # Whether the component is a sink or a source/(source, sink) combination
+    # needs to come from the command line
+    # TODO: investigate reliable criteria for parsing this from the header instead.
+    if args.componentIsSink:
+        config["ComponentIsSink"] = 1
+    else:
+        config["ComponentIsSink"] = 0
+
+    # Value extractor utility
+    extractor = Extractor()
+
+    # Extract file name without extension
+    config["FilterClassFileName"] = extractor.extractFilterClassFileName(
+        args.inputHeaderFile
+    )
+
+    # ---Information from the environment--- #
+    # Author, Year and FileDate come out of the environment
+    config["Author"] = SCRIPT_NAME
+    config["Year"] = extractor.extractYear()
+    config["FileDate"] = extractor.extractFileDate()
+
+    # ---Input file processing--- #
     # Open input file for reading
     with open(args.inputHeaderFile, mode="r") as source:
-        # Initialise dictionary of output values
-        config = dict()
-
         # Initialise currently applicable C/C++ access specifier to unknown
         accessLevel = None
 
         # Initialise namespace string (may remain None if not present in input file)
         namespaceIdentifier = None
-
-        # Value extractor utility
-        extractor = Extractor()
-
-        # Record function to forward user input IDs if given
-        # TODO: there seem to be only two examples of function names, SetImageNames
-        #      and SetInputNames. Investigate if this is the case and the entry could
-        #      be parsed out of the header file directly instead.
-        if args.forwardInputUserIDs:
-            config["ForwardInputUserIDs"] = args.forwardInputUserIDs
-
-        # Whether the component is a sink or a source/(source, sink) combination
-        # needs to come from the command line
-        # TODO: investigate reliable criteria for parsing this from the header instead.
-        if args.componentIsSink:
-            config["ComponentIsSink"] = 1
-        else:
-            config["ComponentIsSink"] = 0
-
-        # Extract file name without extension
-        config["FilterClassFileName"] = extractor.extractFilterClassFileName(
-            args.inputHeaderFile
-        )
 
         # Read input file one line at a time
         while line := source.readline():
@@ -190,6 +211,7 @@ if __name__ == "__main__":
 
             # TODO: unclear how to decide what should be captured as a Property (and how to detect it)
 
+    # ---Checks and balances--- #
     # Sanity check: dictionary contents need to meet a few minimum requirements
     minimumRequirementsMet = (
         "WrapperClassName" in config
@@ -208,11 +230,7 @@ if __name__ == "__main__":
         )
         exit(1)
 
-    # Author, Year and FileDate come out of the environment
-    config["Author"] = SCRIPT_NAME
-    config["Year"] = extractor.extractYear()
-    config["FileDate"] = extractor.extractFileDate()
-
+    # ---Config file creation--- #
     # write results to config file
     with open(args.outputConfigFile, mode="w") as destination:
         # Config entry line builder

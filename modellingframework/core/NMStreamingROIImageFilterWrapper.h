@@ -35,13 +35,13 @@
 #include "NMProcess.h"
 #include "NMItkDataObjectWrapper.h"
 
-#include "nmstreamingroiimagefilterwrapper_export.h"
+#include "nmmodframecore_export.h"
 
 //template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 template<class TInputImage, unsigned int Dimension=2>
 class NMStreamingROIImageFilterWrapper_Internal;
 
-class
+class NMMODFRAMECORE_EXPORT
 NMStreamingROIImageFilterWrapper
         : public NMProcess
 {

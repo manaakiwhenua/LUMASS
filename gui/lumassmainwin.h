@@ -67,8 +67,6 @@
 #include "NMLogger.h"
 
 #include "otbSQLiteTable.h"
-#include "mpParser.h"
-
 
 // rasdaman
 #ifdef BUILD_RASSUPPORT

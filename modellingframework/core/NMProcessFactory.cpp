@@ -32,6 +32,8 @@
 #include "NMWrapperFactory.h"
 #include "NMImageReader.h"
 #include "NMTableReader.h"
+#include "NMStreamingImageFileWriterWrapper.h"
+#include "NMStreamingROIImageFilterWrapper.h"
 
 
 NMProcessFactory::NMProcessFactory(QObject* parent)
@@ -42,8 +44,15 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     // init core components
     mProcRegister << QString::fromLatin1("ImageReader")          ;
     mProcRegister << QString::fromLatin1("TableReader");
+    mProcRegister << QString::fromLatin1("ImageWriter")          ;
+    mProcRegister << QString::fromLatin1("ExtractImageRegion");
+
     mAliasClassMap[QStringLiteral("ImageReader")] = QStringLiteral("NMImageReader");
     mAliasClassMap[QStringLiteral("TableReader")] = QStringLiteral("NMTableReader");
+    mAliasClassMap[QStringLiteral("ImageWriter")] = QStringLiteral("NMStreamingImageFileWriterWrapper");
+    mAliasClassMap[QStringLiteral("ExtractImageRegion")] = QStringLiteral("NMStreamingROIImageFilterWrapper");
+
+    mSinks << QString::fromLatin1("ImageWriter");
 
     //  dirty hack; needs to be replaced with proper
     //  process registration (i.e. classname plus
@@ -51,7 +60,6 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     // mProcRegister << QString::fromLatin1("BMIModel")             ;
 
     // mProcRegister << QString::fromLatin1("MapAlgebra")           ;
-    // mProcRegister << QString::fromLatin1("ImageWriter")          ;
     // mProcRegister << QString::fromLatin1("NeighbourCounter")     ;
     // mProcRegister << QString::fromLatin1("RandomImage")          ;
     // mProcRegister << QString::fromLatin1("CostDistanceBuffer")   ;
@@ -73,14 +81,13 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     // mProcRegister << QString::fromLatin1("ImageBufferWriter");
     // mProcRegister << QString::fromLatin1("RAMFlowAcc");
     // mProcRegister << QString::fromLatin1("TerrainAttributes");
-    // mProcRegister << QString::fromLatin1("ExtractImageRegion");
     // mProcRegister << QString::fromLatin1("Image2DtoCubeSlice");
     // mProcRegister << QString::fromLatin1("CubeSliceToImage2D");
     // mProcRegister << QString::fromLatin1("Image2Table");
     // mProcRegister << QString::fromLatin1("Table2NetCDF");
 /*$<RegisterComponentName>$*/
 
-    // mSinks << QString::fromLatin1("ImageWriter");
+
     // mSinks << QString::fromLatin1("CostDistanceBuffer");
     // mSinks << QString::fromLatin1("ExternalExec");
     // mSinks << QString::fromLatin1("SQLProcessor");
@@ -370,6 +377,16 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     {
         proc = new NMTableReader(this);
     }
+    else if (procClass.compare("NMStreamingImageFileWriterWrapper") == 0)
+    {
+        proc = new NMStreamingImageFileWriterWrapper(this);
+        proc->mIsSink = true;
+    }
+    else if (procClass.compare("NMStreamingROIImageFilterWrapper") == 0)
+    {
+        proc = new NMStreamingROIImageFilterWrapper(this);
+    }
+
     else
     {
         QMap<QString, NMWrapperFactory*>::const_iterator facIt =

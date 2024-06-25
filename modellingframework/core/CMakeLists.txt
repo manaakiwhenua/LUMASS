@@ -69,9 +69,10 @@ LINK_DIRECTORIES(
 
 file(GLOB MFW_CORE_CPP
    ${mfw_core_SOURCE_DIR}/*.cpp
-   ${mfw_wrapper_SOURCE_DIR}/NMImageReader.cxx
-   ${mfw_wrapper_SOURCE_DIR}/NMTableReader.cpp
-   ${mfw_wrapper_SOURCE_DIR}/NMItkDataObjectWrapper.cpp
+   ${mfw_core_SOURCE_DIR}/*.cxx
+   #${mfw_wrapper_SOURCE_DIR}/NMImageReader.cxx
+   #${mfw_wrapper_SOURCE_DIR}/NMTableReader.cpp
+   #${mfw_wrapper_SOURCE_DIR}/NMItkDataObjectWrapper.cpp
    ${shared_SOURCE_DIR}/NMLogger.cpp
    ${shared_SOURCE_DIR}/NMObject.cpp
 )
@@ -81,9 +82,9 @@ LIST(REMOVE_ITEM MFW_CORE_CPP ${mfw_core_SOURCE_DIR}/NMConditionalIterComponent.
 file(GLOB MFW_CORE_H
    ${mfw_core_SOURCE_DIR}/*.h
    ${mfw_core_BINARY_DIR}/*.h
-   ${mfw_wrapper_SOURCE_DIR}/NMImageReader.h
-   ${mfw_wrapper_SOURCE_DIR}/NMTableReader.h
-   ${mfw_wrapper_SOURCE_DIR}/NMItkDataObjectWrapper.h
+   #${mfw_wrapper_SOURCE_DIR}/NMImageReader.h
+   #${mfw_wrapper_SOURCE_DIR}/NMTableReader.h
+   #${mfw_wrapper_SOURCE_DIR}/NMItkDataObjectWrapper.h
 
    ${shared_SOURCE_DIR}/NMLogger.h
    ${shared_SOURCE_DIR}/NMObject.h
@@ -109,6 +110,7 @@ set(MFW_CORE_LINK_LIBS
     Qt5::Xml
     Qt5::Core
     Qt5::Concurrent
+    MuParser
     NMNetCDFIO
     NMOTBSupplCore
     #${OTB_LIBRARIES}
@@ -130,8 +132,10 @@ if(PYTHONSUPPORT)
 endif()
 
 set(MFW_CORE_DEP_LIBS
+    MuParser
     NMNetCDFIO
     NMOTBGDALRATImageIO
+    NMOTBSupplCore
     NMOTBSupplFilters
     #RasImageIO
 )
@@ -164,5 +168,5 @@ if(WIN32)
                 RUNTIME DESTINATION lib
         )
 else()
-        install(TARGETS NMModFrameCore LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+        install(TARGETS NMModFrameCore LIBRARY DESTINATION lib)
 endif()

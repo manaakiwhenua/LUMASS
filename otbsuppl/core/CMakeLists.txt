@@ -85,7 +85,7 @@ if(WIN32)
                 RUNTIME DESTINATION lib
         )
 else()
-        install(TARGETS NMOTBSupplCore LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+        install(TARGETS NMOTBSupplCore LIBRARY DESTINATION lib)
 endif()
 
 

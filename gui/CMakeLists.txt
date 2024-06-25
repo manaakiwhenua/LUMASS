@@ -113,7 +113,7 @@ INCLUDE_DIRECTORIES(
     ${PostgreSQL_INCLUDE_DIRS}
     ${lumass_SOURCE_DIR}/utils/ITK
     ${lumass_SOURCE_DIR}
-    ${muParserX_SOURCE_DIR}
+    #${muParserX_SOURCE_DIR}
     ${muparser_SOURCE_DIR}
     ${GDALRATImageIO_BINARY_DIR}
     #${SQLITE3_INCLUDE_DIR}
@@ -147,11 +147,11 @@ LINK_DIRECTORIES(
         ${LIBRARY_OUTPUT_PATH}
         ${NMQt_BINARY_DIR}
         ${mfw_BINARY_DIR}
-        ${mfw_BINRAY_DIR}/lib
-        ${gui_BINARY_DIR}/lib
+        #${mfw_BINRAY_DIR}/lib
+        #${gui_BINARY_DIR}/lib
         ${SQLite_BINARY_DIR}/lib
         ${muparser_BINARY_DIR}
-        ${muParserX_BINARY_DIR}
+        #${muParserX_BINARY_DIR}
         ${RASDAMAN_LIBRARIES_DIR}
         ${PostgreSQL_LIBRARY_DIRS}
         ${SPATIALITE_LIB_DIR}
@@ -204,6 +204,9 @@ if(DVTKOGL2)
     list(REMOVE_ITEM QT_SRC ${NMVtk_SOURCE_DIR}/NMVtkOpenGLPolyDataMapper.cxx)
 endif(DVTKOGL2)
 
+set(PREFIX "lib")
+set(SUFFIX ".so")
+
 # have taken out ${QT_LIBRARIES} here
 set(LUMASS_LINKLIBS
     Qt5::Widgets Qt5::Core Qt5::Gui Qt5::Concurrent Qt5::Xml Qt5::Sql
@@ -217,10 +220,15 @@ set(LUMASS_LINKLIBS
     curl xml2
     ${MPI_CXX_LIBRARIES}
     ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
+    #${LIBRARY_OUTPUT_PATH}/${PREFIX}NMOTBSupplFilters${SUFFIX}
+    #${LIBRARY_OUTPUT_PATH}/${PREFIX}NMOTBSupplCore${SUFFIX}
+    #${LIBRARY_OUTPUT_PATH}/${PREFIX}NMModFrameCore${SUFFIX}
     NMOTBSupplFilters
-    NMOTBSupplCore
-    NMModFrameCore 
-    ${MFW_WRAPPER_NAMES}
+    #NMOTBSupplCore
+    MuParser
+    NMModFrameCore
+    NMMosra
+    #${MFW_WRAPPER_NAMES}
     ${LUMASS_GUI_VTK_LIBRARIES}
     ${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
     ${OPENGL_glu_LIBRARY} ${OPENGL_gl_LIBRARY}
@@ -242,7 +250,11 @@ if(PYTHONSUPPORT)
 endif()
 
 set(LUMASS_DEPLIBS
-    NMModFrameCore ${MFW_WRAPPER_NAMES}
+    MuParser
+    NMOTBSupplFilters
+    NMOTBSupplCore
+    NMModFrameCore
+    #${MFW_WRAPPER_NAMES}
     QtPropertyBrowser
     SQLite
     VisItTesselator
@@ -265,11 +277,13 @@ endif()
 # indicate that we're building the LUMASS GUI VERSION
 add_definitions(-DNM_ENABLE_LOGGER)
 
-message(STATUS "LUMASS GUI's linked vtk libraries: ${LUMASS_GUI_VTK_LIBRARIES}")
+#message(STATUS "LUMASS GUI's linked vtk libraries: ${LUMASS_GUI_VTK_LIBRARIES}")
 
 ADD_EXECUTABLE(lumass ${QT_SRC} ${UI_CPP} ${NM_RES}) #${MOC_CPP}
 set_target_properties(lumass PROPERTIES WIN32_EXECUTABLE TRUE)
-TARGET_LINK_LIBRARIES(lumass ${LUMASS_LINKLIBS})
+TARGET_LINK_LIBRARIES(lumass 
+    ${LUMASS_LINKLIBS}
+)
 ADD_DEPENDENCIES(lumass ${LUMASS_DEPLIBS})
 
 if (${VTK_VERSION_STRING} VERSION_GREATER_EQUAL "8.90")
@@ -288,22 +302,22 @@ endif()
 #====================================================================
 
 # install rules for lumass executable
-install(TARGETS lumass RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+install(TARGETS lumass RUNTIME DESTINATION bin)
 
 # install for linux AppImage
 if (UNIX AND NOT APPLE)
 
     install(FILES ${lumass_SOURCE_DIR}/gui/resources/LUMASS_icon_64.png
             RENAME lumass.png
-            DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/64x64/apps
+            DESTINATION share/icons/hicolor/64x64/apps
     )
     install(FILES ${lumass_SOURCE_DIR}/gui/resources/LUMASS_icon_256.png
             RENAME lumass.png
-            DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/256x256/apps
+            DESTINATION share/icons/hicolor/256x256/apps
     )
 
     install(FILES ${lumass_SOURCE_DIR}/utils/lumass.desktop
-            DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications
+            DESTINATION share/applications
     )
 
     file(GLOB LUMASS_LINUX_UTILS
@@ -314,6 +328,6 @@ if (UNIX AND NOT APPLE)
         /usr/bin/gdal_polygonize.py
     )
 
-    install(PROGRAMS ${LUMASS_LINUX_UTILS} DESTINATION ${CMAKE_INSTALL_PREFIX}/utils)
+    install(PROGRAMS ${LUMASS_LINUX_UTILS} DESTINATION utils)
 
 endif()

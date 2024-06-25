@@ -50,7 +50,7 @@ if (WIN32)
              RUNTIME DESTINATION lib
      )
 else()
-    install(TARGETS NMQt LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+    install(TARGETS NMQt LIBRARY DESTINATION lib)
 endif()
 
 

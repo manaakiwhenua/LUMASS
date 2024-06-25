@@ -63,8 +63,8 @@ if (WIN32)
         RUNTIME DESTINATION lib
         )
 else()
-    install(TARGETS NMMosra LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+    install(TARGETS NMMosra LIBRARY DESTINATION lib)
 endif()
 
-install(FILES ${OPT_HEADER} DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
+install(FILES ${OPT_HEADER} DESTINATION include)
 

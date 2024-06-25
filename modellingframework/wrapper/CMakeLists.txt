@@ -12,7 +12,7 @@ INCLUDE_DIRECTORIES(
     ${mfw_core_SOURCE_DIR}
     ${mfw_wrapper_SOURCE_DIR}
     ${mfw_wrapper_BINARY_DIR}
-    ${muParserX_SOURCE_DIR}
+    #${muParserX_SOURCE_DIR}
     ${shared_SOURCE_DIR}
     ${shared_BINARY_DIR}
     ${GDALRATImageIO_SOURCE_DIR}
@@ -143,7 +143,8 @@ foreach( wrapper ${MFW_WRAPPER_NAMES} )
             endif()
         endif()
 
-        message(STATUS "${wrapper}'s LINK_LIBS: ${LINKLIBS}")
+        message(STATUS "LUMASS component ${wrapper} enabled!")
+        #message(STATUS "${wrapper}'s LINK_LIBS: ${LINKLIBS}")
 
 
         include(GenerateExportHeader)
@@ -165,7 +166,7 @@ foreach( wrapper ${MFW_WRAPPER_NAMES} )
                         RUNTIME DESTINATION lib
                 )
         else()
-                install(TARGETS ${wrapper} LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+                install(TARGETS ${wrapper} LIBRARY DESTINATION lib)
         endif()
 
 endforeach()
@@ -179,7 +180,8 @@ if (NOT HAVEDEBUG AND NOT WIN32)
     file(GLOB MFW_WRAPPER_HEADER_FILES "${mfw_wrapper_SOURCE_DIR}/${wrapper}*.h")
 
     set(LINKLIBS ${MFW_WRAPPER_LINK_LIBS})
-    message(STATUS "${wrapper}'s LINK_LIBS: ${LINKLIBS}")
+    message(STATUS "LUMASS component ${wrapper} enabled!")
+    #message(STATUS "${wrapper}'s LINK_LIBS: ${LINKLIBS}")
 
     SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O0 -g -fPIC -fno-aggressive-loop-optimizations")
 
@@ -197,7 +199,7 @@ if (NOT HAVEDEBUG AND NOT WIN32)
                     RUNTIME DESTINATION lib
             )
     else()
-            install(TARGETS ${wrapper} LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+            install(TARGETS ${wrapper} LIBRARY DESTINATION lib)
     endif()
 endif()
 
@@ -208,7 +210,7 @@ endif()
 #        ${lumass_BINARY_DIR}/lib/*so*
 #    )
 #
-#    install(FILES ${LUMASS_LINUX_ALLLIBS} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+#    install(FILES ${LUMASS_LINUX_ALLLIBS} DESTINATION lib)
 #
 #endif()
 

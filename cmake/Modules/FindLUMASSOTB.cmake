@@ -86,6 +86,7 @@ IF(NOT OTB_DIR)
         OTB-7.0
         OTB-7.1
         OTB-8.1
+        OTB-9.0
         cmake/OTB-5.0
         cmake/OTB-4.4
         cmake/OTB-5.1
@@ -101,6 +102,7 @@ IF(NOT OTB_DIR)
         cmake/OTB-7.0
         cmake/OTB-7.1
         cmake/OTB-8.1
+        cmake/OTB-9.0
         OTB/build
     PATHS
     # Look for an environment variable OTB_DIR.

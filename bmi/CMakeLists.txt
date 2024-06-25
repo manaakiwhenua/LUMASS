@@ -118,10 +118,10 @@ SET(BMI_LINKLIBS
     ${MPI_CXX_LIBRARIES}
     ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
     NMMosra
-    NMOTBSupplFilters
-    NMOTBSupplCore
+    #NMOTBSupplFilters
+    #NMOTBSupplCore
     NMModFrameCore
-    ${MFW_WRAPPER_NAMES}
+    #${MFW_WRAPPER_NAMES}
     ${LUMASS_BMI_VTK_LIBRARIES}
     ${LPSOLVE_LIBRARY}
     ${YAML_CPP_LIBRARIES}
@@ -142,7 +142,9 @@ SET(PYTHON_BMI_DEPLIBS
 
 
 SET(BMI_DEPLIBS
-    NMModFrameCore ${MFW_WRAPPER_NAMES}
+    NMMosra
+    NMModFrameCore
+    #${MFW_WRAPPER_NAMES}
 )
 
 set(CMAKE_AUTOMOC YES)
@@ -183,7 +185,7 @@ endif()
 #    TARGET_LINK_LIBRARIES(LumassBMITest dl)
 #endif()
 
-SET(LUMASS_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
+#SET(LUMASS_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
 
 #if (WIN32)
         #configure_file("${bmi_SOURCE_DIR}/test/LumassEnv.cmd.in"
@@ -208,7 +210,7 @@ if (WIN32)
              RUNTIME DESTINATION lib
      )
 else()
-    install(TARGETS ${BMI_INSTALL_TARGETS} LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+    install(TARGETS ${BMI_INSTALL_TARGETS} LIBRARY DESTINATION lib)
 endif()
 
 

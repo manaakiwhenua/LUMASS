@@ -59,5 +59,5 @@ if(WIN32)
                 ARCHIVE DESTINATION lib
         )
 else()
-        install(TARGETS VisItTesselator LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+        install(TARGETS VisItTesselator LIBRARY DESTINATION lib)
 endif()

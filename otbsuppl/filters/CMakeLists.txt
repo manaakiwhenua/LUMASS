@@ -11,21 +11,21 @@ INCLUDE_DIRECTORIES(
     ${QT5_INCLUDE_DIRS}
     ${OTB_DIR}/Code/Common
     ${OTB_INCLUDE_DIRS}
-    ${muparser_SOURCE_DIR}
-    ${muParserX_SOURCE_DIR}
     ${OTBSupplCore_SOURCE_DIR}
     ${OTBSupplCore_BINARY_DIR}
     ${utils_SOURCE_DIR}
     ${OTB_DIR}/Utilities/ITK/Utilities/vxl/core/vnl
     ${lumass_SOURCE_DIR}/utils/ITK
     ${lumass_SOURCE_DIR}
-    #${TCADB_INCLUDE_DIR}
     ${PYBIND11_INCLUDE_DIR}
     ${MPI_CXX_INCLUDE_DIRS}
     ${opt_SOURCE_DIR}
+    ${muparser_SOURCE_DIR}
 )
 
 LINK_DIRECTORIES(
+    ${muparser_BINARY_DIR}
+    ${muparser_BINARY_DIR}/${CMAKE_BUILD_TYPE}
     ${OTB_BINARY_DIR}
     ${OTB_BINARY_DIR}/${CMAKE_BUILD_TYPE}
     ${OTB_DIR}/bin
@@ -34,16 +34,11 @@ LINK_DIRECTORIES(
     ${SPATIALITE_LIB_DIR}
     ${SPATIALITE_LIBLIB_DIR}
     ${NETCDF_LIB_DIR}
-
-
-    #${TCADB_LIB_DIR}
 )
 
 file(GLOB OTBSUPPL_FILTERS
     ${filters_SOURCE_DIR}/*.txx
     ${filters_SOURCE_DIR}/*.cxx
-    ${muparser_SOURCE_DIR}/*.cpp
-    ${muParserX_SOURCE_DIR}/*.cpp
     ${OTBSupplCore_SOURCE_DIR}/*.cxx
     ${OTBSupplCore_SOURCE_DIR}/*.hxx
 )
@@ -70,24 +65,20 @@ set_target_properties(NMOTBSupplFilters PROPERTIES
 generate_export_header(NMOTBSupplFilters)
 
 if(WIN32)
-    target_link_libraries(NMOTBSupplFilters #OTBCommon OTBIOGDAL
-    #OTBExtendedFilename OTBCurlAdapters OTBImageIO OTBImageBase
-    #OTBMathParser
-    #OTBStreaming
-    NMOTBGDALRATImageIO
-    Qt5Core Qt5Qml
-    #tokyocabinet
+    target_link_libraries(NMOTBSupplFilters
+        NMOTBGDALRATImageIO
+        Qt5Core Qt5Qml
     )
 else()
-    target_link_libraries(NMOTBSupplFilters #OTBCommon OTBIOGDAL
-    ${MPI_CXX_LIBRARIES}
-    ${NETCDF_LIBRARY}
-    NMOTBGDALRATImageIO
-    Qt5Core Qt5Qml
+    target_link_libraries(NMOTBSupplFilters
+        ${MPI_CXX_LIBRARIES}
+        ${NETCDF_LIBRARY}
+        NMOTBGDALRATImageIO
+        Qt5Core Qt5Qml
     )
 endif()
 
-add_dependencies(NMOTBSupplFilters NMOTBGDALRATImageIO)
+add_dependencies(NMOTBSupplFilters NMOTBGDALRATImageIO MuParser)
 
 install(FILES ${OTBSUPPL_HEADER} DESTINATION include)
 if(WIN32)
@@ -97,5 +88,5 @@ if(WIN32)
                 RUNTIME DESTINATION lib
         )
 else()
-        install(TARGETS NMOTBSupplFilters LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+        install(TARGETS NMOTBSupplFilters LIBRARY DESTINATION lib)
 endif()

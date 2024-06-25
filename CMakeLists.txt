@@ -76,11 +76,6 @@ ELSE(NOT WIN32)
     SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /O2 /Ob2 /Oy /Oi /Ot ")
 ENDIF(NOT WIN32)
 
-IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-        SET(CMAKE_INSTALL_PREFIX "/opt/lumass"
-                CACHE PATH "LUMASS installation directory" FORCE)
-ENDIF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-
 # check whether long is 64bit
 include(CheckTypeSize)
 CHECK_TYPE_SIZE(long SIZEOF_LONG LANGUAGE CXX)
@@ -105,8 +100,6 @@ SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
 # (but later on when installing)
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
 
-#SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-
 # found in CMAKE users group/email list:
 # sets the RPATH to be relative to the origin of the executable
 # on MAC and Linux, rather than to a fixed directory specified
@@ -117,12 +110,6 @@ set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
 # add the automatically determined parts of the RPATH
 # which point to directories outside the build tree to the install RPATH
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-# the RPATH to be used when installing, but only if it's not a system directory
-#LIST(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
-#IF("${isSystemDir}" STREQUAL "-1")
-#   SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-#ENDIF("${isSystemDir}" STREQUAL "-1")
 
 #==================================================================
 # THE DEFAULT BUILD TYPE
@@ -154,7 +141,7 @@ endif (testvar_in STREQUAL testvar_target)
 
 
 #==================================================================
-# LUMASS VERSION AND REVISION
+# LUMASS VERSION AND REVISION + INSTALL_PREFIX
 #==================================================================
 
 find_package(Git)
@@ -165,10 +152,16 @@ SET(LUMASS_VERSION_SUFFIX "-b8")
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
+SET(LUMASS_VERSION_STRING "${LUMASS_VERSION_MAJOR}.${LUMASS_VERSION_MINOR}.${LUMASS_VERSION_REVISION}${LUMASS_VERSION_SUFFIX}")
+SET(LUMASS_AND_VERSION_STRING "lumass-${LUMASS_VERSION_STRING}")
+
+IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+        set(CMAKE_INSTALL_PREFIX "${LUMASS_AND_VERSION_STRING}/usr")
+ENDIF()
 
 message(STATUS "building LUMASS ${LUMASS_VERSION_MAJOR}.${LUMASS_VERSION_MINOR}.${LUMASS_VERSION_REVISION} (${CMAKE_BUILD_TYPE})"
                " - commit ${GIT_SHA1} from ${LUMASS_COMMIT_DATE}")
-
+message(STATUS "install dir: ${CMAKE_INSTALL_PREFIX}")
 
 SET(LUMASS_OPENGA_VERSION "1.0.5")
 
@@ -265,10 +258,22 @@ message(STATUS "ITK_VERSION: ${LUMASS_ITK_VERSION}")
 #message(STATUS "ITK_LIBRARIES: ${ITK_LIBRARIES}")
 #message(STATUS "ITK_LINK_DIR: ${ITK_LINK_DIR}")
 message(STATUS "OTB_VERSION: ${LUMASS_OTB_VERSION}")
-message(STATUS "OTB_LIBRARY_DIRS: ${OTB_LIBRARY_DIRS}")
-message(STATUS "OTB_INCLUDE_DIRS: ${OTB_INCLUDE_DIRS}")
+#message(STATUS "OTB_LIBRARY_DIRS: ${OTB_LIBRARY_DIRS}")
+#message(STATUS "OTB_INCLUDE_DIRS: ${OTB_INCLUDE_DIRS}")
 #message(STATUS "OTB_LIBRARIES: ${OTB_LIBRARIES}")
-message(STATUS "OTB_LINK_DIR: ${OTB_LINK_DIR}")
+#message(STATUS "OTB_LINK_DIR: ${OTB_LINK_DIR}")
+
+#====================================================================
+# CURL
+#====================================================================
+FIND_PACKAGE(CURL)
+IF(NOT CURL_FOUND)
+    message(FATAL_ERROR "whoopsie, no CURL, no compilation!")
+ENDIF()
+
+#add_library(CURL::libcurl SHARED IMPORTED)
+#set_target_properties(CURL::libcurl PROPERTIES IMPORTED_LOCATION )
+
 
 #====================================================================
 # VTK
@@ -307,7 +312,8 @@ endif()
 # GDAL SUPPORT - always required otherwise we pull out
 #====================================================================
 
-FIND_PACKAGE(LUMASSGDAL)
+#FIND_PACKAGE(LUMASSGDAL)
+FIND_PACKAGE(GDAL)
 IF(NOT GDAL_FOUND)
   message(FATAL_ERROR "You have to install GDAL prior to compiling LUMASS!")
 ENDIF()
@@ -327,7 +333,7 @@ ENDIF()
 
 message(STATUS "GDAL version: ${GDAL_VERSION}")
 message(STATUS "GDAL lib: ${GDAL_LIBRARY}")
-message(STATUS "gdal include dir: ${GDAL_INCLUDE_DIR}")
+message(STATUS "GDAL include dir: ${GDAL_INCLUDE_DIR}")
 
 
 #====================================================================
@@ -633,7 +639,7 @@ SET(MFW_WRAPPER_NAMES
     NMResampleImageFilterWrapper
     NMVectorImageToImageFilterWrapper
     NMSumZonesFilterWrapper
-    NMStreamingImageFileWriterWrapper
+    #NMStreamingImageFileWriterWrapper
     NMCostDistanceBufferImageWrapper
     NMRATBandMathImageFilterWrapper
     NMScriptableKernelFilter2Wrapper
@@ -641,7 +647,7 @@ SET(MFW_WRAPPER_NAMES
     NMExternalExecWrapper
     NMSQLiteProcessorWrapper
     #NMUniqueCombinationFilterWrapper
-    NMStreamingROIImageFilterWrapper
+    #NMStreamingROIImageFilterWrapper
     NMImage2DToCubeSliceFilterWrapper
     NMCubeSliceToImage2DFilterWrapper
     NMImage2TableFilterWrapper
@@ -654,11 +660,11 @@ SET(OTB_LINK_LIBS
     OTBImageBase
     OTBImageIO
     OTBIOGDAL
-    OTBOSSIMAdapters
-    otbossimplugins
+    OTBCurlAdapters
+    #OTBOSSIMAdapters
+    #otbossimplugins
     #OTBStreaming
 )
-
 
 #====================================================================
 # ADD SUBDIRECTORIES
@@ -670,29 +676,32 @@ ADD_SUBDIRECTORY(otbsuppl ${lumass_BINARY_DIR}/otbsuppl)
 ADD_SUBDIRECTORY(modellingframework/core ${lumass_BINARY_DIR}/modellingframework/core)
 ADD_SUBDIRECTORY(optimisation ${lumass_BINARY_DIR}/optimisation)
 ADD_SUBDIRECTORY(modellingframework/wrapper ${lumass_BINARY_DIR}/modellingframework/wrapper)
-ADD_SUBDIRECTORY(gui ${lumass_BINARY_DIR}/gui)
-ADD_SUBDIRECTORY(terminalapp ${lumass_BINARY_DIR}/terminalapp)
 ADD_SUBDIRECTORY(bmi ${lumass_BINARY_DIR}/bmi)
-
+ADD_SUBDIRECTORY(terminalapp ${lumass_BINARY_DIR}/terminalapp)
+ADD_SUBDIRECTORY(gui ${lumass_BINARY_DIR}/gui)
 
 #====================================================================
 # Packaging
 #====================================================================
 
 IF (UNIX AND NOT APPLE)
-
+    set(CPACK_VERBATIM_VARIABLES TRUE)
     set(CPACK_PACKAGE_NAME "lumass")
-    set(CPACK_PACKAGE_VERSION "${LUMASS_VERSION_MAJOR}.${LUMASS_VERSION_MINOR}.${LUMASS_VERSION_REVISION}-0ubuntu1")
+    set(CPACK_PACKAGE_VERSION "${LUMASS_VERSION_MAJOR}.${LUMASS_VERSION_MINOR}.${LUMASS_VERSION_REVISION}${LUMASS_VERSION_SUFFIX}-0ubuntu1")
     set(CPACK_PACKAGE_VENDOR "Manaaki Whenua - Landcare Research")
     set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
     set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
-    #set(CPACK_DEBIAN_PACKAGE_DEPENDS "")
+    set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS TRUE)
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libboost-filesystem1.74.0, libboost-serialization1.74.0, curl, lp-solve, libspatialite7, python3-gdal, gdal-bin, gdal-data, libmpich12, mpich, libhdf5-mpich-103-1, libhdf5-mpich-cpp-103-1, libhdf5-mpich-hl-100, libhdf5-mpich-hl-cpp-100, libyaml-cpp0.7, libtinyxml2-9, ffmpeg, libavcodec-extra58, libavdevice58, libgeotiff5, libglvnd0, libxcursor1, python3, python-is-python3, python3-pip, tzdata, libqt5concurrent5, libqt5core5a, libqt5dbus5, libqt5gui5, libqt5network5, libqt5qml5, libqt5sql5, libqt5widgets5, libqt5websockets5, libqt5xml5, qml-module-qtquick-privatewidgets")
 
     set(CPACK_RESOURCE_FILE_LICENSE "${lumass_SOURCE_DIR}/LICENCE")
     set(CPACK_RESOURCE_FILE_README "${lumass_SOURCE_DIR}/README.md")
-    set(CPACK_DEBIAN_DESCRIPTION "LUMASS - spatial modelling & optimisation framework")
+    set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "LUMASS - spatial modelling & optimisation framework")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "LUMASS - spatial modelling & optimisation framework")
+    set(CPACK_PACKAGE_DESCRIPTION "LUMASS - spatial modelling & optimisation framework")
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Alex Herzig")
-    set(CPACK_DEBIAN_PACKAGE_CONTACT "herziga@landcareresearch.co.nz")
+    #set(CPACK_DEBIAN_PACKAGE_CONTACT "herziga@landcareresearch.co.nz")
+    set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://manaakiwhenua.github.io/LUMASS")
 
     set(CPACK_GENERATOR "DEB")
     include(CPack)

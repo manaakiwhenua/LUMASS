@@ -139,4 +139,4 @@ if (${VTK_VERSION_STRING} VERSION_GREATER_EQUAL "8.90")
     vtk_module_autoinit(TARGETS lumassengine MODULES ${LUMASS_ENGINE_VTK_LIBRARIES})
 endif()
 
-install(TARGETS lumassengine DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+install(TARGETS lumassengine DESTINATION bin)

@@ -88,7 +88,7 @@ if(WIN32)
                 RUNTIME DESTINATION lib
         )
 else()
-        install(TARGETS NMOTBGDALRATImageIO LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+        install(TARGETS NMOTBGDALRATImageIO LIBRARY DESTINATION lib)
 endif()
 
 

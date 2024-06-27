@@ -2090,7 +2090,7 @@ void ModelComponentList::mapUniqueValues()
         return;
     }
 
-    sFields.sort();
+    sFields.sort(Qt::CaseInsensitive);
 
     bool bOk = false;
     QString theField = QInputDialog::getItem(this,

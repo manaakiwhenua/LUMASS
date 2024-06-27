@@ -131,7 +131,7 @@ NMMfwException::type2string(void) const
         ret = "NMModelComponent: Invalid UserID.";
         break;
     case NMModelComponent_InvalidParameter:
-        ret = "NMModelComponent: Ivalid parameter.";
+        ret = "NMModelComponent: Invalid parameter.";
         break;
     case NMModelComponent_UninitialisedDataObject:
         ret = "NMModelComponent: Uninitialised data object.";

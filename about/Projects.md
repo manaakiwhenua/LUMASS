@@ -2,6 +2,7 @@
 title: "Projects"
 permalink: "/about/Projects"
 ---
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 ### Growing for good: producing a healthy, low greenhouse gas and water quality footprint diet in Aotearoa, New Zealand (2021-2022)
 

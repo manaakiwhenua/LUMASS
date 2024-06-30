@@ -2,6 +2,7 @@
 title: "TableReader"
 permalink: "/docs/cref_table_reader"
 --- 
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 ## Properties
 

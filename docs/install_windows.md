@@ -2,6 +2,7 @@
 title: "Windows installation"
 permalink: "/docs/install_windows"
 ---
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 1. [Download](https://github.com/manaakiwhenua/LUMASS/releases) the most recent LUMASS for Windows release
 

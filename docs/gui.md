@@ -2,6 +2,7 @@
 title: "Graphical User Interface (GUI)"
 permalink: "/docs/gui"
 --- 
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 [![Graphical_User_Interface]({{ "/assets/images/docs/gui_v0966_enumerated.png" | relative_url }})]({{ "/assets/images/docs/gui_v0966_enumerated.png" | relative_url }})<br>
 

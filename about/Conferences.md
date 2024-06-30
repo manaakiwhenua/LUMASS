@@ -2,6 +2,7 @@
 permalink: /about/Conferences
 title: "Conferences"
 ---
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 ![EGU_2020.jpg]({{ "/assets/images/EGU_2020.svg" | relative_url }})
 

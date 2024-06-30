@@ -2,6 +2,7 @@
 title: "Execution Order and Control Flow"
 permalink: "/docs/mod_execution_control"
 ---
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 ## Execution Sequence
 

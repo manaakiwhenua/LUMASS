@@ -2,6 +2,7 @@
 title: "Aggregate Components"
 permalink: "/docs/mod_aggregate_components"
 --- 
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 ## NMSequentialIterComponent
 

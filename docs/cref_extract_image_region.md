@@ -2,6 +2,7 @@
 title: "ExtractImageRegion"
 permalink: "/docs/cref_extract_image_region"
 --- 
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 ## Properties
 

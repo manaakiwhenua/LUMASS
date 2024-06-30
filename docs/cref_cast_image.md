@@ -2,6 +2,7 @@
 title: "CastImage"
 permalink: "/docs/cref_cast_image"
 --- 
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 ## Properties
 

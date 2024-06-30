@@ -2,6 +2,7 @@
 title: "Linux installation"
 permalink: "/docs/install_linux"
 ---
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 LUMASS is provided as an [AppImage](https://appimage.org/) based on Ubuntu 20.04. It ships with most of its dependencies. However, a number of low-level system libraries are not distributed. For Ubuntu 20.04 those libraries are:
 

@@ -2,6 +2,7 @@
 title: "Model Components"
 permalink: "/docs/mod_structure"
 ---
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 [![Hierarchical_Model_Structure]({{ "/assets/images/docs/model_structure_exec_order.png" | relative_url }})]({{ "/assets/images/docs/model_structure_exec_order.png" | relative_url }})<br>
 **Model structure and execution order**

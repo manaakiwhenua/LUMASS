@@ -2,6 +2,7 @@
 title: "DataBuffer & -Reference"
 permalink: "/docs/cref_databuffer"
 --- 
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 ## Properties
 

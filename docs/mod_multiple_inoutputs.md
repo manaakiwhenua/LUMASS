@@ -2,6 +2,7 @@
 title: "Multiple Inputs and Outputs"
 permalink: "/docs/mod_multiple_inoutputs"
 --- 
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 While most processing components that can be included into a processing pipeline only accept one input component or only produce one output component, a few components either accept more than one input and/or produce more than one output:
 

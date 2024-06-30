@@ -2,6 +2,7 @@
 title: "Creating and Executing Models"
 permalink: "/docs/mod_createpipeline"
 --- 
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 ## Adding Model Components to a Model
 

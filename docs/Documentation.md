@@ -2,6 +2,7 @@
 title: "Documentation"
 permalink: "/docs/Documentation"
 ---
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 
 ## Installation 

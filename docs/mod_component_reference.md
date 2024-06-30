@@ -2,6 +2,7 @@
 title: "Model Component Reference"
 permalink: "/docs/mod_component_reference"
 ---
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 - [BMIModel]({{ "/docs/cref_bmi_model" | relative_url }})
 - [CostDistanceBuffer]({{ "/docs/cref_costdistancebuffer" | relative_url }})

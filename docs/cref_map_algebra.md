@@ -2,6 +2,7 @@
 title: "MapAlgebra"
 permalink: "/docs/cref_map_algebra"
 --- 
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 ## Properties
 

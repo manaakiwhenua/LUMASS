@@ -2,6 +2,7 @@
 title: "Dynamic Model Parameters"
 permalink: "/docs/mod_dynamic_parameters"
 --- 
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 To support the representation of dynamic systems as well as enabling the assessment of model sensitivities and uncertainties, LUMASS provides the concept of dynamic parameters by way of i) parameter lists for supplying different values to component properties during an iterative model execution and ii) parameter expressions for the dynamic generation of component property values depending on user-defined model configuration options or the state of other model components or input datasets. 
 

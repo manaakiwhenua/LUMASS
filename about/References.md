@@ -1,3 +1,9 @@
+---
+title: "References"
+permalink: "/about/References"
+---
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
+
 McDowell RW, Herzig A, van der Weerden TJ, Cleghorn C, Kaye-Blake B 2022. **Growing for good: producing a healthy, low greenhouse gas and water quality footprint diet in Aotearoa, New Zealand.** Journal of the Royal Society of New Zealand. [https://doi.org/10.1080/03036758.2022.2137532](https://doi.org/10.1080/03036758.2022.2137532)
 
 Herzig A, Manderson A, Jolly B, Barnes M, Baish L 2020. **Opportunitues and constraints on intensive land-use expansion in the Horizons Region – Land-Use Mapping.** Manaaki Whenua – Landcare Research Contract Report LC3838, Palmerston North, New Zealand.

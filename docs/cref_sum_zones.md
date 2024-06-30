@@ -2,6 +2,7 @@
 title: "SummarizeZones"
 permalink: "/docs/cref_sum_zones"
 --- 
+<link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
 ## Properties
 

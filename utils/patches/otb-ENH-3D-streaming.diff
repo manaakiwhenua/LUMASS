@@ -1,0 +1,83 @@
+diff --git a/Modules/Core/Streaming/include/otbStreamingManager.hxx b/Modules/Core/Streaming/include/otbStreamingManager.hxx
+index 9969f934f3..a2ad54502d 100644
+--- a/Modules/Core/Streaming/include/otbStreamingManager.hxx
++++ b/Modules/Core/Streaming/include/otbStreamingManager.hxx
+@@ -89,18 +89,25 @@ unsigned int StreamingManager<TImage>::EstimateOptimalNumberOfDivisions(itk::Dat
+     // Define a small region to run the memory footprint estimation,
+     // around the image center, 100 pixels wide in each dimension
+     SizeType smallSize;
+-    smallSize.Fill(100);
+     IndexType index;
+-    index[0] = region.GetIndex()[0] + region.GetSize()[0] / 2 - 50;
+-    index[1] = region.GetIndex()[1] + region.GetSize()[1] / 2 - 50;
++    for (int d=0; d < ImageDimension; ++d)
++    {
++        if (region.GetSize()[d] < 100)
++        {
++            index[d] = 0;
++            smallSize[d] = region.GetSize()[d];
++        }
++        else
++        {
++            index[d] = region.GetIndex()[d] + region.GetSize()[d] / 2 - 50;
++            smallSize[d] = 100;
++        }
++    }
+ 
+     RegionType smallRegion;
+     smallRegion.SetSize(smallSize);
+     smallRegion.SetIndex(index);
+ 
+-    // In case the image is smaller than 100 pixels in a direction
+-    smallRegion.Crop(region);
+-
+     extractFilter->SetExtractionRegion(smallRegion);
+ 
+     bool smallRegionSuccess = smallRegion.Crop(region);
+diff --git a/Modules/Core/Streaming/src/otbPipelineMemoryPrintCalculator.cxx b/Modules/Core/Streaming/src/otbPipelineMemoryPrintCalculator.cxx
+index c09ca6c9c6..edfddf7f9a 100644
+--- a/Modules/Core/Streaming/src/otbPipelineMemoryPrintCalculator.cxx
++++ b/Modules/Core/Streaming/src/otbPipelineMemoryPrintCalculator.cxx
+@@ -193,6 +193,42 @@ PipelineMemoryPrintCalculator::MemoryPrintType PipelineMemoryPrintCalculator::Ev
+         print += this->EvaluateDataObjectPrint(it.Get());                                                           \
+     }                                                                                                               \
+     return print;                                                                                                   \
++  }                                                                                                                 \
++  if (dynamic_cast<itk::Image<type, 3>*>(data) != NULL)                                                             \
++  {                                                                                                                 \
++    itk::Image<type, 3>* image = dynamic_cast<itk::Image<type, 3>*>(data);                                          \
++    return image->GetRequestedRegion().GetNumberOfPixels() * image->GetNumberOfComponentsPerPixel() * sizeof(type); \
++  }                                                                                                                 \
++  if (dynamic_cast<itk::VectorImage<type, 3>*>(data) != NULL)                                                       \
++  {                                                                                                                 \
++    itk::VectorImage<type, 3>* image = dynamic_cast<itk::VectorImage<type, 3>*>(data);                              \
++    return image->GetRequestedRegion().GetNumberOfPixels() * image->GetNumberOfComponentsPerPixel() * sizeof(type); \
++  }                                                                                                                 \
++  if (dynamic_cast<ImageList<Image<type, 3>>*>(data) != NULL)                                                       \
++  {                                                                                                                 \
++    ImageList<Image<type, 3>>* imageList = dynamic_cast<otb::ImageList<otb::Image<type, 3>>*>(data);                \
++    MemoryPrintType print(0);                                                                                       \
++    for (ImageList<Image<type, 3>>::Iterator it = imageList->Begin(); it != imageList->End(); ++it)                 \
++    {                                                                                                               \
++      if (it.Get()->GetSource())                                                                                    \
++        print += this->EvaluateProcessObjectPrintRecursive(it.Get()->GetSource());                                  \
++      else                                                                                                          \
++        print += this->EvaluateDataObjectPrint(it.Get());                                                           \
++    }                                                                                                               \
++    return print;                                                                                                   \
++  }                                                                                                                 \
++  if (dynamic_cast<ImageList<VectorImage<type, 3>>*>(data) != NULL)                                                 \
++  {                                                                                                                 \
++    ImageList<VectorImage<type, 3>>* imageList = dynamic_cast<otb::ImageList<otb::VectorImage<type, 3>>*>(data);    \
++    MemoryPrintType print(0);                                                                                       \
++    for (ImageList<VectorImage<type, 3>>::ConstIterator it = imageList->Begin(); it != imageList->End(); ++it)      \
++    {                                                                                                               \
++      if (it.Get()->GetSource())                                                                                    \
++        print += this->EvaluateProcessObjectPrintRecursive(it.Get()->GetSource());                                  \
++      else                                                                                                          \
++        print += this->EvaluateDataObjectPrint(it.Get());                                                           \
++    }                                                                                                               \
++    return print;                                                                                                   \
+   }
+ 
+ 

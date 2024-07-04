@@ -4,6 +4,8 @@ permalink: "/docs/install_linux"
 ---
 <link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
+## AppImage
+
 LUMASS is provided as an [AppImage](https://appimage.org/) based on Ubuntu 20.04. It ships with most of its dependencies. However, a number of low-level system libraries are not distributed. For Ubuntu 20.04 those libraries are:
 
 ```libc6 libcom-err2 libexpat1 libfontconfig libglib2.0-0 libglx0 libgmp10 libgpg-error0 libopengl0 libp11-kit0 libstdc++6 libx11-6 libxcb1 zlib1g``` 
@@ -55,3 +57,90 @@ to be different for other distributions. To 'install' LUMASS on your system, fol
    directory path for '$[LUMASS:Workspace]$'>] [--logfile <file
    name>] [--logprov]
    ```
+
+## Build LUMASS and AppImage from source
+
+**Info:** the build scripts used in the below guide were developed for *Ubuntu 22.04*. You may need to adapt both scripts in order to successfully build LUMASS from source on other Linux distributions and Ubuntu versions.
+{: .notice--info}
+
+### Rerequisits 
+- Super user access to your system to install ubuntu packages to satisfy the build requirements (`lumass_install_deb_packages.sh`). If the required libraries are already installed, this step can be skipped.
+- Make sure you have about 15 GB of free disk space available for additional LUMASS dependencies that are being built as part of the process.
+
+### Build steps
+
+1. Download the build scripts
+```
+$ wget https://raw.githubusercontent.com/manaakiwhenua/LUMASS/develop/utils/build/lumass_install_deb_packages.sh
+$ wget https://raw.githubusercontent.com/manaakiwhenua/LUMASS/develop/utils/build/lumass_build.sh
+```
+
+2. Make sure the build scripts are executable
+```
+$ chmod u+x lumass_*.sh
+```
+
+3. Install packages required for building LUMASS and additional dependencies from source
+```
+$ sudo ./lumass_install_dep_packages.sh
+```
+
+4. Build LUMASS dependencies and LUMASS from source, download AppImage tools, generate AppImage
+```
+$ ./lumass_build.sh
+```
+
+   The build script will generate the following directory structure in your home directory:
+   ```
+   $HOME
+   |-garage
+         |-apps
+         |   |-<AppImage tools>
+         |-cpp
+         |   |-<source code of dependencies and LUMASS>
+         |-build
+             |-<binaries of dependencies and LUMASS>
+   ```
+   After the script has successfully finished, the LUMASS binaries will be installed in 
+      ```
+      $HOME/garage/build/lumass-build/lumass-0.9.<rev>
+      ```
+
+   and the AppImage will be available in
+
+      ```
+      $HOME/garage/build/lumass-build/lumass-x86_64.AppImage
+      ```
+
+### Running LUMASS from the install tree
+
+Starting the LUMASS GUI
+```
+$ $HOME/garage/build/lumass-build/lumass-0.9.<rev>/usr/bin/lumass
+```
+
+Running the lumassengine
+```
+$ $HOME/garage/build/lumass-build/lumass-0.9.<rev>/usr/bin/lumassengine
+```
+
+### Using the LUMASS AppImage
+
+**Info:** The AppImage is portable and can be copied to different folders or Linux distributions that are as or more recent than the system it was generated on (here: *Ubuntu 22.04*). For more detailed information on AppImages in general, please refer to the [AppImage](https://www.appimage.org) website.
+{: .notice--info}
+
+
+Ensure the LUMASS `*.AppImage` is executable
+```
+$ chmod u+x $HOME/garage/build/lumass-build/lumass-x86_64.AppImage
+```
+
+Starting the LUMASS GUI
+```
+$ $HOME/garage/build/lumass-build/lumass-x86_64.AppImage
+```
+
+To invoke the lumassengine from the AppImage, just pass a valid parameter and argument to the AppImage, e.g.
+```
+$ $HOME/garage/build/lumass-build/lumass-x86_64.AppImage --model myModel_config.yaml
+```

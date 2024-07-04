@@ -6,13 +6,18 @@ permalink: "/about/References"
 
 McDowell RW, Herzig A, van der Weerden TJ, Cleghorn C, Kaye-Blake B 2022. **Growing for good: producing a healthy, low greenhouse gas and water quality footprint diet in Aotearoa, New Zealand.** Journal of the Royal Society of New Zealand. [https://doi.org/10.1080/03036758.2022.2137532](https://doi.org/10.1080/03036758.2022.2137532)
 
-Herzig A, Manderson A, Jolly B, Barnes M, Baish L 2020. **Opportunitues and constraints on intensive land-use expansion in the Horizons Region – Land-Use Mapping.** Manaaki Whenua – Landcare Research Contract Report LC3838, Palmerston North, New Zealand.
+Thomas S, Ausseil A-G, Guo J, Herzig A, Khaembah E, Renwick A, Teixeira E, van der Weerden T, Wakelin S, Vetharaniam I 2024. **Exploring the role of high-value crops to reduce agricultural greenhouse gas emissions in New Zealand** (accepted). Regional Environmental Change.
+
+
+McDowell RW, Herzig A, van der Weerden TJ, Cleghorn C, Kaye-Blake B 2022. **Growing for good: producing a healthy, low greenhouse gas and water quality footprint diet in Aotearoa, New Zealand.** Journal of the Royal Society of New Zealand. [https://doi.org/10.1080/03036758.2022.2137532](https://doi.org/10.1080/03036758.2022.2137532)
 
 Elliot S, Evans T, Cichota R, Djanibekov U, Herzig A, Jackson B, Lagrava Sandoval D, McDonald S, Monge J, Semadeni-Davies A, Taves M, Thiange C, Vibart R, Wakelin S, Yalden S, Yang J, Yoswara H 2020. **Land-Water Interoperable Models - Project Summary**. Prepared for Our land and Water, NIWA Client Report 2020182HN, Hamilton, New Zealand. [Report](https://datastore.landcareresearch.co.nz/dataset/de3767f9-b79d-42f2-92cf-6cb89e07adac/resource/f74a9d60-841d-4d95-b305-5799ec74bc4e/download/elliot-etal-2020_land-water-interoperablemodels_summary.pdf)
 
-Herzig A, Zoerner J, Dymond J, Smith H, Phillips C 2020. **An Interoperable Low-Code Modelling Framework for Integrated Spatial Modelling**, EGU General Assembly 2020, Online, 4–8 May 2020, EGU2020-20868, [https://doi.org/10.5194/egusphere-egu2020-20868](https://doi.org/10.5194/egusphere-egu2020-20868), 2020
-
 Herzig A, Djanibekov U, Wakelin S, Monge J 2020. **Interoperable Modelling - spatial economic optimisation**. Prepared for National Institute of Water and Atmospheric Research (NIWA), Manaaki Whenua - Landcare Research Contract Report LC3807, Palmerston North, New Zealand. [Report](https://datastore.landcareresearch.co.nz/dataset/de3767f9-b79d-42f2-92cf-6cb89e07adac/resource/9fb1836c-da0a-4b30-9e17-15f5bd33d778/download/olw_interoperable-modelling-spatial-economic-optimisation.pdf)
+
+Herzig A, Manderson A, Jolly B, Barnes M, Baish L 2020. **Opportunitues and constraints on intensive land-use expansion in the Horizons Region – Land-Use Mapping.** Manaaki Whenua – Landcare Research Contract Report LC3838, Palmerston North, New Zealand.
+
+Herzig A, Zoerner J, Dymond J, Smith H, Phillips C 2020. **An Interoperable Low-Code Modelling Framework for Integrated Spatial Modelling**, EGU General Assembly 2020, Online, 4–8 May 2020, EGU2020-20868, [https://doi.org/10.5194/egusphere-egu2020-20868](https://doi.org/10.5194/egusphere-egu2020-20868), 2020
 
 Herzig A 2019. **Streaming Geospatial Data into Virtual Reality**. GeoComputation, 18th to 21st September 2019, Queenstown, New Zealand. [Abstract](https://auckland.figshare.com/articles/conference_contribution/Streaming_Geospatial_Data_into_Virtual_Reality/9870113)
 

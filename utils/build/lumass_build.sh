@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # LUMASS build dependencies from source
 
 # OS: Ubuntu 22.04.4 LTS
@@ -7,6 +9,7 @@
 
 # PATH definitions
 # need to be adapted when updating dependencies
+
 export CPP_DIR=$HOME/garage/cpp
 export BIN_DIR=$HOME/garage/build
 
@@ -32,8 +35,10 @@ export LUMASS_SRC=$CPP_DIR/lumass
 export LUMASS_UTILS_DIR=$LUMASS_SRC/utils
 export LUMASS_BIN=$BIN_DIR/lumass-build
 
-#create source dir
 mkdir -p $CPP_DIR
+
+# exit on first failed command
+set -e
 
 #building libKEA for *.kea support
 cd $CPP_DIR
@@ -63,7 +68,7 @@ cd $CPP_DIR
 git clone https://github.com/orfeotoolbox/OTB.git OTB_9
 cd $OTB_SRC
 git checkout 9.0.0
-wget https://raw.githubusercontent.com/manaakiwhenua/LUMASS/develop/utils/patches/otb-ENH-3D-streaming.diff ./
+wget https://raw.githubusercontent.com/manaakiwhenua/LUMASS/develop/utils/patches/otb-ENH-3D-streaming.diff
 patch -ut -p1 < otb-ENH-3D-streaming.diff
 mkdir -p $OTB_BIN
 cd $OTB_BIN

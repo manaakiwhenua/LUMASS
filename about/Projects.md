@@ -44,7 +44,7 @@ permalink: "/about/Projects"
 
 ### Evaluation of profitability and future potential for low emission productive uses of land that is currently used for livestock - Ministry for Primary Industries, SLMACC Project 405422 (2017-2021)
 
-- Optimisation-based land-use scenario modelling to explore the effect of replacing pastoral agriculture with high value crops on greenhouse gas emissions and profitability while considering land-use suitability for crops ([Report](https://www.mpi.govt.nz/dmsdocument/45847-Evaluation-of-profitability-and-future-potential-for-low-emission-productive-uses-of-land-that-is-currently-used-for-livestock-Technical-report) \| [Paper]())
+- Optimisation-based land-use scenario modelling to explore the effect of replacing pastoral agriculture with high value crops on greenhouse gas emissions and profitability while considering land-use suitability for crops ([Report](https://www.mpi.govt.nz/dmsdocument/45847-Evaluation-of-profitability-and-future-potential-for-low-emission-productive-uses-of-land-that-is-currently-used-for-livestock-Technical-report) \| [Paper](https://doi.org/10.1007/s10113-024-02267-8))
 
 ### Innovative Data Analysis (IDA) - MBIE research programme (2014-2018) [![web]({{ "/assets/images/link_icon_teal.png" | relative_url }}){: width="22"}](https://www.landcareresearch.co.nz/discover-our-research/land/land-and-soil-resources/ida)
 

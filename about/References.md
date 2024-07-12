@@ -4,9 +4,7 @@ permalink: "/about/References"
 ---
 <link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
-McDowell RW, Herzig A, van der Weerden TJ, Cleghorn C, Kaye-Blake B 2022. **Growing for good: producing a healthy, low greenhouse gas and water quality footprint diet in Aotearoa, New Zealand.** Journal of the Royal Society of New Zealand. [https://doi.org/10.1080/03036758.2022.2137532](https://doi.org/10.1080/03036758.2022.2137532)
-
-Thomas S, Ausseil A-G, Guo J, Herzig A, Khaembah E, Renwick A, Teixeira E, van der Weerden T, Wakelin S, Vetharaniam I 2024. **Exploring the role of high-value crops to reduce agricultural greenhouse gas emissions in New Zealand** (accepted). Regional Environmental Change.
+Thomas S, Ausseil A-G, Guo J, Herzig A, Khaembah E, Renwick A, Teixeira E, van der Weerden T, Wakelin S, Vetharaniam I 2024. **Exploring the role of high-value crops to reduce agricultural greenhouse gas emissions in New Zealand**. Regional Environmental Change 24, 105. [https://doi.org/10.1007/s10113-024-02267-8](https://doi.org/10.1007/s10113-024-02267-8)
 
 
 McDowell RW, Herzig A, van der Weerden TJ, Cleghorn C, Kaye-Blake B 2022. **Growing for good: producing a healthy, low greenhouse gas and water quality footprint diet in Aotearoa, New Zealand.** Journal of the Royal Society of New Zealand. [https://doi.org/10.1080/03036758.2022.2137532](https://doi.org/10.1080/03036758.2022.2137532)

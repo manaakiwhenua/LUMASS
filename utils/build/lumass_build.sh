@@ -127,8 +127,8 @@ chmod u+x *.*
 
 # generating lumass AppImage from install tree
 cd $LUMASS_BIN
-rm -rf ./*.AppImage
-export APPDIR=$(pwd)/$(ls -ld lumass-* | cut -d ' ' -f10)
+rm -f ./*.AppImage
+export APPDIR=$(pwd)/$(ls -d lumass-*)
 #export MWLRPLUG_DIR=$HOME/garage/build/lumass-mwlr-plugins
 
 $APPIMGDIR/linuxdeploy-x86_64.AppImage --appdir $APPDIR --custom-apprun=$LUMASS_UTILS_DIR/RunLumassAppImage -l $KEA_BIN/gdal/gdal_KEA.so -l $KEA_BIN/src/libkea.so.$LIBKEA_VERSION --plugin qt --plugin checkrt --output appimage

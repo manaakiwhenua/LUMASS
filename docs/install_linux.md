@@ -18,7 +18,7 @@ to be different for other distributions. To 'install' LUMASS on your system, fol
    *Ubuntu 20.04*
 
    ```
-   $ sudo apt-get install gdal-bin libgdal26 libopengl0
+   sudo apt-get install gdal-bin libgdal26 libopengl0
    ```
 
 2. Download the most recent lumass AppImage to a directory you've got write permissions for.
@@ -28,8 +28,8 @@ to be different for other distributions. To 'install' LUMASS on your system, fol
 3. To 'install' lumass, just make the AppImage executable
 
    ```
-   $ chmod +x ./lumass-0.9.65-rc4-x86_64.AppImage
-    ```
+   chmod +x ./lumass-0.9.65-rc4-x86_64.AppImage
+   ```
 
 4. Run lumass by executing the AppImage. To run models with the lumassengine, just provide appropriate commandline arguments.
 
@@ -38,7 +38,7 @@ to be different for other distributions. To 'install' LUMASS on your system, fol
    Just execute or double click the AppImage to run the lumass GUI:
 
      ```
-     $ ./lumass-0.9.65-rc4-x86_64.AppImage
+     ./lumass-0.9.65-rc4-x86_64.AppImage
      ```
 
    *lumassengine*
@@ -46,7 +46,7 @@ to be different for other distributions. To 'install' LUMASS on your system, fol
    To run lumass on the commandline, just provide appropriate commandline paramters to the AppImage. To get an overview of the commandline arguments the lumassengine accepts, just pass `--model` or `--moso`:
 
    ```
-   $ ./lumass-0.9.65-rc4-x86_64.AppImage --model
+   ./lumass-0.9.65-rc4-x86_64.AppImage --model
    ERROR - LUMASS_engine::isFileAccessible, l. 762: No settings
    file has been specified!
 
@@ -71,23 +71,23 @@ to be different for other distributions. To 'install' LUMASS on your system, fol
 
 1. Download the build scripts
 ```
-$ wget https://raw.githubusercontent.com/manaakiwhenua/LUMASS/develop/utils/build/lumass_install_deb_packages.sh
-$ wget https://raw.githubusercontent.com/manaakiwhenua/LUMASS/develop/utils/build/lumass_build.sh
+wget https://raw.githubusercontent.com/manaakiwhenua/LUMASS/develop/utils/build/lumass_install_deb_packages.sh
+wget https://raw.githubusercontent.com/manaakiwhenua/LUMASS/develop/utils/build/lumass_build.sh
 ```
 
 2. Make sure the build scripts are executable
 ```
-$ chmod u+x lumass_*.sh
+chmod u+x lumass_*.sh
 ```
 
 3. Install packages required for building LUMASS and additional dependencies from source
 ```
-$ sudo ./lumass_install_dep_packages.sh
+sudo ./lumass_install_dep_packages.sh
 ```
 
 4. Build LUMASS dependencies and LUMASS from source, download AppImage tools, generate AppImage
 ```
-$ ./lumass_build.sh
+./lumass_build.sh
 ```
 
    The build script will generate the following directory structure in your home directory:
@@ -116,12 +116,12 @@ $ ./lumass_build.sh
 
 Starting the LUMASS GUI
 ```
-$ $HOME/garage/build/lumass-build/lumass-0.9.<rev>/usr/bin/lumass
+$HOME/garage/build/lumass-build/lumass-0.9.<rev>/usr/bin/lumass
 ```
 
 Running the lumassengine
 ```
-$ $HOME/garage/build/lumass-build/lumass-0.9.<rev>/usr/bin/lumassengine
+$HOME/garage/build/lumass-build/lumass-0.9.<rev>/usr/bin/lumassengine
 ```
 
 ### Using the LUMASS AppImage
@@ -132,15 +132,15 @@ $ $HOME/garage/build/lumass-build/lumass-0.9.<rev>/usr/bin/lumassengine
 
 Ensure the LUMASS `*.AppImage` is executable
 ```
-$ chmod u+x $HOME/garage/build/lumass-build/lumass-x86_64.AppImage
+chmod u+x $HOME/garage/build/lumass-build/lumass-x86_64.AppImage
 ```
 
 Starting the LUMASS GUI
 ```
-$ $HOME/garage/build/lumass-build/lumass-x86_64.AppImage
+$HOME/garage/build/lumass-build/lumass-x86_64.AppImage
 ```
 
 To invoke the lumassengine from the AppImage, just pass a valid parameter and argument to the AppImage, e.g.
 ```
-$ $HOME/garage/build/lumass-build/lumass-x86_64.AppImage --model myModel_config.yaml
+$HOME/garage/build/lumass-build/lumass-x86_64.AppImage --model myModel_config.yaml
 ```

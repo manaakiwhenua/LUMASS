@@ -5,7 +5,7 @@ author_profile: true
 
 <link rel="shortcut icon" type="image/x-icon" href="LUMASS_icon_64.ico">
 
-![LUMASS_icon_128.png](https://bitbucket.org/repo/B4qdnE/images/799937131-LUMASS_icon_128.png)
+![LUMASS_icon_128.png]({{ "/assets/images/LUMASS_icon_128.png" | relative_url }})
 
 # LUMASS - Land-Use Management Support System
 

@@ -63,7 +63,7 @@ to be different for other distributions. To 'install' LUMASS on your system, fol
 **Info:** the build scripts used in the below guide were developed for *Ubuntu 22.04*. You may need to adapt both scripts in order to successfully build LUMASS from source on other Linux distributions and Ubuntu versions.
 {: .notice--info}
 
-### Rerequisits 
+### Prerequisites 
 - Super user access to your system to install ubuntu packages to satisfy the build requirements (`lumass_install_deb_packages.sh`). If the required libraries are already installed, this step can be skipped.
 - Make sure you have about 15 GB of free disk space available for additional LUMASS dependencies that are being built as part of the process.
 

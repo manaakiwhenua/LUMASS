@@ -63,6 +63,8 @@
 
 #include <itksys/SystemTools.hxx>
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 
 namespace otb
 {
@@ -225,7 +227,6 @@ NMImageReader<TOutputImage>
     {
         // Have the ImageIO read directly into the allocated buffer
         this->GetImageIO()->Read(buffer);
-        return;
     }
     else // a type conversion is necessary
     {

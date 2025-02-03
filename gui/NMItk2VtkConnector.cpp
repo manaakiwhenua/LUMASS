@@ -269,6 +269,13 @@ NMItk2VtkConnector::updateInput(QSharedPointer<NMItkDataObjectWrapper> imgWrappe
 }
 
 void
+NMItk2VtkConnector::Modified()
+{
+    mVtkImgExp->Modified();
+    mVtkImgImp->Modified();
+}
+
+void
 NMItk2VtkConnector::update()
 {
     // this class is just a container for the ITK-VTK bridge

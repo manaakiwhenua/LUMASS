@@ -145,6 +145,10 @@
 #include "vtkRect.h"
 #include "vtkBoundingBox.h"
 #include <vtkTextProperty.h>
+
+#include <vtkExtractVOI.h>
+#include <vtkImageToStructuredGrid.h>
+
 //#include "valgrind/callgrind.h"
 
 template<class PixelType, unsigned int Dimension>
@@ -412,7 +416,8 @@ public:
 NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
         vtkRenderer* renderer, QObject* parent)
     : NMLayer(renWin, renderer, parent),
-      mHistogramView(0), mbLayerLoaded(false)
+      mHistogramView(0), mbLayerLoaded(false),
+      mbRefreshImageData(false)
 {
     this->mLayerType = NMLayer::NM_IMAGE_LAYER;
     this->mReader = 0; //new NMImageReader(this);
@@ -515,6 +520,96 @@ NMImageLayer::~NMImageLayer()
     NMDebugCtx(this->objectName().toStdString(), << "...");
 }
 
+void
+NMImageLayer::updateVisibleRegion()
+{
+    // get the bbox and fullsize of this layer
+    const double h_ext = mBBox[1] - mBBox[0];
+    const double v_ext = mBBox[3] - mBBox[2];
+
+    const int fullcols = h_ext / mSignedSpacing[0];
+    const int fullrows = v_ext / ::fabs(mSignedSpacing[1]);
+
+    qreal dpr = 1.0;
+#ifdef QT_HIGHDPI_SUPPORT
+    dpr = NMGlobalHelper::getMainWindow()->devicePixelRatioF();
+#endif
+
+    vtkRenderer* ren = const_cast<vtkRenderer*>(NMGlobalHelper::getMainWindow()->getBkgRenderer());
+    int* size = ren->GetSize();
+
+    double wminx, wmaxx, wminy, wmaxy, wminz, wmaxz;
+    bool bHasVisReg = false;
+    if (ren)
+    {
+        double wbr[] = {-1,-1,-1,-1};
+        double wtl[] = {-1,-1,-1,-1};
+
+        // top left (note: display origin is bottom left)
+        vtkInteractorObserver::ComputeDisplayToWorld(ren, 0,size[1]-1,0, wtl);
+        vtkInteractorObserver::ComputeDisplayToWorld(ren, size[0]-1,0,0, wbr);
+
+        mWTLx = wtl[0];
+        mPrevZIdx = mZSliceIdx;
+
+        // top left
+        wminx = wtl[0];
+        wmaxy = wtl[1];
+
+        // bottom right
+        wmaxx = wbr[0];
+        wminy = wbr[1];
+
+        vtkBoundingBox bbworld(wminx, wmaxx, wminy, wmaxy, 0, 0);
+        vtkBoundingBox bblayer(mBBox);
+
+        wminz = mBBox[4];
+        wmaxz = mBBox[5];
+
+        if (bbworld.Intersects(bblayer) == 0)
+        {
+            // no point in if the layer
+            // is outside the view window!
+            for (int v=0; v < 6; ++v)
+            {
+                mVisibleRegion[v] = 0;
+            }
+            bHasVisReg = false;
+        }
+        else
+        {
+            bHasVisReg = true;
+        }
+    }
+
+    if (bHasVisReg && this->mRenderer->GetViewProps()->GetNumberOfItems() > 0)
+    {
+        int xo, yo, xe, ye, zo, ze;
+        xo = ((wminx - mBBox[0]) / mSignedSpacing[0]);
+        yo = ((mBBox[3] - wmaxy) / ::fabs(mSignedSpacing[1]));
+        zo = ((wminz - mBBox[4]) / mSignedSpacing[2]);
+        xe = ((wmaxx - mBBox[0]) / mSignedSpacing[0]);
+        ye = ((mBBox[3] - wminy) / ::fabs(mSignedSpacing[1]));
+        ze = ((wmaxz - mBBox[4]) / mSignedSpacing[2]);
+
+        // calc vtk update extent
+        int uext[6];
+        uext[0] = xo > fullcols-1 ? fullcols-1 : xo < 0 ? 0 : xo;
+        uext[1] = xe > fullcols-1 ? fullcols-1 : xe < 0 ? 0 : xe;
+        uext[2] = yo > fullrows-1 ? fullrows-1 : yo < 0 ? 0 : yo;
+        uext[3] = ye > fullrows-1 ? fullrows-1 : ye < 0 ? 0 : ye;
+        uext[4] = mNumDimensions == 3 ? mZSliceIdx : 0;
+        uext[5] = mNumDimensions == 3 ? mZSliceIdx : 0;
+
+        // visible itk image region
+        mVisibleRegion[0] = uext[0];                  // x-origin
+        mVisibleRegion[1] = uext[1] - uext[0] + 1;    // x-size
+        mVisibleRegion[2] = uext[2];                  // y-origin
+        mVisibleRegion[3] = uext[3] - uext[2] + 1;    // y-size
+        mVisibleRegion[4] = mNumDimensions == 3 ? mZSliceIdx : 0;
+        mVisibleRegion[5] = mNumDimensions == 3 ? 1 : 0;
+    }
+}
 
 
 std::vector<double>
@@ -535,23 +630,28 @@ NMImageLayer::getWindowStatistics(void)
 
     if (mReader == nullptr || mReader->getImageIOBase() == nullptr)
     {
+        this->updateVisibleRegion();
 
-        vtkSmartPointer<vtkImageHistogramStatistics> stats =
-                vtkSmartPointer<vtkImageHistogramStatistics>::New();
-        stats->SetInputConnection(mPipeconn->getVtkAlgorithmOutput());
+        vtkNew<vtkExtractVOI> extractor;
+        extractor->SetInputData(this->getVTKImage());
+        extractor->SetVOI(mVisibleRegion[0], (mVisibleRegion[0] + mVisibleRegion[1]),       // x axis
+                          mVisibleRegion[2], (mVisibleRegion[2] + mVisibleRegion[3]),       // y axis
+                          0, 0        // z axis
+                         );
+
+        vtkNew<vtkImageHistogramStatistics> stats;
+        stats->SetInputConnection(extractor->GetOutputPort(0));
         stats->AutomaticBinningOn();
         stats->SetMaximumNumberOfBins(256);
         stats->GenerateHistogramImageOff();
         stats->Update();
-
-        //mHistogram = stats->GetHistogram();
 
         ret.push_back(stats->GetMinimum());
         ret.push_back(stats->GetMaximum());
         ret.push_back(stats->GetMean());
         ret.push_back(stats->GetMedian());
         ret.push_back(stats->GetStandardDeviation());
-        ret.push_back(mPipeconn->getVtkImage()->GetNumberOfPoints());
+        ret.push_back(extractor->GetOutput()->GetNumberOfPoints());
         ret.push_back(-9999);
 
     }
@@ -719,6 +819,7 @@ NMImageLayer::getWholeImageStatistics(void)
 
 void NMImageLayer::test()
 {
+    this->mReader->update();
 }
 
 double NMImageLayer::getDefaultNodata()
@@ -1835,8 +1936,9 @@ NMImageLayer::mapExtentChanged(void)
         // method, we make sure that we don't do double the work, i.e. if
         // nothing has changed ('cause the other mapper has called this function
         // already), we don't have to reload new data;
-        if (this->mWTLx == wtl[0] && mZSliceIdx == mPrevZIdx)
+        if (mWTLx == wtl[0] && mZSliceIdx == mPrevZIdx && !mbRefreshImageData)
         {
+            mbRefreshImageData = false;
             return;
         }
 
@@ -1974,10 +2076,8 @@ NMImageLayer::mapExtentChanged(void)
         mVisibleRegion[4] = mNumDimensions == 3 ? mZSliceIdx : 0;
         mVisibleRegion[5] = mNumDimensions == 3 ? 1 : 0;
 
-        //mVisibleRegion[4] = uext[4];                  // z-origin
-        //mVisibleRegion[5] = uext[4] == 0 && uext[5] == 0 ? 0 : uext[5] - uext[4] + 1; // z-size
-
         this->mReader->setOverviewIdx(ovidx, mVisibleRegion);
+        mPipeconn->Modified();
 
         // update mapper, if actor is visible
         if (this->mActor->GetVisibility())

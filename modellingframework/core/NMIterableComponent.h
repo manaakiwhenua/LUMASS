@@ -257,7 +257,7 @@ public:
      * time level. Note executable components are components which don't
      * serve as input to any other component on the specified time level.
      */
-    const QStringList findExecutableComponents(unsigned int timeLevel,
+    const QStringList findExecutableComponents(const QMap<QString, NMModelComponent *> &levelComps, unsigned int timeLevel,
             int step);
 
     NMModelComponentIterator getComponentIterator();
@@ -277,6 +277,7 @@ public:
      *
      */
     void createExecSequence(QList<QStringList>& execList,
+            const QMap<QString, NMModelComponent *> &levelComps,
             unsigned int timeLevel, int step);
 
 signals:

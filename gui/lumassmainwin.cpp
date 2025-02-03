@@ -84,6 +84,7 @@
 #include "NMAbstractAction.h"
 #include "NMModelAction.h"
 #include "NMStreamingROIImageFilterWrapper.h"
+#include "NMMPIRunnable.h"
 
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
@@ -352,9 +353,9 @@
 #include "NMMosra.h"
 
 
-LUMASSMainWin::LUMASSMainWin(QWidget *parent)
+LUMASSMainWin::LUMASSMainWin(QWidget *parent, NMLumassEngine *engine)
     : QMainWindow(parent), ui(new Ui::LUMASSMainWin),
-      mpLuProc(nullptr), mpMosra(nullptr)
+      mpLuProc(nullptr), mpMosra(nullptr), mEngine(engine), mModelController(nullptr)
       //, mServer(nullptr)
 {
     // **********************************************************************
@@ -375,6 +376,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     qRegisterMetaType< NMRasdamanConnectorWrapper*>("NMRasdamanConnectorWrapper*");
 #endif
     qRegisterMetaType<NMItkDataObjectWrapper>("NMItkDataObjectWrapper");
+    qRegisterMetaType<NMModelController::ModelEvent>();
     //qRegisterMetaType<NMOtbAttributeTableWrapper>("NMOtbAttributeTableWrapper");
     qRegisterMetaType<NMModelController*>("NMModelController*");
     qRegisterMetaType<NMAbstractAction::NMOutputMap>("NMAbstractAction::NMOutputMap");
@@ -395,6 +397,8 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     mSettings["Workspace"] = QVariant::fromValue(QString("%1").arg(homepath));
     mSettings["UserModels"] = QVariant::fromValue(QString("%1").arg(homepath));
     mSettings["LUMASSPath"] = qApp->applicationDirPath();
+    mSettings["MaxThreadCount"] = QVariant::fromValue(QString("%1").arg(QThread::idealThreadCount()));
+    mSettings["MaxProcCount"] = QVariant::fromValue(QString("%1").arg(QThread::idealThreadCount()/2));
 
     // **********************************************************************
     // *                    INIT SOME ON-DEMAND GUI ELEMENTS
@@ -436,8 +440,17 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     std::srand(std::time(0));
 
     // set up the logger
-    mLogger = new NMLogger(this);
-    mLogger->setHtmlMode(true);
+    if (mEngine != nullptr)
+    {
+        mModelController = mEngine->getModelController();
+        mLogger = engine->getLogger();
+        mLogger->setHtmlMode(true);
+    }
+    else
+    {
+        NMLogError(<< "Engine failure!");
+        return;
+    }
 
     // set up the qt designer based controls
     ui->setupUi(this);
@@ -446,6 +459,8 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 
     // connect logger with log widget
     connect(mLogger, SIGNAL(sendLogMsg(const QString &)), this, SLOT(appendHtmlMsg(const QString &)));
+
+    ui->modelViewWidget->setupModellingEnvironment(mModelController);
 
     // =======================================
     //			SOME DATA TYPE INFO
@@ -589,6 +604,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     // LOG DOCK
     // ================================================
     ui->logDock->setVisible(false);
+    //ui->logEdit->clearLog();
 
     // ================================================
     // BAR(s) SETUP - MENU - PROGRESS - STATUS
@@ -701,7 +717,6 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     // SYSTEM
     connect(this, SIGNAL(windowLoaded()), this, SLOT(readSettings()));
     connect(this, SIGNAL(windowLoaded()), this, SLOT(populateProcCompList()));
-    //connect(this, SIGNAL(windowLoaded()), this, SLOT(createNewSessionDb()));
 
     // TEST TEST TEST
     connect(ui->actionImage_Polydata, SIGNAL(triggered()), this, SLOT(convertImageToPolyData()));
@@ -979,9 +994,9 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     //this->ui->qvtkWidget->interactor()->SetInteractorStyle(iasm);
 
     m_orientwidget = vtkSmartPointer<vtkOrientationMarkerWidget>::New();
-    m_orientwidget->SetOrientationMarker(axes);
     m_orientwidget->SetInteractor(static_cast<vtkRenderWindowInteractor*>(this->ui->qvtkWidget->interactor()));
     m_orientwidget->GetInteractor()->SetInteractorStyle(m_iasimg);
+    m_orientwidget->SetOrientationMarker(axes);
     m_orientwidget->SetViewport(0.0, 0.0, 0.2, 0.2);
     m_orientwidget->SetEnabled(0);
     m_orientwidget->InteractiveOff();
@@ -1131,7 +1146,15 @@ LUMASSMainWin::~LUMASSMainWin()
 #ifdef LUMASS_PYTHON
     if (Py_IsInitialized())
     {
-        pybind11::finalize_interpreter();
+        try
+        {
+            pybind11::finalize_interpreter();
+        }
+        catch (pybind11::error_already_set& eas)
+        {
+            NMLogError(<< eas.what());
+        }
+
     }
 #endif
 
@@ -1757,7 +1780,7 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
             QString compName = checkMimeDataForModelComponent(de->mimeData());
             if (de && !compName.isEmpty())
             {
-                NMModelComponent* mc = NMGlobalHelper::getModelController()->getComponent(compName);
+                NMModelComponent* mc = mModelController->getComponent(compName);
                 if (mc)
                 {
                     addModelToUserModelList(compName);
@@ -1803,7 +1826,7 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
 void
 LUMASSMainWin::hideEvent(QHideEvent *event)
 {
-    this->mbComponentInfoDockVisble = this->ui->componentInfoDock->isVisible();
+    this->mbComponentInfoDockVisible = this->ui->componentInfoDock->isVisible();
     this->mbComponentsWidgetVisible = this->ui->componentsWidget->isVisible();
     this->mbLogDockVisible = this->ui->logDock->isVisible();
 }
@@ -1811,7 +1834,7 @@ LUMASSMainWin::hideEvent(QHideEvent *event)
 void
 LUMASSMainWin::showEvent(QShowEvent *event)
 {
-    this->ui->componentInfoDock->setVisible(this->mbComponentInfoDockVisble);
+    this->ui->componentInfoDock->setVisible(this->mbComponentInfoDockVisible);
     this->ui->componentsWidget->setVisible(this->mbComponentsWidgetVisible);
     this->ui->logDock->setVisible(this->mbLogDockVisible);
 }
@@ -1893,7 +1916,7 @@ LUMASSMainWin::checkMimeDataForModelComponent(const QMimeData *mimedata)
     }
 
     if (   dropSource.startsWith(QString::fromLatin1("_NMModelScene_"))
-        && NMGlobalHelper::getModelController()->contains(dropComponent)
+        && mModelController->contains(dropComponent)
        )
     {
         NMLogDebug(<< "on the hook: " << dropSource.toStdString()
@@ -2154,11 +2177,11 @@ LUMASSMainWin::getLogWidget()
     return ui->logEdit;
 }
 
-//NMModelController*
-//LUMASSMainWin::getModelController(void)
-//{
-//    return mModelController;
-//}
+NMModelController*
+LUMASSMainWin::getModelController(void)
+{
+    return mModelController;
+}
 
 void
 LUMASSMainWin::swapWindowLayout(QAction* act)
@@ -3409,7 +3432,7 @@ void LUMASSMainWin::saveAsVectorLayerOGR(void)
     OGRRegisterAll();
     OGRSFDriverRegistrar* reg = OGRSFDriverRegistrar::GetRegistrar();
 #else
-    GDALAllRegister();
+    //GDALAllRegister();
     GDALDriverManager* reg = GetGDALDriverManager();
 #endif
 
@@ -3524,7 +3547,9 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
         return;
 
     QScopedPointer<NMModelController> ctrl(new NMModelController());
+    ctrl->setAppMode(4);
     ctrl->setLogger(mLogger);
+    NMModelComponent* rootComp = ctrl->getComponent(QStringLiteral("root"));
 
     const int nDim = il->getNumDimensions();
 
@@ -3556,7 +3581,7 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
     QSharedPointer<NMItkDataObjectWrapper> dw = il->getImage();
     NMDataComponent* dc = new NMDataComponent();
     dc->setObjectName("DataBuffer");
-    QString bufCompName = ctrl->addComponent(dc);
+    QString bufCompName = ctrl->addComponent(dc, rootComp);
     dc->setInput(dw);
 
     // ----------------- SET UP READER IF APPLICABLE--------
@@ -3587,7 +3612,7 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
         NMSequentialIterComponent* readerComp = new NMSequentialIterComponent();
         readerComp->setObjectName("ImageReader");
         readerComp->setProcess(readerProc);
-        readerCompName = ctrl->addComponent(readerComp);
+        readerCompName = ctrl->addComponent(readerComp, rootComp);
     }
 
     // -------------------- SET UP ROI FILTER -------------------------
@@ -3658,7 +3683,7 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
        NMSequentialIterComponent* roiComp = new NMSequentialIterComponent();
        roiComp->setObjectName("ExtractImageRegion");
        roiComp->setProcess(roiProc);
-       roiCompName = ctrl->addComponent(roiComp);
+       roiCompName = ctrl->addComponent(roiComp, rootComp);
 
        QList<QStringList> rrinput;
        QStringList rinput;
@@ -3695,7 +3720,7 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
     writerComp->setObjectName("ImageWriter");
     writerComp->setProcess(writerProc);
 
-    QString writerCompName = ctrl->addComponent(writerComp);
+    QString writerCompName = ctrl->addComponent(writerComp, rootComp);
     QList<QStringList> llst;
     QStringList lst;
 
@@ -3719,7 +3744,8 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
     writerComp->setInputs(llst);
 
     // ---- CONTROLLER DOES THE REST ------
-    ctrl->executeModel(writerCompName);
+    const QString yamlConfig = "";
+    ctrl->executeModel(writerCompName, yamlConfig);
 }
 
 void LUMASSMainWin::checkInteractiveLayer(void)
@@ -5156,7 +5182,7 @@ LUMASSMainWin::ptInPoly2D(double pt[3], vtkCell* cell)
 //        QString compName = le->text();
 
 //        // COMPONENT MODEL NAME ENTERED
-//        if (NMGlobalHelper::getModelController()->contains(compName))
+//        if (mModelController->contains(compName))
 //        {
 //            emit componentOfInterest(compName);
 //        }
@@ -5168,7 +5194,7 @@ LUMASSMainWin::ptInPoly2D(double pt[3], vtkCell* cell)
 
 
 //            // LOOK FOR COMPONENTS
-//            QList<NMModelComponent*> comps = NMGlobalHelper::getModelController()->getComponents(compName);
+//            QList<NMModelComponent*> comps = mModelController->getComponents(compName);
 //            if (compName.isEmpty() ? comps.size()-1 : comps.size() > 0)
 //            {
 //                QStringList nameList;
@@ -5188,8 +5214,7 @@ LUMASSMainWin::ptInPoly2D(double pt[3], vtkCell* cell)
 //            // LOOK for PARAMETERS
 //            else if (!compName.isEmpty())
 //            {
-//                NMModelController* mc = NMGlobalHelper::getModelController();
-//                QMap<QString, NMModelComponent*> mmap = mc->getRepository();
+//                QMap<QString, NMModelComponent*> mmap = mModelController->getRepository();
 //                QMap<QString, NMModelComponent*>::const_iterator mit = mmap.cbegin();
 //                while (mit != mmap.cend())
 //                {
@@ -7345,7 +7370,7 @@ void LUMASSMainWin::loadVectorLayer()
     OGRDataSource::DestroyDataSource(pDS);
 #else
 
-    GDALAllRegister();
+    //GDALAllRegister();
     GDALDataset *pDS = (GDALDataset*)GDALOpenEx(fileName.toStdString().c_str(),
             GDAL_OF_VECTOR, NULL, NULL, NULL);
     if (pDS == NULL)
@@ -8167,6 +8192,7 @@ LUMASSMainWin::loadUserModelTool(const QString& modelPath,
 
     // create model context
     NMModelController* ctrl = new NMModelController(uact);
+    ctrl->setAppMode(4);
     ctrl->setObjectName(toolName);
     ctrl->getLogger()->setHtmlMode(true);
     //ctrl->updateSettings("UserModels", mSettings["UserModels"]);
@@ -8191,13 +8217,7 @@ LUMASSMainWin::loadUserModelTool(const QString& modelPath,
     NMModelSerialiser xmlS;
     xmlS.setModelController(ctrl);
     xmlS.setLogger(mLogger);
-
-    NMSequentialIterComponent* root = new NMSequentialIterComponent();
-    root->setObjectName("root");
-    root->setDescription("Top level model component managed by the ModelController");
-    ctrl->addComponent(root);
     xmlS.parseComponent(modelFile, 0, ctrl);
-
 
     // ====================================
     // parse Tool Table
@@ -8278,7 +8298,8 @@ LUMASSMainWin::executeUserModel(void)
             this->openTablesReadWrite();
 
             const QString compName = "root";
-            QtConcurrent::run(ctrl, &NMModelController::executeModel, compName);
+            const QString yamlConfig = "";
+            QtConcurrent::run(ctrl, &NMModelController::executeModel, compName, yamlConfig);
         }
     }
 }
@@ -8570,7 +8591,8 @@ LUMASSMainWin::processUserPickAction(long long cellId, bool bSelection)
 
                             ctrl->updateSettings(triggerKey, QVariant::fromValue(cellId));
                             const QString compName = "root";
-                            QtConcurrent::run(ctrl, &NMModelController::executeModel, compName);
+                            const QString yamlConfig = "";
+                            QtConcurrent::run(ctrl, &NMModelController::executeModel, compName, yamlConfig);
                         }
                         else
                         {
@@ -9068,7 +9090,7 @@ LUMASSMainWin::addModelToUserModelList(const QString& modelName)
     // =========================================
     //   pick a nice name for the model
     // =========================================
-    NMModelComponent* mc = NMGlobalHelper::getModelController()->getComponent(modelName);
+    NMModelComponent* mc = mModelController->getComponent(modelName);
     QString basename = modelName;
 
     if (mc)
@@ -9182,6 +9204,13 @@ void LUMASSMainWin::createNewSessionDb()
     mSessionDbConName = QStringLiteral("LUMASS_SESSION_%1").arg(datetime);
 
     NMLogInfo(<< "Session database created: " << mSessionDbFileName.toStdString());
+
+    // create log file
+    if (mEngine != nullptr)
+    {
+        QString logFileName = QString("%1/lumass_session_%2.log").arg(mSettings["Workspace"].toString()).arg(datetime);
+        mEngine->setLogFileName(logFileName);
+    }
 }
 
 void LUMASSMainWin::openSessionDb(const QString &sessionDb)
@@ -9300,6 +9329,33 @@ void LUMASSMainWin::readSettings()
     else
     {
         mSettings["LmvFileVersion"] = QVariant(NMGlobalHelper::getLUMASSVersion());
+    }
+
+    settings.endGroup();
+
+    // ================================================================
+    //              PROCESSES AND THREADS
+    // ================================================================
+    settings.beginGroup("ComputeResources");
+
+    val = settings.value("MaxProcCount");
+    if (val.isValid())
+    {
+        mSettings["MaxProcCount"] = val.toString();
+    }
+    else
+    {
+        mSettings["MaxProcCount"] = QVariant::fromValue(QString("%1").arg(QThread::idealThreadCount()/2));
+    }
+
+    val = settings.value("MaxThreadCount");
+    if (val.isValid())
+    {
+        mSettings["MaxThreadCount"] = val.toString();
+    }
+    else
+    {
+        mSettings["MaxThreadCount"] = QVariant::fromValue(QString("%1").arg(QThread::idealThreadCount()));
     }
 
     settings.endGroup();
@@ -9470,6 +9526,18 @@ void LUMASSMainWin::writeSettings(void)
     settings.setValue("LmvFileVersion", mSettings["LmvFileVersion"]);
 
     settings.endGroup();
+
+
+    // ================================================================
+    //              PROCESSES AND THREADS
+    // ================================================================
+    settings.beginGroup("ComputeResources");
+
+    settings.setValue("MaxProcCount", mSettings["MaxProcCount"]);
+    settings.setValue("MaxThreadCount", mSettings["MaxThreadCount"]);
+
+    settings.endGroup();
+
 
 
     // ================================================================

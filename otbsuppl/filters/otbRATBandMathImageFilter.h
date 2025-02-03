@@ -55,11 +55,11 @@ namespace otb
  * \brief Extension to the BandMathImageFilter which performs a mathematical
  * operation on the input images according to the formula specified by the user.
  * This extension allows to integrate raster attributes into those
- * mathematical expressions. Attribute Values within an expression are
+ * mathematical expressions. Attribute values within an expression are
  * referenced by combining the band name with the band's attributes in the
  * following manner:
  * <band name>__<column name>		e.g.: dist__SBH - 3 * dist__CCOL + lu
- *  (double underscore)									  b1__SBH - 3 * b1__CCOL + b2
+ *  (double underscore)		              b1__SBH - 3 * b1__CCOL + b2
  *
  * This filter is based on the mathematical parser library muParser.
  * The built in functions and operators list is available at:
@@ -88,8 +88,9 @@ namespace otb
  * indexes.
  * It allows the user to perform, for example a spatial processing
  * aiming to suppress a determined area :
- * "if(sqrt((idxPhyX-105.3)*(idxPhyX-105.3)+
- *          (idxPhyY-207.1)*(idxPhyY-207.1))>100, b1, 0)"
+ *
+ * sqrt( (idxPhyX-105.3)^2 + (idxPhyY-207.1)^2 ) > 100 ? b1 : 0"
+ *
  * This expression replace the physical zone around the point of
  * physical index (105.3;207.1) by a black area
  * This functionality assumes that all the band involved have the same

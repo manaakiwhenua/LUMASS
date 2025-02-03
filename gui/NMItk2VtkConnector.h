@@ -68,6 +68,8 @@ public:
 
     void update(void);
 
+    void Modified(void);
+
 private:
     NMItk2VtkConnector & operator=(const NMItk2VtkConnector&);
 

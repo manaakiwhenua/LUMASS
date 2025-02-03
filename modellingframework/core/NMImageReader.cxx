@@ -410,7 +410,7 @@ public:
 
             // we reduce to an easily managable size to speed up stats
             // processing as much as possible
-            double div = div = std::max(reg.GetSize()[0],reg.GetSize()[1]) / 1024.0;
+            double div = std::max(reg.GetSize()[0],reg.GetSize()[1]) / 1024.0;
 
             typename ResampleImage2DFilterType::Pointer res = ResampleImage2DFilterType::New();
             typename ExtractFilterType::Pointer ex = ExtractFilterType::New();
@@ -423,10 +423,7 @@ public:
             unsigned int nth = f->GetNumberOfThreads();
             nth = nth > 0 ? nth : 1;
 
-            //if (ImgType::ImageDimension == Img2DType::ImageDimension)
-            {
-                ex->SetInPlace(true);
-            }
+            ex->SetInPlace(true);
             ex->SetDirectionCollapseToSubmatrix();
             ex->SetInput(r->GetOutput());
             ex->SetExtractionRegion(reg);
@@ -441,8 +438,8 @@ public:
                 for (int d=0; d < 2; ++d)
                 {
                     outputOrigin[d] = inOrigin[d];
-                    startIndex[d] = reg.GetIndex(d) / div;
-                    outputSize[d] = reg.GetSize(d) / div;
+                    startIndex[d] = reg.GetIndex(d);
+                    outputSize[d] = static_cast<double>((reg.GetSize(d) / div)+0.5);
                     outputSpacing[d] = (inSpacing[d] * reg.GetSize(d)) / outputSize[d];
                 }
 
@@ -453,7 +450,6 @@ public:
                 res->SetOutputSpacing(outputSpacing);
 
                 f->SetInput(res->GetOutput());
-                //f->SetInput(ex->GetOutput());
             }
             else
             {
@@ -730,7 +726,6 @@ public:
             {
                 r->UseUserLargestPossibleRegionOff();
             }
-            r->UpdateOutputInformation();
         }
         else
         {
@@ -1694,6 +1689,22 @@ bool NMImageReader::initialise()
     }
     this->mbIsInitialised = ret;
 
+    if (this->mOtbProcess == nullptr)
+    {
+        this->mbIsInitialised = false;
+        NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        e.setSource(this->objectName().toStdString());
+        QString hostName = "";
+        if (this->parent() != 0)
+            hostName = this->parent()->objectName();
+        QString msg = QString::fromLatin1("%1: NMImageReader::initialise() failed - Object could not be instantiated!")
+                .arg(hostName);
+        e.setDescription(msg.toStdString());
+        NMLogError(<< msg.toStdString());
+        throw e;
+        return false;
+    }
+
     this->setInternalRATType();
     this->setInternalDbRATReadOnly();
 
@@ -1764,7 +1775,7 @@ std::vector<double> NMImageReader::getImageStatistics(const int *index, const in
 void
 NMImageReader::setInternalRATType()
 {
-    if (!mbRasMode)
+    if (!mbRasMode && this->mOtbProcess != nullptr)
     {
         otb::GDALRATImageIO::Pointer gio = dynamic_cast<otb::GDALRATImageIO*>(
                     this->mItkImgIOBase.GetPointer());

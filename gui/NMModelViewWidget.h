@@ -50,6 +50,8 @@
 #include "NMEditModelComponentDialog.h"
 #include "NMComponentEditor.h"
 #include "NMGlobalHelper.h"
+#include "NMLumassEngine.h"
+#include "NMMPIRunnable.h"
 
 #ifdef BUILD_RASSUPPORT
   #include "NMRasdamanConnectorWrapper.h"
@@ -74,10 +76,13 @@ public:
 
     void setLogger(NMLogger* logger);
 
+    void setupModellingEnvironment(NMModelController* ctrl);
+
 public slots:
 
     /*** DEPRECATED - editing done via HoverEdit dialog and tree-built-in editors ***/
     void callEditComponentDialog(const QString &);
+
     void linkProcessComponents(NMComponentLinkItem* link);
     void createProcessComponent(NMProcessComponentItem* procItem,
             const QString& procName, QPointF scenePos);
@@ -88,6 +93,8 @@ public slots:
     void createParallelIterComponent();
     void convertSequentialToParallelIterComponent();
     void convertParallelToSequentialIterComponent();
+
+    void selectParallelComponents();
 
     void convertIterableComponent(NMIterableComponent* iComp);
     void convertIterableComponents(QString sourceType);
@@ -106,11 +113,11 @@ public slots:
 
     /*** DEPRECATED - root component made non-editable ***/
     void editRootComponent();
+
     NMModelController* getModelController(void)
         {return mModelController;}
 
     //void compProcChanged();
-
     void executeModel(void);
     void resetModel(void);
     void zoomIn() {zoom(1);}
@@ -152,8 +159,10 @@ public slots:
      *  iteration in the model view (i.e. deletes, draws
      *  links between components)*/
     void processProcInputChanged(QList<QStringList> inputs);
-
     void processNumIterExprChanges();
+    void connectMPIRunnable(NMMPIRunnable* mpi);
+    void processMPIEvent(const QString& obj, const NMModelController::ModelEvent &event,
+                         const float& value);
 
 signals:
     void linkToolToggled(bool);
@@ -161,7 +170,7 @@ signals:
     void moveToolToggled(bool);
     void zoomInToolToggled(bool);
     void zoomOutToolToggled(bool);
-    void requestModelExecution(const QString& compName);
+    //void requestModelExecution(const QString& compName);
     void requestModelReset(const QString& compName);
     void requestModelAbortion(void);
     void widgetIsExiting(void);
@@ -267,6 +276,7 @@ private:
     bool mbControllerIsBusy;
     bool mbFollowFocus;
 
+    NMLumassEngine* mEngine;
     QGraphicsView* mModelView;
     NMModelScene* mModelScene;
     QMenu* mItemContextMenu;

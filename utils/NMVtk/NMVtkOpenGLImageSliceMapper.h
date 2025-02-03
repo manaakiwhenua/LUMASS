@@ -70,16 +70,11 @@ public:
   // Implement base class method.  Perform the render.
   void Render(vtkRenderer *ren, vtkImageSlice *prop);
 
-  virtual int ProcessRequest(vtkInformation *request,
-                vtkInformationVector **inInfo,
-                vtkInformationVector *outInfo);
-
   void SetDisplayExtent(int extent[6]);
   void SetDataWholeExtent(int extent[6]);
+
   void SetNMLayer(NMImageLayer* layer)
     {this->mLayer = layer;}
-
-  const vtkUnsignedCharArray* GetTexture() const;
 
 protected:
   NMVtkOpenGLImageSliceMapper();

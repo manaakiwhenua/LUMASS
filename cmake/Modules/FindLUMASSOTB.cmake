@@ -57,7 +57,9 @@ IF(NOT OTB_DIR)
       /usr/lib/cmake
       /usr/lib/x86_64-linux-gnu
       /home/$ENV{USER}/garage/build/OTB-8.1.2
+      /home/$ENV{USER}/garage/build/OTB-9.0.0
       /home/users/$ENV{USER}/garage/build/OTB-8.1.2/install/lib/cmake
+      /home/users/$ENV{USER}/garage/build/OTB-9.0.0/install/lib/cmake
       C:/build/OTB-debug
       C:/opt/OTB-debug
       C:/build/OTB-reldebinfo

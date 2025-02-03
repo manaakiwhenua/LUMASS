@@ -552,15 +552,15 @@ void NetCDFIO::ReadImageInformation()
             m_CoordMinMax.push_back(vMinMaxVal);
 
             // if this dimension is called (in lower case) 't', or 'time'
-            if (a == 1)
-            {
-                std::string yname = coorVar.getName();
-                std::transform(yname.begin(), yname.end(), yname.begin(), ::tolower);
-                if (yname.compare("t") == 0 || yname.compare("time") == 0)
-                {
-                    bSwapYSign = false;
-                }
-            }
+            //if (a == 1)
+            //{
+            //    std::string yname = coorVar.getName();
+            //    std::transform(yname.begin(), yname.end(), yname.begin(), ::tolower);
+            //    if (yname.compare("t") == 0 || yname.compare("time") == 0)
+            //    {
+            //        bSwapYSign = false;
+            //    }
+            //}
         }
 
         // ====================================================
@@ -929,7 +929,7 @@ void NetCDFIO::Read(void* buffer)
         if (!m_bParallelIO)
         {
             mFile.close();
-            NMDebugAI(<< "NetCDFIO: m_bParallelIO == false : closed file '" << this->GetFileName() << "' opened for parallel acess!" << std::endl);
+            NMDebugAI(<< "NetCDFIO: m_bParallelIO == false : closed file '" << this->GetFileName() << std::endl);
         }
     }
     catch(exceptions::NcException& e)
@@ -1045,10 +1045,10 @@ bool NetCDFIO::CanWriteFile(const char* filename)
     {
         // assume file exists and try opening it for writing ...
         nc.open(this->m_FileContainerName, NcFile::write);
-        NMDebugAI(<< "NetCDFIO: opened file '" << this->GetFileName() << "' for sequential writing!");
+        NMDebugAI(<< "NetCDFIO: opened file '" << this->GetFileName() << "' for sequential writing!\n");
         this->m_bCanWrite = true;
         nc.close();
-        NMDebugAI(<< "NetCDFIO: closed file '" << this->GetFileName() << "' opened for sequential writing!");
+        NMDebugAI(<< "NetCDFIO: closed file '" << this->GetFileName() << std::endl);
     }
     catch(...)
     {
@@ -1058,10 +1058,10 @@ bool NetCDFIO::CanWriteFile(const char* filename)
             // so try creating a new file with the given name ...
             // ... this will fail if the file already exists
             nc.open(this->m_FileContainerName, NcFile::newFile);
-            NMDebugAI(<< "NetCDFIO: opened file '" << this->GetFileName() << "' for sequential writing!");
+            NMDebugAI(<< "NetCDFIO: opened file '" << this->GetFileName() << "' for sequential writing!\n");
             this->m_bCanWrite = true;
             nc.close();
-            NMDebugAI(<< "NetCDFIO: closed file '" << this->GetFileName() << "' opened for sequential writing!");
+            NMDebugAI(<< "NetCDFIO: closed file '" << this->GetFileName() << std::endl);
         }
         catch (...)
         {
@@ -1079,7 +1079,7 @@ void NetCDFIO::FinaliseParallelIO(void)
     if (!mFile.isNull())
     {
         mFile.close();
-        NMDebugAI(<< "NetCDFIO: closed file '" << this->GetFileName() << "' opened for parallel writing!");
+        NMDebugAI(<< "NetCDFIO: closed file '" << this->GetFileName() << "' opened for parallel writing!\n");
     }
 
     NMDebugCtx("NetCDFIO", << "done!")
@@ -1288,10 +1288,10 @@ void NetCDFIO::updateOverviewInfo()
 
 
 
-void NetCDFIO::WriteImageInformation()
-{
-    this->InternalWriteImageInformation();
-}
+//void NetCDFIO::WriteImageInformation()
+//{
+//    this->InternalWriteImageInformation();
+//}
 
 void NetCDFIO::SetVarDimDescriptors(const std::string& varDimDescriptors)
 {
@@ -1323,6 +1323,9 @@ void NetCDFIO::ProcessVarDimDescriptors()
     std::string elem;
 
     std::vector<std::string> vdescr;
+
+    const unsigned int numComponents = this->GetNumberOfComponents();
+    netCDF::NcType::ncType writeType = this->getNetCDFComponentType(this->GetComponentType());
 
     size_t descr_pos = 0;
     size_t descr_lpos = 0;
@@ -1367,6 +1370,18 @@ void NetCDFIO::ProcessVarDimDescriptors()
             vi.name = velem[1];
             vi.attName = velem[2];
             vi.type = getNetCDFComponentType(velem[3]);
+
+            // if we store a numeric attribute of the main
+            // variable, i.e. the one we're writing, we
+            // use the variables data type for storing
+            // the attribute
+            if (    vi.name.compare(this->m_NcVarName) == 0
+                 && vi.type != netCDF::NcType::nc_STRING
+               )
+            {
+                vi.type = writeType;
+            }
+
             switch (vi.type)
             {
             case netCDF::NcType::nc_INT:
@@ -1458,7 +1473,7 @@ void NetCDFIO::setVariableAttributes(NcVar &var)
     }
 }
 
-void NetCDFIO::InternalWriteImageInformation()
+void NetCDFIO::WriteImageInformation()
 {
     NMDebugCtx("NetCDFIO", << "...")
     if (!this->m_bCanWrite || !m_bImageInfoNeedsToBeWritten)
@@ -1584,7 +1599,6 @@ void NetCDFIO::InternalWriteImageInformation()
                 dimtemplates = m_DimensionNames;
             }
 
-            double dimDirCorr = 1.0;
             std::vector<NcDim> dims;
             for (int d = ndims-1; d >=0; --d)
             {
@@ -1613,18 +1627,6 @@ void NetCDFIO::InternalWriteImageInformation()
 
                 auto dimit = m_DimInfoMap.find(dname.str());
                 NcDim aDim = grp.getDim(dname.str());
-
-                // if this dimension is called (in lower case) 't', or 'time'
-                if (d == 1)
-                {
-                    std::string yname = dname.str();
-                    std::transform(yname.begin(), yname.end(), yname.begin(), ::tolower);
-                    if (yname.compare("t") == 0 || yname.compare("time") == 0)
-                    {
-                        dimDirCorr = -1.0;
-                    }
-                }
-
 
                 if (aDim.isNull())
                 {
@@ -1696,7 +1698,7 @@ void NetCDFIO::InternalWriteImageInformation()
                     std::vector<double> dimVals(dsize, 0.0);
                     for (unsigned int dimIdx=0; dimIdx < dsize; ++dimIdx)
                     {
-                        dimVals[dimIdx] = this->m_Origin[d] + dimIdx * this->m_Spacing[d] * dimDirCorr;
+                        dimVals[dimIdx] = this->m_Origin[d] + dimIdx * this->m_Spacing[d] * this->m_Direction[d][d];
                     }
 
                     std::vector<size_t> startp = {0};
@@ -1724,7 +1726,36 @@ void NetCDFIO::InternalWriteImageInformation()
             if (!m_bParallelIO)
             {
                 valVar.setCompression(true, true, m_CompressionLevel);
-                valVar.setFill(true, 0);
+
+                bool bSetFill = false;
+                if (m_VarAttInfoMap.find(this->m_NcVarName) != m_VarAttInfoMap.cend())
+                {
+                    for (int i=0; i < m_VarAttInfoMap[this->m_NcVarName].size(); ++i)
+                    {
+                        const VarAttInfo& vinfo = m_VarAttInfoMap[this->m_NcVarName][i];
+                        if (vinfo.attName.compare("_FillValue") != 0)
+                        {
+                            continue;
+                        }
+
+                        if (    vtype == netCDF::NcType::nc_FLOAT
+                             || vtype == netCDF::NcType::nc_DOUBLE
+                           )
+                        {
+                            valVar.setFill(true, vinfo.dblVal);
+                        }
+                        else
+                        {
+                            valVar.setFill(true, vinfo.intVal);
+                        }
+                        bSetFill = true;
+                    }
+                }
+
+                if (!bSetFill)
+                {
+                    valVar.setFill(true, 0);
+                }
 
                 // note this may overwrite previously set attributes
                 setVariableAttributes(valVar);
@@ -1744,19 +1775,6 @@ void NetCDFIO::InternalWriteImageInformation()
                     // maps the netcdf dimension order : [..., [d4,]] z, y, x
                     // to the itk/otb dimension order:   x, y, z [, d4 [, ...]]
                     const unsigned int otbDimIdx = ndims - d - 1;
-
-                    double dimDirCorr = 1.0;
-                    // if this dimension is called (in lower case) 't', or 'time'
-                    if (otbDimIdx == 1)
-                    {
-                        std::string yname = dims[d].getName();
-                        std::transform(yname.begin(), yname.end(), yname.begin(), ::tolower);
-                        if (yname.compare("t") == 0 || yname.compare("time") == 0)
-                        {
-                            dimDirCorr = -1.0;
-                        }
-                    }
-
 
                     // determine the number of new dimension ids (and
                     // coordinate values) that need to be added for the
@@ -1782,15 +1800,10 @@ void NetCDFIO::InternalWriteImageInformation()
                         dvar.getVar(lastRecIdx, lastNumRec, &lastRec[0]);
 
                         // add new records' coordinates
-                        //std::vector<size_t> startp = {ioReg.GetIndex(otbDimIdx)};
-                        //std::vector<size_t> cnt    = {ioReg.GetSize(otbDimIdx)};
-                        //std::vector<double> dvals(ioReg.GetSize(otbDimIdx), 0.0);
-                        //std::vector<size_t> startp = {dims[d].getSize()};
-                        //std::vector<size_t> cnt    = {this->GetDimensions(otbDimIdx)};
                         std::vector<double> dvals(numNewIds, 0.0);
                         for (unsigned int dIdx=0; dIdx < numNewIds; ++dIdx)
                         {
-                            dvals[dIdx] = lastRec[0] + (dIdx + 1) * this->m_Spacing[otbDimIdx] * dimDirCorr;
+                            dvals[dIdx] = lastRec[0] + (dIdx + 1) * this->m_Spacing[otbDimIdx] * this->m_Direction[d][d];
                         }
                         dvar.putVar(ioidx, iolen, &dvals[0]);
                     }
@@ -1831,7 +1844,8 @@ void NetCDFIO::Write(const void* buffer)
         this->CanWriteFile(this->m_FileName.c_str());
 
         m_bImageInfoNeedsToBeWritten = true;
-        this->InternalWriteImageInformation();
+        //this->InternalWriteImageInformation();
+        this->WriteImageInformation();
         m_bImageInfoNeedsToBeWritten = false;
         m_bWasWriteCalled = true;
     }

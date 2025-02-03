@@ -30,8 +30,7 @@ public:
         NM_LOG_INFO = 1,
         NM_LOG_WARN = 2,
         NM_LOG_ERROR = 3,
-        NM_LOG_NOLOG = 4
-
+        NM_LOG_NOLOG = 4,
     } LogEventType;
 
     typedef enum {
@@ -59,7 +58,11 @@ public:
     LogEventType getLogLevel(void){return mLogLevel;}
 
 signals:
+    // html message for display in GUI
     void sendLogMsg(const QString& msg);
+    // text message for log files
+    void sendLogTxtMsg(const QString& msg);
+    // provN logging
     void sendProvN(const QString& provLog);
 
 public slots:

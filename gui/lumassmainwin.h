@@ -65,6 +65,7 @@
 
 #include "NMSqlTableView.h"
 #include "NMLogger.h"
+#include "NMLumassEngine.h"
 
 #include "otbSQLiteTable.h"
 
@@ -108,7 +109,7 @@ class LUMASSMainWin : public QMainWindow
     Q_OBJECT
 
 public:
-    LUMASSMainWin(QWidget *parent = 0);
+    LUMASSMainWin(QWidget *parent, NMLumassEngine* engine);
     ~LUMASSMainWin();
 
     friend class NMGlobalHelper;
@@ -175,6 +176,8 @@ public:
 
     QStringList getUserToolsList(void);
     const NMAbstractAction* getUserTool(const QString& toolName);
+
+    NMModelController* getModelController();
 
 #ifdef BUILD_RASSUPPORT
     RasdamanConnector* getRasdamanConnector(void);
@@ -626,6 +629,10 @@ private:
     OptProc* mpLuProc;
     NMMosra* mpMosra;
 
+    // engine & controller
+    NMLumassEngine* mEngine;
+    NMModelController* mModelController;
+
     // the GUI containing all controls of the main window
     Ui::LUMASSMainWin *ui;
     // for showing the mouse position in real world coordinates
@@ -699,7 +706,7 @@ private:
     QtTreePropertyBrowser* mSettingsBrowser;
 
     // keep track of dock widgets
-    bool mbComponentInfoDockVisble;
+    bool mbComponentInfoDockVisible;
     bool mbComponentsWidgetVisible;
     bool mbLogDockVisible;
 
@@ -721,8 +728,6 @@ private:
     // the last event objects filtered by LUMASSMainWin
     QObject* mLastSender;
     QEvent* mLastEvent;
-
-    //NMModelController* mModelController;
 
     QWebSocketServer* mServer;
     QList<QWebSocket*> mClientList;

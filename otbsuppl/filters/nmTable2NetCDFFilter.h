@@ -101,9 +101,9 @@ public:
      *  specified, if additional associated variables shall be stored in the
      *  table, e.g. coordinate variables for individual image dimensions.
      */
-    itkGetMacro(NcImageContainer, std::string)
+    //itkGetMacro(NcImageContainer, std::string)
     /** The netCDF group from which to read the auxillary data */
-    itkGetMacro(NcGroupName   , std::string)
+    //itkGetMacro(NcGroupName   , std::string)
     /** The output table column names to used for the individual image dimension
      *  indices of the input image (core variable).
      */
@@ -125,8 +125,8 @@ public:
 
     itkSetMacro(InputTableName    , std::string)
     itkSetMacro(ImageVarName , std::string)
-    itkSetMacro(NcImageContainer, std::string)
-    itkSetMacro(NcGroupName   , std::string)
+    //itkSetMacro(NcImageContainer, std::string)
+    //itkSetMacro(NcGroupName   , std::string)
 
     //void SetImageNames(std::vector<std::string> names) {m_ImageNames = names;}
 
@@ -134,20 +134,23 @@ public:
     void setRAT(unsigned int idx, otb::AttributeTable::Pointer);
 
 
-    void SetDimMapping(std::vector<int>& vec) {m_DimMapping = vec;}
-    std::vector<int> GetDimMapping(std::vector<int>& vec) {return m_DimMapping;}
+    //void SetDimMapping(std::vector<int>& vec) {m_DimMapping = vec;}
+    //std::vector<int> GetDimMapping() {return m_DimMapping;}
 
     void SetOutputOrigin(std::vector<double>& vec) {m_OutputOrigin = vec;}
-    std::vector<double> GetOutputOrigin(std::vector<double>& vec) {return m_OutputOrigin;}
+    std::vector<double> GetOutputOrigin() {return m_OutputOrigin;}
 
     void SetOutputSpacing(std::vector<double>& vec) {m_OutputSpacing = vec;}
-    std::vector<double> GetOutputSpacing(std::vector<double>& vec) {return m_OutputSpacing;}
+    std::vector<double> GetOutputSpacing() {return m_OutputSpacing;}
 
     void SetOutputSize(std::vector<long long>& vec) {m_OutputSize = vec;}
-    std::vector<long long> GetOutputSize(std::vector<long long>& vec) {return m_OutputSize;}
+    std::vector<long long> GetOutputSize() {return m_OutputSize;}
 
     void SetOutputIndex(std::vector<long long>& vec) {m_OutputIndex = vec;}
-    std::vector<long long> GetOutputIndex(std::vector<long long>& vec) {return m_OutputIndex;}
+    std::vector<long long> GetOutputIndex() {return m_OutputIndex;}
+
+    void SetOutputDirection(std::vector<int>& vec) {m_OutputDirection = vec;}
+    std::vector<int> GetOutputDirection() {return m_OutputDirection;}
 
 
     void SetDimVarNames(std::vector<std::string> dnames)
@@ -158,8 +161,6 @@ public:
 
     //void SetAuxVarNames(std::vector<std::string> anames)
     //{m_AuxVarNames = anames;}
-
-
 
     void GenerateOutputInformation(void);
     void GenerateInputRequestedRegion();
@@ -180,12 +181,13 @@ protected:
     //std::vector<std::string>  m_ImageNames;
     std::string m_SQLWhereClause;
 
-    std::vector<int> m_DimMapping;
+    //std::vector<int> m_DimMapping;
 
     std::vector<long long> m_OutputSize;
     std::vector<long long> m_OutputIndex;
     std::vector<double> m_OutputSpacing;
     std::vector<double> m_OutputOrigin;
+    std::vector<int> m_OutputDirection;
 
 
     std::string m_InputTableName;
@@ -194,8 +196,8 @@ protected:
     std::vector<int> m_StartIndex;
     std::vector<int> m_Size;
 
-    std::string m_NcImageContainer;
-    std::string m_NcGroupName;
+    //std::string m_NcImageContainer;
+    //std::string m_NcGroupName;
     std::vector<std::string> m_DimVarNames; // x, y, z  INTEGER (0...n-1)
     std::vector<std::string> m_VarAndDimDescriptors; // var, dim1, dim2, ...
     std::vector<int> m_DimColDimId;

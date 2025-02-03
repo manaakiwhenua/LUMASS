@@ -126,6 +126,7 @@ NMPolygonToTriangles::RequestData(vtkInformation* vtkNotUsed(request),
 
     // clear the poly id mapping
     PolyIds.clear();
+    TriIds.clear();
 
     inputCells->InitTraversal();
     vtkIdType triscount = 0;
@@ -172,13 +173,17 @@ NMPolygonToTriangles::RequestData(vtkInformation* vtkNotUsed(request),
             }
         }
 
-        int ntris = tessellator.Tessellate(outTris);
+        const int ntris = tessellator.Tessellate(outTris);
+        std::vector<vtkIdType> triIds;
+        triIds.reserve(ntris);
         for (int t=0; t < ntris; ++t)
         {
             nm_id->InsertValue(triscount, triscount);
             PolyIds.push_back(polycount);
+            triIds.push_back(triscount);
             ++triscount;
         }
+        TriIds.push_back(triIds);
 
         this->UpdateProgress((float)polycount / npolys);
     }
@@ -192,6 +197,7 @@ NMPolygonToTriangles::RequestData(vtkInformation* vtkNotUsed(request),
     vtkIdType nTriCells = outTris->GetPolys()->GetNumberOfCells();
     vtkDebugMacro(<< "polys2tris: triscount: " << triscount-1 << "\n");
     vtkDebugMacro(<< "polys2tris: nTriCells: " << nTriCells-1 << "\n");
+    vtkDebugMacro(<< "polys2tris: TriIds: " << TriIds.size() << "\n");
 
     // construct output lookup table from rawclr vector
     if (InputColors.GetPointer() != nullptr)

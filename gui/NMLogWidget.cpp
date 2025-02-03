@@ -36,7 +36,7 @@ NMLogWidget::NMLogWidget(QWidget *parent) : QTextBrowser(parent)
     this->setTextInteractionFlags(Qt::NoTextInteraction);
 
     // ... printing the first log message
-    this->clearLog();
+    //this->clearLog();
     this->zoomOut(2);
 
 }

@@ -63,6 +63,7 @@
 #include "NMGlobalHelper.h"
 #include "NMParameterTable.h"
 #include "NMIterableComponent.h"
+#include "NMMfwException.h"
 
 #ifndef NM_ENABLE_LOGGER
 #   define NM_ENABLE_LOGGER
@@ -76,8 +77,9 @@ const std::string NMModelViewWidget::ctx = "NMModelViewWidget";
 
 NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     : QWidget(parent, f), mbControllerIsBusy(false), mScaleFactor(1.075),
-      mLogger(0), mToolContextController(0),
-      mCopyBufferVis(nullptr), mCopyBufferDoc(nullptr), mbFollowFocus(false)
+      mLogger(nullptr), mToolContextController(nullptr),
+      mCopyBufferVis(nullptr), mCopyBufferDoc(nullptr), mbFollowFocus(false),
+      mModelController(nullptr), mEngine(nullptr), mModelRunThread(nullptr), mTimerThread(nullptr)
 {
     this->setAcceptDrops(true);
     this->mLastItem = 0;
@@ -86,60 +88,6 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
         this->mRasConn = 0;
 #endif
 
-
-    /* ====================================================================== */
-    /* MODEL CONTROLLER SETUP */
-    /* ====================================================================== */
-    LUMASSMainWin* mainWin = NMGlobalHelper::getMainWindow();//this->getMainWindow();
-
-    mModelRunThread = new QThread(this);
-    connect(this, SIGNAL(widgetIsExiting()), mModelRunThread, SLOT(quit()));
-
-    mModelRunThread->start();
-
-    //mModelController = mainWin->getModelController();//this->mModelController;
-    mModelController = new NMModelController();
-    mModelController->getLogger()->setHtmlMode(true);
-    mModelController->moveToThread(mModelRunThread);
-    mModelController->updateSettings("LUMASSPath",
-                                     NMGlobalHelper::getUserSetting("LUMASSPath"));
-    mModelController->updateSettings("Workspace", NMGlobalHelper::getUserSetting("Workspace"));
-    mModelController->updateSettings("TimeFormat", "yyyy-MM-ddThh:mm:ss.zzz");
-
-    NMProcessFactory::instance().setLumassPath(mModelController->getSetting("LUMASSPath").toString());
-
-    // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    // set prov testing
-
-    mModelController->setLogProvOn();
-//    QString provFN = QString("%1/%2.provn")
-//                     .arg(mModelController->getSetting("Workspace"))
-//                     .arg(NMGlobalHelper::getRandomString(5);
-//    mModelController->startProv(provFN);
-
-    // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    connect(this, SIGNAL(requestModelExecution(const QString &)),
-            mModelController, SLOT(executeModel(const QString &)));
-    connect(this, SIGNAL(requestModelReset(const QString &)),
-            mModelController, SLOT(resetComponent(const QString &)));
-    connect(this, SIGNAL(requestModelAbortion()),
-            mModelController, SLOT(abortModel()), Qt::DirectConnection);
-    connect(mModelController, SIGNAL(signalIsControllerBusy(bool)),
-            this, SLOT(reportIsModelControllerBusy(bool)));
-    connect(mModelController->getLogger(), SIGNAL(sendLogMsg(const QString &)),
-            mainWin, SLOT(appendHtmlMsg(const QString &)));
-
-    connect(mainWin, SIGNAL(settingsUpdated(const QString &, QVariant)),
-            mModelController, SLOT(updateSettings(const QString &,QVariant)));
-
-    mRootComponent = new NMSequentialIterComponent();
-    mRootComponent->setObjectName("root");
-    mRootComponent->setDescription(
-            "Top level model component managed by the model view widget");
-    this->mModelController->addComponent(
-            qobject_cast<NMModelComponent*>(mRootComponent));
-    //connect(mRootComponent, SIGNAL(NMModelComponentChanged()), this, SLOT(compProcChanged()));
 
 
     /* ====================================================================== */
@@ -369,6 +317,149 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 }
 
 void
+NMModelViewWidget::setupModellingEnvironment(NMModelController *ctrl)
+{
+    if (ctrl == nullptr)
+    {
+        NMLogError(<< "This should have never happened! No contoller, no modelling!");
+        return;
+    }
+
+    /* ====================================================================== */
+    /* MODEL CONTROLLER SETUP */
+    /* ====================================================================== */
+    LUMASSMainWin* mainWin = NMGlobalHelper::getMainWindow();
+
+    mModelController = ctrl;
+    mEngine = qobject_cast<NMLumassEngine*>(ctrl->parent());
+    this->setLogger(mEngine->getLogger());
+
+    NMDebugAI(<< "NMModelViewWidget_thread: " << uint_fast64_t(QThread::currentThreadId()) << std::endl);
+
+
+    mModelController->updateSettings("LUMASSPath",
+                                     NMGlobalHelper::getUserSetting("LUMASSPath"));
+    mModelController->updateSettings("Workspace", NMGlobalHelper::getUserSetting("Workspace"));
+    mModelController->updateSettings("TimeFormat", "yyyy-MM-ddThh:mm:ss.zzz");
+
+    NMProcessFactory::instance().setLumassPath(mModelController->getSetting("LUMASSPath").toString());
+
+    // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    // set prov testing
+
+    mModelController->setLogProvOn();
+//    QString provFN = QString("%1/%2.provn")
+//                     .arg(mModelController->getSetting("Workspace"))
+//                     .arg(NMGlobalHelper::getRandomString(5);
+//    mModelController->startProv(provFN);
+
+    // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    //connect(this, SIGNAL(requestModelExecution(const QString &)),
+    connect(this, SIGNAL(requestModelReset(const QString &)),
+            mModelController, SLOT(resetComponent(const QString &)));
+    connect(this, SIGNAL(requestModelAbortion()),
+            mModelController, SLOT(abortModel()), Qt::DirectConnection);
+    connect(mModelController, SIGNAL(signalIsControllerBusy(bool)),
+            this, SLOT(reportIsModelControllerBusy(bool)));
+
+    connect(mModelController, &NMModelController::signalMPIRunnable, this,
+            &NMModelViewWidget::connectMPIRunnable, Qt::DirectConnection);
+
+    connect(mainWin, SIGNAL(settingsUpdated(const QString &, QVariant)),
+            mModelController, SLOT(updateSettings(const QString &,QVariant)));
+
+    mRootComponent = qobject_cast<NMSequentialIterComponent*>(mModelController->getComponent(QStringLiteral("root")));
+    if (mRootComponent == nullptr)
+    {
+        NMLogError(<< "LUMASS panic! We don't have a root model component!");
+    }
+}
+
+void
+NMModelViewWidget::processMPIEvent(const QString &obj,
+                                   const NMModelController::ModelEvent &event,
+                                   const float &value)
+{
+    QGraphicsItem* item = mModelScene->getComponentItem(obj);
+    NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+    NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(item);
+
+    std::string str_event;
+    switch(event)
+    {
+    case NMModelController::ModelEvent::NM_EVENT_EXEC_STARTED:
+        if (ai != nullptr)
+        {
+            ai->slotExecutionStarted();
+        }
+        else if (pi != nullptr)
+        {
+            pi->reportExecutionStarted(obj);
+        }
+        str_event = "started";
+        break;
+    case NMModelController::ModelEvent::NM_EVENT_EXEC_STOPPED:
+    case NMModelController::ModelEvent::NM_EVENT_EXEC_ABORTED:
+        if (ai != nullptr)
+        {
+            ai->slotExecutionStopped();
+        }
+        else if (pi != nullptr)
+        {
+            pi->reportExecutionStopped(obj);
+        }
+
+        str_event = "stopped";
+        if (event == NMModelController::ModelEvent::NM_EVENT_EXEC_ABORTED)
+        {
+            str_event = "aborted";
+            NMDebugAI(<< "Child process aborted model due to exception by '"
+                       << obj.toStdString() << "'!\n");
+            NMLogError(<< "Child process aborted model due to exception by '"
+                       << obj.toStdString() << "'!\n");
+            //this->resetModel();
+            NMDebugAI(<< "Parent reseted model after child aborted it!\n");
+        }
+        break;
+    case NMModelController::ModelEvent::NM_EVENT_PROGRESS:
+        if (ai != nullptr)
+        {
+            // the ParentProc may have missed the 'started' message
+            ai->slotExecutionStarted();
+            ai->slotProgress(value);
+        }
+        else if (pi != nullptr)
+        {
+            if (!pi->isExecuting())
+            {
+                pi->reportExecutionStarted(obj);
+            }
+            pi->updateProgress(value);
+        }
+        str_event = "progress";
+        break;
+    case NMModelController::ModelEvent::NM_EVENT_NUMITER_CHGD:
+        if (ai != nullptr)
+        {
+            ai->updateNumIterations(value);
+        }
+        str_event = "numIterChgd";
+        break;
+    default:
+        str_event = "no_clue";
+        break;
+    }
+
+    this->mModelScene->invalidate();
+
+    NMDebugAI(<< "ParentPROC processed: " << obj.toStdString() << ": "
+              << str_event << " value: " << value << std::endl);
+
+    //NMDebugAI(<< "MPIEvent: " << )
+}
+
+void
 NMModelViewWidget::searchModelComponent()
 {
     QLineEdit* le = qobject_cast<QLineEdit*>(sender());
@@ -377,7 +468,7 @@ NMModelViewWidget::searchModelComponent()
         QString compName = le->text();
 
         // COMPONENT MODEL NAME ENTERED
-        if (NMGlobalHelper::getModelController()->contains(compName))
+        if (mModelController->contains(compName))
         {
             zoomToComponent(compName);
         }
@@ -389,7 +480,7 @@ NMModelViewWidget::searchModelComponent()
 
 
             // LOOK FOR COMPONENTS
-            QList<NMModelComponent*> comps = NMGlobalHelper::getModelController()->getComponents(compName);
+            QList<NMModelComponent*> comps = mModelController->getComponents(compName);
             if (compName.isEmpty() ? comps.size()-1 : comps.size() > 0)
             {
                 QStringList nameList;
@@ -409,8 +500,7 @@ NMModelViewWidget::searchModelComponent()
             // LOOK for PARAMETERS
             else if (!compName.isEmpty())
             {
-                NMModelController* mc = NMGlobalHelper::getModelController();
-                QMap<QString, NMModelComponent*> mmap = mc->getRepository();
+                QMap<QString, NMModelComponent*> mmap = mModelController->getRepository();
                 QMap<QString, NMModelComponent*>::const_iterator mit = mmap.cbegin();
                 while (mit != mmap.cend())
                 {
@@ -649,16 +739,24 @@ NMModelViewWidget::setLogger(NMLogger *logger)
 
 NMModelViewWidget::~NMModelViewWidget()
 {
-    if (mModelRunThread != 0)
+
+    if (mModelRunThread != nullptr)
     {
         if (this->mbControllerIsBusy)
         {
             emit requestModelAbortion();
             this->thread()->wait(10000);
         }
-        emit widgetIsExiting();
-        mModelRunThread->wait();
+        mModelRunThread->quit();
+        mModelRunThread->deleteLater();
     }
+
+    if (mTimerThread != nullptr)
+    {
+        mTimerThread->quit();
+        mTimerThread->deleteLater();
+    }
+    emit widgetIsExiting();
 }
 
 void
@@ -1081,6 +1179,29 @@ void NMModelViewWidget::initItemContextMenu()
     clrAct->setText(tr("Change Colour ..."));
     this->mActionMap.insert("Change Colour ...", clrAct);
 
+    QAction* selParaIterComps = new QAction(this->mItemContextMenu);
+    selParaIterComps->setText(tr("Parallel Iterators"));
+    this->mActionMap.insert("Parallel Iterators", selParaIterComps);
+
+    QAction* selParaTimeLevelComps = new QAction(this->mItemContextMenu);
+    selParaTimeLevelComps->setText(tr("Parallel Time Levels"));
+    this->mActionMap.insert("Parallel Time Levels", selParaTimeLevelComps);
+
+    QAction* selParaPipelinesComps = new QAction(this->mItemContextMenu);
+    selParaPipelinesComps->setText(tr("Parallel Pipelines"));
+    this->mActionMap.insert("Parallel Pipelines", selParaPipelinesComps);
+
+    QAction* selParallelComps = new QAction(this->mItemContextMenu);
+    selParallelComps->setText(tr("All Parallel Components"));
+    this->mActionMap.insert("All Parallel Components", selParallelComps);
+
+    QMenu* paraSubMenu = new QMenu(tr("Select Parallel Components"), this->mItemContextMenu);
+    paraSubMenu->addAction(selParaIterComps);
+    paraSubMenu->addAction(selParaTimeLevelComps);
+    paraSubMenu->addAction(selParaPipelinesComps);
+    paraSubMenu->addSeparator();
+    paraSubMenu->addAction(selParallelComps);
+
     QAction* clearSelAct = new QAction(this->mItemContextMenu);
     clearSelAct->setText(tr("Clear Selection"));
     this->mActionMap.insert("Clear Selection", clearSelAct);
@@ -1095,6 +1216,7 @@ void NMModelViewWidget::initItemContextMenu()
 
     this->mItemContextMenu->addAction(actDeltaTimeLevel);
     this->mItemContextMenu->addAction(actGroupTimeLevel);
+    this->mItemContextMenu->addSeparator();
     this->mItemContextMenu->addAction(groupSeqItems);
     this->mItemContextMenu->addAction(groupParaItems);
     //this->mItemContextMenu->addAction(groupCondItems);
@@ -1103,7 +1225,10 @@ void NMModelViewWidget::initItemContextMenu()
     this->mItemContextMenu->addAction(convParaToSeq);
 
     this->mItemContextMenu->addSeparator();
+    this->mItemContextMenu->addMenu(paraSubMenu);
     this->mItemContextMenu->addAction(clearSelAct);
+
+    this->mItemContextMenu->addSeparator();
     this->mItemContextMenu->addAction(unfoldComp);
     this->mItemContextMenu->addAction(collapseComp);
     this->mItemContextMenu->addSeparator();
@@ -1145,6 +1270,10 @@ void NMModelViewWidget::initItemContextMenu()
     connect(collapseComp, SIGNAL(triggered()), this, SLOT(collapseAggrItem()));
     connect(unfoldComp, SIGNAL(triggered()), this, SLOT(unfoldAggrItem()));
     connect(clearSelAct, SIGNAL(triggered()), this->mModelScene, SLOT(unselectItems()));
+    connect(selParaIterComps     , &QAction::triggered, this, &NMModelViewWidget::selectParallelComponents);
+    connect(selParaTimeLevelComps, &QAction::triggered, this, &NMModelViewWidget::selectParallelComponents);
+    connect(selParaPipelinesComps, &QAction::triggered, this, &NMModelViewWidget::selectParallelComponents);
+    connect(selParallelComps     , &QAction::triggered, this, &NMModelViewWidget::selectParallelComponents);
 
     // DEBUG
 #ifdef LUMASS_DEBUG
@@ -1157,6 +1286,109 @@ void NMModelViewWidget::initItemContextMenu()
 #endif
     // DEBUG
 
+}
+
+void
+NMModelViewWidget::selectParallelComponents(void)
+{
+    if (mModelController == nullptr)
+    {
+        return;
+    }
+
+    QAction* sender = qobject_cast<QAction*>(this->sender());
+
+    NMModelController::ModelParallelism paraSel = NMModelController::NM_PARALLEL_NONE;
+    if (mActionMap["Parallel Iterators"] == sender)
+    {
+        paraSel = NMModelController::NM_PARALLEL_ITERATOR;
+    }
+    else if (mActionMap["Parallel Time Levels"] == sender)
+    {
+        paraSel = NMModelController::NM_PARALLEL_TIMELEVEL;
+    }
+    else if (mActionMap["Parallel Pipelines"] == sender)
+    {
+        paraSel = NMModelController::NM_PARALLEL_PIPELINE;
+    }
+    //else //if (mActionMap["All Parallel Components"] == sender)
+    //{
+    //    paraSel = NMModelController::NM_PARALLEL_NONE;
+    //}
+
+    QSet<QString> parallelHosts;
+    QMap<NMModelController::ModelParallelism, QStringList> paraComps;
+    if (mLastItem != nullptr)
+    {
+        mModelController->identifyParallelComponents(
+                    this->getComponentItemTitle(mLastItem),
+                    paraComps, parallelHosts);
+    }
+    else
+    {
+        mModelController->identifyParallelComponents(
+                    QStringLiteral("root"),
+                    paraComps, parallelHosts);
+    }
+
+    // report all parallelism found ...
+    if (paraComps.size() > 0)
+    {
+        std::stringstream paralog;
+        auto pcit = paraComps.constBegin();
+        for (; pcit != paraComps.constEnd(); ++pcit)
+        {
+            switch(pcit.key())
+            {
+            case NMModelController::NM_PARALLEL_ITERATOR:  paralog << "Parallel Iterators: "; break;
+            case NMModelController::NM_PARALLEL_TIMELEVEL: paralog << "Parallel Time Levels: "; break;
+            case NMModelController::NM_PARALLEL_PIPELINE:  paralog << "Parallel Pipelines: "; break;
+            default: break;
+            }
+
+            foreach(const QString& cn, pcit.value())
+            {
+                paralog << cn.toStdString() << " ";
+            }
+            paralog << std::endl;
+        }
+        NMLogInfo(<< "Parallel Model Components: \n" << paralog.str());
+        paralog.str("");
+        auto dphc = parallelHosts.cbegin();
+        for (; dphc != parallelHosts.cend(); ++dphc)
+        {
+            paralog << (*dphc).toStdString() << " ";
+        }
+        NMLogInfo(<< "Parallel Host Components: " << paralog.str() << std::endl);
+    }
+    else
+    {
+        NMLogInfo(<< "No parallel model components detected.");
+    }
+
+
+    QList<QGraphicsItem*> allItems = this->mModelScene->items();
+    foreach(QGraphicsItem* gi, allItems)
+    {
+        auto pcmit = paraComps.constBegin();
+        while (pcmit != paraComps.constEnd())
+        {
+            if (    paraSel == pcmit.key()
+                 || paraSel == NMModelController::NM_PARALLEL_NONE
+               )
+            {
+                foreach(const QString& mc, pcmit.value())
+                {
+                    if (this->getComponentItemTitle(gi).compare(mc) == 0)
+                    {
+                        gi->setFlag(QGraphicsItem::ItemIsSelectable, true);
+                        gi->setSelected(true);
+                    }
+                }
+            }
+            ++pcmit;
+        }
+    }
 }
 
 void
@@ -1865,6 +2097,7 @@ void NMModelViewWidget::saveBenchItems(void)
     }
 
     exportItems(items, fileNameString, bSaveRoot);
+    NMDebugCtx(ctx, << "done!");
 }
 
 
@@ -3798,6 +4031,7 @@ NMModelViewWidget::zoomToComponent(const QString &name)
                                centre.y()-(bnd.height()/2.0)));
 
         this->mModelView->fitInView(bnd, Qt::KeepAspectRatio);
+        //this->mModelView->centerOn(centre);
         this->updateTreeEditor(name);
     }
 }
@@ -4695,17 +4929,17 @@ NMModelViewWidget::deleteLinkComponentItem(NMComponentLinkItem* linkItem)
     NMComponentLinkItem* dli = qgraphicsitem_cast<NMComponentLinkItem*>(mLastItem);
     if (dli == linkItem)
     {
-        mLastItem = 0;
+        mLastItem = nullptr;
     }
 
 
     NMProcessComponentItem* targetItem = linkItem->targetItem();
     NMProcessComponentItem* sourceItem = linkItem->sourceItem();
-    if (targetItem == 0 || sourceItem == 0)
+    if (targetItem == nullptr || sourceItem == nullptr)
         return;
 
     NMModelComponent* targetComp = this->mModelController->getComponent(targetItem->getTitle());
-    if (targetComp == 0)
+    if (targetComp == nullptr)
         return;
 
     NMIterableComponent* itComp =
@@ -4715,7 +4949,7 @@ NMModelViewWidget::deleteLinkComponentItem(NMComponentLinkItem* linkItem)
     if (itComp)
     {
         NMProcess* proc = itComp->getProcess();
-        if (proc == 0)
+        if (proc == nullptr)
             return;
 
         proc->removeInputComponent(sourceItem->getTitle());
@@ -4736,8 +4970,9 @@ NMModelViewWidget::deleteLinkComponentItem(NMComponentLinkItem* linkItem)
     targetItem->removeLink(linkItem);
     sourceItem->removeLink(linkItem);
     this->mModelScene->removeItem(linkItem);
+    this->mModelView->invalidateScene();
     delete linkItem;
-    linkItem = 0;
+    linkItem = nullptr;
 }
 
 void
@@ -4882,14 +5117,15 @@ void NMModelViewWidget::editRootComponent()
         this->callEditComponentDialog(this->mRootComponent->objectName());
 }
 
-//void NMModelViewWidget::compProcChanged()
-//{
-////	NMDebugCtx(ctx, << "...");
-////	NMModelComponent* comp = qobject_cast<NMModelComponent*>(this->sender());
-////	NMProcess* proc = qobject_cast<NMProcess*>(this->sender());
-////
-////	NMDebugCtx(ctx, << "done!");
-//}
+
+void
+NMModelViewWidget::connectMPIRunnable(NMMPIRunnable *mpi)
+{
+    connect(mpi, &NMMPIRunnable::signalMPIEvent, this,
+            &NMModelViewWidget::processMPIEvent, Qt::DirectConnection);
+    connect(mpi, &NMMPIRunnable::signalMPILoopFinished, this,
+            &NMModelViewWidget::resetModel);
+}
 
 void
 NMModelViewWidget::connectProcessItem(NMProcess* proc,
@@ -4920,7 +5156,6 @@ NMModelViewWidget::connectProcessItem(NMProcess* proc,
             procItem, SLOT(reportExecutionStopped(const QString &)));
 
     // connect some host-component signals
-    //NMModelComponent* comp = qobject_cast<NMModelComponent*>(proc->parent());
     NMIterableComponent* comp = qobject_cast<NMIterableComponent*>(proc->parent());
     connect(comp, SIGNAL(ComponentDescriptionChanged(const QString &)), procItem,
             SLOT(setDescription(const QString &)));
@@ -5255,7 +5490,9 @@ void NMModelViewWidget::executeModel(void)
         return;
     }
 
-    emit requestModelExecution(comp->objectName());
+    //emit requestModelExecution(comp->objectName());
+    const QString yamlConfig = this->mConfigPathEdit->text();
+    mModelController->executeModel(comp->objectName(), yamlConfig);
 }
 
 void

@@ -24,10 +24,12 @@
 #   include "nmlog.h"
 #endif
 
+#include <QString>
 #include <QTextStream>
 #include <QVariant>
 #include <QThreadPool>
 #include <QScopedPointer>
+#include <QFileInfo>
 
 #include <sqlite3.h>
 #include "gdal.h"
@@ -59,36 +61,75 @@ if (m_Rank != rank )         \
     return;                  \
 }
 
-// store who we are and how many of us there are
-int m_Rank;
-int m_Nproc;
-int m_ThreadSupport;
-QString m_ThreadSupportStr;
-
 const std::string NMLumassEngine::ctx = "NMLumassEngine";
 
-NMLumassEngine::NMLumassEngine(QObject* parent)
-    : QObject(parent),
+NMLumassEngine::NMLumassEngine(int argc, char** argv)
+    : QObject(nullptr),
       mController(nullptr),
       mMosra(nullptr),
       mBMILogger(nullptr),
       mMode(NM_ENGINE_MODE_UNKNOWN),
-      mbMPICleanUp(false)
+      mAppMode(NM_APP_UNKNOWN),
+      mbMPICleanUp(false),
+      m_Rank(0),
+      m_Nproc(1)
 {
     NMDebugCtx(ctx, << "...");
     mLogger = new NMLogger(this);
+    // default is not GUI logging
     mLogger->setHtmlMode(false);
+
+    // determine the AppMode we're running in
+    // we'll use the AppMode to deterimine whether we need to spawn our own ranks
+    // (=GUI) or whether that has been done already prior to executing lumass
+    std::stringstream allargs;
+    for (int a=0; a < argc; ++a) {allargs << argv[a] << " ";}
+    NMDebugAINoMPI(<< "NMLumassEngine instantiated by: " << allargs.str() << std::endl);
+    NMDebugAINoMPI(<< "NMLumassEngine_thread: " << uint_fast64_t(QThread::currentThreadId()) << std::endl);
+
+    QString logFileName;
+    bool bMPIRuntime = true;
+    if (argc > 0)
+    {
+        QString app_cmd = allargs.str().c_str();
+        if (    app_cmd.contains(QStringLiteral("lumassengine"), Qt::CaseSensitive)
+             || app_cmd.contains(QStringLiteral("lumassengine.exe"), Qt::CaseSensitive)
+           )
+        {
+            mAppMode = NM_APP_ENGINE;
+        }
+        else if (    app_cmd.contains(QStringLiteral("lumass"), Qt::CaseSensitive)
+                  || app_cmd.contains(QStringLiteral("lumass.exe"), Qt::CaseSensitive)
+                )
+        {
+            mAppMode = NM_APP_GUI;
+            if (!app_cmd.contains(QStringLiteral("--mpi"), Qt::CaseInsensitive))
+            {
+                bMPIRuntime = false;
+            }
+        }
+        else
+        {
+            mAppMode = NM_APP_BMI;
+        }
+    }
 
     // init mpi
     int mpierr = 0;
     int mpiinit = 0;
     MPI_Initialized(&mpiinit);
-
+    NMDebugAINoMPI(<< "MPI: local group of processes initialized? ="
+                    << mpiinit << std::endl);
     QString mpiEnv;
     if (!mpiinit)
     {
-        MPI_Init_thread(nullptr, nullptr, MPI_THREAD_FUNNELED, &m_ThreadSupport);
-        //MPI_Init_thread(nullptr, nullptr, MPI_THREAD_SINGLE, &m_ThreadSupport);
+        mpierr = MPI_Init_thread(&argc, &argv, MPI_THREAD_SERIALIZED, &m_ThreadSupport);
+        if (mpierr != MPI_SUCCESS)
+        {
+            NMDebugAINoMPI(<< "MPI initialisation failed! We better quit!");
+            exit(mpierr);
+        }
+        mpiinit = 1;
 
         switch(m_ThreadSupport)
         {
@@ -102,35 +143,89 @@ NMLumassEngine::NMLumassEngine(QObject* parent)
         // Letzter macht das Licht aus!
         mbMPICleanUp = true;
     }
-    else
-    {
-        NMDebugAI(<< "MPI parallel processing failed to initialize correctly!" << endl);
-    }
 
     MPI_Comm_size(MPI_COMM_WORLD, &m_Nproc);
     MPI_Comm_rank(MPI_COMM_WORLD, &m_Rank);
 
-    if (m_Rank == 0)
-    {
-        mpiEnv = QString("MPI Environment: \nMPI_COMM_WORLD=%1\nMPI_COMM_NULL=%2\n"
-                         "MPI_GROUP_NULL=%6\nMPI_GROUP_EMPTY=%7\nMPI_UNDEFINED=%3\n"
-                         "#proc=%4\nthread support=%5\n")
-                .arg(MPI_COMM_WORLD).arg(MPI_COMM_NULL).arg(MPI_UNDEFINED)
-                .arg(m_Nproc).arg(m_ThreadSupportStr).arg(MPI_GROUP_NULL).arg(MPI_GROUP_EMPTY);
+    MPI_Comm_get_parent(&mParentComm);
 
-        NMDebugAI(<< mpiEnv.toStdString() << endl);
-        mLogger->sendLogMsg(mpiEnv);
+    std::string init = (mpiinit==1 ? "yes" : "no");
+    NMDebugAI(<< "MPI: initialized=" << init << std::endl);
+    NMDebugAI(<< "have MPI runtime: " << bMPIRuntime << std::endl);
+    NMDebugAI(<< "MPI: n_procs=" << m_Nproc << "\n");
+    NMDebugAI(<< "MPI: mParentComm="
+              << (mParentComm == MPI_COMM_NULL ? "MPI_COMM_NULL" : std::to_string(mParentComm).c_str())
+                  << std::endl);
+
+    // --------------------------------------------------------
+    // look for logfile
+
+    for (int arg=1; arg < argc; ++arg)
+    {
+        QString theArg = argv[arg];
+        theArg = theArg.toLower();
+
+        if (theArg.compare(QStringLiteral("--logfile")) == 0)
+        {
+            if (mpiinit)
+            {
+                int _log_rank = m_Rank;
+                // if we're a child process run by the GUI app
+                // our overall rank is actually m_Rank+1 as
+                // the GUI is rank #0
+                if (mParentComm != MPI_COMM_NULL)
+                {
+                    _log_rank++;
+                }
+
+                QFileInfo logInfo(argv[arg+1]);
+                logFileName = QString("%1/%2_r%3.%4")
+                        .arg(logInfo.absoluteDir().absolutePath())
+                        .arg(logInfo.baseName())
+                        .arg(_log_rank)
+                        .arg(logInfo.completeSuffix());
+            }
+            else
+            {
+                logFileName = argv[arg+1];
+            }
+        }
+    }
+
+
+    if (!logFileName.isEmpty())
+    {
+        this->setLogFileName(logFileName);
+    }
+    else
+    {
+        // turn off logging altoghether
+        this->getLogger()->setLogLevel(NMLogger::NM_LOG_NOLOG);
+    }
+
+    if (mParentComm != MPI_COMM_NULL)
+    {
+
+        NMLogInfo(<< "This engine runs process r" << m_Rank
+                  << " of " << m_Nproc << " child processes overall!");
     }
 
     mController = new NMModelController(this);
     mController->setLogger(mLogger);
+    mController->setUsesMPIRuntime(bMPIRuntime);
     mController->setRank(m_Rank);
     mController->setNumProcs(m_Nproc);
+    mController->setAppMode(static_cast<int>(mAppMode));
 
-    NMSequentialIterComponent* root = new NMSequentialIterComponent();
-    root->setObjectName("root");
-    root->setDescription("Top level model component managed by the ModelController");
-    mController->addComponent(root);
+    if (mAppMode == NM_APP_GUI)
+    {
+        mLogger->setHtmlMode(true);
+#ifdef LUMASS_DEBUG
+        mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
+#else
+        mLogger->setLogLevel(NMLogger::NM_LOG_INFO);
+#endif
+    }
 
     NMDebugCtx(ctx, << "done!");
 }
@@ -142,6 +237,11 @@ NMLumassEngine::~NMLumassEngine()
 void
 NMLumassEngine::shutdown(void)
 {
+    // clean up mpi
+    NMDebugAI(<< ctx << ": MPI_Finalize()\n");
+    NMLogDebug(<< ctx << ": MPI_Finalize()\n");
+    MPI_Finalize();
+
     if (mLogFile.isOpen())
     {
         mLogFile.flush();
@@ -155,14 +255,6 @@ NMLumassEngine::shutdown(void)
     }
 #endif
 
-    // clean up mpi
-    int mpiInit;
-    int mpierr = MPI_Initialized(&mpiInit);
-    if (mpierr == 0 && mpiInit && mbMPICleanUp)
-    {
-        MPI_Barrier(MPI_COMM_WORLD);
-        MPI_Finalize();
-    }
 }
 
 int NMLumassEngine::runModel(double fromTimeStep, double toTimeStep)
@@ -207,9 +299,12 @@ std::string NMLumassEngine::processStringParameter(const QString& param)
 }
 
 void
-NMLumassEngine::doModel(const QString& userFile, QString &workspace, QString& enginePath, bool bLogProv)
+NMLumassEngine::doModel(const QString& userFile, QString &workspace,
+                        QString& enginePath, bool bLogProv, const QString& runComponent)
 {
     NMDebugCtx(ctx, << "...");
+    NMLogDebug(<< "NMLumassEngine::doModel() ...");
+    NMLogDebug(<< "userFile: " << userFile.toStdString());
 
     // ==============================================
     //  import the model
@@ -229,6 +324,8 @@ NMLumassEngine::doModel(const QString& userFile, QString &workspace, QString& en
         // read yaml configuration file
         try
         {
+            NMLogDebug(<< "loading EngineConfig from yaml ...");
+
             configFile = YAML::LoadFile(userFile.toStdString());
             YAML::Node engineConfig;
             if (configFile["EngineConfig"])
@@ -294,10 +391,11 @@ NMLumassEngine::doModel(const QString& userFile, QString &workspace, QString& en
         modelFile = userFile;
     }
 
-    //QScopedPointer<NMModelController> ctrl(new NMModelController());
-    //ctrl->setLogger(NMLoggingProvider::This()->getLogger());
     NMModelController* ctrl = mController;
-    ctrl->updateSettings("LUMASSPath", enginePath);
+    if (!enginePath.isEmpty())
+    {
+        ctrl->updateSettings("LUMASSPath", enginePath);
+    }
     ctrl->updateSettings("TimeFormat", "yyyy-MM-ddThh:mm:ss.zzz");
 
     // if no appropriate command line settings were passed,
@@ -316,12 +414,18 @@ NMLumassEngine::doModel(const QString& userFile, QString &workspace, QString& en
         {
             yamlLogfileName = ctrl->processStringParameter(nullptr, yamlLogfileName);
 
-            mLogger->setLogLevel(NMLogger::NM_LOG_INFO);
             this->setLogFileName(yamlLogfileName);
 
             QString mpiEnv = QString("MPI Environment: #proc=%1; thread support=%2\n")
                              .arg(m_Nproc).arg(m_ThreadSupportStr);
             this->writeLogMsg(mpiEnv);
+        }
+        else if (!mLogFileName.isEmpty())
+        {
+            QString mpiEnv = QString("MPI Environment: #proc=%1; thread support=%2\n")
+                             .arg(m_Nproc).arg(m_ThreadSupportStr);
+            QString datetime = QDateTime::currentDateTime().toString("yyyy-MM-ddThh:mm:ss.zzz");
+            mLogger->processLogMsg(datetime, NMLogger::NM_LOG_INFO, mpiEnv);
         }
     }
 
@@ -365,21 +469,10 @@ NMLumassEngine::doModel(const QString& userFile, QString &workspace, QString& en
 
     // ====================================================
 
-    ctrl->getLogger()->setHtmlMode(false);
-
     QMap<QString, QString> nameRegister;
     NMModelSerialiser xmlS;
     xmlS.setModelController(ctrl);
     xmlS.setLogger(ctrl->getLogger());
-
-    //// connect the logger to the logging provider
-    //ctrl->connect(ctrl->getLogger(), SIGNAL(sendLogMsg(QString)),
-    //              NMLoggingProvider::This(), SLOT(writeLogMsg(QString)));
-
-//    NMSequentialIterComponent* root = new NMSequentialIterComponent();
-//    root->setObjectName("root");
-//    root->setDescription("Top level model component managed by the ModelController");
-//    ctrl->addComponent(root);
 
     nameRegister = xmlS.parseComponent(modelFile, 0, ctrl);
     if (nameRegister.size() == 0)
@@ -388,6 +481,7 @@ NMLumassEngine::doModel(const QString& userFile, QString &workspace, QString& en
         NMDebugCtx(ctx, << "done!");
         return;
     }
+
 
     // if we've got a YAML, use that for overriding the
     // models hard wired configuration
@@ -418,6 +512,8 @@ NMLumassEngine::doModel(const QString& userFile, QString &workspace, QString& en
     // ==============================================
     //  EXECUTE MODEL
     // ==============================================
+    NMLogDebug(<< "about to actually run the model!");
+
     GDALAllRegister();
     GetGDALDriverManager()->AutoLoadDrivers();
     sqlite3_temp_directory = const_cast<char*>(workspace.toStdString().c_str());//getenv("HOME");
@@ -427,7 +523,24 @@ NMLumassEngine::doModel(const QString& userFile, QString &workspace, QString& en
         ctrl->setLogProvOn();
     }
 
-    ctrl->executeModel("root");
+    if (ctrl->getComponent(runComponent) != nullptr)
+    {
+        ctrl->executeModel(runComponent);
+    }
+    else
+    {
+        NMModelController::MPICompProg compProg;
+        compProg.compName = QStringLiteral("root");
+        compProg.event = NMModelController::NM_EVENT_EXEC_ABORTED;
+        compProg.progress = 0;
+        ctrl->mpiSignalProgress(compProg);
+
+        NMErr("NMLumassEngine",
+              << "We couldn't find the specified run component '"
+              << runComponent.toStdString() << "' "
+              << " in the model!");
+    }
+
 
     GDALDestroyDriverManager();
 
@@ -437,9 +550,7 @@ NMLumassEngine::doModel(const QString& userFile, QString &workspace, QString& en
 int
 NMLumassEngine::loadModel(const QString &modelfile)
 {
-    // let's chuck out the old controller and install
-    // a brand new one!
-
+    // let's chuck out the old model components and load in the new ones
     NMIterableComponent* root = qobject_cast<NMIterableComponent*>(mController->getComponent("root"));
     NMModelComponentIterator cit = root->getComponentIterator();
     while (*cit != nullptr)
@@ -498,7 +609,6 @@ NMLumassEngine::isYamlSequence(const YAML::Node& node)
 QVariant
 NMLumassEngine::parseYamlSetting(const YAML::const_iterator& nit, const QObject* obj)
 {
-
     QVariant ret;
 
     // 'global' LUMASS setting
@@ -519,6 +629,10 @@ NMLumassEngine::parseYamlSetting(const YAML::const_iterator& nit, const QObject*
             value = nit->second.as<std::string>().c_str();
         }
         ret = QVariant::fromValue(value);
+
+        //QString msg = QString("parsed YamlSetting: %1=%2").arg(nit->first.as<std::string>().c_str())
+        //                                                  .arg(nit->second.as<std::string>().c_str());
+        //log("DEBUG", msg);
     }
     else
     {
@@ -581,7 +695,6 @@ NMLumassEngine::parseYamlSetting(const YAML::const_iterator& nit, const QObject*
 int
 NMLumassEngine::configureModel(const YAML::Node& modelConfig)
 {
-    //mController->clearModelSettings();
 
     // =====================================================================
     // iterate over model components
@@ -1063,6 +1176,8 @@ NMLumassEngine::about(void)
 void
 NMLumassEngine::setLogFileName(const QString &fn)
 {
+    NMDebugCtx(ctx, << "...");
+
     if (mLogFile.isOpen())
     {
         mLogFile.close();
@@ -1072,22 +1187,42 @@ NMLumassEngine::setLogFileName(const QString &fn)
     if (!mLogFile.open(QIODevice::WriteOnly | QIODevice::Text))
     {
         std::stringstream emsg;
-        emsg << "Failed creating log file!";
+        emsg << "Failed creating log file '" << fn.toStdString() << "'!";
         log("ERROR", emsg.str().c_str());
+        NMDebugAI(<< "ERROR: " << emsg.str() << std::endl);
+        NMDebugCtx(ctx, << "done!");
         return;
     }
     mLogFileName = fn;
+    QString lfc = QString("Logging to file '%1'").arg(fn);
+    NMDebugAI(<< lfc.toStdString() << std::endl);
 
-    connect(mLogger, SIGNAL(sendLogMsg(QString)), this, SLOT(writeLogMsg(QString)));
+    connect(mLogger, SIGNAL(sendLogTxtMsg(QString)), this, SLOT(writeLogMsg(QString)));
 
     // write the first message
-    QString logstart = QString("LUMASS Engine - %1, %2\n")
+    QString appmode = "";
+    switch (mAppMode)
+    {
+    case NM_APP_GUI: appmode = QStringLiteral("(GUI)"); break;
+    case NM_APP_BMI: appmode = QStringLiteral("(BMI)"); break;
+    default:
+    case NM_APP_ENGINE: appmode = QStringLiteral("(ENGINE)"); break;
+    }
+
+    QString logstart = QString("LUMASS Engine %1 - %2, %3\n")
+            .arg(appmode)
             .arg(QDate::currentDate().toString())
             .arg(QTime::currentTime().toString());
 
-    this->writeLogMsg(logstart);
-    //mBMILogger(2, logstart.toStdString().c_str());
-    log("INFO", logstart);
+    QString nostr = "";
+    mLogger->processLogMsg(nostr, NMLogger::NM_LOG_NOLOG, logstart);
+    mLogger->processLogMsg(lfc, NMLogger::NM_LOG_INFO,
+                           QDateTime::currentDateTime().toString("yyyy-MM-ddThh:mm:ss"));
+    //emit sendLogTxtMsg(logstart);
+    //emit sendLogMsg(logstart);
+    //log("INFO", logstart);
+
+    NMDebugCtx(ctx, << "done!");
 }
 
 void

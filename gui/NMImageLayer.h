@@ -142,6 +142,8 @@ public:
     void setZSliceIndex(int slindex);
 
 public slots:
+    void setRefreshImageData()
+        {mbRefreshImageData = true;}
     void updateSourceBuffer(void);
     void writeDataSet(void);
     void selectionChanged(const QItemSelection& newSel,
@@ -168,6 +170,8 @@ protected:
     void updateSelectionColor(void);
 
     void sendData(QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+
+    void updateVisibleRegion();
 
     template<class T>
     void setLongScalars(T* buf, long long* out, long long numPix, long long nodata);
@@ -220,6 +224,7 @@ protected:
     vtkSmartPointer<vtkImageSlice> mImgSelSlice;
     vtkSmartPointer<vtkImageProperty> mImgSelProperty;
 
+    bool mbRefreshImageData;
     unsigned int mNumRecords;
     unsigned int mNumDimensions;
     unsigned int mNumBands;

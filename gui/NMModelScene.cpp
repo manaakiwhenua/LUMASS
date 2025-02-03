@@ -137,7 +137,7 @@ NMModelScene::dragEnterEvent(QGraphicsSceneDragDropEvent* event)
             }
         }
 
-        NMDebugAI(<< event->mimeData()->text().toStdString());
+        NMDebugAI(<< event->mimeData()->text().toStdString() << std::endl);
         QString mimeText = event->mimeData()->text();
         if (    mimeText.startsWith(QString::fromLatin1("_NMProcCompList_:"))
             ||  mimeText.startsWith(QString::fromLatin1("_NMModelScene_:"))

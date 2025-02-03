@@ -116,6 +116,8 @@ namespace bmi
         void GetGridFaceNodes(const int grid, int* face_nodes);
         void GetGridNodesPerFace(const int grid, int* nodes_per_face);
 
+        void SetSetting(std::string key, std::string value);
+
         void bmilog(int, const char*);
         void setWrapLog(NMBMIWrapper* wrap, WrapLogFunc func);
 

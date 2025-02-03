@@ -189,9 +189,23 @@ void NMProcess::removeInputComponent(const QString& input)
         if (sl.contains(input, Qt::CaseInsensitive))
         {
             sl.removeOne(input);
-            this->mInputComponents[i] = sl;
-            break;
         }
+        // if we cannot find 'input' it is probably because
+        // it is augemnted with an output name!
+        // so we need to look more carefully
+        else
+        {
+            QMutableListIterator<QString> it(sl);
+            while(it.hasNext())
+            {
+                QString& val = it.next();
+                if (val.left(val.indexOf(QChar(':'))).compare(input, Qt::CaseSensitive) == 0)
+                {
+                    it.remove();
+                }
+            }
+        }
+        this->mInputComponents[i] = sl;
     }
     emit NMProcessChanged();
     emit nmChanged();
@@ -735,16 +749,30 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
         }
     }
 
+    NMModelController::MPICompProg progStruct;
+    progStruct.compName = objName;
+    progStruct.event = NMModelController::NM_EVENT_UNKNOWN;
+
     if (this->mbAbortExecution)
+    {
         proc->AbortGenerateDataOn();
+        NMDebugAI(<< userID.toStdString() << ": abort data generation requested" << std::endl);
+    }
 
     if (typeid(event) == typeid(itk::ProgressEvent))
     {
-        emit signalProgress((float)(proc->GetProgress() * 100.0));
+        const float prog = proc->GetProgress() * 100.0;
+        emit signalProgress((float)(prog));
+
+        progStruct.event = NMModelController::NM_EVENT_PROGRESS;
+        progStruct.progress = prog;
     }
     else if (typeid(event) == typeid(itk::StartEvent))
     {
         emit signalExecutionStarted(objName);
+
+        progStruct.event = NMModelController::NM_EVENT_EXEC_STARTED;
+        progStruct.progress = 0;
     }
     else if (typeid(event) == typeid(itk::EndEvent))
     {
@@ -761,6 +789,8 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
                 this->mAuxTab->DisconnectPipeline();
             }
         }
+        progStruct.event = NMModelController::NM_EVENT_EXEC_STOPPED;
+        progStruct.progress = 0;
     }
     else if (typeid(event) == typeid(itk::AbortEvent))
     {
@@ -889,6 +919,14 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
         //        NMDebugAI(<< "NMProcess has received a message from its "
         //                  << "underlying process! ..." << std::endl);
         //        NMDebugAI(<< "type: " << le.getLogType() << " msg: " << le.getLogMsg() << std::endl);
+    }
+
+    // we forward any mpi event to the controller, if we've got an event and a controller
+    if (    mController != nullptr
+         && progStruct.event != NMModelController::NM_EVENT_UNKNOWN
+       )
+    {
+        mController->mpiSignalProgress(progStruct);
     }
 
     // regardless of what event made this method been called, it indicates that

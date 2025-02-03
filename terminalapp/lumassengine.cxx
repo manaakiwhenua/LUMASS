@@ -17,8 +17,6 @@
 #endif
 #endif
 
-//#include "GUI_template_inst.h"
-
 #ifndef NM_ENABLE_LOGGER
 #   define NM_ENABLE_LOGGER
 #   include "nmlog.h"
@@ -62,7 +60,6 @@
 //////////////////////////////////////////////////////
 /// lumassengine implementation
 //////////////////////////////////////////////////////
-
 
 static const std::string ctx = "LUMASS_engine";
 
@@ -112,13 +109,13 @@ int main(int argc, char** argv)
     QCoreApplication engineApp(argc, argv);
     QString enginePath = engineApp.applicationDirPath();
 
-    NMDebugCtx(ctx, << "...");
+    NMDebugCtxNoMPI(ctx, << "...");
 
     // process args
     if (argc < 2)
     {
         showHelp();
-        NMDebugCtx(ctx, << "done!");
+        NMDebugCtxNoMPI(ctx, << "done!");
         return EXIT_SUCCESS;
     }
 
@@ -131,7 +128,8 @@ int main(int argc, char** argv)
     WhatToDo todo = NM_ENGINE_NOPLAN;
     QString losFileName;
     QString modelFileName;
-    QString logFileName;
+    QString runComponent = QStringLiteral("root");
+    //QString logFileName;
     QString workspace;
     bool bLogProv = false;
 
@@ -146,7 +144,7 @@ int main(int argc, char** argv)
             losFileName = argv[arg+1];
             if (!isFileAccessible(losFileName))
             {
-                NMDebugCtx(ctx, << "done!");
+                NMDebugCtxNoMPI(ctx, << "done!");
                 return EXIT_SUCCESS;
             }
             todo = NM_ENGINE_MOSO;
@@ -156,21 +154,10 @@ int main(int argc, char** argv)
             modelFileName = argv[arg+1];
             if (!isFileAccessible(modelFileName))
             {
-                NMDebugCtx(ctx, << "done!");
+                NMDebugCtxNoMPI(ctx, << "done!");
                 return EXIT_SUCCESS;
             }
             todo = NM_ENGINE_MODEL;
-        }
-        else if (theArg == "--logfile")
-        {
-            logFileName = argv[arg+1];
-            QFileInfo fifo(logFileName);
-            QFileInfo difo(fifo.absoluteDir().absolutePath());
-            if (!difo.isWritable())
-            {
-                NMWarn(ctx, << "Log file directory is not writeable!");
-                logFileName.clear();
-            }
         }
         else if (theArg == "--workspace")
         {
@@ -186,10 +173,15 @@ int main(int argc, char** argv)
         {
             bLogProv = true;
         }
+        else if (theArg == "--comp")
+        {
+            runComponent = argv[arg+1];
+        }
 
         ++arg;
     }
 
+    QScopedPointer<NMLumassEngine> engine(new NMLumassEngine(argc, argv));
     if (!losFileName.isEmpty() && !modelFileName.isEmpty())
     {
         NMWarn(ctx, << "Please select either --moso or --model!"
@@ -199,32 +191,13 @@ int main(int argc, char** argv)
         return EXIT_SUCCESS;
     }
 
-
-    QScopedPointer<NMLumassEngine> engine(new NMLumassEngine());
-
-    if (!logFileName.isEmpty())
-    {
-        QString logstart = QString("lumassengine - %1, %2\n")
-                .arg(QDate::currentDate().toString())
-                .arg(QTime::currentTime().toString());
-
-        engine->setLogFileName(logFileName);
-        engine->writeLogMsg(logstart);
-    }
-    else
-    {
-        // turn off logging altoghether
-        engine->getLogger()->setLogLevel(NMLogger::NM_LOG_NOLOG);
-    }
-
-
     switch(todo)
     {
     case NM_ENGINE_MOSO:
         engine->doMOSO(losFileName);
         break;
     case NM_ENGINE_MODEL:
-        engine->doModel(modelFileName, workspace, enginePath, bLogProv);
+        engine->doModel(modelFileName, workspace, enginePath, bLogProv, runComponent);
         break;
     default:
         NMWarn(ctx, << "Please specify either an optimisation "
@@ -236,6 +209,6 @@ int main(int argc, char** argv)
     // shutdown the engine (python and mpi libs)
     engine->shutdown();
 
-    NMDebugCtx(ctx, << "done!");
+    NMDebugCtxNoMPI(ctx, << "done!");
     return EXIT_SUCCESS;
 }

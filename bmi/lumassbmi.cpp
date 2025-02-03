@@ -73,7 +73,7 @@ void main() {}
         // need a NMLumassEngine
         if (nmengine == nullptr)
         {
-            nmengine = new NMLumassEngine();
+            nmengine = new NMLumassEngine(0, nullptr);
         }
 
 
@@ -244,7 +244,7 @@ void main() {}
 
         NMLumassEngine::LumassEngineMode mode = nmengine->getEngineMode();
 		std::stringstream msg;
-		msg << "running model (mode=" << mode << ") for time step " << dt;
+        msg << "running model (mode=" << mode << ") for time step " << dt;
 		bmilog(LEVEL_INFO, msg.str().c_str());
 
 		switch (mode)
@@ -364,7 +364,7 @@ void main() {}
         // need a NMLumassEngine
         if (nmengine == nullptr)
         {
-            nmengine = new NMLumassEngine();
+            nmengine = new NMLumassEngine(0, nullptr);
         }
         nmengine->setBMILogFunc(bmilog);
 		bmilog(LEVEL_INFO, "LumassBMI is now connected to BMI log function!");

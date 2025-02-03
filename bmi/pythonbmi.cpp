@@ -217,6 +217,32 @@ namespace bmi
         }
     }
 
+    void PythonBMI::SetSetting(string key, string value)
+    {
+        py::object pymod = lupy::ctrlPyObjects.at(mBMIWrapperName);
+        if (pymod.is_none())
+        {
+            bmilog(LEVEL_ERROR, "PythonBMI::SetSetting(key, value) - Python module object invalid!");
+            return;
+        }
+
+        try
+        {
+            pymod.attr("setSetting")(key, value);
+            std::stringstream ssstr;
+            ssstr << "PythonBMI::SetSetting(" << key << ", " << value << ") ...";
+            bmilog(LEVEL_DEBUG, ssstr.str().c_str());
+        }
+        catch (py::error_already_set& eas)
+        {
+            bmilog(LEVEL_ERROR, eas.what());
+        }
+        catch (std::exception& se)
+        {
+            bmilog(LEVEL_ERROR, se.what());
+        }
+    }
+
     void PythonBMI::
         Update()
     {

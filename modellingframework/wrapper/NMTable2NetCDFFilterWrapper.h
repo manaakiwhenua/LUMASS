@@ -47,32 +47,34 @@ NMTable2NetCDFFilterWrapper
     Q_OBJECT
 
     
-    Q_PROPERTY(QList<QStringList> DimMapping READ getDimMapping WRITE setDimMapping)
+    //Q_PROPERTY(QList<QStringList> DimMapping READ getDimMapping WRITE setDimMapping)
     Q_PROPERTY(QList<QStringList> OutputOrigin READ getOutputOrigin WRITE setOutputOrigin)
     Q_PROPERTY(QList<QStringList> OutputSpacing READ getOutputSpacing WRITE setOutputSpacing)
     Q_PROPERTY(QList<QStringList> OutputSize READ getOutputSize WRITE setOutputSize)
     Q_PROPERTY(QList<QStringList> OutputIndex READ getOutputIndex WRITE setOutputIndex)
+    Q_PROPERTY(QList<QStringList> OutputDirection READ getOutputDirection WRITE setOutputDirection)
     Q_PROPERTY(QStringList InputTableName READ getInputTableName WRITE setInputTableName)
     Q_PROPERTY(QStringList SQLWhereClause READ getSQLWhereClause WRITE setSQLWhereClause)
     Q_PROPERTY(QStringList ImageVarName READ getImageVarName WRITE setImageVarName)
-    Q_PROPERTY(QStringList NcImageContainer READ getNcImageContainer WRITE setNcImageContainer)
-    Q_PROPERTY(QStringList NcGroupName READ getNcGroupName WRITE setNcGroupName)
+    //Q_PROPERTY(QStringList NcImageContainer READ getNcImageContainer WRITE setNcImageContainer)
+    //Q_PROPERTY(QStringList NcGroupName READ getNcGroupName WRITE setNcGroupName)
     Q_PROPERTY(QList<QStringList> DimVarNames READ getDimVarNames WRITE setDimVarNames)
     Q_PROPERTY(QList<QStringList> VarAndDimDescriptors READ getVarAndDimDescriptors WRITE setVarAndDimDescriptors)
 
 public:
 
     
-    NMPropertyGetSet( DimMapping, QList<QStringList> )
+    //NMPropertyGetSet( DimMapping, QList<QStringList> )
     NMPropertyGetSet( OutputOrigin, QList<QStringList> )
     NMPropertyGetSet( OutputSpacing, QList<QStringList> )
     NMPropertyGetSet( OutputSize, QList<QStringList> )
     NMPropertyGetSet( OutputIndex, QList<QStringList> )
+    NMPropertyGetSet( OutputDirection, QList<QStringList> )
     NMPropertyGetSet( InputTableName, QStringList )
     NMPropertyGetSet( SQLWhereClause, QStringList )
     NMPropertyGetSet( ImageVarName, QStringList )
-    NMPropertyGetSet( NcImageContainer, QStringList )
-    NMPropertyGetSet( NcGroupName, QStringList )
+    //NMPropertyGetSet( NcImageContainer, QStringList )
+    //NMPropertyGetSet( NcGroupName, QStringList )
     NMPropertyGetSet( DimVarNames, QList<QStringList> )
     NMPropertyGetSet( VarAndDimDescriptors, QList<QStringList> )
 
@@ -99,16 +101,17 @@ protected:
             const QMap<QString, NMModelComponent*>& repo);
 
     
-    QList<QStringList> mDimMapping;
+    //QList<QStringList> mDimMapping;
     QList<QStringList> mOutputOrigin;
     QList<QStringList> mOutputSpacing;
     QList<QStringList> mOutputSize;
     QList<QStringList> mOutputIndex;
+    QList<QStringList> mOutputDirection;
     QStringList mInputTableName;
     QStringList mSQLWhereClause;
     QStringList mImageVarName;
-    QStringList mNcImageContainer;
-    QStringList mNcGroupName;
+    //QStringList mNcImageContainer;
+    //QStringList mNcGroupName;
     QList<QStringList> mDimVarNames;
     QList<QStringList> mVarAndDimDescriptors;
 

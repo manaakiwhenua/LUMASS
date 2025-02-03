@@ -92,6 +92,8 @@ public:
 	bool getIsDataBufferItem(void)
 		{return mbIsDataBuffer;}
 
+    bool isExecuting(void)
+        {return mbIsExecuting;}
 
     void setTimeLevel(short level)
         {this->mTimeLevel = level;}

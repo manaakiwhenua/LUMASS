@@ -124,7 +124,11 @@ NMHoverEditTree::changeStructure(const QList<int> &indices, int mode, QVariant i
             }
             else if (indices.count() == 2)
             {
-                QStringList sl = lsl.at(indices.at(0));
+                QStringList sl;
+                if (lsl.size() >= indices.at(0)+1)
+                {
+                    sl = lsl.at(indices.at(0));
+                }
                 if (mode)
                 {
                     QString insstr = "";

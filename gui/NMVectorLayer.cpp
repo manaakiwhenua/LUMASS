@@ -43,13 +43,6 @@
 #include "vtkPolyData.h"
 #include "vtkPolyDataWriter.h"
 #include "vtkLookupTable.h"
-#include "vtkTriangleFilter.h"
-
-#ifdef VTK_OPENGL2
-    #include "vtkPolyDataMapper.h"
-#else
-    #include "vtkOGRLayerMapper.h"
-#endif
 
 #include "vtkCellData.h"
 #include "vtkCellArray.h"
@@ -75,8 +68,9 @@
 #include "vtkExtractCells.h"
 #include "vtkGeometryFilter.h"
 #include "vtkDataSetMapper.h"
+#include "vtkPolyDataMapper.h"
+#include "vtkCleanPolyData.h"
 
-#include "NMVtkOpenGLPolyDataMapper2.h"
 #include "NMPolygonToTriangles.h"
 
 
@@ -251,15 +245,17 @@ void NMVectorLayer::setDataSet(vtkDataSet* dataset)
     // set the bounding box
     pd->GetBounds(this->mBBox);
 
-    // create and set the mapper
-#ifdef VTK_OPENGL2
-    vtkSmartPointer<NMVtkOpenGLPolyDataMapper2> m = vtkSmartPointer<NMVtkOpenGLPolyDataMapper2>::New();
-    m->SetInputData(pd);
-#else
-    vtkSmartPointer<vtkOGRLayerMapper> m = vtkSmartPointer<vtkOGRLayerMapper>::New();
-    m->SetInputData(pd);
-#endif
+    vtkNew<NMPolygonToTriangles> tesselator;
+    tesselator->SetInputData(pd);
+    tesselator->Update();
+    mTris2PolyId = tesselator->GetPolyIdMap();
+    mPoly2TriIds = tesselator->GetTriIdMap();
 
+    vtkNew<vtkCleanPolyData> cleaner;
+    cleaner->SetInputConnection(tesselator->GetOutputPort());
+
+    vtkNew<vtkPolyDataMapper> m;
+    m->SetInputConnection(cleaner->GetOutputPort());
     this->mMapper = m;
 
     // create and set the actor
@@ -283,6 +279,32 @@ void NMVectorLayer::setDataSet(vtkDataSet* dataset)
     this->initiateLegend();
 
     emit layerProcessingEnd();
+}
+
+void
+NMVectorLayer::updateTriangleColors(void)
+{
+    if (mFeatureType != NM_POLYGON_FEAT)
+    {
+        return;
+    }
+
+    vtkPolyDataMapper* mapper = vtkPolyDataMapper::SafeDownCast(this->mMapper);
+
+    const int numTris = mTris2PolyId.size();
+    vtkNew<vtkLookupTable> mapperLookup;
+    mapperLookup->SetNumberOfTableValues(numTris);
+    double rgba[4];
+    for (int c=0; c < numTris; ++c)
+    {
+        mLookupTable->GetTableValue(mTris2PolyId[c], rgba);
+        mapperLookup->SetTableValue(c, rgba);
+    }
+
+    double range[] = {0.0, static_cast<double>(numTris-1)};
+    mapperLookup->SetTableRange(range);
+    mapper->SetLookupTable(mapperLookup);
+    mapper->UseLookupTableScalarRangeOn();
 }
 
 const vtkPolyData* NMVectorLayer::getContour(void)

@@ -51,6 +51,7 @@ public:
         {return OutputColors.GetPointer();}
 
     std::vector<vtkIdType> GetPolyIdMap() {return PolyIds;}
+    std::vector<std::vector<vtkIdType> > GetTriIdMap() {return TriIds;}
 
 protected:
     NMPolygonToTriangles() {}
@@ -67,6 +68,7 @@ protected:
     vtkSmartPointer<vtkLookupTable> OutputColors;
 
     std::vector<vtkIdType> PolyIds;
+    std::vector<std::vector<vtkIdType> > TriIds;
 
 private:
     NMPolygonToTriangles(const NMPolygonToTriangles&) = delete;

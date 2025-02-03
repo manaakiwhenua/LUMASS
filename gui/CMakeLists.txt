@@ -228,6 +228,7 @@ set(LUMASS_LINKLIBS
     MuParser
     NMModFrameCore
     NMMosra
+    LumassBMI
     #${MFW_WRAPPER_NAMES}
     ${LUMASS_GUI_VTK_LIBRARIES}
     ${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}

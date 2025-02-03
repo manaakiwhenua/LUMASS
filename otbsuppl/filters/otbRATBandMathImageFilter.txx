@@ -600,6 +600,7 @@ void RATBandMathImageFilter<TImage>
 
     // get the origin
     m_Origin = this->GetInput()->GetOrigin();
+    m_Spacing = this->GetInput()->GetSignedSpacing();
 
     // Allocate and initialize the thread temporaries
     m_ThreadUnderflow.SetSize(nbThreads);
@@ -851,9 +852,9 @@ void RATBandMathImageFilter<TImage>
     itk::ProgressReporter progress(this, threadId,
                                    outputRegionForThread.GetNumberOfPixels());
 
-    while (!Vit.at(0).IsAtEnd())
+    while (!Vit.at(0).IsAtEnd() && !this->GetAbortGenerateData())
     {
-        while (!Vit.at(0).IsAtEndOfLine())
+        while (!Vit.at(0).IsAtEndOfLine() && !this->GetAbortGenerateData())
         {
             for (j = 0; j < nbInputImages; j++)
             {

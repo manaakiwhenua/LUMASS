@@ -64,6 +64,10 @@ public:
     bool getIsContoursOnlyOn(void)
            {return mContourOnly;}
 
+    std::vector<vtkIdType> getTri2PolyIdMap() {return mTris2PolyId;}
+    std::vector<std::vector<vtkIdType> > getPoly2TriIdMap() {return mPoly2TriIds;}
+    void updateTriangleColors(void);
+
 	NMFeatureType getFeatureType(void);
 
 	QColor getContourColour(void) {return mContourColour;}
@@ -84,6 +88,8 @@ protected:
 #endif
 	vtkSmartPointer<vtkActor> mContourActor;
 	vtkSmartPointer<vtkPolyData> mContour;
+    std::vector<vtkIdType> mTris2PolyId;
+    std::vector<std::vector<vtkIdType> > mPoly2TriIds;
 
 	NMFeatureType mFeatureType;
 	vtkSmartPointer<vtkTable> mAttributeTable;

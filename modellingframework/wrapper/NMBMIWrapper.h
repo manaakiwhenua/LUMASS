@@ -93,6 +93,7 @@ protected:
 
     void parseYamlConfig();
     void initialiseBMILibrary();
+    void updateSettings();
 
 
     // will have mbIsSink in superclass (i.e. NMProcess)

@@ -80,6 +80,9 @@ namespace bmi {
       virtual void SetValue(std::string name, void *src) = 0;
       virtual void SetValueAtIndices(std::string name, int *inds, int count, void *src) = 0;
 
+      // set model configuration settings
+      virtual void SetSetting(std::string key, std::string value) = 0;
+
       // Grid information functions
       virtual int GetGridRank(const int grid) = 0;
       virtual int GetGridSize(const int grid) = 0;

@@ -276,6 +276,7 @@ public:
         //f->SetBMIModule(p->mPtrBMILib);
 
         p->initialiseBMILibrary();
+        p->updateSettings();
 
         // pass on the wrapper object name, so the filter can fetch
         // associated python modules from the global module map
@@ -440,6 +441,76 @@ NMBMIWrapper::initialiseBMILibrary()
             NMLogInfo(<< "Oopsi - can't handle native libs yet :-(")
         }
     }
+}
+
+void
+NMBMIWrapper::updateSettings()
+{
+    if (mController == nullptr)
+    {
+        return;
+    }
+
+    if (this->mPtrBMILib == nullptr)
+    {
+        return;
+    }
+
+
+    QStringList modelSettings = mController->getModelSettingsList();
+    foreach(const QString& s, modelSettings)
+    {
+        QString expr = mController->getSetting(s).toString();
+        QString val = mController->processStringParameter(this, expr);
+
+        mPtrBMILib->SetSetting(s.toStdString(), val.toStdString());
+
+        //settings[py::str(s.toStdString())] = py::str(val.toStdString());
+    }
+
+
+
+//    namespace py = pybind11;
+//    namespace lupy = lumass_python;
+//
+//    std::string compName = this->parent() != nullptr ? this->parent()->objectName().toStdString()
+//                                                 : this->objectName().toStdString();
+//
+//    py::object model = lupy::ctrlPyObjects.at(compName);
+//    if (model.is_none())
+//    {
+//        return;
+//    }
+//
+//    NMDebugAI(<< "getting py model: '" << compName << "' ..." << std::endl);
+//
+//    try
+//    {
+//        py::object settings = model.attr("settings");
+//        if (settings.is_none())
+//        {
+//            NMDebugAI(<< "didn't get the settings!");
+//            return;
+//        }
+//
+//        QStringList modelSettings = mController->getModelSettingsList();
+//        foreach(const QString& s, modelSettings)
+//        {
+//            QString expr = mController->getSetting(s).toString();
+//            QString val = mController->processStringParameter(this, expr);
+//
+//            settings[py::str(s.toStdString())] = py::str(val.toStdString());
+//        }
+//    }
+//    catch (py::error_already_set& eas)
+//    {
+//        NMLogError(<< eas.what());
+//    }
+//    catch (std::exception& se)
+//    {
+//        NMLogError(<< se.what());
+//    }
+
 }
 
 void

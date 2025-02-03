@@ -30,10 +30,9 @@ public:
 
 public slots:
     void insertHtml(const QString& text);
-
+    void clearLog(void);
 protected slots:
     virtual void contextMenuEvent(QContextMenuEvent* event);
-    void clearLog(void);
 };
 
 #endif // NMLOGWIDGET_H

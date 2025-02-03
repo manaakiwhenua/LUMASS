@@ -351,7 +351,7 @@ NMParamEdit::keyPressEvent(QKeyEvent *e)
         int spos = match.capturedStart(0);
         int epos = match.capturedEnd(0);
         int len = match.capturedLength(0);
-        qDebug() << "cpos=" << cpos << "match: " << tmpStr << " (" << spos << "," << epos << ")";
+        //qDebug() << "cpos=" << cpos << "match: " << tmpStr << " (" << spos << "," << epos << ")";
 
 
         if (cpos >= spos && cpos <= epos)
@@ -363,10 +363,10 @@ NMParamEdit::keyPressEvent(QKeyEvent *e)
             QStringRef sep2 = match.capturedRef("sep2");
             QStringRef numidx = match.capturedRef("numidx");
             QStringRef stridx = match.capturedRef("stridx");
-            qDebug() << "comp=" << comp.position()
-                     << " sep1=" << (sep1.isEmpty() ? -1 : sep1.position())
-                     << " prop=" << prop.position()
-                     << " sep2=" << (sep2.isEmpty() ? -1 : sep2.position());
+            //qDebug() << "comp=" << comp.position()
+            //         << " sep1=" << (sep1.isEmpty() ? -1 : sep1.position())
+            //         << " prop=" << prop.position()
+            //         << " sep2=" << (sep2.isEmpty() ? -1 : sep2.position());
 
 
             // Col value completion
@@ -394,7 +394,7 @@ NMParamEdit::keyPressEvent(QKeyEvent *e)
                     prefix = tmpStr.mid(sep2.position()+1, epos-sep2.position());
                 }
                 mCompleter->setCompletionPrefix(prefix);
-                qDebug() << "value completion prefix: " << prefix;
+                //qDebug() << "value completion prefix: " << prefix;
                 //mCompleter->setCompletionPrefix(QString(""));
             }
             // Prop completion
@@ -449,7 +449,7 @@ NMParamEdit::keyPressEvent(QKeyEvent *e)
         }
     }
     mCompletionMode = completionMode;
-    qDebug() << "completion mode: " << completionMode;
+    //qDebug() << "completion mode: " << completionMode;
 
     if (mCompletionMode != NM_NO_COMPLETION)
     {

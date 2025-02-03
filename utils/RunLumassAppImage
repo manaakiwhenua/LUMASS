@@ -9,8 +9,81 @@ this_dir="$(readlink -f "$(dirname "$0")")"
 export LD_LIBRARY_PATH=$APPDIR/usr/lib:$LD_LIBRARY_PATH
 export GDAL_DRIVER_PATH=$APPDIR/usr/lib:$GDAL_DRIVER_PATH
 
-if [ $# -ge 1 ]; then                                                                                                                                                                                                                               
-    exec "$this_dir"/usr/bin/lumassengine "$@"
-else
-    exec "$this_dir"/usr/bin/lumass "$@"
-fi    
+# use of 'getopt' sourced from
+# https://stackoverflow.com/questions/402377/using-getopts-to-process-long-and-short-command-line-options
+# author: Urban Vagabond & VaeVictis
+
+# init vars
+nprocs=1
+engine=0
+gui=0
+modelfile=""
+losfile=""
+
+# if there aren't any arguments, we launch LUMASS in its
+# default mode, i.e. mpi-enabled GUI
+if [ $# -eq 0 ]; then
+  gui=1
+fi
+
+
+# evaluating arguments
+TEMP=$(getopt --options h --long help,seq,np:,model:,moso: -- "$@")
+if [ $? != 0 ]; then echo "Abort!" >&2 ; exit 1; fi
+
+eval set -- "$TEMP"
+
+while true; do
+  case "$1" in
+    -h | --help )
+      echo "Usage: lumass.AppImage [--seq | --np num_procs] [--model <*.lmx | *.yaml> | --moso <*.los>]"
+      break;;
+    --np )
+      re='^[0-9]+$'
+      if ! [[ $2 =~ $re ]]; then
+        echo "ERROR - Please provide an integer number for option '--np'!"
+        exit 1
+      fi
+      nprocs=$(($2))
+      engine=1
+      gui=0
+      shift 2
+      ;;
+    --model ) modelfile="$2"; shift 2; engine=1; gui=0;;
+    --moso  ) losfile="$2"; shift 2; engine=1; gui=0;;
+    --seq ) gui=1; shift; nprocs=0;;
+    -- ) shift; break;;
+    *)
+      break ;;
+  esac
+done
+
+# crafting 'work instructions'
+dir="$this_dir/usr/bin"
+engine_work=""
+if [ ! -z "${modelfile}" ]; then
+  engine_work="--model $modelfile"
+elif [ ! -z "${losfile}" ]; then
+  engine_work="--moso $losfile"
+fi
+
+# launch lumass
+dir="$this_dir/usr/bin"
+if [ $gui -eq 1 ]; then
+  if [ $nprocs -eq 0 ]; then
+    echo "Starting LUMASS in 'sequential' GUI mode ..."
+    exec "$dir"/lumass --seq "$@"
+  else
+    echo "Starting LUMASS in 'parallel' GUI mode ..."
+    exec "$dir"/mpiexec -np 1 "$dir"/lumass --mpi "$@"
+  fi
+elif [ $engine -eq 1 ]; then
+  if [ $nprocs -gt 1 ]; then
+    echo "Running the LUMASS engine in parallel on $nprocs processes ..."
+    exec "$dir"/mpiexec -np $nprocs "$dir"/lumassengine "$engine_work"
+  else
+    echo "Running a single LUMASS engine process ..."
+    exec "$dir"/lumassengine "$engine_work"
+  fi
+fi
+

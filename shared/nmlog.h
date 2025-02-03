@@ -74,11 +74,24 @@
     MPI_Initialized(&init); \
     if (init)\
     {\
+        MPI_Comm p_comm;\
+        MPI_Comm_get_parent(&p_comm);\
+        std::string pIndi = ""; \
+        if (p_comm != MPI_COMM_NULL)\
+            pIndi = "C";\
+        else \
+            pIndi = "P";\
         MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
         std::ostringstream str; \
-        str << "  r" << rank << ": " arg; \
+        str << "  " << pIndi << "r" << rank << ": " arg; \
         std::cout << str.str(); \
    } \
+}
+#define NMDebugAINoMPI(arg) \
+{ \
+    std::ostringstream str; \
+    str << "  " arg; \
+    std::cout << str.str(); \
 }
 #else
 #define NMDebugAI(arg) \
@@ -157,8 +170,15 @@
             MPI_Initialized(&init); \
             if (init)\
             {\
+                MPI_Comm p_comm;\
+                MPI_Comm_get_parent(&p_comm);\
+                std::string pIndi = ""; \
+                if (p_comm != MPI_COMM_NULL)\
+                    pIndi = "C";\
+                else \
+                    pIndi = "P";\
                 MPI_Comm_rank(MPI_COMM_WORLD, &rank);\
-                str << "r" << rank << ":" << context << "::" << \
+                str << pIndi << "r" << rank << ":" << context << "::" << \
                 __FUNCTION__ << ": " arg; \
             }\
             else\
@@ -226,7 +246,7 @@
 }
 
 #define wulog( rank, msg ) \
-{                                                           \
+{\
     if (rank >= 0 && worldRank == rank) std::cout << "r" << rank << ": " << msg << endl;   \
     else if (rank < 0) std::cout << "r" << worldRank << ": " << msg << endl;   \
 }
@@ -269,6 +289,8 @@
 #define NMDebugTimeInd(level, arg)  // ...
 #define NMDebugCtx(ctx, arg)    // ...
 #define NMDebugTimeCtx(ctx, arg)    // ...
+#define NMDebugAINoMPI(arg)
+#define NMDebugCtxNoMPI(ctx, arg)
 // MPI DEBUG HELPER
 #define lulog( rank, msg )
 #define wulog( rank, msg )

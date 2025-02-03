@@ -1055,6 +1055,7 @@ StreamingRATImageFileWriter<TInputImage>
         NetCDFIO* nio = dynamic_cast<NetCDFIO*>(m_ImageIOs[ni].GetPointer());
         if (nio != nullptr)
         {
+            nio->SetPixelTypeInfo(typeid(InputImagePixelType));
             otb::ImageMetadata imd = outImg->GetImageMetadata();
             if (imd.ExtraKeys.find("VarAndDimDescriptors") != imd.ExtraKeys.end())
             {

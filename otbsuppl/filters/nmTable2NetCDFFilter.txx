@@ -119,6 +119,7 @@ void Table2NetCDFFilter<TInputImage, TOutputImage>
     if (    m_OutputSize.size() != OutputImageType::ImageDimension
          || m_OutputIndex.size() != OutputImageType::ImageDimension
          || m_OutputSpacing.size() != OutputImageType::ImageDimension
+         || m_OutputDirection.size() != OutputImageType::ImageDimension
          //|| m_DimVarNames.size() != OutputImageType::ImageDimension
        )
     {
@@ -140,7 +141,7 @@ void Table2NetCDFFilter<TInputImage, TOutputImage>
         outRegion.SetIndex(d, m_OutputIndex[d]);
         outSpacing[d] = m_OutputSpacing[d];
         outOrigin[d]  = m_OutputOrigin[d];
-        outDirection[d][d] = d == 1 ? -1 : 1;
+        outDirection[d][d] = m_OutputDirection[d];
     }
 
     OutImg->SetLargestPossibleRegion(outRegion);
@@ -289,24 +290,27 @@ bool Table2NetCDFFilter< TInputImage, TOutputImage >
     otb::SQLiteTable::Pointer sqltab = m_vRAT.at(0);
 
     // double check whether we've got the required input columns
-    for (int cn=0; cn < m_DimVarNames.size(); ++cn)
+    if (m_DimVarNames.size() == TInputImage::ImageDimension)
     {
-        // only check, if outputsize is > 1 otherwise this is a
-        // dummy dimension and we just set index 0 all the time
-        if (m_OutputSize.at(cn) > 1)
+        for (int cn=0; cn < m_DimVarNames.size(); ++cn)
         {
-            if (sqltab->ColumnExists(m_DimVarNames.at(cn)) < 0)
+            // only check, if outputsize is > 1 otherwise this is a
+            // dummy dimension and we just set index 0 all the time
+            if (m_OutputSize.at(cn) > 1)
             {
-                itkExceptionMacro(<< "Couldn't find the specified dimension variable '"
-                                  << m_DimVarNames.at(cn) << "' in the input table!"
-                                  << endl);
-                return false;
+                if (sqltab->ColumnExists(m_DimVarNames.at(cn)) < 0)
+                {
+                    itkExceptionMacro(<< "Couldn't find the specified dimension variable '"
+                                      << m_DimVarNames.at(cn) << "' in the input table!"
+                                      << endl);
+                    return false;
+                }
+                m_WhereClauseHelper.push_back(m_DimVarNames.at(cn));
             }
-            m_WhereClauseHelper.push_back(m_DimVarNames.at(cn));
-        }
-        else
-        {
-            m_WhereClauseHelper.push_back("__dummy__");
+            else
+            {
+                m_WhereClauseHelper.push_back("__dummy__");
+            }
         }
     }
 
@@ -352,9 +356,12 @@ void Table2NetCDFFilter< TInputImage, TOutputImage >
     orderBy << " order by ";
     std::stringstream strWC;
     strWC << " where ";
-    for (int col=0, cnt=0; col < m_WhereClauseHelper.size(); ++col, ++cnt)
+
+    // as ITK/OTB is using row-major ordering, we sort indices from
+    // slowest to fastest moving, i.e. z, y, x
+    for (int col=m_WhereClauseHelper.size()-1; col >= 0; --col)
     {
-        if (m_WhereClauseHelper.at(col).compare("__dummy__") > 0)
+        if (m_WhereClauseHelper.at(col).compare("__dummy__") != 0)
         {
             strWC << m_WhereClauseHelper.at(col) << " between "
                   << outRegion.GetIndex(col) << " and "
@@ -363,19 +370,32 @@ void Table2NetCDFFilter< TInputImage, TOutputImage >
 
 
             orderBy << m_WhereClauseHelper.at(col);
+            if (m_OutputDirection[col] == 1)
+            {
+                orderBy << " asc";
+            }
+            else if (m_OutputDirection[col] == -1)
+            {
+                orderBy << " desc";
+            }
         }
         else
         {
             continue;
         }
 
-        if (col < cnt-1)
+        if (col > 0)
         {
             strWC << " and ";
             orderBy << ", ";
         }
     }
+
     std::string whereClause = strWC.str() + orderBy.str();
+    if (!m_SQLWhereClause.empty())
+    {
+        whereClause = m_SQLWhereClause;
+    }
 
     otb::SQLiteTable::Pointer sqltab = m_vRAT.at(0);
     if (!sqltab->PrepareBulkGet(m_ColNames, whereClause, false))

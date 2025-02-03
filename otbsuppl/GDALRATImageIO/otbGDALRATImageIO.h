@@ -65,7 +65,7 @@ class GDALDataTypeWrapper;
 
 /** \class GDALRATImageIO
  *
- * \brief ImageIO object for reading (not writing) GDAL images
+ * \brief ImageIO object for reading and writing GDAL supported images
  *
  * The streaming read is implemented.
  *

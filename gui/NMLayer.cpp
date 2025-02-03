@@ -799,13 +799,8 @@ NMLayer::updateMapping(void)
     }
     else if (mLayerType == NM_VECTOR_LAYER)
     {
-        //vtkOGRLayerMapper* mapper = vtkOGRLayerMapper::SafeDownCast(this->mMapper);
-        vtkPolyDataMapper* mapper = vtkPolyDataMapper::SafeDownCast(this->mMapper);
-        if (!clrfunc)
-            mapper->SetLookupTable(mLookupTable);
-        else
-            mapper->SetLookupTable(mClrFunc);
-        mapper->UseLookupTableScalarRangeOn();
+        NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
+        vl->updateTriangleColors();
     }
 
     if (!mLegendFileName.isEmpty())
@@ -2383,6 +2378,14 @@ NMLayer::setLegendColour(const int legendRow, double* rgba)
 
     default:
         break;
+    }
+
+    // as polygon vector layers are tesselated, we need
+    // forward any color changes to the triangles ...
+    if (mLayerType == NM_VECTOR_LAYER)
+    {
+        NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
+        vl->updateTriangleColors();
     }
 
     emit legendChanged(this);

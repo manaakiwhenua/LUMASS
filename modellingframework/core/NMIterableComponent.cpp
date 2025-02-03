@@ -265,13 +265,15 @@ void NMIterableComponent::addModelComponent(NMModelComponent* comp)
 
 void
 NMIterableComponent::createExecSequence(QList<QStringList>& execList,
+        const QMap<QString, NMModelComponent *> &levelComps,
         unsigned int timeLevel, int step)
 {
     //NMDebugCtx(this->objectName().toStdString(), << "...");
 
     // identify all available ends within this group component with
     // respect to the container's time level
-    QStringList deadEnds = this->findExecutableComponents(timeLevel, step);
+    QStringList deadEnds = this->findExecutableComponents(levelComps,
+                timeLevel, step);
 
     // find for each of those ends the upstream components
     // constituting the pipeline
@@ -551,8 +553,18 @@ NMIterableComponent::getUpstreamPipelineComponents(QStringList& upstrPipeComps)
     {
         foreach(const QString& input, inList)
         {
+            // accounts for name suffixes for input components that provide
+            // more than one output component
+            //     012345678910
+            // eg: BMIModel2:fail
+            QString compName = input;
+            int suffixPos = input.indexOf(QChar(':'));
+            if (suffixPos > 0)
+            {
+                compName = input.left(suffixPos);
+            }
             NMModelComponent* comp = this->mController != nullptr ?
-                                     this->mController->getComponent(input) :
+                                     this->mController->getComponent(compName) :
                                      nullptr;
             if (comp != nullptr)
             {
@@ -561,7 +573,7 @@ NMIterableComponent::getUpstreamPipelineComponents(QStringList& upstrPipeComps)
                 {
                     ic->getUpstreamPipelineComponents(upstrPipeComps);
                 }
-                upstrPipeComps.push_back(input);
+                upstrPipeComps.push_back(compName);
             }
         }
     }
@@ -935,6 +947,13 @@ NMIterableComponent::evalNumIterationsExpression(const unsigned int& step)
 
             me.setDescription(msg.str());
             emit signalExecutionStopped();
+
+            NMModelController::MPICompProg compProg;
+            compProg.compName = this->objectName();
+            compProg.event = NMModelController::NM_EVENT_EXEC_STOPPED;
+            compProg.progress = 0;
+            mController->mpiSignalProgress(compProg);
+
             this->mIsUpdating = false;
             throw me;
         }
@@ -1060,6 +1079,12 @@ void NMIterableComponent::update(const QMap<QString, NMModelComponent*>& repo)
 
     emit signalExecutionStarted();
 
+    NMModelController::MPICompProg compProg;
+    compProg.compName = this->objectName();
+    compProg.event = NMModelController::NM_EVENT_EXEC_STARTED;
+    compProg.progress = 0;
+    mController->mpiSignalProgress(compProg);
+
     // check, whether we're supposed to run at all
     NMModelController* controller = this->getModelController();//= qobject_cast<NMModelController*>(this->parent());
     if (controller != nullptr)
@@ -1067,8 +1092,11 @@ void NMIterableComponent::update(const QMap<QString, NMModelComponent*>& repo)
         if (controller->isModelAbortionRequested())
         {
             NMLogInfo(<< "Model abortion requested!" << endl);
+            NMDebugAI(<< "Model abortion requested!" << endl);
             NMDebugCtx(this->objectName().toStdString(), << "done!");
             emit signalExecutionStopped();
+            compProg.event = NMModelController::NM_EVENT_EXEC_STOPPED;
+            mController->mpiSignalProgress(compProg);
             return;
         }
     }
@@ -1078,6 +1106,8 @@ void NMIterableComponent::update(const QMap<QString, NMModelComponent*>& repo)
                 << ": We'd better quit here - there's no controller in charge!" << endl);
         NMDebugCtx(this->objectName().toStdString(), << "done!");
         emit signalExecutionStopped();
+        compProg.event = NMModelController::NM_EVENT_EXEC_STOPPED;
+        mController->mpiSignalProgress(compProg);
         return;
     }
 
@@ -1113,6 +1143,8 @@ void NMIterableComponent::update(const QMap<QString, NMModelComponent*>& repo)
     this->iterativeComponentUpdate(repo, minLevel, maxLevel);
 
     emit signalExecutionStopped();
+    compProg.event = NMModelController::NM_EVENT_EXEC_STOPPED;
+    mController->mpiSignalProgress(compProg);
     mIsUpdating = false;
     NMDebugCtx(this->objectName().toStdString(), << "done!");
 }
@@ -1264,17 +1296,15 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
     //      Init MPI for parallel proc
     // =========================================================================
 
-    // if we're (g)root ( ;-) ) create the top most comm...
-    MPI_Comm rootComm = MPI_COMM_NULL;
-    if (this->objectName().compare(QStringLiteral("root")) == 0)
-    {
-        MPI_Comm_dup(MPI_COMM_WORLD, &rootComm);
-        controller->registerParallelGroup(QStringLiteral("root"), rootComm);
-    }
-
     // get responsible comm for this component
     MPI_Comm comm = controller->getNextUpstrMPIComm(this->objectName());
-    //MPI_Comm comm = MPI_COMM_NULL;
+
+    MPI_Comm interComm;
+    MPI_Comm_get_parent(&interComm);
+    if (interComm != MPI_COMM_NULL)
+    {
+        NMDebugAI(<< "We're running a subprocess-model here ...!" << std::endl);
+    }
 
     int commProcs = 1;
     int commRank = 0;
@@ -1287,8 +1317,6 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
         MPI_Comm_size(MPI_COMM_WORLD, &worldProcs);
         MPI_Comm_size(comm, &commProcs);
         MPI_Comm_rank(comm, &commRank);
-
-        MPI_Barrier(comm);
     }
 
     std::stringstream exmsg;
@@ -1318,7 +1346,11 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
         this->initialiseComponents((unsigned int)level);
 
         QList<QStringList> execList;
-        this->createExecSequence(execList, level, step);
+        timeIt = this->mMapTimeLevelComp.constFind(level);
+        if (timeIt != this->mMapTimeLevelComp.cend())
+        {
+            this->createExecSequence(execList, timeIt.value(), level, step);
+        }
 
         ///////////////// DEBUG
         // let's have a look what we've got so far ...
@@ -1756,44 +1788,34 @@ wulog(-1, "lr" << commRank << ": init parallel IO " << (bpio ? " successful!" : 
         }
 
 
-        // Wait for all ranks associated with this aggregate component.
-        // Note that this includes all ranks belonging to splitComm that
-        // actually did some work on this time level.
-        if (comm != MPI_COMM_NULL)
-        {
-            wulog(-1, "lr" << commRank << ": >> waiting at " << this->objectName().toStdString()
-                  << "'s iteration COMM barrier ... ");
-            MPI_Barrier(comm);
-        }
+     //   // Wait for all ranks associated with this aggregate component.
+     //   // Note that this includes all ranks belonging to splitComm that
+     //   // actually did some work on this time level.
+     //   if (comm != MPI_COMM_NULL)
+     //   {
+     //       wulog(-1, "lr" << commRank << ": >> waiting at " << this->objectName().toStdString()
+     //             << "'s iteration COMM barrier ... ");
+     //       MPI_Barrier(comm);
+     //   }
 
-        // Now that all ranks have finished, we can
-        // de-register the splitComm communicators and free them.
-        if (splitComm != MPI_COMM_NULL)
-        {
-            foreach(const QString& rec, rankExecComps)
-            {
-                this->mController->deregisterParallelGroup(rec);
-            }
-            wulog(-1, "lr" << commRank << ": >> waiting at " << this->objectName().toStdString()
-                  << "'s time level SPLIT barrier ... ");
-            MPI_Comm_free(&splitComm);
-        }
+     //   // Now that all ranks have finished, we can
+     //   // de-register the splitComm communicators and free them.
+     //   if (splitComm != MPI_COMM_NULL)
+     //   {
+     //       foreach(const QString& rec, rankExecComps)
+     //       {
+     //           this->mController->deregisterParallelGroup(rec);
+     //       }
+     //       wulog(-1, "lr" << commRank << ": >> waiting at " << this->objectName().toStdString()
+     //             << "'s time level SPLIT barrier ... ");
+     //       MPI_Comm_free(&splitComm);
+     //   }
     }
 
     NMDebugAI(<< ">>>> END ITERATION #" << step+1 << std::endl);
     NMDebugCtx(this->objectName().toStdString(), << "done!");
 
-    if (    this->objectName().compare(QStringLiteral("root")) == 0
-         && rootComm != MPI_COMM_NULL
-       )
-    {
-        // let every process catch-up before we free the communicator
-        MPI_Barrier(rootComm);
-        this->mController->deregisterParallelGroup("root");
-        MPI_Comm_free(&rootComm);
-    }
-
-    }
+    }// end try-block
     catch (mu::ParserError& evalerr)
     {
         std::stringstream errmsg;
@@ -1859,6 +1881,13 @@ wulog(-1, "lr" << commRank << ": init parallel IO " << (bpio ? " successful!" : 
         NMErr(ctx, << mfwe.what());
 
         NMDebugCtx(this->objectName().toStdString(), << "done!");
+
+        NMModelController::MPICompProg compProg;
+        compProg.compName = this->objectName();
+        compProg.event = NMModelController::NM_EVENT_EXEC_ABORTED;
+        compProg.progress = 0;
+        mController->mpiSignalProgress(compProg);
+
         emit signalExecutionStopped();
         mIsUpdating = false;
         throw mfwe;
@@ -1866,13 +1895,10 @@ wulog(-1, "lr" << commRank << ": init parallel IO " << (bpio ? " successful!" : 
 }
 
 const QStringList
-NMIterableComponent::findExecutableComponents(unsigned int timeLevel,
-        int step)
+NMIterableComponent::findExecutableComponents(
+        const QMap<QString, NMModelComponent*>& levelComps,
+        unsigned int timeLevel, int step)
 {
-    // get the list of components for the specified time level
-    QMap<QString, NMModelComponent*> levelComps =
-            this->mMapTimeLevelComp.value(timeLevel);
-
     // we initially copy the list of keys
     QStringList execComps = levelComps.keys();
 
@@ -1895,72 +1921,71 @@ NMIterableComponent::findExecutableComponents(unsigned int timeLevel,
     // data buffer component is updated subsequently
     QStringList dataBuffers;
 
-    QMap<QString, NMModelComponent*>::iterator levelIt =
-            levelComps.begin();
-    while(levelIt != levelComps.end())
+    QMap<QString, NMModelComponent*>::const_iterator inputIt =
+            levelComps.constBegin();  
+    for (; inputIt != levelComps.constEnd(); ++inputIt)
     {
-        // we only execute 'sink' processes, DataBuffers or
-        // aggregate components
-        QString cn = levelIt.key();
-        if (    !cn.startsWith(QString::fromLatin1("DataBuffer"))
-            &&  !cn.startsWith(QString::fromLatin1("AggrComp"))
-            &&  !NMProcessFactory::instance().isSink(cn)
+        QString input = inputIt.key();
+
+        // we only execute 'sink' processes, DataBuffers, and
+        // aggregate components, so if you're not one of them,
+        // we take you off the list
+        if (    !input.startsWith(QString::fromLatin1("DataBuffer"))
+            &&  !input.startsWith(QString::fromLatin1("AggrComp"))
+            &&  !NMProcessFactory::instance().isSink(input)
            )
         {
-            execComps.removeOne(levelIt.key());
-            NMDebugAI(<< "removed non-executable '" << levelIt.key().toStdString() << "' from executables"
+            execComps.removeOne(input);
+            NMDebugAI(<< "removed non-executable '" << inputIt.key().toStdString() << "' from executables"
                       << std::endl);
-            ++levelIt;
             continue;
         }
 
-
-        NMDataComponent* buf = qobject_cast<NMDataComponent*>(levelIt.value());
-        if (buf != 0)
+        // make list of data buffers
+        NMDataComponent* buf = qobject_cast<NMDataComponent*>(inputIt.value());
+        if (buf != nullptr)
         {
             dataBuffers.push_back(buf->objectName());
         }
 
-        QList<QStringList> allInputs = levelIt.value()->getInputs();
-        if (allInputs.size() == 0)
+        // check whether current component 'input' is an input to another
+        // component on the candidate list (ie comps on this time level);
+        // if yes, remove 'input' from exec list
+        QMap<QString, NMModelComponent*>::const_iterator testIt =
+                levelComps.constBegin();
+        for (; testIt != levelComps.constEnd(); ++testIt)
         {
-            ++levelIt;
-            continue;
-        }
+            const QList<QStringList>& _icInputsList = testIt.value()->getInputs();
+            NMIterableComponent* _ic = qobject_cast<NMIterableComponent*>(testIt.value());
 
-        // determine step to determine the input link for this component
-
-        // here: conventional approach
-        if (step > allInputs.size()-1)
-        {
-            // ToDo: this might need to be adjusted when we
-            // introduce the choice between 'use_up | cyle | <other>'
-            // for now, we make it NM_USE_UP
-            step = allInputs.size()-1;
-        }
-
-        // in case we're looking at a process component, we account for its index policy
-        // (i.e. USE_UP | CYCLIC | SYNC_WITH_HOST)
-        // and for its current iteration step
-        NMIterableComponent* procComp = qobject_cast<NMIterableComponent*>(levelIt.value());
-        if (procComp)
-        {
-            if (procComp->getProcess())
+            QStringList _icInputs;
+            if (_icInputsList.size()-1 >= step)
             {
-                step = procComp->getProcess()->mapHostIndexToPolicyIndex(step, allInputs.size());
+                // apply "NM_USE_UP" index policy
+                int _step = step;
+                if (_step > _icInputsList.size()-1)
+                {
+                    _step = _icInputsList.size()-1;
+                }
+
+                if (_ic != nullptr)
+                {
+                    if (_ic->getProcess() != nullptr)
+                    {
+                        _step = _ic->getProcess()->mapHostIndexToPolicyIndex(_step, _icInputsList.size());
+                    }
+                }
+
+                _icInputs = _icInputsList.at(_step);
+                if (_icInputs.contains(input))
+                {
+                    execComps.removeOne(input);
+                    NMDebugAI(<< "removed non-executable '" << input.toStdString() << "' from executables"
+                              << std::endl);
+                    break;
+                }
             }
         }
-
-        QStringList inputs = allInputs.at(step);
-        foreach(const QString& in, inputs)
-        {
-            if (execComps.contains(in))
-            {
-                execComps.removeOne(in);
-            }
-        }
-
-        ++levelIt;
     }
 
     // if the execComps list is empty, we shall just return all data buffers (=stock component)

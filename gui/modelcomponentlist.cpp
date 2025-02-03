@@ -2227,6 +2227,7 @@ void ModelComponentList::stretchColourRampToVisMinMax()
             il->setLower(stats.at(0));
             il->setUpper(stats.at(1));
         }
+        il->setRefreshImageData();
         il->updateMapping();
     }
 }

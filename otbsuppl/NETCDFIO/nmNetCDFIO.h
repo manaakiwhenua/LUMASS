@@ -58,8 +58,6 @@ public:
     virtual bool CanStreamWrite() {return true;}
 
     virtual void WriteImageInformation();
-    void InternalWriteImageInformation();
-
     virtual void Write(const void* buffer);
 
     /*!

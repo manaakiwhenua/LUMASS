@@ -22,8 +22,9 @@
  *      Author: alex
  */
 
+#include <cstddef>
 #include <QFuture>
-#include <QtConcurrentRun>
+//#include <QtConcurrentRun>
 #include <QFileInfo>
 #include <QString>
 
@@ -43,17 +44,21 @@ namespace lupy = lumass_python;
 
 #include <QRegularExpression>
 #include <QRegularExpressionMatchIterator>
+#include <QDomDocument>
 
 #include "NMModelController.h"
 #include "NMIterableComponent.h"
+#include "NMParallelIterComponent.h"
 #include "NMSequentialIterComponent.h"
 #include "NMParameterTable.h"
 #include "NMDataComponent.h"
 #include "NMMfwException.h"
 #include "NMImageReader.h"
 #include "NMTableReader.h"
-
+#include "NMModelSerialiser.h"
 #include "otbMultiParser.h"
+#include "NMStreamingImageFileWriterWrapper.h"
+#include "NMMPIRunnable.h"
 
 const std::string NMModelController::ctx = "NMModelController";
 
@@ -62,18 +67,46 @@ NMModelController::NMModelController(QObject* parent)
       mRootComponent(0), mbAbortionRequested(false),
       mbLogProv(false),
       mRank(0),
-      mNumProcs(1)
+      mNumProcs(1),
+      mParentMPIComm(MPI_COMM_NULL),
+      mMergedComm(MPI_COMM_NULL),
+      mInterComm(MPI_COMM_NULL),
+      mAppMode(4),
+      mbIsMPIEventLoopRunning(false),
+      mbHasMPIRuntime(false),
+      mMPICompProgWin(MPI_WIN_NULL),
+      mMPICompState(nullptr),
+      mMPIAbort(nullptr)
 {
     this->setParent(parent);
     this->mModelStarted = QDateTime::currentDateTime();
     this->mModelStopped = this->mModelStarted;
     mLogger = new NMLogger(this);
+
+    qRegisterMetaType<NMMPIRunnable*>("NMMPIRunnable*");
+
+    MPI_Comm_get_parent(&mParentMPIComm);
+
+    // create the one and only root model component
+    NMSequentialIterComponent* root = new NMSequentialIterComponent();
+    root->setObjectName("root");
+    root->setDescription("Top level model component managed by the ModelController");
+    this->addComponent(root);
+}
+
+bool NMModelController::getUsesMPIRuntime(void)
+{
+    return mbHasMPIRuntime;
+}
+
+void NMModelController::setUsesMPIRuntime(bool hasRuntime)
+{
+    mbHasMPIRuntime = hasRuntime;
 }
 
 NMModelController::~NMModelController()
 {
-
-
+    this->mComponentMap.clear();
 }
 
 void
@@ -116,6 +149,84 @@ NMModelController::getOutputFromSource(const QString& inputSrc)
 
     w = mc->getOutput(outIdx);
     return w;
+}
+
+
+void
+NMModelController::mpiSignalProgress(MPICompProg &progStruct)
+{
+    // only signalling to our parent/server model
+    if (mParentMPIComm == MPI_COMM_NULL)
+    {
+        return;
+    }
+
+    QStringList sortedModelComps = mComponentMap.keys();
+    sortedModelComps.sort(Qt::CaseInsensitive);
+    const int compId = sortedModelComps.indexOf(progStruct.compName);
+    if (compId < 0)
+    {
+        NMLogError(<< "Signalling progress failed! Couldn't find sender '"
+                   << progStruct.compName.toStdString() << "'!");
+        return;
+    }
+
+    // get rank and size info
+    int mrank, msize, localRank, localSize;
+    MPI_Comm_rank(this->mMergedComm, &mrank);
+    MPI_Comm_size(this->mMergedComm, &msize);
+
+    MPI_Comm_rank(MPI_COMM_WORLD, &localRank);
+    MPI_Comm_size(MPI_COMM_WORLD, &localSize);
+
+    std::vector<int> eventProg = {
+        static_cast<int>(progStruct.event),
+        static_cast<int>(progStruct.progress+0.5)
+        };
+
+    const int ncomps = sortedModelComps.size();
+    const int nvals = 2;
+
+    const int target_pos = localRank * ncomps * nvals + compId * nvals;
+
+    MPI_Win_lock(MPI_LOCK_SHARED, mrank, MPI_MODE_NOCHECK, mMPICompProgWin);
+    MPI_Put(static_cast<void*>(&eventProg[0]), 2, MPI_INT, mrank, target_pos, 2, MPI_INT, mMPICompProgWin);
+    MPI_Win_unlock(mrank, mMPICompProgWin);
+
+
+#ifdef LUMASS_DEBUG
+
+    std::string eventName;
+    const int eventId = eventProg[0];
+    switch (eventId)
+    {
+        case 2: eventName = "PROGRESS"; break;
+        case 3: eventName = "EXEC_START"; break;
+        case 4: eventName = "EXEC_STOP"; break;
+        case 5: eventName = "ABORT_EXEC"; break;
+        case 6: eventName = "START_EXEC"; break;
+        case 7: eventName = "EXEC_ABORTED"; break;
+        case 8: eventName = "NUMITER_CHGD"; break;
+        case 1:
+        default:
+             eventName = "UNKNOWN"; break;
+    }
+
+    NMDebugAI(<< "#" << localRank << " target_pos=" << target_pos
+              << " posted: " << progStruct.compName.toStdString()
+              << "::" << eventName << "=" << eventProg[1] << std::endl);
+#endif
+
+    // check whether we're supposed to abort
+    MPI_Win_lock(MPI_LOCK_SHARED, 0, MPI_MODE_NOCHECK, mMPIParentAbort);
+    MPI_Get(static_cast<void*>(mMPIAbort), 1, MPI_INT, 0, 0, 1, MPI_INT, mMPIParentAbort);
+    MPI_Win_unlock(0, mMPIParentAbort);
+
+    if (*mMPIAbort == 1)
+    {
+        NMDebugAI(<< ctx << ": MPI child 'ModelController::abortModel()'!\n");
+        this->abortModel();
+    }
 }
 
 bool
@@ -166,8 +277,8 @@ NMModelController::abortModel(void)
         }
         this->mbAbortionRequested = true;
 
-//        NMLogInfo(<< "ModelController: Model '" << comp->objectName().toStdString()
-//                  << "' has been requested to abort execution at the next opportunity!");
+        NMLogInfo(<< "ModelController: Model '" << comp->objectName().toStdString()
+                  << "' has been requested to abort execution at the next opportunity!");
     }
     NMDebugCtx(ctx, << "done!");
 }
@@ -235,6 +346,82 @@ NMModelController::deleteLater(QStringList compNames)
     }
 }
 
+void
+NMModelController::setYamlConfigValue(const QString &configFN, YAML::Node &fileNode,
+                                      const QString &configNode, const QString& item,
+                                      const QString &value)
+{
+    QFileInfo yamlInfo(configFN);
+    if (yamlInfo.isWritable())
+    {
+        fileNode = YAML::LoadFile(configFN.toStdString());
+        if (fileNode[configNode.toStdString()])
+        {
+            YAML::Node node1 = fileNode[configNode.toStdString()];
+
+            if (node1[item.toStdString()])
+            {
+                node1[item.toStdString()] = value.toStdString();
+            }
+        }
+
+        //singleQuoteYamlValues(fileNode);
+    }
+    else
+    {
+        NMLogError(<< "The configuration file '"
+                   << configFN.toStdString() << "' "
+                   << "could not be edited!");
+        return;
+    }
+}
+
+void
+NMModelController::emitYaml(YAML::Emitter& emitter, const YAML::Node& node)
+{
+    if (node.IsNull() || !node.IsDefined())
+    {
+        return;
+    }
+
+    if (node.IsMap())
+    {
+        emitter << YAML::BeginMap;
+        YAML::const_iterator mit=node.begin();
+        for (; mit != node.end(); ++mit)
+        {
+            emitter << YAML::Key << mit->first;
+            if (mit->second.IsScalar())
+            {
+                emitter << YAML::SingleQuoted << YAML::Value << mit->second.as<std::string>();
+            }
+            else
+            {
+                YAML::Node m2node = mit->second;
+                emitYaml(emitter, m2node);
+            }
+        }
+        emitter << YAML::EndMap;
+    }
+    else if (node.IsSequence())
+    {
+        emitter << YAML::BeginSeq;
+        for (int s=0; s < node.size(); ++s)
+        {
+            if (node[s].IsScalar())
+            {
+                emitter << YAML::SingleQuoted << YAML::Value << node[s].as<std::string>();
+            }
+            else
+            {
+                YAML::Node pnode = node[s];
+                emitYaml(emitter, pnode);
+            }
+        }
+        emitter << YAML::EndSeq;
+    }
+}
+
 QStringList
 NMModelController::getModelSettingsList(void)
 {
@@ -285,8 +472,740 @@ NMModelController::updateSettings(const QString& key, QVariant value)
     emit settingsUpdated(key, value);
 }
 
+
+
 void
-NMModelController::executeModel(const QString& compName)
+NMModelController::executeModel(const QString& compName,
+                                const QString& yamlFN)
+{
+    NMDebugCtx(ctx, << "...");
+
+    // do we have parallel components in the model at all?
+    bool bParallelModel = false;
+    QMap<NMModelController::ModelParallelism, QStringList> paraComps;
+
+    mParallelHosts.clear();
+    this->identifyParallelComponents(compName, paraComps, mParallelHosts);
+
+    if (paraComps.size() > 0)
+    {
+        bParallelModel = true;
+        std::stringstream paralog;
+        auto pcit = paraComps.constBegin();
+        for (; pcit != paraComps.constEnd(); ++pcit)
+        {
+            switch(pcit.key())
+            {
+            case NM_PARALLEL_ITERATOR:  paralog << "Parallel Iterators: "; break;
+            case NM_PARALLEL_TIMELEVEL: paralog << "Parallel Time Levels: "; break;
+            case NM_PARALLEL_PIPELINE:  paralog << "Parallel Pipelines: "; break;
+            default: break;
+            }
+
+            foreach(const QString& cn, pcit.value())
+            {
+                paralog << cn.toStdString() << " ";
+            }
+            paralog << std::endl;
+        }
+        NMLogInfo(<< "Parallel Model Components: \n" << paralog.str());
+        NMDebugAI(<< "Parallel Model Components: \n" << paralog.str() << std::endl);
+        paralog.str("");
+        auto dphc = mParallelHosts.cbegin();
+        for (; dphc != mParallelHosts.cend(); ++dphc)
+        {
+            paralog << (*dphc).toStdString() << " ";
+        }
+        NMLogInfo(<< "Parallel Host Components: " << paralog.str());
+        NMDebugAI(<< "Parallel Host Components: " << paralog.str() << std::endl);
+
+    }
+    else
+    {
+        NMLogInfo(<< "No parallel model components detected.");
+        NMDebugAI(<< "No parallel model components detected." << std::endl);
+    }
+
+    std::string pcom = mParentMPIComm == MPI_COMM_NULL ? "MPI_COMM_NULL" : "INSTANTIATED";
+    NMDebugAI(<< ">>>>>> mAppMode: " << mAppMode << std::endl);
+    NMDebugAI(<< ">>>>>> mbHasMPIRuntime: " << mbHasMPIRuntime << std::endl);
+    NMDebugAI(<< ">>>>>> mParentMPIComm: " << pcom << std::endl);
+    NMLogDebug(<< ">>>>>> mAppMode: " << mAppMode << std::endl);
+    NMLogDebug(<< ">>>>>> mbHasMPIRuntime: " << mbHasMPIRuntime << std::endl);
+    NMLogDebug(<< ">>>>>> mParentMPIComm: " << pcom << std::endl);
+
+
+    // starting provenance logs, if enabled
+    if (mbLogProv)
+    {
+        NMModelComponent* comp = this->getComponent(compName);
+        if (comp == nullptr)
+        {
+            NMLogError(<< ctx << ": couldn't find '"
+                    << compName.toStdString() << "'!");
+            NMDebugCtx(ctx, << "done!");
+            return;
+        }
+        QString userID = comp->getUserID();
+        if (userID.isEmpty())
+        {
+            userID = comp->objectName();
+        }
+
+        // - if we're in MPI mode, we need to determine our appropriate
+        //   rank number to be appended to the provenance file name:
+        //   -> if we're an engine in mpi child model mode, we increase
+        //      our rank by +1 as rank #0 is the gui-based mpi parent model
+        // - if we're not in MPI mode, logRank remains an empty string
+        QString logRank = "";
+        if (mbHasMPIRuntime)
+        {
+            int _log_rank_num = mRank;
+            if (    mAppMode == 1
+                 && mParentMPIComm != MPI_COMM_NULL
+               )
+            {
+                _log_rank_num++;
+            }
+            logRank = QString("_r%1").arg(_log_rank_num);
+        }
+
+        QString stamp = QDateTime::currentDateTime().toString(Qt::ISODate);
+        stamp = stamp.replace(":", "");
+        stamp = stamp.replace("-", "");
+
+        QString provFN = QString("%1/%2_%3%4.provn")
+                         .arg(this->getSetting("Workspace").toString())
+                         .arg(userID)
+                         .arg(stamp)
+                         .arg(logRank);
+        startProv(provFN, comp->objectName());
+    }
+
+    int yamlProcs = this->getNumProcs();
+    QVariant  vYamlProcs = this->getSetting(QStringLiteral("MaxProcCount"));
+    NMDebugAI(<< ">>>>>> ParentProcCount: " << this->getNumProcs() << std::endl);
+    if (vYamlProcs.isValid())
+    {
+        bool pconv = false;
+        int _yamlProcs = vYamlProcs.toInt(&pconv);
+        if (pconv)
+        {
+            yamlProcs = _yamlProcs;
+        }
+    }
+    NMDebugAI(<< ">>>>>> yamlProcs: " << yamlProcs << std::endl);
+
+    // gui launches parallel parent model
+    if (    mAppMode == 3   // GUI
+         && mbHasMPIRuntime
+         && mParentMPIComm == MPI_COMM_NULL
+         && bParallelModel
+         && yamlProcs > 1
+       )
+    {
+        if (mbIsMPIEventLoopRunning)
+        {
+            NMLogError(<< "Sorry, I can only run one MPI child model at a time! "
+                       << "Please wait for it to finish and then try again!\n");
+            NMDebugCtx(ctx, << "done!");
+            return;
+        }
+        executeMPIParentModel(compName, yamlFN);
+    }
+    // engine launches paralell child model
+    else if (   mAppMode == 1 // ENGINE
+             && mbHasMPIRuntime
+            )
+    {
+        if (mParentMPIComm != MPI_COMM_NULL)
+        {
+            executeMPIChildModel(compName);
+        }
+        else
+        {
+            executeSeqModel(compName);
+        }
+    }
+    // all other cases ...
+    // ... probably need to add mpi support for running lumass through the BMI interface ...
+    else if (mAppMode == 4)
+    {
+        executeSeqModel(compName);
+    }
+    else
+    {
+        //executeSeqModel(compName);
+        mConcurrentVoidReturn = QtConcurrent::run(this, &NMModelController::executeSeqModel,
+                                                   compName, QString());
+        mConcurrentVoidWatcher.setFuture(mConcurrentVoidReturn);
+
+    }
+
+    this->mAlphaComps.clear();
+
+    NMDebugCtx(ctx, << "done!");
+}
+
+void
+NMModelController::identifyParallelComponents(const QString& compName,
+                         QMap<ModelParallelism, QStringList> &parallelComps,
+                         QSet<QString> &parallelHosts)
+{
+    NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(getComponent(compName));
+    if (ic == nullptr)
+    {
+        return;
+    }
+
+    NMParallelIterComponent* pic = qobject_cast<NMParallelIterComponent*>(ic);
+    if (pic != nullptr)
+    {
+        auto it = parallelComps.find(NM_PARALLEL_ITERATOR);
+        if (it != parallelComps.end())
+        {
+            it.value().append(compName);
+        }
+        else
+        {
+            QStringList pit;
+            pit << compName;
+            parallelComps.insert(NM_PARALLEL_ITERATOR, pit);
+        }
+        parallelHosts << compName;
+    }
+
+
+    // identify pipelines writing NetCDF (*.nc)
+    // files in parallel
+    if (ic->getProcess() != nullptr)
+    {
+        if (ic->objectName().startsWith(QStringLiteral("ImageWriter")))
+        {
+            NMStreamingImageFileWriterWrapper* writer =
+                qobject_cast<NMStreamingImageFileWriterWrapper*>(ic->getProcess());
+            QStringList filenames = writer->getFileNames();
+
+            bool bParallel = false;
+            foreach(const QString& fn, filenames)
+            {
+                if (    fn.contains(QStringLiteral(".nc"))
+                     && writer->getWriteProcs() > 1
+                   )
+                {
+                    bParallel = true;
+                    break;
+                }
+            }
+
+            // get all pipeline components
+            if (bParallel)
+            {
+                parallelHosts << ic->getHostComponent()->objectName();
+
+                QStringList pipeComps;
+                ic->getUpstreamPipelineComponents(pipeComps);
+                pipeComps.push_back(ic->objectName());
+
+                auto pcmit = parallelComps.find(NM_PARALLEL_PIPELINE);
+                if (pcmit != parallelComps.end())
+                {
+                    pcmit.value().append(pipeComps);
+                }
+                else
+                {
+                    parallelComps.insert(NM_PARALLEL_PIPELINE, pipeComps);
+                }
+            }
+        }
+    }
+    // look for parallel sub-components
+    else
+    {
+        // any time level parallelism?
+        QMap<unsigned int, QMap<QString, NMModelComponent*> > levelMap;
+        ic->mapTimeLevels(ic->getTimeLevel(), levelMap);
+
+        auto levelIt = levelMap.constBegin();
+        while (levelIt != levelMap.constEnd())
+        {
+            const QMap<QString, NMModelComponent*>& levelComp = levelIt.value();
+            QStringList levelParallelList;
+            if (levelIt.value().keys().size() > 1)
+            {
+                // look at individual pieplines at this level
+                QList<QStringList> execList;
+                QStringList execComps = ic->findExecutableComponents(levelComp, levelIt.key(), 0);
+
+                foreach(const QString& ec, execComps)
+                {
+                    QStringList pipelineComps;
+                    NMIterableComponent* iexc = qobject_cast<NMIterableComponent*>(this->getComponent(ec));
+                    if (iexc != nullptr)
+                    {
+                        iexc->getUpstreamPipelineComponents(pipelineComps);
+                        pipelineComps.push_back(ec);
+                    }
+                    execList.push_back(pipelineComps);
+                }
+
+                //levelParallelList.append(execComps);
+
+                // look at aggregate components at this level
+                QStringList parallelICs;
+                foreach(const QString& pag, levelComp.keys())
+                {
+                    NMIterableComponent* plit = qobject_cast<NMIterableComponent*>(this->getComponent(pag));
+                    if (    plit != nullptr
+                         && plit != ic
+                         && plit->getHostComponent() != ic
+                         && plit->getProcess() == nullptr
+                       )
+                    {
+                        parallelICs.append(pag);
+                    }
+                }
+
+                // if we've got 2 or more pipelines or aggregate components
+                // or at least one of each sort, we could execute them
+                // in parallel
+                if (    (parallelICs.size() > 0 && execList.size() > 0)
+                     || (parallelICs.size() > 1 || execList.size() > 1)
+                   )
+                {
+                    foreach(const QStringList& el, execList)
+                    {
+                        levelParallelList.append(el);
+                    }
+
+                    levelParallelList.append(parallelICs);
+
+                    // add all parallel components we found to our map
+                    auto p2it = parallelComps.find(NM_PARALLEL_TIMELEVEL);
+                    if (p2it != parallelComps.end())
+                    {
+                        p2it.value().append(levelParallelList);
+                    }
+                    else
+                    {
+                        parallelComps.insert(NM_PARALLEL_TIMELEVEL, levelParallelList);
+                    }
+                }
+            }
+            ++levelIt;
+
+            foreach(const QString& lpc, levelParallelList)
+            {
+                parallelHosts << this->getComponent(lpc)->getHostComponent()->objectName();
+            }
+        }
+
+        // one level deeper into the parallel rabbit hole ...
+        NMModelComponentIterator cit = ic->getComponentIterator();
+        while(*cit != nullptr)
+        {
+            this->identifyParallelComponents((*cit)->objectName(), parallelComps, parallelHosts);
+            ++cit;
+        }
+    }
+}
+
+void
+NMModelController::executeMPIParentModel(const QString &compName,
+                                           const QString &yamlFN)
+{
+    NMDebugCtx(ctx, << "...");
+
+    // serialize the model
+    NMModelComponent* comp = this->getComponent(compName);
+    if (comp == nullptr)
+    {
+        NMLogError(<< "Cannot execute a NULL model!");
+        return;
+    }
+
+    // --------------------------------------------------------------------------
+    // create model and config file names for parallel execution of this component
+
+    QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-ddThh-mm-ss");
+    QString lumassPath = this->getSetting("LUMASSPath").toString();
+    QString workspace = this->getSetting("Workspace").toString();
+    QString modelFN = QString("%1/%2_%3.lmx").arg(workspace).arg(compName).arg(timestamp);
+    QString newYamlFN = QString("%1/%2_%3.yaml").arg(workspace).arg(compName).arg(timestamp);
+    QString logFN = QString("%1/%2_%3.log").arg(workspace).arg(compName).arg(timestamp);
+
+    QFileInfo modelInfo(modelFN);
+    QString modelBaseName = QString("$[LUMASS:ConfigPath]$/%1.lmx").arg(modelInfo.completeBaseName());
+
+    // --------------------------------------------------------------
+    // create yaml config file
+
+    YAML::Node node;
+    this->setYamlConfigValue(yamlFN, node, "EngineConfig", "modelfile", modelBaseName);
+
+    YAML::Emitter emitter;
+    emitYaml(emitter, node);
+
+    QFile yamlFile(newYamlFN);
+    if (!yamlFile.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        yamlFile.close();
+        NMLogError(<< "Couldn't create config file '" << newYamlFN.toStdString() << "'!");
+        return;
+    }
+
+    QTextStream yamlOut(&yamlFile);
+    yamlOut << emitter.c_str();
+    yamlFile.close();
+
+    // --------------------------------------------------------------------
+    // create model file (*.lmx)
+
+    // identify top component
+    QStringList saveComponents = this->getRepository().keys();
+
+    // never save the root component as it is handled automatically by
+    // the ModelController instance
+    saveComponents.removeOne(QStringLiteral("root"));
+    NMDebugAI(<< "Parent's repo's comps exported for child model: " << saveComponents.join(" ").toStdString() << std::endl);
+
+    QDomDocument doc;
+    QDomElement modElem = doc.createElement("Model");
+    modElem.setAttribute("description", "the one and only model element");
+    doc.appendChild(modElem);
+
+    NMModelSerialiser xmlS;
+    xmlS.setModelController(this);
+    xmlS.setLogger(mLogger);
+
+    foreach (const QString& cn, saveComponents)
+    {
+        NMModelComponent* ec = this->getComponent(cn);
+        xmlS.serialiseComponent(ec, doc);
+    }
+
+    QFile modelFile(modelFN);
+    if (!modelFile.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        modelFile.close();
+        NMLogError(<< "Couldn't create model file '" << modelFN.toStdString() << "'!");
+        return;
+    }
+
+    QTextStream xmlOut(&modelFile);
+    xmlOut << doc.toString(4);
+    modelFile.close();
+
+    // --------------------------------------------------------------------------------
+    // SPAWN CHILD PROCESSES FOR PARALLEL PROCESSING
+    // --------------------------------------------------------------------------------
+
+    QString cmd_suffix = "";
+#ifdef _WIN32
+    cmd_suffix = ".exe";
+#endif
+
+    //QString cmd = QString("xterm");
+    QString cmd = QString("%1/lumassengine%2")
+                    .arg(lumassPath).arg(cmd_suffix);
+    QString args = QString("--model %1 --logfile %2 --comp %3 --logprov").arg(newYamlFN).arg(logFN).arg(compName);
+    //QString args = QString("-e gdb --args %1/lumassengine --model %2 --logfile %3")
+    //                .arg(lumassPath).arg(modelFN).arg(logFN);
+    QStringList argsList = args.split(" ", Qt::SkipEmptyParts);
+
+
+    std::stringstream argstr;
+    char** argv = new char*[argsList.size()+1];
+
+    for (int i=0; i < argsList.size(); ++i)
+    {
+        argv[i] = new char[argsList.at(i).size()+1];
+        argstr << strcpy(argv[i], argsList.at(i).toStdString().c_str()) << " ";
+    }
+    argv[argsList.size()] = NULL;
+
+    // get the number of processes to be used for running
+    // the model
+    bool bok;
+    int nprocs = this->getSetting("MaxProcCount").toUInt(&bok);
+    if (!bok)
+    {
+        nprocs = 1;
+    }
+    NMLogInfo(<< "MaxProcCount = " << nprocs);
+
+    // provide some feedback of what is happening ...
+    std::stringstream infoMsg;
+    infoMsg << "Spawning " << nprocs
+            << " child processes: " << cmd.toStdString() << " "
+            << argstr.str() << std::endl;
+    NMLogInfo(<< infoMsg.str());
+    NMDebugAI(<< infoMsg.str());
+
+    // create nprocs child processes running the model in parallel
+    int errCodes[nprocs];
+    int err = MPI_Comm_spawn(cmd.toStdString().c_str(), argv, nprocs,
+                             MPI_INFO_NULL, 0, MPI_COMM_SELF, &mInterComm, errCodes);
+    if (err != MPI_SUCCESS)
+    {
+        NMLogError(<< "Spawning processes for parallel processing failed (" << err << ")!");
+        for (int n=0; n < nprocs; ++n)
+        {
+            NMLogError(<< "rank #" << n << ": " << errCodes[n]);
+        }
+        // free memory
+        for (int k=0; k < argsList.size(); ++k)
+        {
+            delete[] argv[k];
+        }
+        delete[] argv;
+
+        NMLogError(<< "Model execution aborted!");
+        return;
+    }
+
+    // free memory
+    for (int k=0; k < argsList.size(); ++k)
+    {
+        delete[] argv[k];
+    }
+    delete[] argv;
+
+    // --------------------------------------------------------------------------------
+    // PREPARE MPI-COMMUNICATORS AND SHARED MEMORY WINDOWS
+    // --------------------------------------------------------------------------------
+
+    int interSize, interRank;
+    MPI_Comm_size(mInterComm, &interSize);
+    MPI_Comm_rank(mInterComm, &interRank);
+    NMDebugAI(<< "InterComm: I am THE PARENT, and my rank is #"
+              << interRank << " of " << interSize << std::endl);
+
+    // merge inter comm
+    NMDebugAI(<< "ParentPROC: merging interComm\n");
+    MPI_Intercomm_merge(mInterComm, 0, &mMergedComm);
+
+    // create the 'empty' shared mem window in parent proc
+    MPI_Win_create(nullptr, 0, sizeof(int), MPI_INFO_NULL, mMergedComm, &mMPICompProgWin);
+
+    // allocate int-memory for shared 'abort' status window on parent side
+    NMDebugAI( << "allocating MPIAbort memory" << std::endl);
+    MPI_Alloc_mem(sizeof(int), MPI_INFO_NULL, static_cast<void*>(&mMPIAbort));
+    *mMPIAbort = 0;
+    MPI_Win_create(static_cast<void*>(mMPIAbort), sizeof(int),
+                   sizeof(int), MPI_INFO_NULL, mMergedComm, &mMPIParentAbort);
+
+    NMDebugAI(<< "ParentPROC has reached 1st InterComm Barrier!\n");
+    MPI_Barrier(mMergedComm);
+
+    int irank, isize;
+    MPI_Comm_rank(mInterComm, &irank);
+    MPI_Comm_size(mInterComm, &isize);
+    NMDebugAI(<< "I am THE parent, and my rank is #"
+              << irank << " of " << isize << std::endl);
+
+    // --------------------------------------------------------------------
+    // RESOURCE ALLOCATION COMPONENT STATE 'BOARD'
+
+    QStringList sortedModelComps = saveComponents;
+    if (!sortedModelComps.contains("root"))
+    {
+        sortedModelComps << QString("root");
+    }
+    sortedModelComps.sort(Qt::CaseInsensitive);
+
+    NMDebugAI(<< "parent's model - monitored comps: ")
+    foreach(const QString& co, sortedModelComps)
+    {
+        NMDebug(<< co.toStdString() << " ");
+    }
+    NMDebug(<< std::endl);
+    /// END DEBUG
+
+
+    // this is a conceptual 3D array [ncomps][nprocs][nvals], that is
+    // flattend to 1D; its index is calucated as:
+    const int ncomps = sortedModelComps.size();
+    const int nvals  = 2; // {event==value, progress==value+1}
+
+    NMDebugAI( << "allocating MPICompState memory" << std::endl);
+    mMPICompState = new int[ncomps * nprocs * nvals];
+    for (int acomp=0; acomp < sortedModelComps.size(); ++acomp)
+    {
+        for (int aproc=0; aproc < nprocs; ++aproc)
+        {
+            mMPICompState[aproc * ncomps * nvals + acomp * nvals + 0] = 1;
+            mMPICompState[aproc * ncomps * nvals + acomp * nvals + 1] = 0;
+        }
+    }
+
+
+    NMDebugAI(<< ">>>>>> Instantiating MPIRunnable ... \n");
+    int maxThreadCount = QThreadPool::globalInstance()->maxThreadCount();
+    int curThreadCount = QThreadPool::globalInstance()->activeThreadCount();
+    NMDebugAI(<< "ParentProc: max threads: " << maxThreadCount
+              << " active Threads: " << curThreadCount << std::endl);
+
+    mbIsMPIEventLoopRunning = true;
+    mbAbortionRequested = false;
+
+    // --------------------------------------------------------------------
+    // CREATE MPIRUNNABLE (thread) for monitoring CHILD processes' messages
+
+    // note: NMMPIRunnable is auto deleting by default, so don't worry about allocated resources
+    NMMPIRunnable* mpi = new NMMPIRunnable();
+    emit signalMPIRunnable(mpi);
+    connect(mpi, &NMMPIRunnable::signalMPILoopFinished, this, &NMModelController::slotMPIEventLoopFinished);
+
+    mpi->setLogger(mLogger);
+    mpi->setData(nprocs, sortedModelComps, lumassPath, newYamlFN, logFN,
+                 mMergedComm, mParentMPIComm, mMPICompProgWin, mMPIParentAbort,
+                 mMPICompState, mMPIAbort);
+    QThreadPool::globalInstance()->start(mpi);
+
+    NMDebugCtx(ctx, << "done!");
+}
+
+
+void NMModelController::slotMPIEventLoopFinished(NMMPIRunnable* obj)
+{
+    mbIsMPIEventLoopRunning = false;
+
+    MPI_Win_free(&mMPICompProgWin);
+    MPI_Win_free(&mMPIParentAbort);
+    mMPIAbort = 0;
+    mbAbortionRequested = false;
+    NMDebugAI(<< "ParentProcess freed RMA window" << std::endl);
+    MPI_Comm_free(&mMergedComm);
+    NMDebugAI(<< "ParentProcess freed merged MPI_Comm" << std::endl);
+    MPI_Comm_free(&mInterComm);
+    NMDebugAI(<< "ParentProcess freed inter comm" << std::endl);
+
+    // free RMA resources
+    MPI_Free_mem(static_cast<void*>(mMPIAbort));
+    mMPIAbort = nullptr;
+
+    delete[] mMPICompState;
+    mMPICompState = nullptr;
+    NMDebugAI(<< "ParentProcess freed mMPICompState array" << std::endl);
+
+
+    NMLogInfo(<< "MPI child processes have completed!");
+    NMDebugAI(<< "MPI parent model's event cleaned up!");
+}
+
+void
+NMModelController::executeMPIChildModel(const QString &compName)
+{
+    NMDebugCtx(ctx, << "...");
+
+    ///DEBUG
+    /// order of model components in ComponentMap.keys().sort(Qt::CaseInsensitive)
+    QStringList sortedModelComps = mComponentMap.keys();
+    sortedModelComps.sort(Qt::CaseInsensitive);
+    if (this->mRank == 0)
+    {
+        NMDebugAI(<< "child's model comps: ")
+        foreach(const QString& co, sortedModelComps)
+        {
+            NMDebug(<< co.toStdString() << " ");
+        }
+        NMDebug(<< std::endl);
+    }
+
+    MPI_Intercomm_merge(mParentMPIComm, 1, &mMergedComm);
+
+    int mrank, msize;
+    MPI_Comm_rank(this->mMergedComm, &mrank);
+    MPI_Comm_size(this->mMergedComm, &msize);
+    NMDebugAI(<< "MergedComm: I am a child, and my rank is #"
+              << mrank << " of " << msize << std::endl);
+
+    int childSize, childRank;
+    MPI_Comm_size(MPI_COMM_WORLD, &childSize);
+    MPI_Comm_rank(MPI_COMM_WORLD, &childRank);
+    NMDebugAI(<< "WorldComm: I am a child, and my rank is #"
+              << childRank << " of " << childSize << std::endl);
+
+
+    int prank, psize;
+    MPI_Comm_rank(this->mParentMPIComm, &prank);
+    MPI_Comm_size(this->mParentMPIComm, &psize);
+    NMDebugAI(<< "ParentComm: I am a child, and my rank is #"
+              << prank << " of " << psize << std::endl);
+
+
+    // ModelComponents = {compId=0, compId=1, ..., compId=ncomps-1}
+    // States per Component (=Values) = {val=0, val=1=nvals-1}
+    // Number of Processes = {proc=0, proc=1, ..., proc=nprocs-1}
+    // this is a conceptual 3D array [ncomps][nvals][nprocs], that is
+    // flattend to 1D; its index is calucated as:
+    //          mMPICompState[proc * ncomps * nvals + compId * nvals + val];
+    const int ncomps = sortedModelComps.size();
+    const int nprocs = childSize;
+    const int nvals  = 2; // {event==value, progress==value+1}
+    const int stateSize = nprocs * ncomps * nvals * sizeof(int);
+
+    // allocate memory for component state matrix and initialize
+    //mMPICompState = new int[nprocs*ncomps*nvals];
+    NMDebugAI( << "allocating MPICompState memory" << std::endl);
+    MPI_Alloc_mem(stateSize, MPI_INFO_NULL, static_cast<void*>(&mMPICompState));   
+    // initialize component states
+    for (int acomp=0; acomp < ncomps; ++acomp)
+    {
+        for (int aproc=0; aproc < nprocs; ++aproc)
+        {
+            for (int val=0; val <= 1; ++val)
+            {
+                mMPICompState[aproc * ncomps * nvals + acomp * nvals + val] = val;
+            }
+        }
+    }
+
+    MPI_Win_create(static_cast<void*>(mMPICompState),
+                   ncomps*nprocs*nvals*sizeof(int),
+                   sizeof(int),
+                   MPI_INFO_NULL,
+                   mMergedComm,
+                   &mMPICompProgWin);
+
+
+    // setup mMPIAbort state var on child side
+    mMPIAbort = new int;
+    *mMPIAbort = 0;
+    MPI_Win_create(nullptr, 0, sizeof(int), MPI_INFO_NULL, mMergedComm, &mMPIParentAbort);
+
+    NMDebugAI(<< "ChildPROC #" << prank << " has reached 1st InterComm Barrier!\n");
+    MPI_Barrier(this->mMergedComm);
+
+    executeSeqModel(compName);
+
+    // wait for siblings to finish their models
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    NMDebugAI(<< "ChildPROC #" << prank << " has completed seqModel\n");
+    NMLogDebug(<< "ChildPROC #" << prank << " has completed seqModel\n");
+
+    MPI_Win_free(&mMPICompProgWin);
+    MPI_Win_free(&mMPIParentAbort);
+
+    MPI_Free_mem(static_cast<void*>(mMPICompState));
+    mMPICompState = nullptr;
+    delete mMPIAbort;
+    mMPIAbort = nullptr;
+    NMLogDebug(<< "ChildPROC #" << prank << " freed mMPICompState array\n");
+
+    MPI_Comm_free(&mMergedComm);
+    NMLogDebug(<< "ChildPROC #" << prank << " freed merged MPI_Comm\n");
+    MPI_Comm_free(&mParentMPIComm);
+    NMLogDebug(<< "ChildPROC #" << prank << " freed parent MPI_Comm\n");
+
+
+    NMDebugCtx(ctx, << "done!");
+}
+
+void
+NMModelController::executeSeqModel(const QString &compName, const QString& yamlFN)
 {
     NMDebugCtx(ctx, << "...");
 
@@ -344,18 +1263,18 @@ NMModelController::executeModel(const QString& compName)
     // ================================================
     // starting the provenance
 
-    if (mbLogProv)
-    {
-        QString stamp = QDateTime::currentDateTime().toString(Qt::ISODate);
-        stamp = stamp.replace(":", "");
-        stamp = stamp.replace("-", "");
+    //if (mbLogProv)
+    //{
+    //    QString stamp = QDateTime::currentDateTime().toString(Qt::ISODate);
+    //    stamp = stamp.replace(":", "");
+    //    stamp = stamp.replace("-", "");
 
-        QString provFN = QString("%1/%2_%3.provn")
-                         .arg(this->getSetting("Workspace").toString())
-                         .arg(userID)
-                         .arg(stamp);
-        startProv(provFN, comp->objectName());
-    }
+    //    QString provFN = QString("%1/%2_%3.provn")
+    //                     .arg(this->getSetting("Workspace").toString())
+    //                     .arg(userID)
+    //                     .arg(stamp);
+    //    startProv(provFN, comp->objectName());
+    //}
 
     // ================================================
     // we reset all the components
@@ -366,23 +1285,16 @@ NMModelController::executeModel(const QString& compName)
             << this->thread()->currentThreadId() << endl);
 
     msg = QString("Model Controller: Executing model %1 ...").arg(userID);
-    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
-                           NMLogger::NM_LOG_INFO,
-                           msg);
+    NMLogInfo(<< msg.toStdString());
+    //mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
+    //                       NMLogger::NM_LOG_INFO,
+    //                       msg);
 
     // model management
     this->mbModelIsRunning = true;
     this->mbAbortionRequested = false;
 
     this->mModelStarted = QDateTime::currentDateTime();
-
-//#ifdef LUMASS_DEBUG
-//#ifndef _WIN32
-//    int ind = nmlog::nmindent;
-//#else
-//	int ind = 2;
-//#endif
-//#endif
 
     emit signalModelStarted();
 
@@ -391,47 +1303,41 @@ NMModelController::executeModel(const QString& compName)
     // and just report them for now; note this includes
     // the 'abortion-exception' thrown by ITK/OTB as response to
     // user-requested model abortion
+    bool bUnexpectedEnd = false;
     try
     {
         comp->update(this->mComponentMap);
     }
     catch (NMMfwException& nmerr)
     {
-//#ifdef LUMASS_DEBUG
-//#ifndef _WIN32
-//    nmlog::nmindent = ind;
-//#endif
-//#endif
+        bUnexpectedEnd = true;
         NMLogError(<< "Model Controller: " << nmerr.what());
-        NMDebugCtx(ctx, << "done!");
+        //NMDebugCtx(ctx, << "done!");
     }
     catch (itk::ExceptionObject& ieo)
     {
-//#ifdef LUMASS_DEBUG
-//#ifndef _WIN32
-//    nmlog::nmindent = ind;
-//#endif
-//#endif
+        bUnexpectedEnd = true;
         NMLogError(<< "Model Controller: " << ieo.what());
-        NMDebugCtx(ctx, << "done!");
+        //NMDebugCtx(ctx, << "done!");
     }
     catch (std::exception& e)
     {
-//#ifdef LUMASS_DEBUG
-//#ifndef _WIN32
-//    nmlog::nmindent = ind;
-//#endif
-//#endif
+        bUnexpectedEnd = true;
         NMLogError(<< "Model Controller: " << e.what());
-        NMDebugCtx(ctx, << "done!");
+        //NMDebugCtx(ctx, << "done!");
     }
 
-
-//#ifdef LUMASS_DEBUG
-//#ifndef _WIN32
-//    nmlog::nmindent = ind;
-//#endif
-//#endif
+    // FOR MPI RUNS ONLY
+    // wait for all children and then exit in an orderly fashion
+    if (    //(bUnexpectedEnd || this->mbAbortionRequested)
+         //&&
+         mParentMPIComm != MPI_COMM_NULL
+         && mMergedComm != MPI_COMM_NULL
+       )
+    {
+        NMDebugAI(<< "Waiting in executeSeqModel for the others ... \n")
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
 
     emit signalModelStopped();
 
@@ -470,6 +1376,28 @@ NMModelController::executeModel(const QString& compName)
     this->mToBeDeleted.clear();
 
     NMDebugCtx(ctx, << "done!");
+}
+
+void
+NMModelController::getSubComponents(NMIterableComponent *ic, QStringList &subComps)
+{
+    if (ic == nullptr)
+    {
+        return;
+    }
+
+    NMModelComponentIterator it = ic->getComponentIterator();
+    while (!it.isAtEnd())
+    {
+        subComps << (*it)->objectName();
+        NMIterableComponent* sic = qobject_cast<NMIterableComponent*>(*it);
+        if (sic != nullptr)
+        {
+            getSubComponents(sic, subComps);
+        }
+
+        ++it;
+    }
 }
 
 void
@@ -574,7 +1502,7 @@ NMModelController::addComponent(NMModelComponent* comp,
         tname = QString(tr("%1%2")).arg(cname).arg(cnt);
     }
 
-    comp->setParent(0);
+    comp->setParent(nullptr);
     comp->moveToThread(this->thread());
     comp->setObjectName(tname);
     comp->setParent(this);
@@ -753,18 +1681,27 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
     NMDebugCtx(ctx, << "...");
     MPI_Comm nextComm = MPI_COMM_NULL;
 
-    auto aiter = mAlphaComps.find("root");
-    if (aiter == mAlphaComps.end())
-    {
-        nextComm = MPI_COMM_NULL;
-        NMLogDebug(<< "root component has no registered MPI_COMM! "
-                   << "Something went horribly wrong!");
-        return nextComm;
-    }
-    else
-    {
-        nextComm = aiter.value();
-    }
+    //// if we're (g)root ( ;-) ) create the top most comm...
+    //MPI_Comm rootComm = MPI_COMM_NULL;
+    //if (this->objectName().compare(QStringLiteral("root")) == 0)
+    //{
+    //    MPI_Comm_dup(MPI_COMM_WORLD, &rootComm);
+    //    controller->registerParallelGroup(QStringLiteral("root"), rootComm);
+    //}
+
+
+    //auto aiter = mAlphaComps.find("root");
+    //if (aiter == mAlphaComps.end())
+    //{
+    //    nextComm = MPI_COMM_NULL;
+    //    NMLogDebug(<< "root component has no registered MPI_COMM! "
+    //               << "Something went horribly wrong!");
+    //    return nextComm;
+    //}
+    //else
+    //{
+    //    nextComm = aiter.value();
+    //}
 
     if (this->getNumProcs() == 1)
     {
@@ -774,15 +1711,11 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
         return nextComm;
     }
 
-    //NMModelComponent* comp = this->getComponent(compName);
-    //NMProcess* proc = qobject_cast<NMProcess*>(comp);
     NMIterableComponent* aggrComp = qobject_cast<NMIterableComponent*>(this->getComponent(compName));
 
-    //if (proc != nullptr && proc->parent() != nullptr)
     if (aggrComp->getProcess() != nullptr)
     {
         aggrComp = aggrComp->getHostComponent();
-        //aggrComp = qobject_cast<NMIterableComponent*>(proc->parent());
     }
 
     if (aggrComp == nullptr)
@@ -802,11 +1735,9 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
         NMDebugAI(<< "  ... '" << iter.key().toStdString() << "' : #" << iter.value() << endl);
         ++iter;
     }
-
     // =========================================
     // DEBUG DEBUG DEBUG
     // =========================================
-
 
     QMap<QString, MPI_Comm>::iterator citer = mAlphaComps.find(aggrComp->objectName());
     if (citer != mAlphaComps.end())
@@ -816,7 +1747,6 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
         NMDebugCtx(ctx, << "done!");
         return citer.value();
     }
-
 
     while ((aggrComp = aggrComp->getHostComponent()) != nullptr)
     {
@@ -829,6 +1759,15 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
             return citer.value();
         }
     }
+
+
+    // if havent' found a registered component yet, but do have more than
+    // one process available to execute the model, the user is just
+    // executing a subcomponent of the whole model and 'compName' is it and we
+    // therefore need to register it NOW to make use of the processes
+    // available!
+    this->registerParallelGroup(compName, MPI_COMM_WORLD);
+    nextComm = MPI_COMM_WORLD;
 
     NMDebugCtx(ctx, << "done!");
     return nextComm;
@@ -874,7 +1813,7 @@ NMModelController::getComponentTable(const NMModelComponent* comp)
 {
     NMModelComponent* mc = const_cast<NMModelComponent*>(comp);
     NMDataComponent* dc = qobject_cast<NMDataComponent*>(mc);
-
+    const QString yamlConfig = "";
     otb::AttributeTable::Pointer tab;
     // data component
     if (dc)
@@ -887,7 +1826,7 @@ NMModelController::getComponentTable(const NMModelComponent* comp)
         }
         else
         {
-            this->executeModel(dc->objectName());
+            this->executeModel(dc->objectName(), yamlConfig);
             NMItkDataObjectWrapper* dwupd = dc->getOutput(0).data();
             if (dwupd != nullptr)
             {
@@ -918,7 +1857,7 @@ NMModelController::getComponentTable(const NMModelComponent* comp)
             }
             else if (tr)
             {
-                this->executeModel(ic->objectName());
+                this->executeModel(ic->objectName(), yamlConfig);
                 NMItkDataObjectWrapper* dw = ic->getOutput(0).data();
                 if (dw != nullptr)
                 {

@@ -38,6 +38,9 @@
 #include <QStringList>
 #include <QDateTime>
 #include <QFile>
+#include <QtConcurrent>
+#include <QFuture>
+#include <yaml-cpp/yaml.h>
 
 #ifndef _WIN32
 #include <mpi.h>
@@ -53,6 +56,8 @@ class NMModelComponent;
 class NMIterableComponent;
 class NMProcess;
 class NMLogger;
+class NMMPIRunnable;
+//class NMModelObject;
 
 /*! \brief NMModelController is responsible for managing and
  *   running a single LUMASS model.
@@ -77,9 +82,40 @@ class NMMODFRAMECORE_EXPORT NMModelController: public QObject, public NMObject
 
 public:
 
+    enum ModelEvent {
+        NM_EVENT_UNKNOWN = 1,
+        NM_EVENT_PROGRESS = 2,
+        NM_EVENT_EXEC_STARTED = 3,
+        NM_EVENT_EXEC_STOPPED = 4,
+        NM_EVENT_ABORT_EXEC = 5,
+        NM_EVENT_START_EXEC = 6,
+        NM_EVENT_EXEC_ABORTED = 7,
+        NM_EVENT_NUMITER_CHGD = 8
+    };
+
+
     enum DataComponentPropertyType
     {
         NM_DATAPROP_COLUMNS = 0
+    };
+
+    struct MPICompProg
+    {
+        QString compName;
+        ModelEvent event;
+        float progress;
+
+        MPICompProg()
+            : compName(""),
+              event(NM_EVENT_UNKNOWN),
+              progress(0.0){}
+    };
+
+    enum ModelParallelism {
+        NM_PARALLEL_NONE = 1,
+        NM_PARALLEL_PIPELINE = 2,
+        NM_PARALLEL_TIMELEVEL= 3,
+        NM_PARALLEL_ITERATOR = 4
     };
 
     NMModelController(QObject* parent=0);
@@ -291,10 +327,14 @@ public:
                      const NMIterableComponent* host = nullptr);
     QStringList parseQuotedArguments(const QString& args, const QChar& sep= ',');
 
+    // some internal hack
+    // 1: engine 2: bmi 3: gui
+    void setAppMode(const int appMode){mAppMode = appMode;}
+
 public slots:
 
 	/*! Requests the execution of the named component. */
-	void executeModel(const QString& compName);
+    void executeModel(const QString &compName, const QString &yamlFN="");
 
     /*! Component destruction at the next suitble opportunity
      *  (i.e. either directly, or once the current model run has
@@ -374,8 +414,15 @@ public slots:
     void writeProv(const QString& provLog);
 
     void registerPythonRequest(const QString& compName);
+    void getSubComponents(NMIterableComponent* ic, QStringList& subComps);
 
+    // -----------------------------------------------------
     // parallel processing
+    void identifyParallelComponents(const QString& compName,
+                                    QMap<ModelParallelism, QStringList>& parallelComps,
+                                    QSet<QString>& parallelHosts);
+    void setUsesMPIRuntime(bool hasRuntime);
+    bool getUsesMPIRuntime(void);
     int getRank(void){return mRank;}
     int getRank(const QString& comp);
     void setRank(int rank){mRank = rank;}
@@ -388,7 +435,10 @@ public slots:
     void deregisterParallelGroup(
             const QString& compName);
 
+
     MPI_Comm getNextUpstrMPIComm(const QString& compName);
+    MPI_Comm getParentMPIComm(){return mParentMPIComm;}
+    void mpiSignalProgress(MPICompProg& progStruct);
 
 signals:
 	/*! Signals whether any of the process components controlled
@@ -404,6 +454,11 @@ signals:
 
     void settingsUpdated(const QString& key, const QVariant& value);
 
+    void signalMPIEvent(const QString& compName, const NMModelController::ModelEvent& event,
+                        const float& value);
+    void signalMPIRunnable(NMMPIRunnable* mpi);
+
+
 protected:
 	void resetExecutionStack(void);
     void logProvNComponent(NMModelComponent* comp);
@@ -415,8 +470,20 @@ protected:
      */
     QString evalMuParserExpression(const QObject* obj, const QString& expr, double* resVal);
 
+    void setYamlConfigValue(const QString& configFN, YAML::Node& fileNode,
+                            const QString& configNode, const QString &item, const QString& value);
+    void emitYaml(YAML::Emitter& emitter, const YAML::Node& node);
+
+    // mpi handling
+    void executeMPIParentModel(const QString &compName, const QString &yamlFN="");
+    void executeMPIChildModel(const QString &compName);
+    void executeSeqModel(const QString& compName, const QString &yamlFN="");
+
+    void slotMPIEventLoopFinished(NMMPIRunnable* obj);
+
     /*! maps ComponentName to model component object */
 	QMap<QString, NMModelComponent*> mComponentMap;
+
     /*! maps userId to ComponentName */
     QMultiMap<QString, QString> mUserIdMap;
 
@@ -440,17 +507,37 @@ protected:
     QMap<QString, QMap<QString, int> > mMapProvIdConRev;
 
     // parallel processing
+    QSet<QString> mParallelHosts;
+    bool mbHasMPIRuntime;
+    bool mbIsMPIEventLoopRunning;
+    MPI_Comm mParentMPIComm;
+    MPI_Comm mMergedComm;
+    MPI_Comm mInterComm;
+    MPI_Win mMPICompProgWin;
+    MPI_Win mMPIParentAbort;
+    int* mMPICompState;
+    int* mMPIAbort;
+
     int mRank;
     int mNumProcs;
-    //int mUsedProcs;
+
+    QFuture<int> mConcurrentModelReturn;
+    QFutureWatcher<int> mConcurrentModelWatcher;
+
+    QFuture<void> mConcurrentVoidReturn;
+    QFutureWatcher<void> mConcurrentVoidWatcher;
+
+    // 1: ENGINE 2: BMI 3: GUI 4: GUI_independant 5: unknown
+    int mAppMode;
 
     // maps communicator for pipeline/AggrComp for each rank
     QMap<QString, MPI_Comm> mAlphaComps;
-    //QMap<QString, QPair<int, MPI_Comm> > mAlphaComps;
 
 private:
 	static const std::string ctx;
 
 };
+
+Q_DECLARE_METATYPE(NMModelController::ModelEvent)
 
 #endif /* NMMODELCONTROLLER_H_ */

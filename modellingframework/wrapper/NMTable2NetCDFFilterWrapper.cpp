@@ -114,28 +114,28 @@ public:
 		int givenStep = step;
 
 		
-        QVariant curDimMappingVar = p->getParameter("DimMapping");
-        if (curDimMappingVar.isValid())
-        {
-           std::vector<int> vecDimMapping;
-           QStringList curValVarList = curDimMappingVar.toStringList();
-           foreach(const QString& vStr, curValVarList) 
-           {
-                int curDimMapping = vStr.toInt(&bok);
-                if (bok)
-                {
-                    vecDimMapping.push_back(static_cast<int>(curDimMapping));
-                }
-                else
-                {
-                    NMErr("NMTable2NetCDFFilterWrapper_Internal", << "Invalid value for 'DimMapping'!");
-                    NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                    e.setDescription("Invalid value for 'DimMapping'!");
-                    throw e;
-                }
-            }
-            f->SetDimMapping(vecDimMapping);
-        }
+        //QVariant curDimMappingVar = p->getParameter("DimMapping");
+        //if (curDimMappingVar.isValid())
+        //{
+        //   std::vector<int> vecDimMapping;
+        //   QStringList curValVarList = curDimMappingVar.toStringList();
+        //   foreach(const QString& vStr, curValVarList)
+        //   {
+        //        int curDimMapping = vStr.toInt(&bok);
+        //        if (bok)
+        //        {
+        //            vecDimMapping.push_back(static_cast<int>(curDimMapping));
+        //        }
+        //        else
+        //        {
+        //            NMErr("NMTable2NetCDFFilterWrapper_Internal", << "Invalid value for 'DimMapping'!");
+        //            NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+        //            e.setDescription("Invalid value for 'DimMapping'!");
+        //            throw e;
+        //        }
+        //    }
+        //    f->SetDimMapping(vecDimMapping);
+        //}
 
         QVariant curOutputOriginVar = p->getParameter("OutputOrigin");
         if (curOutputOriginVar.isValid())
@@ -229,6 +229,30 @@ public:
             f->SetOutputIndex(vecOutputIndex);
         }
 
+        QVariant curOutputDirectionVar = p->getParameter("OutputDirection");
+        if (curOutputDirectionVar.isValid())
+        {
+           std::vector<int> vecOutputDirection;
+           QStringList curValVarList = curOutputDirectionVar.toStringList();
+           foreach(const QString& vStr, curValVarList)
+           {
+                int curOutputDirection = vStr.toInt(&bok);
+                if (bok)
+                {
+                    vecOutputDirection.push_back(static_cast<int>(curOutputDirection));
+                }
+                else
+                {
+                    NMErr("NMTable2NetCDFFilterWrapper_Internal", << "Invalid value for 'OutputDirection'!");
+                    NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                    e.setDescription("Invalid value for 'OutputDirection'!");
+                    throw e;
+                }
+            }
+            f->SetOutputDirection(vecOutputDirection);
+        }
+
+
         QVariant curInputTableNameVar = p->getParameter("InputTableName");
         std::string curInputTableName;
         if (curInputTableNameVar.isValid())
@@ -253,21 +277,21 @@ public:
             f->SetImageVarName(curImageVarName);
         }
 
-        QVariant curNcImageContainerVar = p->getParameter("NcImageContainer");
-        std::string curNcImageContainer;
-        if (curNcImageContainerVar.isValid())
-        {
-            curNcImageContainer = curNcImageContainerVar.toString().toStdString();
-            f->SetNcImageContainer(curNcImageContainer);
-        }
+        //QVariant curNcImageContainerVar = p->getParameter("NcImageContainer");
+        //std::string curNcImageContainer;
+        //if (curNcImageContainerVar.isValid())
+        //{
+        //    curNcImageContainer = curNcImageContainerVar.toString().toStdString();
+        //    f->SetNcImageContainer(curNcImageContainer);
+        //}
 
-        QVariant curNcGroupNameVar = p->getParameter("NcGroupName");
-        std::string curNcGroupName;
-        if (curNcGroupNameVar.isValid())
-        {
-            curNcGroupName = curNcGroupNameVar.toString().toStdString();
-            f->SetNcGroupName(curNcGroupName);
-        }
+        //QVariant curNcGroupNameVar = p->getParameter("NcGroupName");
+        //std::string curNcGroupName;
+        //if (curNcGroupNameVar.isValid())
+        //{
+        //    curNcGroupName = curNcGroupNameVar.toString().toStdString();
+        //    f->SetNcGroupName(curNcGroupName);
+        //}
 
         QVariant curDimVarNamesVar = p->getParameter("DimVarNames");
         if (curDimVarNamesVar.isValid())
@@ -331,16 +355,17 @@ NMTable2NetCDFFilterWrapper
     mUserProperties.insert(QStringLiteral("NMOutputComponentType"), QStringLiteral("OutputPixelType"));
     mUserProperties.insert(QStringLiteral("InputTableName"), QStringLiteral("InputTableName"));
     mUserProperties.insert(QStringLiteral("SQLWhereClause"), QStringLiteral("SQLWhereClause"));
-    mUserProperties.insert(QStringLiteral("NcImageContainer"), QStringLiteral("NetCDFFileName"));
-    mUserProperties.insert(QStringLiteral("NcGroupName"), QStringLiteral("NcGroupName"));
+    //mUserProperties.insert(QStringLiteral("NcImageContainer"), QStringLiteral("NetCDFFileName"));
+    //mUserProperties.insert(QStringLiteral("NcGroupName"), QStringLiteral("NcGroupName"));
     mUserProperties.insert(QStringLiteral("ImageVarName"), QStringLiteral("ImageVarName"));
-    mUserProperties.insert(QStringLiteral("DimMapping"), QStringLiteral("DimMapping"));
+    //mUserProperties.insert(QStringLiteral("DimMapping"), QStringLiteral("DimMapping"));
     mUserProperties.insert(QStringLiteral("DimVarNames"), QStringLiteral("DimVariableNames"));
     mUserProperties.insert(QStringLiteral("VarAndDimDescriptors"), QStringLiteral("VarAndDimDescription"));
     mUserProperties.insert(QStringLiteral("OutputOrigin"), QStringLiteral("OutputOrigin"));
     mUserProperties.insert(QStringLiteral("OutputSpacing"), QStringLiteral("OutputSpacing"));
     mUserProperties.insert(QStringLiteral("OutputSize"), QStringLiteral("OutputSize"));
     mUserProperties.insert(QStringLiteral("OutputIndex"), QStringLiteral("OutputIndex"));
+    mUserProperties.insert(QStringLiteral("OutputDirection"), QStringLiteral("OutputDirection"));
 }
 
 NMTable2NetCDFFilterWrapper

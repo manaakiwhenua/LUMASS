@@ -111,7 +111,7 @@ NMLogger::logProvN(const NMProvConcept &concept,
 
     msg += ")\n";
 
-    if (mMPIRank == 0)
+    //if (mMPIRank == 0)
     {
         emit sendProvN(msg);
     }
@@ -128,10 +128,12 @@ NMLogger::processLogMsg(const QString &time, LogEventType type, const QString &m
     }
 
     QString logmsg = msg;
+    QString txtmsg = msg;
     // each message its own line unless we specifiy bForceNewLine = false!
     if (bForceNewLine && msg.at(msg.size()-1) != '\n')
     {
         logmsg = QString("%1 \n").arg(msg);
+        txtmsg = logmsg;
     }
 
     if (mbHtml)
@@ -168,43 +170,54 @@ NMLogger::processLogMsg(const QString &time, LogEventType type, const QString &m
                     logmsg = QString("%1 DEBUG: %2").arg(time).arg(logmsg);
                 }
                 break;
+            default:
+                logmsg = QString("<b>%1</b>").arg(logmsg);
+                break;
         }
-    }
-    else
-    {
-        switch(type)
+
+        //if (mMPIRank == 0)
         {
-            case NM_LOG_INFO:
-                if (!bForceNewLine)
-                {
-                    logmsg = QString("%1 ").arg(logmsg);
-                }
-                else
-                {
-                    logmsg = QString("%1 INFO: %2").arg(time).arg(logmsg);
-                }
-                break;
-            case NM_LOG_WARN:
-                logmsg = QString("%1 WARNING: %2").arg(time).arg(logmsg);
-                break;
-            case NM_LOG_ERROR:
-                logmsg = QString("%1 ERROR: %2").arg(time).arg(logmsg);
-                break;
-            case NM_LOG_DEBUG:
-                if (!bForceNewLine)
-                {
-                    logmsg = QString("%1 ").arg(logmsg);
-                }
-                else
-                {
-                    logmsg = QString("%1 DEBUG: %2").arg(time).arg(logmsg);
-                }
-                break;
+            emit sendLogMsg(logmsg);
         }
     }
 
-    if (mMPIRank == 0)
+    // we always send a text message for log files
+    switch(type)
     {
-        emit sendLogMsg(logmsg);
+        case NM_LOG_INFO:
+            if (!bForceNewLine)
+            {
+                txtmsg = QString("%1 ").arg(txtmsg);
+            }
+            else
+            {
+                txtmsg = QString("%1 INFO: %2").arg(time).arg(txtmsg);
+            }
+            break;
+        case NM_LOG_WARN:
+            txtmsg = QString("%1 WARNING: %2").arg(time).arg(txtmsg);
+            break;
+        case NM_LOG_ERROR:
+            txtmsg = QString("%1 ERROR: %2").arg(time).arg(txtmsg);
+            break;
+        case NM_LOG_DEBUG:
+            if (!bForceNewLine)
+            {
+                txtmsg = QString("%1 ").arg(txtmsg);
+            }
+            else
+            {
+                txtmsg = QString("%1 DEBUG: %2").arg(time).arg(txtmsg);
+            }
+            break;
+        default:
+            txtmsg = QString("%1").arg(logmsg);
+            break;
+    }
+
+
+    //if (mMPIRank == 0)
+    {
+        emit sendLogTxtMsg(txtmsg);
     }
 }

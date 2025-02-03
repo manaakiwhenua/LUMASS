@@ -23,6 +23,7 @@
 #include <QString>
 #include <QFile>
 #include <yaml-cpp/yaml.h>
+#include <mpi.h>
 
 #include "NMLogger.h"
 //#include "lumassbmi_export.h"
@@ -50,16 +51,27 @@ class NMLumassEngine : public QObject
 
 public:
 
+    // NM_ENGINE_MODE
     using LumassEngineMode = enum _LumassEngineMode {
         NM_ENGINE_MODE_MODEL = 1,
         NM_ENGINE_MODE_MOSO = 2,
         NM_ENGINE_MODE_UNKNOWN = 3
     };
 
+    // NM_APP_MODE
+    using LumassAppMode = enum _LumassAppMode {
+        NM_APP_ENGINE = 1,
+        NM_APP_BMI = 2,
+        NM_APP_GUI = 3,
+        NM_APP_UNKNOWN = 4
+    };
+
     using BMILog = void(*)(int, const char*);
 
-    NMLumassEngine(QObject* parent = nullptr);
+    NMLumassEngine(int argc, char** argv);
     virtual ~NMLumassEngine();
+
+    NMModelController* getModelController() {return mController;}
 
     void setBMILogFunc(BMILog logger) { mBMILogger = logger; }
     NMLogger* getLogger() const {return mLogger;}
@@ -121,9 +133,11 @@ public slots:
     void setLogProvenance(bool logProv);
 
     LumassEngineMode getEngineMode(void) { return mMode; }
+    LumassAppMode getAppMode(void){return mAppMode;}
 
     void doMOSO(const QString& losFileName);
-    void doModel(const QString& userFile, QString& workspace, QString& enginePath, bool bLogProv);
+    void doModel(const QString& userFile, QString& workspace, QString& enginePath, bool bLogProv,
+                 const QString& runComponent=QStringLiteral("root"));
 
 
 protected:
@@ -145,7 +159,14 @@ private:
 
     bool mbMPICleanUp;
 
+    // mpi information
+    int m_Rank;
+    int m_Nproc;
+    int m_ThreadSupport;
+    QString m_ThreadSupportStr;
+    MPI_Comm mParentComm;
 
+    LumassAppMode mAppMode;
     LumassEngineMode mMode;
 
     static const std::string ctx;

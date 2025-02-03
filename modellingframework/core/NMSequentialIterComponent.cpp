@@ -105,14 +105,35 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
     //    }
 
     NMModelController* ctrl = this->getModelController();
+    NMModelController::MPICompProg compProg;
+    compProg.compName = this->objectName();
+
     mIterationStepRun = mIterationStep;
     unsigned int niter = evalNumIterationsExpression(mIterationStepRun);
+    if (niter != mIterationStepRun)
+    {
+        compProg.progress = niter;
+        compProg.event = NMModelController::NM_EVENT_NUMITER_CHGD;
+    }
+    ctrl->mpiSignalProgress(compProg);
+
     unsigned int i = mIterationStepRun-1;
     for (; i < niter && !ctrl->isModelAbortionRequested(); ++i)
     {
         emit signalProgress(mIterationStepRun);
+        compProg.progress = mIterationStepRun;
+        compProg.event = NMModelController::NM_EVENT_PROGRESS;
+        ctrl->mpiSignalProgress(compProg);
+
         this->componentUpdateLogic(repo, minLevel, maxLevel, i);
         niter = evalNumIterationsExpression(mIterationStepRun+1);
+        if (niter != mIterationStepRun+1)
+        {
+            compProg.progress = niter;
+            compProg.event = NMModelController::NM_EVENT_NUMITER_CHGD;
+            ctrl->mpiSignalProgress(compProg);
+        }
+
         NMDebugAI(<< this->objectName().toStdString() << ": in-loop: IterStep=" << getIterationStep()
                                                 << " i=" << i << " niter=" << niter << std::endl);
         this->setNumIterations(niter);
@@ -120,5 +141,8 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
     }
     mIterationStepRun = mIterationStep;
     emit signalProgress(mIterationStep);
+    compProg.event = NMModelController::NM_EVENT_PROGRESS;
+    compProg.progress = mIterationStep;
+    ctrl->mpiSignalProgress(compProg);
 }
 

@@ -125,6 +125,7 @@ class NMMODFRAMECORE_EXPORT NMProcess : public QObject, public NMModelObject
     Q_PROPERTY(unsigned int OutputNumDimensions READ getOutputNumDimensions WRITE setOutputNumDimensions NOTIFY NMProcessChanged)
     Q_PROPERTY(unsigned int InputNumBands READ getInputNumBands WRITE setInputNumBands NOTIFY NMProcessChanged)
     Q_PROPERTY(unsigned int OutputNumBands READ getOutputNumBands WRITE setOutputNumBands NOTIFY NMProcessChanged)
+    Q_PROPERTY(unsigned int NumberOfThreads READ getNumberOfThreads WRITE setNumberOfThreads NOTIFY NMProcessChanged)
 
 public:
     /*! Defines the supported ways of (input) parameter supply to a process component upon
@@ -154,6 +155,7 @@ public:
     NMPropertyGetSet(OutputNumDimensions  , unsigned int                           )
     NMPropertyGetSet(InputNumBands        , unsigned int                           )
     NMPropertyGetSet(OutputNumBands	      , unsigned int                           )
+    NMPropertyGetSet(NumberOfThreads      , unsigned int                           )
     NMPropertyGetSet(ParameterHandling	  , NMProcess::AdvanceParameter            )
 
     NMItkDataObjectWrapper::NMComponentType getInputNMComponentType();
@@ -300,6 +302,7 @@ protected:
     unsigned int mOutputNumBands;
     unsigned int mInputNumDimensions;
     unsigned int mOutputNumDimensions;
+    unsigned int mNumberOfThreads;
     NMProcess::AdvanceParameter mParameterHandling;
 
     bool mbLinked;

@@ -39,7 +39,7 @@
 #include <algorithm>
 
 NMProcess::NMProcess(QObject *parent)
-    : mbAbortExecution(false), mbLinked(false)
+    : mbAbortExecution(false), mbLinked(false), mNumberOfThreads(1)
 {
     this->mInputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
     this->mOutputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
@@ -114,6 +114,16 @@ NMProcess::linkInPipeline(unsigned int step,
         {
             this->mOtbProcess->ReleaseDataFlagOn();
         }
+
+        bool bConv;
+        unsigned int maxThreadCount = mController->getSetting(QStringLiteral("MaxThreadCount")).toUInt(&bConv);
+        unsigned int numThreads = static_cast<unsigned int>(QThread::idealThreadCount());
+        if (bConv)
+        {
+            numThreads = std::min(numThreads, maxThreadCount);
+        }
+
+        this->mOtbProcess->SetNumberOfThreads(numThreads);
     }
 
     // ATTENTION:
@@ -138,6 +148,8 @@ NMProcess::linkInPipeline(unsigned int step,
 
     this->linkParameters(step, repo);
     this->linkInputs(step, repo);
+
+
 
 #ifdef LUMASS_DEBUG
     if (this->mOtbProcess.IsNotNull())

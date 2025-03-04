@@ -346,22 +346,53 @@ NMModelController::deleteLater(QStringList compNames)
     }
 }
 
+QString
+NMModelController::getYamlConfigValue(const QString &configFN, const QString &configNodeStr,
+                                      const QString& itemStr)
+{
+    QString retValue;
+
+    QFileInfo yamlInfo(configFN);
+    if (yamlInfo.isReadable())
+    {
+        YAML::Node fileNode = YAML::LoadFile(configFN.toStdString());
+        if (fileNode[configNodeStr.toStdString()])
+        {
+            YAML::Node node1 = fileNode[configNodeStr.toStdString()];
+            retValue = node1[itemStr.toStdString()].as<std::string>().c_str();
+        }
+    }
+    else
+    {
+        NMLogError(<< "The configuration file '"
+                   << configFN.toStdString() << "' "
+                   << "could not be edited!");
+    }
+
+    return retValue;
+}
+
 void
 NMModelController::setYamlConfigValue(const QString &configFN, YAML::Node &fileNode,
-                                      const QString &configNode, const QString& item,
-                                      const QString &value)
+                                      const QString &configNodeStr, const QString& settingNodeStr,
+                                      const QString& itemStr, const QString &value)
 {
     QFileInfo yamlInfo(configFN);
     if (yamlInfo.isWritable())
     {
         fileNode = YAML::LoadFile(configFN.toStdString());
-        if (fileNode[configNode.toStdString()])
+        if (fileNode[configNodeStr.toStdString()])
         {
-            YAML::Node node1 = fileNode[configNode.toStdString()];
+            YAML::Node node1 = fileNode[configNodeStr.toStdString()];
 
-            if (node1[item.toStdString()])
+            if (settingNodeStr.isEmpty())
             {
-                node1[item.toStdString()] = value.toStdString();
+                node1[itemStr.toStdString()] = value.toStdString();
+            }
+            else
+            {
+                YAML::Node settingNode = node1[settingNodeStr.toStdString()];
+                settingNode[itemStr.toStdString()] = value.toStdString();
             }
         }
 
@@ -439,7 +470,7 @@ NMModelController::clearModelSettings(void)
 {
     QStringList modelSettings = mSettings.keys();
     QStringList sys;
-    sys << "UserModels" << "Workspace" << "LUMASSPath" << "TimeFormat";
+    sys << "UserModels" << "Workspace" << "LUMASSPath" << "TimeFormat" << "MaxProcCount" << "MaxThreadCount";
 
     foreach(const QString& key, modelSettings)
     {
@@ -472,7 +503,15 @@ NMModelController::updateSettings(const QString& key, QVariant value)
     emit settingsUpdated(key, value);
 }
 
-
+void
+NMModelController::notifyParentProcess(int msg, int tag)
+{
+    if (this->mAppMode == 1 && this->mParentMPIComm != MPI_COMM_NULL)
+    {
+        NMDebugAI(<< "notifyParentProcess: msg=" << msg << " | tag=" << tag << std::endl);
+        MPI_Ssend(&msg, 1, MPI_INT, 0, tag, this->mParentMPIComm);
+    }
+}
 
 void
 NMModelController::executeModel(const QString& compName,
@@ -544,6 +583,7 @@ NMModelController::executeModel(const QString& compName,
             NMLogError(<< ctx << ": couldn't find '"
                     << compName.toStdString() << "'!");
             NMDebugCtx(ctx, << "done!");
+            notifyParentProcess(0, 73);
             return;
         }
         QString userID = comp->getUserID();
@@ -838,13 +878,34 @@ NMModelController::executeMPIParentModel(const QString &compName,
     QString modelBaseName = QString("$[LUMASS:ConfigPath]$/%1.lmx").arg(modelInfo.completeBaseName());
 
     // --------------------------------------------------------------
-    // create yaml config file
-
+    // create new yaml config file adapting the model file name
     YAML::Node node;
-    this->setYamlConfigValue(yamlFN, node, "EngineConfig", "modelfile", modelBaseName);
+    this->setYamlConfigValue(yamlFN, node, "EngineConfig", QString(), "modelfile", modelBaseName);
+
+
+    // ..................................................
+    // replace 'ConfigPath' with original path
+
+    // work out original value of `ConfigPath`
+    QFileInfo yfinfo(yamlFN);
+    QString origConfigPath;
+    if (yfinfo.isFile() && yfinfo.isReadable())
+    {
+        origConfigPath = yfinfo.absolutePath();
+    }
+    const QString pathExpr = QStringLiteral("$[LUMASS:ConfigPath]$");
 
     YAML::Emitter emitter;
     emitYaml(emitter, node);
+    QString yamlStr = emitter.c_str();
+    int settingPos = yamlStr.indexOf(QStringLiteral("Settings:"));
+
+    QString engineConf = yamlStr.left(settingPos);
+    QString settingStr = yamlStr.right(yamlStr.size() - settingPos);
+    settingStr = settingStr.replace(pathExpr, origConfigPath);
+
+    // ........................................................
+    // write new YAML file
 
     QFile yamlFile(newYamlFN);
     if (!yamlFile.open(QIODevice::WriteOnly | QIODevice::Text))
@@ -854,8 +915,9 @@ NMModelController::executeMPIParentModel(const QString &compName,
         return;
     }
 
+    // write yaml
     QTextStream yamlOut(&yamlFile);
-    yamlOut << emitter.c_str();
+    yamlOut << engineConf.toStdString().c_str() << settingStr.toStdString().c_str();
     yamlFile.close();
 
     // --------------------------------------------------------------------
@@ -884,6 +946,11 @@ NMModelController::executeMPIParentModel(const QString &compName,
         xmlS.serialiseComponent(ec, doc);
     }
 
+    // replace ConfigPath var with original ConfigPath value: 'origConfigPath'
+    QString lmxStr = doc.toString(4);
+    lmxStr = lmxStr.replace(pathExpr, origConfigPath);
+
+
     QFile modelFile(modelFN);
     if (!modelFile.open(QIODevice::WriteOnly | QIODevice::Text))
     {
@@ -893,7 +960,7 @@ NMModelController::executeMPIParentModel(const QString &compName,
     }
 
     QTextStream xmlOut(&modelFile);
-    xmlOut << doc.toString(4);
+    xmlOut << lmxStr;//doc.toString(4);
     modelFile.close();
 
     // --------------------------------------------------------------------------------
@@ -970,6 +1037,56 @@ NMModelController::executeMPIParentModel(const QString &compName,
         delete[] argv[k];
     }
     delete[] argv;
+
+    // ----------------------------------------------------------------------
+    // check-in with child processes if we can continue ...
+    // ----------------------------------------------------------------------
+
+    NMLogInfo(<< "Checking in with the child processes ...");
+
+    int goAhead[nprocs];
+    for (int p=0; p < nprocs; ++p)
+    {
+        goAhead[p] = 0;
+    }
+
+    int msgCount = 0;
+    MPI_Status status;
+    int flag = 0;
+    while (msgCount < nprocs)
+    {
+        MPI_Iprobe(MPI_ANY_SOURCE, 73, mInterComm, &flag, &status);
+        if (flag)
+        {
+            MPI_Recv(&goAhead[status.MPI_SOURCE], 1, MPI_INT, status.MPI_SOURCE, 73, mInterComm, MPI_STATUS_IGNORE);
+            msgCount++;
+
+            NMDebugAI(<< "ChildMsg: C" << status.MPI_SOURCE << " tag=73 | " << " msg=" << goAhead[status.MPI_SOURCE] << std::endl);
+
+            // no point in waiting around ...
+            if (goAhead[status.MPI_SOURCE] == 0)
+            {
+                break;
+            }
+        }
+    }
+    NMDebug(<< std::endl);
+
+    // check whether we've got the goAhead
+    int sum = 0;
+    for (int s=0; s < nprocs; ++s)
+    {
+        sum += goAhead[s];
+    }
+
+    if (sum < nprocs)
+    {
+        NMLogError(<< "Parallel processing has failed! Please see logs of child processes!");
+        return;
+    }
+
+    NMLogInfo(<< "Child processes are ready to go!");
+
 
     // --------------------------------------------------------------------------------
     // PREPARE MPI-COMMUNICATORS AND SHARED MEMORY WINDOWS
@@ -1058,7 +1175,7 @@ NMModelController::executeMPIParentModel(const QString &compName,
     connect(mpi, &NMMPIRunnable::signalMPILoopFinished, this, &NMModelController::slotMPIEventLoopFinished);
 
     mpi->setLogger(mLogger);
-    mpi->setData(nprocs, sortedModelComps, lumassPath, newYamlFN, logFN,
+    mpi->setData(nprocs, sortedModelComps, lumassPath, newYamlFN, logFN, this->mLogger,
                  mMergedComm, mParentMPIComm, mMPICompProgWin, mMPIParentAbort,
                  mMPICompState, mMPIAbort);
     QThreadPool::globalInstance()->start(mpi);
@@ -1111,6 +1228,12 @@ NMModelController::executeMPIChildModel(const QString &compName)
             NMDebug(<< co.toStdString() << " ");
         }
         NMDebug(<< std::endl);
+    }
+
+    if (sortedModelComps.size() > 0 && this->getComponent(compName) != nullptr)
+    {
+        // let the parent know we're ready!
+        notifyParentProcess(1, 73);
     }
 
     MPI_Intercomm_merge(mParentMPIComm, 1, &mMergedComm);

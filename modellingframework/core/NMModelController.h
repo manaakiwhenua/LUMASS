@@ -470,8 +470,10 @@ protected:
      */
     QString evalMuParserExpression(const QObject* obj, const QString& expr, double* resVal);
 
+    QString getYamlConfigValue(const QString &configFN, const QString &configNodeStr, const QString &itemStr);
     void setYamlConfigValue(const QString& configFN, YAML::Node& fileNode,
-                            const QString& configNode, const QString &item, const QString& value);
+                            const QString& configNodeStr, const QString &settingNodeStr,
+                            const QString &itemStr, const QString& value);
     void emitYaml(YAML::Emitter& emitter, const YAML::Node& node);
 
     // mpi handling
@@ -480,6 +482,8 @@ protected:
     void executeSeqModel(const QString& compName, const QString &yamlFN="");
 
     void slotMPIEventLoopFinished(NMMPIRunnable* obj);
+
+    void notifyParentProcess(int msg, int tag);
 
     /*! maps ComponentName to model component object */
 	QMap<QString, NMModelComponent*> mComponentMap;

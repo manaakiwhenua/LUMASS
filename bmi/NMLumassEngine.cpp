@@ -219,6 +219,7 @@ NMLumassEngine::NMLumassEngine(int argc, char** argv)
 
     if (mAppMode == NM_APP_GUI)
     {
+        readSettings();
         mLogger->setHtmlMode(true);
 #ifdef LUMASS_DEBUG
         mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
@@ -269,11 +270,86 @@ int NMLumassEngine::runModel(double fromTimeStep, double toTimeStep)
 }
 
 void
-NMLumassEngine::setSetting(const QString &key, const QString &value)
+NMLumassEngine::readSettings()
+{
+    QSettings settings("LUMASS", "GUI");
+
+#ifdef __linux__
+settings.setIniCodec("UTF-8");
+#endif
+
+
+    // ================================================================
+    //              Directories
+    // ================================================================
+    settings.beginGroup("Directories");
+    QVariant val = settings.value("Workspace");
+    if (val.isValid())
+    {
+        setSetting("Workspace", val);
+    }
+    else
+    {
+        setSetting("Workspace", QString("%1/lumass_workspace").arg(QDir::homePath()));
+    }
+
+    val = settings.value("UserModels");
+    if (val.isValid())
+    {
+        setSetting("UserModels", val);
+    }
+    else
+    {
+        setSetting("UserModels", QString("%1/lumass_workspace").arg(QDir::homePath()));
+    }
+    settings.endGroup();
+
+    // ================================================================
+    //              Capabilities
+    // ================================================================
+    settings.beginGroup("Capabilities");
+    val = settings.value("LmvFileVersion");
+    if (val.isValid())
+    {
+        setSetting("LmvFileVersion", val);
+    }
+    settings.endGroup();
+
+    // ================================================================
+    //              PROCESSES AND THREADS
+    // ================================================================
+    settings.beginGroup("ComputeResources");
+
+    val = settings.value("MaxProcCount");
+    if (val.isValid())
+    {
+        setSetting("MaxProcCount", val);
+    }
+    else
+    {
+        setSetting("MaxProcCount", QVariant::fromValue(QString("%1").arg(QThread::idealThreadCount()/2)));
+    }
+
+    val = settings.value("MaxThreadCount");
+    if (val.isValid())
+    {
+        setSetting("MaxThreadCount", val);
+    }
+    else
+    {
+        setSetting("MaxThreadCount", QVariant::fromValue(QString("%1").arg(QThread::idealThreadCount())));
+    }
+
+    settings.endGroup();
+}
+
+void
+NMLumassEngine::setSetting(const QString &key, const QVariant &value)
 {
 
-    NMLogDebug(<< "::setSetting(" << key.toStdString() << ", " << value.toStdString() << ")");
+    NMLogDebug(<< "::setSetting(" << key.toStdString() << ", " << value.toString().toStdString() << ")");
     mController->updateSettings(key, value);
+    mSettings[key] = value;
 }
 
 void
@@ -296,6 +372,15 @@ std::string NMLumassEngine::processStringParameter(const QString& param)
     std::string ret = param.toStdString();
     ret = this->mController->processStringParameter(nullptr, ret.c_str()).toStdString();
     return ret;
+}
+
+void NMLumassEngine::notifyParentProcess(int msg, int tag)
+{
+    if (mAppMode == NM_APP_ENGINE && mParentComm != MPI_COMM_NULL)
+    {
+        NMDebugAI(<< "Engine::notifyParentProcess: msg=" << msg << " | tag=" << tag << std::endl);
+        MPI_Ssend(&msg, 1, MPI_INT, 0, tag, this->mParentComm);
+    }
 }
 
 void
@@ -367,6 +452,7 @@ NMLumassEngine::doModel(const QString& userFile, QString &workspace,
             msg << "ERROR: " << bc.what();
             NMErr("NMLumassEngine", << msg.str().c_str());
             //std::cout << "cout: " << msg.str() << std::endl;
+            notifyParentProcess(0, 73);
             return;
         }
         catch (YAML::ParserException& pe)
@@ -375,6 +461,7 @@ NMLumassEngine::doModel(const QString& userFile, QString &workspace,
             msg << "ERROR: " << pe.what();
             NMErr(ctx, << msg.str().c_str());
             //std::cout << "cout: " << msg.str() << std::endl;
+            notifyParentProcess(0, 73);
             return;
         }
         catch (std::exception& se)
@@ -383,6 +470,7 @@ NMLumassEngine::doModel(const QString& userFile, QString &workspace,
             msg << "ERROR: " << se.what();
             NMErr(ctx, << msg.str().c_str());
             //std::cout << "cout: " << msg.str() << std::endl;
+            notifyParentProcess(0, 73);
             return;
         }
     }
@@ -435,6 +523,7 @@ NMLumassEngine::doModel(const QString& userFile, QString &workspace,
     {
         NMErr(ctx, << "Invalid model specified!");
         NMDebugCtx(ctx, << "done!");
+        notifyParentProcess(0, 73);
         return;
     }
 
@@ -478,6 +567,11 @@ NMLumassEngine::doModel(const QString& userFile, QString &workspace,
     if (nameRegister.size() == 0)
     {
         NMErr(ctx, << "Invalid model file specified!");
+        NMLogError( << "Invalid model file specified!");
+
+        // let the parent know that we hit trouble ...
+        notifyParentProcess(0, 73);
+
         NMDebugCtx(ctx, << "done!");
         return;
     }

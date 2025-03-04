@@ -22,6 +22,8 @@
 #include <string>
 #include <QString>
 #include <QFile>
+#include <QMap>
+#include <QVariant>
 #include <yaml-cpp/yaml.h>
 #include <mpi.h>
 
@@ -81,6 +83,8 @@ public:
 
     void shutdown(void);
 
+    QMap<QString, QVariant> getSettings(){return mSettings;}
+
 public slots:
     /*! passes a message to the internal logger associcated with this engine*/
     void log(const QString& type, const QString& qmsg);
@@ -123,7 +127,7 @@ public slots:
 
 
     /*! updates a NMModelController setting given by the key value pair */
-    void setSetting(const QString& key, const QString& value);
+    void setSetting(const QString& key, const QVariant& value);
 
     /*! set whether LUMASS should log data provenance during model execution;
      *  Please note that this setting only applies to system dynamics models.
@@ -139,6 +143,13 @@ public slots:
     void doModel(const QString& userFile, QString& workspace, QString& enginePath, bool bLogProv,
                  const QString& runComponent=QStringLiteral("root"));
 
+    /*!
+     * \brief notifyParentProcess - signals to the parent process (GUI) whether (msg=1)
+     *        or not (msg=0) the child process can execute the 'child' model;
+     * \param msg : {0,1}
+     * \param tag : {73}
+     */
+    void notifyParentProcess(int msg, int tag);
 
 protected:
     QString getYamlNodeTypeAsString(const YAML::Node& node);
@@ -149,6 +160,8 @@ protected:
     int doMOSOsingle();
     int doMOSObatch();
 
+    void readSettings();
+
 private:
     NMModelController* mController;
     NMLogger* mLogger;
@@ -156,6 +169,8 @@ private:
     QFile mLogFile;
     NMMosra* mMosra;
     BMILog mBMILogger;
+
+    QMap<QString, QVariant> mSettings;
 
     bool mbMPICleanUp;
 

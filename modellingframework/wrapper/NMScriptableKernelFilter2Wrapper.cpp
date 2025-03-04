@@ -118,8 +118,26 @@ public:
         bool bok;
         int givenStep = step;
 
-        f->SetNumThreads(p->getNumThreads());
-
+        //QVariant curUserNumThreadsVar = p->getParameter("NumberOfThreads");
+        //unsigned int curUserNumThreads;
+        //if (curUserNumThreadsVar.isValid())
+        //{
+        //    curUserNumThreads = curUserNumThreadsVar.toUInt(&bok);
+        //    if (bok)
+        //    {
+        //        QVariant curMaxThreadsVar = p->getSetting(QStringLiteral("MaxThreadCount"));
+        //        unsigned int curMaxThreads = f->GetNumberOfThreads();
+        //        if (curMaxThreadsVar.isValid())
+        //        {
+        //            curMaxThreads = curMaxThreadsVar.toUInt(&bok);
+        //            if (!bok)
+        //            {
+        //                curMaxThreads = f->GetNumberOfThreads();
+        //            }
+        //        }
+        //        f->SetNumberOfThreads(std::min(curMaxThreads, curUserNumThreads));
+        //    }
+        //}
 
         QVariant curRadiusVar = p->getParameter("Radius");
         if (curRadiusVar.isValid())
@@ -584,7 +602,7 @@ NMScriptableKernelFilter2Wrapper
     mKernelShapeType = QString(tr("RECTANGULAR"));
     mKernelShapeEnum.clear();
     mKernelShapeEnum << "RECTANGULAR" << "CIRCULAR";
-    mNumThreads = QThread::idealThreadCount() < 0 ? (unsigned int)1 : (unsigned int)QThread::idealThreadCount();
+    //mNumThreads = QThread::idealThreadCount() < 0 ? (unsigned int)1 : (unsigned int)QThread::idealThreadCount();
     this->mAuxDataIdx = 1;
     this->mInputNumBands = 1;
     this->mOutputNumBands = 1;
@@ -601,7 +619,7 @@ NMScriptableKernelFilter2Wrapper
     mUserProperties.insert(QStringLiteral("InitScript"), QStringLiteral("InitScript"));
     mUserProperties.insert(QStringLiteral("KernelScript"), QStringLiteral("KernelScript"));
     mUserProperties.insert(QStringLiteral("Nodata"), QStringLiteral("NodataValue"));
-    mUserProperties.insert(QStringLiteral("NumThreads"), QStringLiteral("NumThreads"));
+    //mUserProperties.insert(QStringLiteral("NumberOfThreads"), QStringLiteral("NumThreads"));
 
 }
 

@@ -81,6 +81,7 @@ set(MFW_WRAPPER_LINK_LIBS
     NMOTBSupplFilters
     Qt5::Core
     ${LUMASS_WRAPPER_VTK_LIBRARIES}
+    OTBTestKernel
 )
 
 set(NMMOSRA_WRAPPER_LINKLIBS ${MFW_WRAPPER_LINK_LIBS} Qt5::Sql NMQt NMMosra ${LPSOLVE_LIBRARY})
@@ -111,9 +112,9 @@ set(CMAKE_AUTOMOC YES)
 string(TOLOWER ${CMAKE_BUILD_TYPE} BLDTYPE)
 string(COMPARE EQUAL ${BLDTYPE} "debug" HAVEDEBUG)
 
-if (HAVEDEBUG AND NOT WIN32)
-    LIST(APPEND MFW_WRAPPER_NAMES "NMUniqueCombinationFilterWrapper")
-endif()
+#if (HAVEDEBUG AND NOT WIN32)
+#    LIST(APPEND MFW_WRAPPER_NAMES "NMUniqueCombinationFilterWrapper")
+#endif()
 
 foreach( wrapper ${MFW_WRAPPER_NAMES} )
         file(GLOB MFW_WRAPPER_SOURCE_FILES "${mfw_wrapper_SOURCE_DIR}/${wrapper}*.c*")

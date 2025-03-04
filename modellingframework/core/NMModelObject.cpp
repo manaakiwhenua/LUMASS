@@ -36,3 +36,16 @@ NMModelObject::getModelController(void)
 {
     return mController;
 }
+
+QVariant
+NMModelObject::getSetting(const QString& key)
+{
+    QVariant value;
+    if (mController == nullptr)
+    {
+        return value;
+    }
+
+    return mController->getSetting(key);
+}
+

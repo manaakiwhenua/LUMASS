@@ -31,6 +31,8 @@ public:
 
     virtual void setModelController(NMModelController* controller);
     NMModelController* getModelController(void);
+    QVariant getSetting(const QString& key);
+
 
 protected:
     NMModelController* mController;

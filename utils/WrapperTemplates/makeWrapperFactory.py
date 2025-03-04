@@ -15,36 +15,50 @@ if __name__ == "__main__":
     workflow here, then we'll break out to do some things
     more special
     """
+    arglist = []
     if len(sys.argv) < 11:
-        print(
-            "Usage: $ %s makeWrapperFactory --cl_name <WrapperClassName> --alias <compAlias> --isSink <true | false> --author <author> --year <year> --date <date>"
-        )
-        sys.exit()
+        if len(sys.argv) < 2:
+            print(
+                "Usage: $ %s makeWrapperFactory --cl_name <WrapperClassName> --alias <compAlias> --isSink <true | false> --author <author> --year <year> --date <date>"
+            )
+            sys.exit()
+        else:
+            arglist = sys.argv[1].split(' ')
+    else:
+        arglist = sys.argv
 
     pdict = {}
 
-    for i in range(1, len(sys.argv)):
-        print("processing '%s' ..." % sys.argv[i])
+    for i in range(0, len(arglist)-1):
+        print("processing '%s' ..." % arglist[i])
 
-        if sys.argv[i] == "--cl_name":
-            pdict["cl_name"] = sys.argv[i + 1]
+        if arglist[i] == "--cl_name":
+            pdict["cl_name"] = arglist[i + 1]
             pdict["cl_name_lower"] = pdict["cl_name"].lower()
             pdict["cl_name_upper"] = pdict["cl_name"].upper()
 
-            pdict["fac_name"] = sys.argv[i + 1] + "Factory"
-        elif sys.argv[i] == "--isSink":
-            if sys.argv[i + 1] == "true" or sys.argv[i + 1] == "false":
-                pdict["isSink"] = sys.argv[i + 1]
+            pdict["fac_name"] = arglist[i + 1] + "Factory"
+        elif arglist[i] == "--isSink":
+            if arglist[i + 1] == "true" or arglist[i + 1] == "false":
+                pdict["isSink"] = arglist[i + 1]
             else:
                 pdict["isSink"] = "false"
-        elif sys.argv[i] == "--author":
-            pdict["author"] = sys.argv[i + 1]
-        elif sys.argv[i] == "--year":
-            pdict["year"] = sys.argv[i + 1]
-        elif sys.argv[i] == "--date":
-            pdict["date"] = sys.argv[i + 1]
-        elif sys.argv[i] == "--alias":
-            pdict["alias"] == sys.argv[i + 1]
+        elif arglist[i] == "--author":
+            authorname = arglist[i + 1]
+            while i < len(arglist)-2 and arglist[i+2].startswith("--") == False:
+                authorname = authorname + " " + arglist[i+2]
+                i = i + 1
+            pdict["author"] = authorname
+        elif arglist[i] == "--year":
+            pdict["year"] = arglist[i + 1]
+        elif arglist[i] == "--date":
+            fulldate = arglist[i+1]
+            while i < len(arglist)-2 and arglist[i+2].startswith("--") == False:
+                fulldate = fulldate + " " + arglist[i+2]
+                i = i + 1
+            pdict["date"] = fulldate
+        elif arglist[i] == "--alias":
+            pdict["alias"] = arglist[i + 1]
 
     # test - debug
     # for key in pdict:

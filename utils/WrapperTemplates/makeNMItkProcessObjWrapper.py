@@ -22,7 +22,8 @@ def buildDict(profileFile):
             "FilterClassFileName", "FilterTypeDef",
             "RATGetSupport", "RATSetSupport",
             "ForwardInputUserIDs", "NumTemplateArgs",
-            "ComponentName", "ComponentIsSink"]
+            "ComponentName", "ComponentIsSink", "AuxOutputIndex",
+            "NumThreadSupport"]
 
     pdict = {}
     # initialise list elements
@@ -540,6 +541,34 @@ def formatInternalHelperInst(clname, nargs):
 
     return instStr
 
+# ===============================================================================
+def populateUserPropertyMap(propertyList):
+
+    mapString=''
+    for prop in propertyList:
+        name = prop[0]
+        if (len(prop) == 5 and prop[4] != "vector" and prop[4] != "pointer"):
+            username = prop[4]
+        elif len(prop) == 6:
+            username = prop[5]
+        else:
+            username = name    
+            
+        tmp = "    mUserProperties.insert(QStringLiteral(\"%s\"), QStringLiteral(\"%s\"));\n" \
+                % (name, username)
+        mapString = mapString + tmp
+
+    return mapString
+
+# ===============================================================================
+def formatNumThreadSupport():
+
+    mapString=''
+    tmp = "    mUserProperties.insert(QStringLiteral(\"NumberOfThreads\"), QStringLiteral(\"NumThreads\"));\n"
+    mapString = mapString + tmp
+
+    return mapString
+
 
 # ===============================================================================
 if __name__ == '__main__':
@@ -707,6 +736,15 @@ if __name__ == '__main__':
                 paramSetting = formatInternalParamSetting(propList, className)
                 cppStr = cppStr.replace("/*$<InternalFilterParamSetter>$*/", paramSetting)
 
+                # mapping of property names to user-friendly names used in the GUI
+                mapString = populateUserPropertyMap(propList)
+                cppStr = cppStr.replace("/*$<UserPropertyMap>$*/", mapString)
+
+            elif key == 'NumThreadSupport':
+                nthrsupport = int(pDict[key])
+                if nthrsupport == 1:
+                    cppStr = cppStr.replace("/*$<NumThreadsSupport>$*/", \
+                                        formatNumThreadSupport())
             elif key == 'RATGetSupport':
                 getsupp = int(pDict[key])
                 if getsupp == 1:
@@ -758,47 +796,49 @@ if __name__ == '__main__':
 
 
     # -----------------------------------------------------------------------
-    # integrate wrapper class into ProcessFactory
+    # DEPRECATED - integrate wrapper class into ProcessFactory
     # -----------------------------------------------------------------------
+    # this below code is obsolete since the introduction of individual component
+    # factory classes (s. makeWrapperFactory.py)
 
-    print("    >>> framework integration ...")
+    #print("    >>> framework integration ...")
 
     #/*$<IncludeWrapperHeader>$*/   = #include "/*$<WrapperClassName>$*/.h"
     #ComponentName   /*$<RegisterComponentName>$*/    = mProcRegister << QString::fromLatin1($<ComponentName>$);
     #ComponentIsSink    /*$<RegisterComponentAsSink>$*/  = mSinks << QString::fromLatin1($<ComponentName>$);
 
-    procFactoryPath = os.path.join(frameworkpath, 'core/NMProcessFactory.cpp')
+    #procFactoryPath = os.path.join(frameworkpath, 'core/NMProcessFactory.cpp')
 
-    procFactoryStr = None
-    with open(procFactoryPath, 'r') as procFactory:
-        procFactoryStr = procFactory.read()
+    #procFactoryStr = None
+    #with open(procFactoryPath, 'r') as procFactory:
+    #    procFactoryStr = procFactory.read()
 
-    compNameStr = pDict['ComponentName']
+    #compNameStr = pDict['ComponentName']
 
     #    wrapperInclude = "#include \"%s.h\"\n/*$<IncludeWrapperHeader>$*/" % (pDict['WrapperClassName'])
     #    procFactoryStr = procFactoryStr.replace('/*$<IncludeWrapperHeader>$*/', wrapperInclude)
 
-    regCompNameStr = "    mProcRegister << QString::fromLatin1(\"%s\");\n/*$<RegisterComponentName>$*/" % compNameStr
-    if procFactoryStr.find(regCompNameStr) == -1:
-        procFactoryStr = procFactoryStr.replace('/*$<RegisterComponentName>$*/', regCompNameStr)
+    #regCompNameStr = "    mProcRegister << QString::fromLatin1(\"%s\");\n/*$<RegisterComponentName>$*/" % compNameStr
+    #if procFactoryStr.find(regCompNameStr) == -1:
+    #    procFactoryStr = procFactoryStr.replace('/*$<RegisterComponentName>$*/', regCompNameStr)
 
-    if not pDict['ComponentIsSink'] is None:
-        if int(pDict['ComponentIsSink']) == 1:
-            regSinKCompStr = "    mSinks << QString::fromLatin1(\"%s\");\n/*$<RegisterComponentAsSink>$*/)" % compNameStr
-            if procFactoryStr.find(regSinkCompStr) == -1:
-                procFactoryStr = procFacotryStr.replace('/*$<RegisterComponentAsSink>$*/', regSinkCompStr)
+    #if not pDict['ComponentIsSink'] is None:
+    #    if int(pDict['ComponentIsSink']) == 1:
+    #        regSinkCompStr = "    mSinks << QString::fromLatin1(\"%s\");\n/*$<RegisterComponentAsSink>$*/)" % compNameStr
+    #        if procFactoryStr.find(regSinkCompStr) == -1:
+    #            procFactoryStr = procFactoryStr.replace('/*$<RegisterComponentAsSink>$*/', regSinkCompStr)
 
 
-    nameFromAliasStr = \
-        "    else if (alias.compare(\"%s\") == 0)\n"            \
-        "    {\n"                                               \
-        "        return \"%s\";\n"                              \
-        "    }\n"                                               \
-        "/*$<WrapperClassNameFromComponentName>$*/"       \
-        % (compNameStr, pDict['WrapperClassName'])
+    #nameFromAliasStr = \
+    #    "    else if (alias.compare(\"%s\") == 0)\n"            \
+    #    "    {\n"                                               \
+    #    "        return \"%s\";\n"                              \
+    #    "    }\n"                                               \
+    #    "/*$<WrapperClassNameFromComponentName>$*/"       \
+    #    % (compNameStr, pDict['WrapperClassName'])
 
-    if procFactoryStr.find(nameFromAliasStr) == -1:
-        procFactoryStr = procFactoryStr.replace('/*$<WrapperClassNameFromComponentName>$*/', nameFromAliasStr)
+    #if procFactoryStr.find(nameFromAliasStr) == -1:
+    #    procFactoryStr = procFactoryStr.replace('/*$<WrapperClassNameFromComponentName>$*/', nameFromAliasStr)
 
 
     ### THIS IS NO LONGER REQUIRED WITH NEW INDIVIDUAL FACTORY APPROACH
@@ -814,11 +854,11 @@ if __name__ == '__main__':
     #        procFactoryStr = procFactoryStr.replace('/*$<CreateProcessObjFromWrapperClassName>$*/', createProcStr)
 
 
-    with open(procFactoryPath, 'w') as procFactory:
-        procFactory.write(procFactoryStr)
+    #with open(procFactoryPath, 'w') as procFactory:
+    #    procFactory.write(procFactoryStr)
 
 
-    print("    >>> I'm done with the ProcessFactory integration!")
+    #print("    >>> I'm done with the ProcessFactory integration!")
 
 
     # -----------------------------------------------------------------------
@@ -827,6 +867,7 @@ if __name__ == '__main__':
 
     print("    >>> user interface integration ...")
 
+    compNameStr = pDict['ComponentName']
     guipath = os.path.join(homepath, 'gui')
     procListPath = os.path.join(guipath, 'NMProcCompList.cpp')
 

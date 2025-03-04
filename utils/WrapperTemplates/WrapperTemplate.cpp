@@ -102,7 +102,7 @@ public:
 
 		/*$<InternalFilterParamSetter>$*/
 
-                /*$<ForwardInputUserIDs_Body>$*/
+        /*$<ForwardInputUserIDs_Body>$*/
 
 
 		NMDebugCtx("/*$<WrapperClassName>$*/_Internal", << "done!");
@@ -124,6 +124,10 @@ LinkInternalParametersWrap( /*$<WrapperClassName>$*/, /*$<WrapperClassName>$*/_I
 	this->setParent(parent);
 	this->setObjectName("/*$<WrapperClassName>$*/");
 	this->mParameterHandling = NMProcess::NM_USE_UP;
+
+    mUserProperties.clear();
+/*$<UserPropertyMap>$*/
+/*$<NumThreadsSupport>$*/
 }
 
 /*$<WrapperClassName>$*/

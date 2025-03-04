@@ -42,6 +42,11 @@ InputTypeFunc_1             = 1:OutImgType:SetReferenceImage
 RATGetSupport               = 0
 RATSetSupport               = 1
 
+# number of Threads support
+# whether or not it should be possible to set the number of threads
+# individually for this filter
+NumThreadsSupport           = 1
+
 # support for auxiliary (persistent) output;
 # defines the filter fuction used to fetch auxillary output and the
 # output index;
@@ -74,6 +79,13 @@ ForwardInputUserIDs         = SetInputNames
 #           std::vector<OutSpacingValueType> param;       // then use the 'vector' keyword
 #         or as pointer
 #           OutSpacingValueType* param;                   // then use the 'pointer' keyword
+# NOTE 3: the 5th argument, if not 'vector' or 'pointer' (s. Property_8), otherwise the 6th 
+#         argument (s. Property_9), depicts an optional user friendly name representing 
+#         the property in the GUI; if no such name is provided, the given name of the 
+#         property is used instead
+#                     
+# Property_<id> = <name>:<dimension>:<wrapper_type>:<filter_type>[:<vector | pointer>][:<user_friendly_name>]
+
 Property_1                  = Radius:2:int:int
 Property_2                  = KernelScript:1:string
 Property_3                  = KernelShape:1:string
@@ -81,5 +93,7 @@ Property_4                  = OutputVarName:1:string
 Property_5                  = Nodata:1:double
 Property_6                  = DefaultPixelValue:1:double:OutImgPixelType
 Property_7                  = OutputSpacing:2:double:OutSpacingValueType:pointer
+Property_8                  = MeanValueThreshold:0:double:InImgPixelType:InputValueThreshold
+Property_9                  = OutputDirection:2:int:int:vector:AxisValueSigns
 
 

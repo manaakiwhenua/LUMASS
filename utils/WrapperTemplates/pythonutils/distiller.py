@@ -26,7 +26,9 @@ class Distiller:
             padding = 1
 
         # Turn padding into whitespace
+        # plus split token used by LUMASS to process the *.lwp file
         whitespace = " ".replace(" ", " " * padding)
+        whitespace = whitespace + "= "
 
         return whitespace
 

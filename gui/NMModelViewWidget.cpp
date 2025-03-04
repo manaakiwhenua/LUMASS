@@ -336,13 +336,8 @@ NMModelViewWidget::setupModellingEnvironment(NMModelController *ctrl)
 
     NMDebugAI(<< "NMModelViewWidget_thread: " << uint_fast64_t(QThread::currentThreadId()) << std::endl);
 
-
-    mModelController->updateSettings("LUMASSPath",
-                                     NMGlobalHelper::getUserSetting("LUMASSPath"));
-    mModelController->updateSettings("Workspace", NMGlobalHelper::getUserSetting("Workspace"));
-    mModelController->updateSettings("TimeFormat", "yyyy-MM-ddThh:mm:ss.zzz");
-
     NMProcessFactory::instance().setLumassPath(mModelController->getSetting("LUMASSPath").toString());
+
 
     // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     // set prov testing

@@ -149,7 +149,7 @@ find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
 SET(LUMASS_VERSION_MINOR 9)
 SET(LUMASS_VERSION_REVISION 73)
-SET(LUMASS_VERSION_SUFFIX "-b9")
+SET(LUMASS_VERSION_SUFFIX "-b10")
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
@@ -653,6 +653,7 @@ SET(MFW_WRAPPER_NAMES
     NMCubeSliceToImage2DFilterWrapper
     NMImage2TableFilterWrapper
     NMTable2NetCDFFilterWrapper
+    NMDifferenceImageFilterWrapper
 )
 
 SET(OTB_LINK_LIBS

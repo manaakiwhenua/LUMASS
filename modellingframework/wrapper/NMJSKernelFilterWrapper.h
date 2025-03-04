@@ -52,7 +52,7 @@ NMJSKernelFilterWrapper
     Q_PROPERTY(QString KernelShapeType READ getKernelShapeType WRITE setKernelShapeType)
     Q_PROPERTY(QStringList KernelShapeEnum READ getKernelShapeEnum)
     Q_PROPERTY(QStringList Nodata READ getNodata WRITE setNodata)
-    Q_PROPERTY(unsigned int NumThreads READ getNumThreads WRITE setNumThreads)
+    //Q_PROPERTY(unsigned int NumThreads READ getNumThreads WRITE setNumThreads)
 
 public:
 
@@ -63,7 +63,7 @@ public:
     NMPropertyGetSet( Nodata, QStringList )
     NMPropertyGetSet( KernelShapeType, QString )
     NMPropertyGetSet( KernelShapeEnum, QStringList )
-    NMPropertyGetSet( NumThreads, unsigned int )
+    //NMPropertyGetSet( NumThreads, unsigned int )
 
 
 public:
@@ -89,7 +89,7 @@ protected:
     void linkParameters(unsigned int step,
             const QMap<QString, NMModelComponent*>& repo);
 
-    unsigned int mNumThreads;
+    //unsigned int mNumThreads;
 
     QList<QStringList> mRadius;
     QStringList mKernelScript;

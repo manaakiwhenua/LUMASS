@@ -228,6 +228,10 @@ void
 NMJSKernelFilter<TInputImage, TOutputImage>
 ::BeforeThreadedGenerateData()
 {
+    // hard-coded for now, until we find the issue why more than 1 thread
+    // creates a seg-fault!
+    this->SetNumberOfThreads(1);
+
     // make sure all images share the same size
     int fstImg = 0;
     typename InputImageType::SizeValueType refSize[TInputImage::ImageDimension];
@@ -345,7 +349,7 @@ NMJSKernelFilter<TInputImage, TOutputImage>
         QString kernelScript = m_KernelScript.c_str();
         if (kernelScript.startsWith("\"") && kernelScript.endsWith("\""))
         {
-            kernelScript = kernelScript.mid(1, kernelScript.size()-2);
+            kernelScript = QString("(%1)").arg(kernelScript.mid(1, kernelScript.size()-2));
         }
 
         // ----------------------------------------------------------------------
@@ -513,7 +517,7 @@ QJSValue NMJSKernelFilter<TInputImage, TOutputImage>
     QString script = m_InitScript.c_str();
     if (script.startsWith("\"") && script.endsWith("\""))
     {
-        script = script.mid(1, script.size()-2);
+        script = QString("(%1)").arg(script.mid(1, script.size()-2));
     }
 
     QJSValue initScript = jsengine->evaluate(script);
@@ -1268,6 +1272,8 @@ NMJSKernelFilter< TInputImage, TOutputImage>
             progress.CompletedPixel();
         }
     }
+
+    m_vJSEngine[threadId]->collectGarbage();
 
 //    CALLGRIND_STOP_INSTRUMENTATION;
 //    CALLGRIND_DUMP_STATS;

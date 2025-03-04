@@ -94,7 +94,7 @@ namespace otb
  *      for each axis is
  *
  *      len = d * axis_radius + 1
- *        3 = 2 * axis_radius + 1        // for 2-dimensional image (kernel)
+ *        3 = 2 *     1       + 1 // for 2-dimensional image (kernel of radius 1)
  *
  *      where d is the image axis (or dimension);
  *      for a kernel with radius 1 it yields a 3x3
@@ -117,22 +117,22 @@ namespace otb
  *      value according to the above schedule (in case of a 3x3 kernel).
  *
  *	    In the presence of a neighbourhood, image values are retrieved
- *      using the kwinVal function, e.g. the centre pixel value (i.e. index 4)
+ *      from the pixel value array named after the input image's 'UserID'
+ *      (e.g. img). For example the centre pixel value (i.e. index 4)
  *      of image 'img' can be retrieved with
  *
  *      \code
-
+ *       img[4]
  *      \endcode
  *
  *
  *     For the convenience of the user, the index of the centre pixel is provided
- *      as a pre-defined constant 'centrePixIdx', and the centre pixel value could
- *      be retrieved by
+ *     as a pre-defined constant 'centrePixIdx', and the centre pixel value could
+ *     be retrieved by
  *
- *         \code
-
- *         \endcode
- *
+ *     \code
+ *      img[centrePixIdx]
+ *     \endcode
  *      regardless of the actual size and shape of the neighbourhood;
  *
  *

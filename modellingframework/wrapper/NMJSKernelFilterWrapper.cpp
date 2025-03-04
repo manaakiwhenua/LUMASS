@@ -120,7 +120,7 @@ public:
         bool bok;
         int givenStep = step;
 
-        f->SetNumThreads(p->getNumThreads());
+        //f->SetNumThreads(p->getNumThreads());
 
 
         QVariant curRadiusVar = p->getParameter("Radius");
@@ -580,7 +580,7 @@ NMJSKernelFilterWrapper
     mKernelShapeType = QString(tr("RECTANGULAR"));
     mKernelShapeEnum.clear();
     mKernelShapeEnum << "RECTANGULAR" << "CIRCULAR";
-    mNumThreads = QThread::idealThreadCount() < 0 ? (unsigned int)1 : (unsigned int)QThread::idealThreadCount();
+    //mNumThreads = QThread::idealThreadCount() < 0 ? (unsigned int)1 : (unsigned int)QThread::idealThreadCount();
     this->mAuxDataIdx = 1;
 
     mUserProperties.clear();
@@ -592,7 +592,7 @@ NMJSKernelFilterWrapper
     mUserProperties.insert(QStringLiteral("InitScript"), QStringLiteral("InitScript"));
     mUserProperties.insert(QStringLiteral("KernelScript"), QStringLiteral("KernelScript"));
     mUserProperties.insert(QStringLiteral("Nodata"), QStringLiteral("NodataValue"));
-    mUserProperties.insert(QStringLiteral("NumThreads"), QStringLiteral("NumThreads"));
+    //mUserProperties.insert(QStringLiteral("NumThreads"), QStringLiteral("NumThreads"));
 
 }
 

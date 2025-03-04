@@ -187,6 +187,7 @@ int main(int argc, char** argv)
         NMWarn(ctx, << "Please select either --moso or --model!"
                << std::endl);
         showHelp();
+        engine->notifyParentProcess(0, 73);
         NMDebugCtx(ctx, << "done!");
         return EXIT_SUCCESS;
     }
@@ -203,6 +204,7 @@ int main(int argc, char** argv)
         NMWarn(ctx, << "Please specify either an optimisation "
                     << " settings file or a model file!"
                     << std::endl);
+        engine->notifyParentProcess(0, 73);
         break;
     }
 

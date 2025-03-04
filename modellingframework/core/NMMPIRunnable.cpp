@@ -21,7 +21,9 @@
  *  Created on: 2024-09-25
  *      Author: heralex
  */
-
+#ifndef NM_ENABLE_LOGGER
+    #define NM_ENABLE_LOGGER
+#endif
 #include "nmlog.h"
 #include "mpi.h"
 
@@ -50,6 +52,7 @@ NMMPIRunnable::setData(const int          _nprocs,
         const QString&     _lumassPath,
         const QString&     _yamlFN,
         const QString&     _logFN,
+        NMLogger*& logger,
         MPI_Comm& mergedComm,
         MPI_Comm& parentComm,
         MPI_Win&  rmaWin,
@@ -63,6 +66,7 @@ NMMPIRunnable::setData(const int          _nprocs,
     yamlFN     = _yamlFN        ;
     logFN      = _logFN         ;
 
+    mLogger         = logger;
     mMergedComm     = mergedComm;
     mParentMPIComm  = parentComm;
     mMPICompProgWin = rmaWin;
@@ -92,6 +96,8 @@ NMMPIRunnable::run()
 
     const int ncomps = modelComps.size();
     const int nvals  = 2; // {event==value, progress==value+1}
+
+    QDateTime modelStarted = QDateTime::currentDateTime();
 
     // give every process a chance to convey their message
     // we loop over each component and collect progress information
@@ -278,10 +284,17 @@ NMMPIRunnable::run()
         }
     }
 
+    QDateTime modelStopped = QDateTime::currentDateTime();
+    int msec = modelStarted.msecsTo(modelStopped);
+    int min = msec / 60000;
+    double sec = (msec % 60000) / 1000.0;
+
+    QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
+    NMMsg(<< "Model run took (min:sec): " << elapsedTime.toStdString() << std::endl);
+    NMLogInfo(<< "NMMPIRunnable: Model completed in (min:sec): " << elapsedTime.toStdString());
+
     NMDebugAI(<< "ParentProcess exited mpi event loop!" << std::endl);
 
     signalMPILoopFinished(this);
-    NMDebugAI(<< "ParentProcess leaving NMMPIRunnable ... " << std::endl);
-
     NMDebugCtx(ctx, << "done!");
 }

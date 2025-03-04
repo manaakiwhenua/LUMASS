@@ -44,6 +44,7 @@ public:
             const QString& _lumassPath,
             const QString& _yamlFN,
             const QString& _logFN,
+            NMLogger*& logger,
             MPI_Comm& mergedComm,
             MPI_Comm& parentComm,
             MPI_Win&  rmaWin,
@@ -64,13 +65,13 @@ signals:
     void signalMPILoopFinished(NMMPIRunnable* obj);
 
 private:
-	NMLogger* mLogger;
     int         nprocs;
     QStringList modelComps;
     QString     lumassPath;
     QString     yamlFN;
     QString     logFN;
 
+    NMLogger* mLogger;
     MPI_Comm mMergedComm;
     MPI_Comm mParentMPIComm;
     MPI_Win mMPICompProgWin;

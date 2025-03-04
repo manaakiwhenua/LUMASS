@@ -48,10 +48,20 @@ if __name__ == "__main__":
     parser.add_argument(
         "--componentName",
         type=str,
-        help="an optional separate name for the component when it's displayed",
+        help="the component name referred to in the GUI",
     )
     parser.add_argument(
-        "--forwardInputUserIDs", type=str, help="optional function name"
+        "--AuxOutputIndex",
+        type=str,
+        help="the output index of the filter's auxillary tabular output ('GetAuxOutput(index)')",
+    )
+    parser.add_argument(
+        "--NumThreadsSupport",
+        action="store_true",
+        help="whether or not the user shall be able to define the number of threads for this process component",
+    )
+    parser.add_argument(
+        "--forwardInputUserIDs", type=str, help="name for optional function to pass on the UserIDs (short names) of this filter's inputs"
     )
     parser.add_argument(
         "--componentIsSink",
@@ -78,6 +88,10 @@ if __name__ == "__main__":
     if args.forwardInputUserIDs:
         config["ForwardInputUserIDs"] = args.forwardInputUserIDs
 
+    # Record the index of the filters' auxillary tabular output
+    if args.AuxOutputIndex:
+        config["AuxOutputIndex"] = args.AuxOutputIndex
+
     # Whether the component is a sink or a source/(source, sink) combination
     # needs to come from the command line
     # TODO: investigate reliable criteria for parsing this from the header instead.
@@ -85,6 +99,12 @@ if __name__ == "__main__":
         config["ComponentIsSink"] = 1
     else:
         config["ComponentIsSink"] = 0
+
+    # Whether the user shall be able to set the number of threads for this process
+    if args.NumThreadsSupport:
+        config["NumThreadSupport"] = 1
+    else:
+        config["NumThreadSupport"] = 0
 
     # Value extractor utility
     extractor = Extractor()

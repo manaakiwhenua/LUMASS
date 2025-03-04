@@ -347,6 +347,8 @@
 #include "otbImage2TableFilter.h"
 //#include "itkTileImageFilter.h"
 
+//#include "otbStreamingStatisticsImageFilter.h"
+
 // put last because '#define CRITICAL 1' in lp_lib.h
 // clashes with 'itk::LoggerBase::PriorityLevelType enum 'CRITICAL'',
 // i.e. all itk-derived classes would throw-up errors/warnings
@@ -383,22 +385,32 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent, NMLumassEngine *engine)
 //    qRegisterMetaType<NMAbstractAction::NMActionOutputType>("NMAbstractAction::NMActionOutputType");
 //    qRegisterMetaType<NMAbstractAction::NMActionTriggerType>("NMAbstractAction::NMActionTriggerType");
 
+
+    // **********************************************************************
+    // *                          THE ENGINE                                *
+    // **********************************************************************
+    // set up the logger
+    if (mEngine != nullptr)
+    {
+        mModelController = mEngine->getModelController();
+        mLogger = engine->getLogger();
+        mLogger->setHtmlMode(true);
+    }
+    else
+    {
+        NMLogError(<< "Engine failure!");
+        return;
+    }
+
     // **********************************************************************
     // *                    INIT SETTINGS FRAMEWORK
     // **********************************************************************
 
-//#ifdef _WIN32
-    QString homepath = QDir::homePath();
-//#else
-//    QString homepath = "$HOME";
-//#endif
-
-    // initially set a directory which we're certain exists ...
-    mSettings["Workspace"] = QVariant::fromValue(QString("%1").arg(homepath));
-    mSettings["UserModels"] = QVariant::fromValue(QString("%1").arg(homepath));
+    // get initial settings from the Engine
+    mSettings = mEngine->getSettings();
     mSettings["LUMASSPath"] = qApp->applicationDirPath();
-    mSettings["MaxThreadCount"] = QVariant::fromValue(QString("%1").arg(QThread::idealThreadCount()));
-    mSettings["MaxProcCount"] = QVariant::fromValue(QString("%1").arg(QThread::idealThreadCount()/2));
+    mModelController->updateSettings("LUMASSPath", mSettings["LUMASSPath"]);
+
 
     // **********************************************************************
     // *                    INIT SOME ON-DEMAND GUI ELEMENTS
@@ -438,19 +450,6 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent, NMLumassEngine *engine)
 
     // seed the std random number generator
     std::srand(std::time(0));
-
-    // set up the logger
-    if (mEngine != nullptr)
-    {
-        mModelController = mEngine->getModelController();
-        mLogger = engine->getLogger();
-        mLogger->setHtmlMode(true);
-    }
-    else
-    {
-        NMLogError(<< "Engine failure!");
-        return;
-    }
 
     // set up the qt designer based controls
     ui->setupUi(this);
@@ -715,8 +714,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent, NMLumassEngine *engine)
 
 
     // SYSTEM
-    connect(this, SIGNAL(windowLoaded()), this, SLOT(readSettings()));
-    connect(this, SIGNAL(windowLoaded()), this, SLOT(populateProcCompList()));
+    connect(this, SIGNAL(windowLoaded()), this, SLOT(callInitFunctions()));
 
     // TEST TEST TEST
     connect(ui->actionImage_Polydata, SIGNAL(triggered()), this, SLOT(convertImageToPolyData()));
@@ -1190,6 +1188,12 @@ void LUMASSMainWin::onDockWidgetAreaChanged(Qt::DockWidgetArea dockArea)
     {
         this->setDockWidgetVisibility(tabDocs.at(i), true);
     }
+}
+
+void LUMASSMainWin::callInitFunctions()
+{
+    readSettings();
+    populateProcCompList();
 }
 
 void LUMASSMainWin::onTabifiedDockWidgetActivated(QDockWidget* dockWidget)
@@ -4557,153 +4561,6 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
-/*
-    ///*************************************************************************
-    ///********              NMMOSRA :: IPOPT                           ********
-    ///*************************************************************************
-
-    QStringList choiceList;
-    choiceList << "Solve" << "Map";
-    QString userChoice = NMGlobalHelper::getItemSelection("Solving or Mapping?", "It's your choice:", choiceList, this);
-
-    if (mpMosra != nullptr)
-    {
-        delete mpMosra;
-    }
-    mpMosra = new NMMosra(this);
-
-    //QString suggestFN = "/mnt/data/win/crunch/OLW_Mosaics/scenarios/rua_small/rua_small.los";
-
-    QString fileName = QFileDialog::getOpenFileName(this,
-         tr("Open Optimisation Settings"), "~", tr("LUMASS Optimisation Settings (*.los)"));
-
-
-    QFileInfo fileinfo(fileName);
-
-    QString path = fileinfo.absoluteDir().path();
-    QString baseName = fileinfo.baseName();
-    if (!fileinfo.isReadable())
-    {
-        NMLogError(<< ctxLUMASSMainWin << ": Could not read file '" << fileName.toStdString() << "'!");
-        NMDebugCtx(ctxLUMASSMainWin, << "done!");
-        return;
-    }
-
-    QString tresPath = ::getenv("MOSO_RESULT_PATH");
-    if (tresPath.isEmpty())
-    {
-        tresPath = path;
-    }
-    QFileInfo pathInfo(tresPath);
-    QDir parentDir(pathInfo.path());
-
-    // create a new optimisation object
-    //QScopedPointer<NMMosra> mpMosra(new NMMosra(this));
-    mpMosra->setLogger(this->getLogger());
-    mpMosra->loadSettings(fileName);
-
-
-    QString ldbName = QString("%1/%2.ldb").arg(path).arg(mpMosra->getLayerName());
-    otb::SQLiteTable::Pointer tab = otb::SQLiteTable::New();
-    tab->SetDbFileName(ldbName.toStdString());
-    if (!tab->openConnection())
-    {
-        NMErr("Ipopt testing", << "Sumthing went wrong and we're cross now!" );
-        return;
-    }
-
-    QString tableName = QString("%1_1").arg(mpMosra->getLayerName());
-    tab->SetTableName(tableName.toStdString());
-    if (!tab->PopulateTableAdmin())
-    {
-        NMErr("Ipopt testing", << "Couldn't populate the table's admin structures!");
-        return;
-    }
-
-    mpMosra->setScenarioName("Mosaics' Model TEST");
-    mpMosra->setDataSet(tab.GetPointer());
-
-    ///////////////////////////////////////////////////////////////////////////
-    //              SOLVE
-    ///////////////////////////////////////////////////////////////////////////
-    if (userChoice.compare(QStringLiteral("Solve")) == 0)
-    {
-        this->showBusyStart();
-        mpMosra->solveProblem();
-        this->showBusyEnd();
-    }
-    ///////////////////////////////////////////////////////////////////////////
-    //              Map
-    ///////////////////////////////////////////////////////////////////////////
-    else
-    {
-        QString losFN = mpMosra->getLosFileName();
-        QFileInfo lfo(losFN);
-
-        QString solFN = QString("%1/%2.dvars").arg(lfo.absolutePath()).arg(lfo.baseName());
-        QFileInfo infoSol(solFN);
-        if (!infoSol.exists())
-        {
-            NMLogError(<< "Missing ipopt *.dvars file!");
-            this->showBusyEnd();
-            return;
-        }
-        if (mpMosra->getSolFileName().isEmpty())
-        {
-            mpMosra->setSolFileName(solFN);
-        }
-
-
-        this->showBusyStart();
-        mpMosra->mapNL();
-        this->showBusyEnd();
-
-    }
-*/
-    return;
-
-    /*
-    QString ipoptPath = "/home/users/herziga/crunch/LumassApptainer/ipopt-latest.sif /opt/ipopt/install/bin/ipopt";
-    QString bindPath = QString("%1:/data").arg(path);
-    QString bindName = "APPTAINER_BINDPATH";
-    QString ipoptCommand = QString("/opt/Apptainer/bin/apptainer exec %1 /data/%2.nl output_file=/data/%1.sol file_print_level=8 "
-                                   "max_iter=5 wantsol=2 > %2.dvars")
-            .arg(path)
-            .arg(baseName);
-
-    NMLogInfo(<< "Calling apptainer run " << ipoptPath.toStdString() << " /data/"
-              << baseName.toStdString() << ".nl output_file=/data/"
-              << baseName.toStdString() << ".sol file_print_level=8" );
-    NMLogInfo(<< "...");
-
-
-    QProcessEnvironment procEnv = QProcessEnvironment::systemEnvironment();
-    procEnv.insert(bindName, bindPath);
-
-    if (mpLuProc != nullptr)
-    {
-        mpLuProc->close();
-        delete mpLuProc;
-    }
-
-    mpLuProc = new OptProc(this);
-    mpLuProc->setProcessChannelMode(QProcess::MergedChannels);
-    mpLuProc->setWorkingDirectory(path);
-    mpLuProc->setProcessEnvironment(procEnv);
-
-    connect(mpLuProc, SIGNAL(readyRead()), this, SLOT(readProcOutput()));
-
-    this->showBusyStart();
-    mpLuProc->start(ipoptCommand);
-    mpLuProc->waitForFinished(-1);
-    this->showBusyEnd();
-
-    mpLuProc->close();
-    delete mpLuProc;
-    mpLuProc = nullptr;
-
-    return;
-    */
 }
 
 void
@@ -9297,7 +9154,7 @@ void LUMASSMainWin::readSettings()
     // ================================================================
     //              Directories
     // ================================================================
-    settings.beginGroup("Directories");
+/*    settings.beginGroup("Directories");
     val = settings.value("Workspace");
     if (val.isValid())
     {
@@ -9315,7 +9172,7 @@ void LUMASSMainWin::readSettings()
     }
 
     settings.endGroup();
-
+*/
     // ================================================================
     //              Capabilities
     // ================================================================
@@ -9336,7 +9193,7 @@ void LUMASSMainWin::readSettings()
     // ================================================================
     //              PROCESSES AND THREADS
     // ================================================================
-    settings.beginGroup("ComputeResources");
+    /*settings.beginGroup("ComputeResources");
 
     val = settings.value("MaxProcCount");
     if (val.isValid())
@@ -9359,7 +9216,7 @@ void LUMASSMainWin::readSettings()
     }
 
     settings.endGroup();
-
+    */
     // ================================================================
     //              re scan user models
     // ================================================================

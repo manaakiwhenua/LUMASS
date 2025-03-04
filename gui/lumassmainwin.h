@@ -397,6 +397,8 @@ protected slots:
     void updateCursor();
     void populateProcCompList();
 
+    void callInitFunctions();
+
 
     // client & server
     void onNewConnection();

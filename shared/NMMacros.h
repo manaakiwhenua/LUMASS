@@ -1027,6 +1027,173 @@ default:	\
 }
 #endif
 
+/* ===========================================
+ *    AND NOW THE DOUBLE WHAMMY!
+ * ===========================================
+ */
+
+/*  ===============================================================================
+ *	  'OUTER' (ie INPUT) TYPE SWITCH MACRO CALLING ANOTHER MACRO
+ *	===============================================================================
+ */
+
+#if defined(_WIN32) && SIZEOF_LONGLONG >= 8
+#define UserMacroPerTypeOuter( userMacro, wrapName ) \
+    case otb::ImageIOBase::UCHAR: \
+        UserMacroPerTypeInner( unsigned char, userMacro,  wrapName );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::CHAR: \
+        UserMacroPerTypeInner( char, userMacro,  wrapName );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::USHORT:\
+        UserMacroPerTypeInner( unsigned short, userMacro,  wrapName );                                        \
+        break;                                                                  \
+    case otb::ImageIOBase::SHORT:\
+        UserMacroPerTypeInner( short, userMacro,  wrapName );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::UINT:\
+        UserMacroPerTypeInner( unsigned int, userMacro, wrapName );                                          \
+        break;                                                                  \
+    case otb::ImageIOBase::INT:\
+        UserMacroPerTypeInner( int, userMacro, wrapName );                                                   \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONG:\
+        UserMacroPerTypeInner( unsigned long, userMacro, wrapName );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONG:\
+        UserMacroPerTypeInner( long, userMacro, wrapName );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONGLONG:\
+        UserMacroPerTypeInner( unsigned long long, userMacro, wrapName );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONGLONG:\
+        UserMacroPerTypeInner( long long, userMacro, wrapName );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::FLOAT:\
+        UserMacroPerTypeInner( float, userMacro, wrapName );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::DOUBLE:\
+        UserMacroPerTypeInner( double, userMacro, wrapName );                                                \
+        break;
+#else
+#define UserMacroPerTypeOuter( userMacro, wrapName ) \
+    case otb::ImageIOBase::UCHAR: \
+        UserMacroPerTypeInner( unsigned char, userMacro,  wrapName );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::CHAR: \
+        UserMacroPerTypeInner( char, userMacro,  wrapName );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::USHORT:\
+        UserMacroPerTypeInner( unsigned short, userMacro,  wrapName );                                        \
+        break;                                                                  \
+    case otb::ImageIOBase::SHORT:\
+        UserMacroPerTypeInner( short, userMacro,  wrapName );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::UINT:\
+        UserMacroPerTypeInner( unsigned int, userMacro, wrapName );                                          \
+        break;                                                                  \
+    case otb::ImageIOBase::INT:\
+        UserMacroPerTypeInner( int, userMacro, wrapName );                                                   \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONG:\
+        UserMacroPerTypeInner( unsigned long, userMacro, wrapName );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONG:\
+        UserMacroPerTypeInner( long, userMacro, wrapName );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::FLOAT:\
+        UserMacroPerTypeInner( float, userMacro, wrapName );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::DOUBLE:\
+        UserMacroPerTypeInner( double, userMacro, wrapName );                                                \
+        break;
+#endif
+
+/*  ===============================================================================
+ *	  'INNER' (ie OUPT) TYPE SWITCH MACRO CALLING A USER MACRO
+ *	===============================================================================
+ */
+
+#if defined(_WIN32) && SIZEOF_LONGLONG >= 8
+#define UserMacroPerTypeInner( inputType, userMacro, wrapName ) \
+switch (this->mOutputComponentType) \
+{ \
+    case otb::ImageIOBase::UCHAR: \
+        userMacro( inputType, unsigned char ,  wrapName );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::CHAR: \
+        userMacro( inputType, char ,  wrapName );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::USHORT:\
+        userMacro( inputType, unsigned short,  wrapName );                                        \
+        break;                                                                  \
+    case otb::ImageIOBase::SHORT:\
+        userMacro( inputType, short,  wrapName );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::UINT:\
+        userMacro( inputType, unsigned int, wrapName );                                          \
+        break;                                                                  \
+    case otb::ImageIOBase::INT:\
+        userMacro( inputType, int , wrapName );                                                   \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONG:\
+        userMacro( inputType, unsigned long, wrapName );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONG:\
+        userMacro( inputType, long, wrapName );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONGLONG:\
+        userMacro( inputType, unsigned long long, wrapName );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONGLONG:\
+        userMacro( inputType, long long, wrapName );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::FLOAT:\
+        userMacro( inputType, float, wrapName );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::DOUBLE:\
+        userMacro( inputType, double, wrapName );                                                \
+        break; \
+    default: break; \
+}
+#else
+#define UserMacroPerTypeInner( inputType, userMacro, wrapName ) \
+switch (this->mOutputComponentType) \
+{ \
+    case otb::ImageIOBase::UCHAR: \
+        userMacro( inputType, unsigned char ,  wrapName );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::CHAR: \
+        userMacro( inputType, char ,  wrapName );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::USHORT:\
+        userMacro( inputType, unsigned short,  wrapName );                                        \
+        break;                                                                  \
+    case otb::ImageIOBase::SHORT:\
+        userMacro( inputType, short,  wrapName );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::UINT:\
+        userMacro( inputType, unsigned int, wrapName );                                          \
+        break;                                                                  \
+    case otb::ImageIOBase::INT:\
+        userMacro( inputType, int , wrapName );                                                   \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONG:\
+        userMacro( inputType, unsigned long, wrapName );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONG:\
+        userMacro( inputType, long, wrapName );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::FLOAT:\
+        userMacro( inputType, float, wrapName );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::DOUBLE:\
+        userMacro( inputType, double, wrapName );                                                \
+        break; \
+    default: break; \
+}
+#endif
+
 // **********************************************************************************
 
 

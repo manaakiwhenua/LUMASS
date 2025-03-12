@@ -41,6 +41,13 @@
 
 #include <random>
 
+#ifdef __linux
+    #include "sys/types.h"
+    #include "sys/sysinfo.h"
+#elif WIN32
+    #include "windows.h"
+#endif
+
 #include "nmlog.h"
 
 const std::string NMGlobalHelper::ctx = "NMGlobalHelper";
@@ -138,6 +145,125 @@ NMGlobalHelper::getNetCDFVarPathInput(const QString& ncFilename, const QString &
     }
 
     return ret;
+}
+
+double
+NMGlobalHelper::getMemInfo(bool bVirt, int totUsedAvail, const QString &unit)
+{
+    double exp = 0;
+    unsigned long long mem = NMGlobalHelper::getMemInfo(bVirt, totUsedAvail);
+
+    // use MiB as default
+    if (    unit.isEmpty()
+         || unit.compare(QStringLiteral("MiB"), Qt::CaseInsensitive) == 0
+       )
+    {
+        exp = 2;
+    }
+    else if (unit.compare(QStringLiteral("GiB"), Qt::CaseInsensitive) == 0)
+    {
+        exp = 3;
+    }
+    else if (unit.compare(QStringLiteral("TiB"), Qt::CaseInsensitive) == 0)
+    {
+        exp = 4;
+    }
+    else if (unit.compare(QStringLiteral("PiB"), Qt::CaseInsensitive) == 0)
+    {
+        exp = 5;
+    }
+    else if (unit.compare(QStringLiteral("EiB"), Qt::CaseInsensitive) == 0)
+    {
+        exp = 6;
+    }
+    else
+    {
+        return -9999.0;
+    }
+
+    return static_cast<double>(mem / std::pow(1024.0, exp));
+}
+
+unsigned long long
+NMGlobalHelper::getMemInfo(bool bVirt, int totUsedAvail)
+{
+    unsigned long long retMem = 0;
+
+#ifdef __linux
+    // based on:
+    // credit to: https://stackoverflow.com/users/7381/lanzelot
+    // and        https://stackoverflow.com/users/63550/peter-mortensen
+    // source: https://stackoverflow.com/questions/63166/how-to-determine-cpu-and-memory-consumption-from-inside-a-process
+    struct sysinfo memInfo;
+
+    sysinfo (&memInfo);
+    long long totalMem = memInfo.totalram;
+
+    if (bVirt)
+    {
+        //Add other values in next statement to avoid int overflow on right hand side...
+        totalMem += memInfo.totalswap;
+    }
+
+    switch(totUsedAvail)
+    {
+    case 0: // total
+        retMem = totalMem;
+        break;
+    case 1: // used
+        retMem = totalMem - memInfo.freeram;
+        if (bVirt) retMem -= memInfo.freeswap;
+        break;
+    default: // avail
+        retMem = memInfo.freeram;
+        if (bVirt) retMem += memInfo.freeswap;
+        break;
+    }
+    retMem *= memInfo.mem_unit;
+
+#elif WIN32
+    MEMORYSTATUSEX memInfo;
+    memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+    GlobalMemoryStatusEx(&memInfo);
+
+    if (bVirt)
+    {
+        DWORDLONG totalVirtualMem = memInfo.ullTotalPageFile;
+
+        switch(totUsedAvail)
+        {
+        case 0: // total
+            retMem = totalVirtualMem;
+            break;
+        case 1: // used
+            retMem = totalVirtualMem - memInfo.ullAvailPageFile;
+            break;
+        default: // avail
+            retMem = memInfo.ullAvailPageFile;
+            break;
+        }
+    }
+    else
+    {
+        DWORDLONG totalPhysMem = memInfo.ullTotalPhys;
+
+        switch(totUsedAvail)
+        {
+        case 0: // total
+            retMem = totalPhysMem;
+            break;
+        case 1: // used
+            retMem = totalPhysMem - memInfo.ullAvailPhys;
+            break;
+        default: // avail
+            retMem = memInfo.ullAvailPhys;
+            break;
+        }
+    }
+
+#endif
+
+    return retMem;
 }
 
 void

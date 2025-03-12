@@ -81,6 +81,17 @@ public:
     static bool attachMultipleDbs(QSqlDatabase dbTarget, const QStringList &dbFileNames);
     static QStringList identifyExternalDbs(QSqlDatabase targetDb, const QString& origexpr);
 
+    /*  getMemInfo (MB)
+     *
+     *  bPhys: true='physical memory'; false='virtual memory'
+     *  totUsedAvail: 0='total'; 1='used'; 2='available'
+     *  unit: MiB=Mebibyte (=1024^2 bytes); GiB=Gibibyte (1024^3 bytes)
+     *
+     */
+    static unsigned long long getMemInfo(bool bVirt, int totUsedAvail);
+    static double getMemInfo(bool bVirt, int totUsedAvail, const QString& unit);
+
+
 private:
     static const std::string ctx;
 

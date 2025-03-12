@@ -657,7 +657,15 @@ NMImageLayer::getWindowStatistics(void)
     }
     else
     {
-        ret = this->mReader->getImageStatistics();
+        try
+        {
+            ret = this->mReader->getImageStatistics();
+        }
+        catch (std::exception& se)
+        {
+            NMLogError(<< "Failed generating statistics for layer '" << this->objectName().toStdString()<< "'! "
+                       << se.what());
+        }
     }
 
     emit layerProcessingEnd();

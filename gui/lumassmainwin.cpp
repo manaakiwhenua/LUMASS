@@ -85,6 +85,7 @@
 #include "NMModelAction.h"
 #include "NMStreamingROIImageFilterWrapper.h"
 #include "NMMPIRunnable.h"
+#include "NMHoverEdit.h"
 
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
@@ -2098,45 +2099,54 @@ void LUMASSMainWin::setDarkMode(bool bdark)
     // credit to
     // https://stackoverflow.com/questions/15035767/is-the-qt-5-dark-fusion-theme-available-for-windows
     // https://github.com/Jorgen-VikingGod/Qt-Frameless-Window-DarkStyle
+    QPalette palette;
     if (bdark)
     {
         qApp->setStyle(QStyleFactory::create("Fusion"));
         // increase font size for better reading
         QFont defaultFont = QApplication::font();
-        defaultFont.setPointSize(defaultFont.pointSize() + 2);
+        defaultFont.setPointSize(defaultFont.pointSize());
         qApp->setFont(defaultFont);
         // modify palette to dark
-        QPalette darkPalette;
-        darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
-        darkPalette.setColor(QPalette::WindowText, Qt::white);
-        darkPalette.setColor(QPalette::Disabled, QPalette::WindowText, QColor(127, 127, 127));
-        darkPalette.setColor(QPalette::Base, QColor(42, 42, 42));
-        darkPalette.setColor(QPalette::AlternateBase, QColor(66, 66, 66));
-        darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
-        darkPalette.setColor(QPalette::ToolTipText, Qt::white);
-        darkPalette.setColor(QPalette::Text, Qt::white);
-        darkPalette.setColor(QPalette::Disabled, QPalette::Text, QColor(127, 127, 127));
-        darkPalette.setColor(QPalette::Dark, QColor(35, 35, 35));
-        darkPalette.setColor(QPalette::Shadow, QColor(20, 20, 20));
-        darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
-        darkPalette.setColor(QPalette::ButtonText, Qt::white);
-        darkPalette.setColor(QPalette::Disabled, QPalette::ButtonText, QColor(127, 127, 127));
-        darkPalette.setColor(QPalette::BrightText, Qt::red);
-        darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
-        darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
-        darkPalette.setColor(QPalette::Disabled, QPalette::Highlight, QColor(80, 80, 80));
-        darkPalette.setColor(QPalette::HighlightedText, Qt::white);
-        darkPalette.setColor(QPalette::Disabled, QPalette::HighlightedText, QColor(127, 127, 127));
+        //QPalette darkPalette;
+        palette.setColor(QPalette::Window, QColor(53, 53, 53));
+        palette.setColor(QPalette::WindowText, Qt::white);
+        palette.setColor(QPalette::Disabled, QPalette::WindowText, QColor(127, 127, 127));
+        palette.setColor(QPalette::Base, QColor(42, 42, 42));
+        palette.setColor(QPalette::AlternateBase, QColor(66, 66, 66));
+        palette.setColor(QPalette::ToolTipBase, Qt::white);
+        palette.setColor(QPalette::ToolTipText, Qt::white);
+        palette.setColor(QPalette::Text, Qt::white);
+        palette.setColor(QPalette::Disabled, QPalette::Text, QColor(127, 127, 127));
+        palette.setColor(QPalette::Dark, QColor(35, 35, 35));
+        palette.setColor(QPalette::Shadow, QColor(20, 20, 20));
+        palette.setColor(QPalette::Button, QColor(53, 53, 53));
+        palette.setColor(QPalette::ButtonText, Qt::white);
+        palette.setColor(QPalette::Disabled, QPalette::ButtonText, QColor(127, 127, 127));
+        palette.setColor(QPalette::BrightText, Qt::red);
+        palette.setColor(QPalette::Link, QColor(42, 130, 218));
+        palette.setColor(QPalette::Highlight, QColor(42, 130, 218));
+        palette.setColor(QPalette::Disabled, QPalette::Highlight, QColor(80, 80, 80));
+        palette.setColor(QPalette::HighlightedText, Qt::white);
+        palette.setColor(QPalette::Disabled, QPalette::HighlightedText, QColor(127, 127, 127));
 
-        qApp->setPalette(darkPalette);
+        qApp->setPalette(palette);
 
     }
     else
     {
-        qApp->setPalette(this->style()->standardPalette());
+        palette = this->style()->standardPalette();
+        qApp->setPalette(palette);
         qApp->setStyle(QStyleFactory::create("Fusion"));
         qApp->setStyleSheet("");
     }
+
+    foreach(QToolBar* tb, this->findChildren<QToolBar*>())
+    {
+        tb->setPalette(palette);
+    }
+
+    this->mTreeCompEditor->getHoverEdit()->setDarkMode(bdark);
 }
 
 void
@@ -4561,6 +4571,18 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
+    QMessageBox::StandardButton yesno =
+            QMessageBox::question(this, "Dark Mode", "Turn on dark mode?");
+
+    if (yesno == QMessageBox::StandardButton::Yes)
+    {
+        this->setDarkMode(true);
+    }
+    else
+    {
+        this->setDarkMode(false);
+    }
+
 }
 
 void
@@ -5830,14 +5852,22 @@ void LUMASSMainWin::displayChart(vtkTable* srcTab)
 
 void LUMASSMainWin::loadVTKPolyData()
 {
-        NMDebugCtx(ctxLUMASSMainWin, << "...");
-
     QString fileName = QFileDialog::getOpenFileName(this,
          tr("Open XML/Binary VTK PolyData File"), "~",
          tr("PolyData (*.vtp *.vtk)"));
 
     if (fileName.isNull())
         return;
+
+    loadVTKPolyData(fileName);
+}
+
+void LUMASSMainWin::loadVTKPolyData(const QString& fileName)
+{
+    NMDebugCtx(ctxLUMASSMainWin, << "...");
+
+    double memAvail = NMGlobalHelper::getMemInfo(false, 2, "MiB");
+    NMDebugAI( << "Available physical memory: " << memAvail << " MiB" << std::endl);
 
     vtkSmartPointer<vtkPolyData> pd;
 
@@ -5859,19 +5889,60 @@ void LUMASSMainWin::loadVTKPolyData()
         pd = reader->GetOutput();
     }
 
+    if (pd.GetPointer() != nullptr)
+    {
+        addVectorLayerToMap(pd, fileName);
+    }
+    else
+    {
+        NMLogError(<< "Failed loading vector layer '" << fileName.toStdString() << "'! "
+                   << "Double check your available memory!");
+    }
+
+
+    //QFileInfo finfo(fileName);
+    //QString layerName = finfo.baseName();
+
+    //vtkRenderWindow* renWin = this->ui->qvtkWidget->renderWindow();
+    //NMDebugAI( << "creating the vector layer and assigning data set..." << std::endl);
+    //NMVectorLayer* layer = new NMVectorLayer(renWin);
+    //layer->setFileName(fileName);
+    //layer->setObjectName(layerName);
+    //layer->setDataSet(pd);
+    //layer->setVisible(true);
+    //this->mLayerList->addLayer(layer);
+
+    memAvail = NMGlobalHelper::getMemInfo(false, 2, "MiB");
+    NMDebugAI( << "Available physical memory: " << memAvail << " MiB" << std::endl);
+
+    NMDebugCtx(ctxLUMASSMainWin, << "done!");
+}
+
+void LUMASSMainWin::addVectorLayerToMap(vtkSmartPointer<vtkPolyData> pd, const QString& fileName)
+{
+    NMDebugCtx(ctxLUMASSMainWin, << "...");
     QFileInfo finfo(fileName);
     QString layerName = finfo.baseName();
 
     vtkRenderWindow* renWin = this->ui->qvtkWidget->renderWindow();
-    NMDebugAI( << "creating the vector layer and assigning data set..." << std::endl);
     NMVectorLayer* layer = new NMVectorLayer(renWin);
-    layer->setFileName(fileName);
     layer->setObjectName(layerName);
+    layer->setLogger(this->getLogger());
     layer->setDataSet(pd);
     layer->setVisible(true);
-    this->mLayerList->addLayer(layer);
 
-        NMDebugCtx(ctxLUMASSMainWin, << "done!");
+    try
+    {
+        this->mLayerList->addLayer(layer);
+    }
+    catch(std::exception& se)
+    {
+        delete layer;
+        NMLogError(<< "Failed adding vector layer '" << fileName.toStdString()
+                   << "' to the map! " << se.what());
+    }
+
+    NMDebugCtx(ctxLUMASSMainWin, << "done!");
 }
 
 void LUMASSMainWin::saveSelectionAsVtkPolyData()
@@ -6250,7 +6321,6 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbLineStringToPolyData(OGRLayer& l)
     return 0;
 }
 
-
 vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
 {
     /*	OGC SimpleFeature Spec
@@ -6304,10 +6374,17 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
     double dMax = std::numeric_limits<double>::max();
     double dMin = std::numeric_limits<double>::max() * -1;
     double bnd[6] = {dMax, dMin, dMax, dMin, 0, 0};
-    int featcount = l.GetFeatureCount(1);
+    const unsigned long featcount = l.GetFeatureCount(1);
     NMDebugAI(<< "number of features: " << featcount << std::endl);
 
     vtkVect->Allocate(featcount, 100);
+    //if (vtkVect->Get)
+    //{
+    //    NMLogError(<< "Failed to allocate PolyData array!");
+    //    return vtkVect;
+    //}
+
+    NMDebugAI(<< "allocated PolyData structure for " << featcount << " polys ..." << std::endl);
 
     // OGC SimpleFeature WellKnownBinary (WKB) byte order enum:
     // wkbXDR = 0 (big endian) | wkbNDR = 1 (little endian)
@@ -6327,20 +6404,37 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
 
     vtkSmartPointer<vtkLongArray> nm_id = vtkSmartPointer<vtkLongArray>::New();
     nm_id->SetName("nm_id");
-    nm_id->Allocate(l.GetFeatureCount(1), 100);
+    if (!nm_id->Allocate(featcount, 100))
+    {
+        NMDebugAI(<< "Failed to allocate 'nm_id' array!");
+        NMLogError(<< "Failed to allocate 'nm_id' array!");
+        return vtkVect;
+    }
 
     vtkSmartPointer<vtkUnsignedCharArray> nm_hole = vtkSmartPointer<vtkUnsignedCharArray>::New();
     nm_hole->SetName("nm_hole");
-    nm_hole->Allocate(l.GetFeatureCount(1), 100);
+    if (!nm_hole->Allocate(featcount, 100))
+    {
+        NMDebugAI(<< "Failed to allocate 'nm_hole' array!");
+        NMLogError(<< "Failed to allocate 'nm_hole' array!");
+        return vtkVect;
+    }
+
 
     vtkSmartPointer<vtkUnsignedCharArray> nm_sel = vtkSmartPointer<vtkUnsignedCharArray>::New();
     nm_sel->SetName("nm_sel");
-    nm_sel->Allocate(l.GetFeatureCount(1), 100);
+    if (!nm_sel->Allocate(featcount, 100))
+    {
+        NMDebugAI(<< "Failed to allocate 'nm_sel' array!");
+        NMLogError(<< "Failed to allocate 'nm_sel' array!");
+        return vtkVect;
+    }
 
     vtkSmartPointer<vtkIntArray> iarr;
     vtkSmartPointer<vtkDoubleArray> darr;
     vtkSmartPointer<vtkStringArray> sarr;
 
+    NMDebugAI(<< "allocating field arrays for vector layer ..." << std::endl);
     for (int f=0; f < nfields; ++f)
     {
         OGRFieldDefn* fdef = pFeat->GetFieldDefnRef(f);
@@ -6351,42 +6445,69 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
         {
             continue;
         }
-        fieldIdx.push_back(f);
 
+        bool bAllocated = false;
         switch(fdef->GetType())
         {
             case OFTInteger:
                 iarr = vtkSmartPointer<vtkIntArray>::New();
                 iarr->SetName(fdef->GetNameRef());
-                iarr->Allocate(featcount, 100);
-                attr.push_back(iarr);
+                if (iarr->Allocate(featcount, 100))
+                {
+                    attr.push_back(iarr);
+                    bAllocated = true;
+                }
                 break;
             case OFTReal:
                 darr = vtkSmartPointer<vtkDoubleArray>::New();
                 darr->SetName(fdef->GetNameRef());
-                darr->Allocate(featcount, 100);
-                attr.push_back(darr);
+                if (darr->Allocate(featcount, 100))
+                {
+                    attr.push_back(darr);
+                    bAllocated = true;
+                }
                 break;
             default: // case OFTString:
                 sarr = vtkSmartPointer<vtkStringArray>::New();
                 sarr->SetName(fdef->GetNameRef());
-                sarr->Allocate(featcount, 100);
-                attr.push_back(sarr);
+                if (sarr->Allocate(featcount, 100))
+                {
+                    attr.push_back(sarr);
+                    bAllocated = true;
+                }
                 break;
+        }
+        // we only include attributes we've got space for (ie whose allocation was successful)
+        if (!bAllocated)
+        {
+            NMLogError(<< "Failed to allocate '" << fdef->GetNameRef() << "' attribute array!");
+        }
+        else
+        {
+            fieldIdx.push_back(f);
         }
     }
 
     // ------------------------------------------------------------------------------------------------
     // process feature by feature
     l.ResetReading();
-    //NMDebugAI(<< "importing features ... " << std::endl);
+    NMDebugAI(<< "importing features ... " << std::endl);
     unsigned int featCounter = 1;
     while ((pFeat = l.GetNextFeature()) != NULL)
     {
+        const unsigned long long memAvail = NMGlobalHelper::getMemInfo(false, 2);
+        if (memAvail < (500 * 1024^2))
+        {
+            NMDebugAI(<< "There's < 500MB of system memory left! We stop processing features now!");
+            NMLogError(<< "There's < 500MB of system memory left! We stop processing features now!");
+
+            break;
+        }
+
         OGRGeometry *geom = pFeat->GetGeometryRef();
         if (geom == 0)
         {
-                        NMWarn(ctxLUMASSMainWin, << "Oops - got NULL geometry for this feature! - Abort.");
+            NMWarn(ctxLUMASSMainWin, << "Oops - got NULL geometry for this feature! - Abort.");
             continue;
         }
         int fid = pFeat->GetFieldAsInteger(0);
@@ -6397,8 +6518,8 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
         unsigned char* wkb = new unsigned char[wkbSize];
         if (wkb == 0)
         {
-                        NMLogError(<< ctxLUMASSMainWin << ": not enough memory to allocate feature wkb buffer!");
-            return 0;
+            NMLogError(<< ctxLUMASSMainWin << ": not enough memory to allocate feature wkb buffer!");
+            break;
         }
         geom->exportToWkb(bo, wkb);
 
@@ -6424,9 +6545,11 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
             pos += sizeof(unsigned int) + sizeof(char) + sizeof(unsigned int);
         }
         else
+        {
             nPolys = 1;
+        }
 
-//		NMDebug(<< std::endl << "number of polygons: " << nPolys << std::endl);
+        //NMDebug(<< std::endl << "number of polygons: " << nPolys << std::endl);
 
         unsigned int nPoints;
         double x, y;
@@ -6437,7 +6560,7 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
             // get the number of rings for this polygon
             memcpy(&nRings, (wkb+pos), sizeof(unsigned int));
 
-//			NMDebug(<< "polygon #" << p+1 << " - " << nRings << " rings ... " << std::endl);
+            //NMDebug(<< "polygon #" << p+1 << " - " << nRings << " rings ... " << std::endl);
 
             // jump over nRings (= 4 byte)
             pos += sizeof(unsigned int);
@@ -6448,13 +6571,18 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
                 // get the number of points for this ring
                 memcpy(&nPoints, (wkb+pos), sizeof(unsigned int));
 
-//				NMDebug(<< "ring #" << r+1 << " - " << nPoints << " points ..." << std::endl);
+                //NMDebug(<< "ring #" << r+1 << " - " << nPoints << " points ..." << std::endl);
 
                 // jump over nPoints (= 4 byte)
                 pos += sizeof(unsigned int);
 
                 // insert next cell and assign cellId as preliminary attribute
                 cellId = polys->InsertNextCell(nPoints);
+                if (cellId < 0)
+                {
+                    NMDebugAI(<< "Failed inserting next cell into CellArray!" << std::endl);
+                    continue;
+                }
 
                 // assign feature id and cell values
                 nm_sel->InsertNextValue(0);
@@ -6518,13 +6646,15 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
                     double pt[3];
                     vtkIdType tmpId;
 
-//					NMDebug(<< pnt << "(" << x << "," << y << ")" << std::endl);
+                    //NMDebug(<< pnt << "(" << x << "," << y << ")" << std::endl);
                     pt[0] = x;
                     pt[1] = y;
                     pt[2] = 0.0;
 
                     //mpts->InsertUniquePoint(pt, tmpId);
+                    //NMDebugAI(<< "points->InsertNextPoint(pt)..." << std::endl);
                     tmpId = points->InsertNextPoint(pt);
+                    //NMDebugAI(<< "polys->InsertCellPoint(tmpId)..." << std::endl);
                     polys->InsertCellPoint(tmpId);
                 }
 //				NMDebug(<< std::endl);
@@ -6542,31 +6672,100 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
         delete[] wkb;
     }
     //NMDebug(<< std::endl);
+    NMDebugAI(<< featCounter-1 << " features imported!" << std::endl)
 
     // add geometry (i.e. points and cells)
     vtkVect->SetPoints(mpts->GetPoints());
     vtkVect->SetPolys(polys);
 
+    const double minMem = 500.0;
     // add attributes
-    vtkVect->GetCellData()->SetScalars(nm_id);
-    vtkVect->GetCellData()->AddArray(nm_hole);
-    vtkVect->GetCellData()->AddArray(nm_sel);
-    for (int f=0; f < fieldIdx.size(); ++f)
-        vtkVect->GetCellData()->AddArray(attr[f]);
+    NMDebugAI(<< "adding layer's admin fields ... " << std::endl);
 
-    vtkVect->BuildCells();
-    vtkVect->BuildLinks();
+    double memAvail = NMGlobalHelper::getMemInfo(false, 2, "MiB");
+    if (memAvail >= minMem)
+    {
+        NMDebugAI(<< "    nm_id    - mem avail=" << memAvail << std::endl);
+        vtkVect->GetCellData()->SetScalars(nm_id);
 
-    NMDebugAI(<< featCounter << " features imported" << std::endl);
+        memAvail = NMGlobalHelper::getMemInfo(false, 2, "MiB");
+        if (memAvail >= minMem)
+        {
+            NMDebugAI(<< "    nm_hole  - mem avail=" << memAvail << std::endl);
+            vtkVect->GetCellData()->AddArray(nm_hole);
 
+            memAvail = NMGlobalHelper::getMemInfo(false, 2, "MiB");
+            if (memAvail >= minMem)
+            {
+                NMDebugAI(<< "    nm_sel    - mem avail=" << memAvail << std::endl);
+                vtkVect->GetCellData()->AddArray(nm_sel);
+            }
+        }
+    }
+    else
+    {
+        NMDebugAI(<< "FAILED - " << memAvail << " MiB is not enough!" << std::endl);
+        vtkSmartPointer<vtkPolyData> v;
         NMDebugCtx(ctxLUMASSMainWin, << "done!");
+        return v;
+    }
+
+    NMDebugAI(<< "adding layer's attribute fiels ... " << std::endl);
+    memAvail = NMGlobalHelper::getMemInfo(false, 2, "MiB");
+    if (memAvail >= minMem)
+    {
+        for (int f=0; f < fieldIdx.size(); ++f)
+        {
+            memAvail = NMGlobalHelper::getMemInfo(false, 2, "MiB");
+            if (memAvail < minMem)
+            {
+                NMDebugAI(<< "There's < 500MB of system memory left! We stop adding fields now!");
+                NMLogError(<< "There's < 500MB of system memory left! We stop adding fields now!");
+
+                break;
+            }
+
+            NMDebugAI(<< "    adding '" << attr[f]->GetName() << "' - mem avail=" << memAvail << std::endl);
+            vtkVect->GetCellData()->AddArray(attr[f]);
+            NMDebugAI(<< "    added '" << attr[f]->GetName() << "' to CellData" << std::endl);
+        }
+    }
+    else
+    {
+        NMDebugAI(<< "FAILED - " << memAvail << " MiB is not enough!");
+        vtkSmartPointer<vtkPolyData> v;
+        NMDebugCtx(ctxLUMASSMainWin, << "done!");
+        return v;
+    }
+
+    memAvail = NMGlobalHelper::getMemInfo(false, 2, "MiB");
+    if (memAvail >= minMem)
+    {
+        NMDebugAI(<< "building cells - mem avail: " << memAvail << " MiB ... " << std::endl);
+        vtkVect->BuildCells();
+    }
+    else
+    {
+        vtkSmartPointer<vtkPolyData> v;
+        NMDebugCtx(ctxLUMASSMainWin, << "done!");
+        return v;
+    }
+
+    memAvail = NMGlobalHelper::getMemInfo(false, 2, "MiB");
+    if (memAvail >= minMem)
+    {
+        NMDebugAI(<< "building links - mem avail: " << memAvail << " MiB ... " << std::endl);
+        vtkVect->BuildLinks();
+    }
+    else
+    {
+        vtkSmartPointer<vtkPolyData> v;
+        NMDebugCtx(ctxLUMASSMainWin, << "done!");
+        return v;
+    }
+
+    NMDebugCtx(ctxLUMASSMainWin, << "done!");
     return vtkVect;
-}
-
-void
-LUMASSMainWin::importShapeFile(const QString &filename)
-{
-
 }
 
 // experimental
@@ -7205,14 +7404,27 @@ LUMASSMainWin::OgrToVtkPolyData(
 
 void LUMASSMainWin::loadVectorLayer()
 {
-        NMDebugCtx(ctxLUMASSMainWin, << "...");
-
     QString fileName = QFileDialog::getOpenFileName(this,
          tr("Import OGR Vector File"), "~", tr("OGR supported files (*.*)"));
     if (fileName.isNull()) return;
 
-    NMDebugAI( << "opening '" << fileName.toStdString() << "' ..." << std::endl);
+    this->loadVectorLayer(fileName);
 
+}
+
+void LUMASSMainWin::loadVectorLayer(const QString& fileName)
+{
+    NMDebugCtx(ctxLUMASSMainWin, << "...");
+
+
+    NMDebugAI( << "loading '" << fileName.toStdString() << "' ..." << std::endl);
+    double memAvail = NMGlobalHelper::getMemInfo(false, 2, "MiB");
+    NMDebugAI( << "Available physical memory: " << memAvail << " MiB" << std::endl);
+
+    vtkSmartPointer<vtkPolyData> vtkVec;
+
+    try
+    {
 #ifndef GDAL_200
     OGRRegisterAll();
     OGRDataSource *pDS = OGRSFDriverRegistrar::Open(fileName.toStdString().c_str(),
@@ -7223,7 +7435,7 @@ void LUMASSMainWin::loadVectorLayer()
         return;
     }
 
-    vtkSmartPointer<vtkPolyData> vtkVec = this->OgrToVtkPolyData(pDS);
+    vtkVec = this->OgrToVtkPolyData(pDS);
     OGRDataSource::DestroyDataSource(pDS);
 #else
 
@@ -7236,23 +7448,43 @@ void LUMASSMainWin::loadVectorLayer()
         return;
     }
 
-    vtkSmartPointer<vtkPolyData> vtkVec = this->OgrToVtkPolyData(pDS);
+    vtkVec = this->OgrToVtkPolyData(pDS);
     GDALClose(pDS);
 #endif
+    }
+    catch (std::exception& se)
+    {
+        NMLogError(<< "Failed loading vector layer '" << fileName.toStdString() << "'! "
+                   << se.what());
+        return;
+    }
 
-    QFileInfo finfo(fileName);
-    QString layerName = finfo.baseName();
+    if (vtkVec.GetPointer() != nullptr)
+    {
+        addVectorLayerToMap(vtkVec, fileName);
+    }
+    else
+    {
+        NMLogError(<< "Failed loading vector layer '" << fileName.toStdString() << "'! "
+                   << "Double check your available memory!");
+    }
 
-    vtkRenderWindow* renWin = this->ui->qvtkWidget->renderWindow();
-    //vtkSmartPointer<NMVtkOpenGLRenderWindow> renWin = vtkSmartPointer<NMVtkOpenGLRenderWindow>::New();
-    //this->ui->qvtkWidget->setRenderWindow(renWin);
-    NMVectorLayer* layer = new NMVectorLayer(renWin);
-    layer->setObjectName(layerName);
-    layer->setDataSet(vtkVec);
-    layer->setVisible(true);
-    this->mLayerList->addLayer(layer);
+    //QFileInfo finfo(fileName);
+    //QString layerName = finfo.baseName();
 
-        NMDebugCtx(ctxLUMASSMainWin, << "done!");
+    //vtkRenderWindow* renWin = this->ui->qvtkWidget->renderWindow();
+    ////vtkSmartPointer<NMVtkOpenGLRenderWindow> renWin = vtkSmartPointer<NMVtkOpenGLRenderWindow>::New();
+    ////this->ui->qvtkWidget->setRenderWindow(renWin);
+    //NMVectorLayer* layer = new NMVectorLayer(renWin);
+    //layer->setObjectName(layerName);
+    //layer->setDataSet(vtkVec);
+    //layer->setVisible(true);
+    //this->mLayerList->addLayer(layer);
+
+    memAvail = NMGlobalHelper::getMemInfo(false, 2, "MiB");
+    NMDebugAI( << "Available physical memory: " << memAvail << " MiB" << std::endl);
+
+    NMDebugCtx(ctxLUMASSMainWin, << "done!");
 }
 
 void
@@ -7586,11 +7818,29 @@ void LUMASSMainWin::loadImageLayer(const QString& fileName)
     }
 
     vtkRenderWindow* renWin = this->ui->qvtkWidget->renderWindow();
-    NMImageLayer* layer = new NMImageLayer(renWin, 0, this);
 
-    this->connectImageLayerProcSignals(layer);
-    layer->setObjectName(finfo.baseName());
-    layer->setFileName(fileName);
+    try
+    {
+        NMImageLayer* layer = new NMImageLayer(renWin, 0, this);
+        this->connectImageLayerProcSignals(layer);
+        layer->setObjectName(finfo.baseName());
+        layer->setLogger(this->getLogger());
+        layer->setFileName(fileName);
+    }
+    catch (itk::MemoryAllocationError& mae)
+    {
+
+        NMLogError(<< mae.GetDescription()
+                   << " Not enough available RAM to load '" << fileName.toStdString() << "'. "
+                   << "Consider generating pyramids or chunking this layer into smaller pieces."
+                   );
+    }
+    catch (std::exception& se)
+    {
+        NMLogError(<< "Failed to load layer '" << fileName.toStdString() << ". "
+                   << se.what());
+    }
+
 
     NMDebugCtx(ctxLUMASSMainWin, << "done!");
 }
@@ -7789,13 +8039,43 @@ LUMASSMainWin::populateSettingsBrowser(void)
 
     mSettingsBrowser->clear();
 
+    /// ToDo: need something smarter, once this grows bigger
+    /// s. also LUMASSMainWin::updateSettings(QString, QVariant)
+    QStringList darkModeSettings;
+    darkModeSettings << "ON" << "OFF" << "SYSTEM";
+
+    QMap<QString, QStringList> enumProps;
+    enumProps.insert(QStringLiteral("DarkMode"), darkModeSettings);
+
+
     QMap<QString, QVariant>::iterator it = mSettings.begin();
     while (it != mSettings.end())
     {
         QtVariantEditorFactory* ed = new QtVariantEditorFactory(mSettingsBrowser);
         QtVariantPropertyManager* man = new QtVariantPropertyManager(mSettingsBrowser);
-        QtVariantProperty* vprop = man->addProperty(it.value().type(), it.key());
-        vprop->setValue(it.value());
+
+        QtVariantProperty* vprop;
+        QVariant value;
+        if (enumProps.constFind(it.key()) != enumProps.constEnd())
+        {
+            vprop = man->addProperty(QtVariantPropertyManager::enumTypeId(), it.key());
+            vprop->setAttribute("enumNames", enumProps[it.key()]);
+            QString propValStr = mSettings[it.key()].toString();
+            for (unsigned int m=0; m < enumProps[it.key()].size(); ++m)
+            {
+                if (enumProps[it.key()].at(m).compare(propValStr) == 0)
+                {
+                    value = QVariant(m);
+                }
+            }
+        }
+        else
+        {
+            vprop = man->addProperty(it.value().type(), it.key());
+            value = it.value();
+        }
+        vprop->setValue(value);
+
         mSettingsBrowser->setFactoryForManager(man, ed);
         mSettingsBrowser->addProperty(vprop);
 
@@ -7821,6 +8101,7 @@ LUMASSMainWin::updateSettings(QtProperty *prop, const QVariant &val)
 void
 LUMASSMainWin::updateSettings(const QString &setting, const QVariant &val)
 {
+
     switch (val.type())
     {
     case QVariant::String:
@@ -7830,20 +8111,50 @@ LUMASSMainWin::updateSettings(const QString &setting, const QVariant &val)
         break;
     }
 
-    populateSettingsBrowser();
 
-    //    if (setting.compare(QString::fromLatin1("Workspace")) == 0)
-    //    {
-    //        sqlite3_temp_directory = const_cast<char*>(
-    //                    mSettings["Workspace"].toString().toStdString().c_str());
-    //    }
-    //    else
-    if (setting.compare(QString::fromLatin1("UserModels")) == 0)
+    /// ToDo: need something smarter, once this grows bigger
+    /// s. also LUMASSMainWin::populateSettingsBrowser()
+
+    QStringList darkModeSettings;
+    darkModeSettings << "ON" << "OFF" << "SYSTEM";
+
+    QMap<QString, QStringList> enumProps;
+    enumProps.insert(QStringLiteral("DarkMode"), darkModeSettings);
+
+    if (setting.compare(QStringLiteral("UserModels")) == 0)
     {
         scanUserModels();
     }
+    else if (setting.compare(QStringLiteral("DarkMode")) == 0)
+    {
+        const int intVal = val.toInt();
+        switch(intVal)
+        {
+        case 0:
+            mSettings["DarkMode"] = QVariant::fromValue(QStringLiteral("ON"));
+            this->setDarkMode(true);
+            break;
+        case 1:
+            mSettings["DarkMode"] = QVariant::fromValue(QStringLiteral("OFF"));
+            this->setDarkMode(false);
+            break;
+        default:
+            mSettings["DarkMode"] = QVariant::fromValue(QStringLiteral("SYSTEM"));
+            if (this->isInDarkMode())
+            {
+                this->setDarkMode(true);
+            }
+            else
+            {
+                this->setDarkMode(false);
+            }
+            break;
+        }
+    }
 
-    emit settingsUpdated(setting, val);
+    populateSettingsBrowser();
+    emit settingsUpdated(setting, mSettings[setting]);
+
 }
 
 void
@@ -9149,6 +9460,39 @@ void LUMASSMainWin::readSettings()
         QSplitter* splitter = this->ui->centralWidget->findChild<QSplitter*>("MainSplitter");
         splitter->restoreState(val.toByteArray());
     }
+
+    val = settings.value("DarkMode");
+    if (val.isValid())
+    {
+        if (val.toString().compare(QStringLiteral("ON")) == 0)
+        {
+            this->setDarkMode(true);
+            mSettings["DarkMode"] = QVariant::fromValue(QStringLiteral("ON"));
+        }
+        else if (val.toString().compare(QStringLiteral("OFF")) == 0)
+        {
+            this->setDarkMode(false);
+            mSettings["DarkMode"] = QVariant::fromValue(QStringLiteral("OFF"));
+        }
+        else
+        {
+            this->setDarkMode(false);
+            mSettings["DarkMode"] = QVariant::fromValue(QStringLiteral("SYSTEM"));
+        }
+    }
+    else
+    {
+        if (this->isInDarkMode())
+        {
+            this->setDarkMode(true);
+            mSettings["DarkMode"] = QVariant::fromValue(QStringLiteral("ON"));
+        }
+        else
+        {
+            this->setDarkMode(false);
+            mSettings["DarkMode"] = QVariant::fromValue(QStringLiteral("SYSTEM"));
+        }
+    }
     settings.endGroup();
 
     // ================================================================
@@ -9362,6 +9706,10 @@ void LUMASSMainWin::writeSettings(void)
     // central splitter position
     QSplitter* splitter = this->ui->centralWidget->findChild<QSplitter*>("MainSplitter");
     settings.setValue("CentralSplitter", splitter->saveState());
+
+    // DarkMode
+    // 0: ON, 1: OFF, 2: SYSTEM
+    settings.setValue("DarkMode", mSettings["DarkMode"]);
 
     settings.endGroup();
 

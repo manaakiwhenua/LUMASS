@@ -209,8 +209,11 @@ public slots:
     void import3DPointSet();			// imports char (" " | "," | ";" | "\t") seperated text (x,y,z)
     void toggle3DStereoMode();
     void toggle3DSimpleMode();
-    void loadVTKPolyData();			// loads VTK *vtp PolyData
-    void loadVectorLayer();
+    void loadVTKPolyData();			// loads VTK *vtp PolyData - asks for filename
+    void loadVTKPolyData(const QString& fileName);
+    void loadVectorLayer();         // loads GDAL/OGR layer - asks for filename
+    void loadVectorLayer(const QString& fileName);
+    void addVectorLayerToMap(vtkSmartPointer<vtkPolyData> pd, const QString& fileName);
     void doMOSO();
     void showComponentsView(bool);
     void showComponentsInfoView(bool);
@@ -302,7 +305,6 @@ public slots:
     void loadUserModelTool(const QString& modelPath, const QString& userModel, const QString& toolBarName);
     void removeUserTool(NMAbstractAction* act);
 
-
     // logging
 
     void appendLogMsg(const QString& msg);
@@ -383,7 +385,14 @@ public slots:
 
 
 
-    void importShapeFile(const QString& filename);
+#ifndef GDAL_200
+    vtkSmartPointer<vtkPolyData> OgrToVtkPolyData(OGRDataSource* pDS);
+    void vtkPolygonPolydataToOGR(OGRDataSource* ds, NMVectorLayer *vectorLayer);
+#else
+    vtkSmartPointer<vtkPolyData> OgrToVtkPolyData(GDALDataset *pDS);
+    void vtkPolygonPolydataToOGR(GDALDataset* ds, NMVectorLayer *vectorLayer);
+#endif
+
 
     /*! WebSocket Server start/stop */
     void startWebSocketServer(void);
@@ -437,13 +446,6 @@ protected:
     QString eventTypeToString(const QEvent::Type type);
 
     //	void displayPolyData(vtkSmartPointer<vtkPolyData> polydata, double* lowPt, double* highPt);
-#ifndef GDAL_200
-    vtkSmartPointer<vtkPolyData> OgrToVtkPolyData(OGRDataSource* pDS);
-    void vtkPolygonPolydataToOGR(OGRDataSource* ds, NMVectorLayer *vectorLayer);
-#else
-    vtkSmartPointer<vtkPolyData> OgrToVtkPolyData(GDALDataset *pDS);
-    void vtkPolygonPolydataToOGR(GDALDataset* ds, NMVectorLayer *vectorLayer);
-#endif
 
     // those conversion functions are dealing as well with the particular "Multi-"
     // case (i.e. MultiPoint, etc.)

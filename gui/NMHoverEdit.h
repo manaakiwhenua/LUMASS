@@ -60,6 +60,7 @@ signals:
 public slots:
     void forwardModelConfigChanged();
     void updateExpressionPreview();
+    void setDarkMode(bool bdark);
 
 protected slots:
     void applyChanges();

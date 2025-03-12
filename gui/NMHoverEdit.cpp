@@ -179,6 +179,13 @@ NMHoverEdit::closeEvent(QCloseEvent *event)
 }
 
 void
+NMHoverEdit::setDarkMode(bool bdark)
+{
+    mHighlighter->setDarkColorMode(bdark);
+    mPreviewHighlighter->setDarkColorMode(bdark);
+}
+
+void
 NMHoverEdit::forwardModelConfigChanged(void)
 {
     if (btnPreview->isChecked())

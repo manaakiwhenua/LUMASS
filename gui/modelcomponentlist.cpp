@@ -1607,21 +1607,24 @@ void ModelComponentList::dropEvent(QDropEvent* event)
             }
         }
 
+        NMGlobalHelper hlp;
+        LUMASSMainWin* mainWin = hlp.getMainWindow();
         if (!fileName.isEmpty())
         {
             QFileInfo finfo(fileName);
 
             QStringList tabFormats;
-            tabFormats << "dbf" << "db" << "sqlite" << "ldb" << "gpkg" << "csv" << "txt" << "xls" << "shp" << "shx";
+            tabFormats << "dbf" << "db" << "sqlite" << "ldb" << "gpkg" << "csv" << "txt" << "xls";
             QStringList imgFormats;
             imgFormats << "kea" << "img" << "tiff" << "jpg" << "jpeg" << "tif"
                        << "png" << "gif" << "adf" << "hdr" << "sdat" << "vrt" << "nc";
+            QStringList shpFormats;
+            shpFormats << "shp" << "shx";
+            QStringList vtkFormats;
+            vtkFormats << "vtk" << "vtp";
             QString ext = finfo.suffix().toLower();
             if (tabFormats.contains(ext))// || fileName.compare(QString::fromLatin1("file::memory:")) == 0)
             {
-                NMGlobalHelper hlp;
-                LUMASSMainWin* mainWin = hlp.getMainWindow();
-
                 QStringList sqliteformats;
                 sqliteformats << "db" << "sqlite" << "ldb" << "gpkg";
 
@@ -1648,34 +1651,51 @@ void ModelComponentList::dropEvent(QDropEvent* event)
             }
             else if (imgFormats.contains(ext))
             {
-                NMGlobalHelper h;
-                vtkRenderWindow* renWin = h.getRenderWindow();
-                NMImageLayer* fLayer = new NMImageLayer(renWin, 0, this);
-                fLayer->setObjectName(finfo.baseName());
-                fLayer->setLogger(h.getMainWindow()->getLogger());
-                h.getMainWindow()->connectImageLayerProcSignals(fLayer);
-                fLayer->setFileName(fileName);
+                mainWin->loadImageLayer(fileName);
             }
-            else if (ext.compare(QString("vtk")) == 0)
+            else if (vtkFormats.contains(ext))
             {
-                vtkSmartPointer<vtkPolyData> pd;
-                vtkSmartPointer<vtkPolyDataReader> reader = vtkSmartPointer<vtkPolyDataReader>::New();
-                reader->SetFileName(fileName.toStdString().c_str());
-                reader->Update();
-                pd = reader->GetOutput();
-
-                NMGlobalHelper h;
-                vtkRenderWindow* renWin = h.getRenderWindow();
-                NMVectorLayer* vl = new NMVectorLayer(renWin);
-                vl->setLogger(h.getMainWindow()->getLogger());
-                vl->setFileName(fileName);
-                vl->setObjectName(finfo.baseName());
-                vl->setDataSet(pd);
-                vl->setVisible(true);
-
-                h.getMainWindow()->addLayerToCompList(vl);
-
+                mainWin->loadVTKPolyData(fileName);
             }
+            else if (shpFormats.contains(ext))
+            {
+                mainWin->loadVectorLayer(fileName);
+            }
+
+                //vtkSmartPointer<vtkPolyData> pd;
+                //if (ext.compare(QStringLiteral("vtk")) == 0)
+                //{
+                //    vtkSmartPointer<vtkPolyDataReader> reader = vtkSmartPointer<vtkPolyDataReader>::New();
+                //    reader->SetFileName(fileName.toStdString().c_str());
+                //    reader->Update();
+                //    pd = reader->GetOutput();
+                //}
+                //else if (shpFormats.contains(ext))
+                //{
+                //    GDALDataset *pDS = (GDALDataset*)GDALOpenEx(fileName.toStdString().c_str(),
+                //            GDAL_OF_VECTOR, NULL, NULL, NULL);
+                //    if (pDS == NULL)
+                //    {
+                //        NMLogError(<< ctx << ": failed to open '" << fileName.toStdString() << "'!");
+                //        return;
+                //    }
+
+                //    pd = mainWin->OgrToVtkPolyData(pDS);
+                //}
+
+                //if (pd.GetPointer() != nullptr)
+                //{
+                //    vtkRenderWindow* renWin = hlp.getRenderWindow();
+                //    NMVectorLayer* vl = new NMVectorLayer(renWin);
+                //    vl->setLogger(mainWin->getLogger());
+                //    vl->setFileName(fileName);
+                //    vl->setObjectName(finfo.baseName());
+                //    vl->setDataSet(pd);
+                //    vl->setVisible(true);
+
+                //    mainWin->addLayerToCompList(vl);
+                //}
+            //}
             //QtConcurrent::run(fLayer, &NMImageLayer::setFileName, fileName);
         }
     }
@@ -1702,13 +1722,14 @@ void ModelComponentList::importMultiDataSet(const QString &fn)
     // format final 'extended filename' understood by LUMASS
     QString extFN = QString("%1:%2").arg(fn).arg(extNcPath);
 
+    NMGlobalHelper::getMainWindow()->loadImageLayer(extFN);
 
-    vtkRenderWindow* renWin = NMGlobalHelper::getRenderWindow();
-    NMImageLayer* fLayer = new NMImageLayer(renWin, 0, this);
-    fLayer->setObjectName(layerName);
-    fLayer->setLogger(NMGlobalHelper::getMainWindow()->getLogger());
-    NMGlobalHelper::getMainWindow()->connectImageLayerProcSignals(fLayer);
-    fLayer->setFileName(extFN);
+    //vtkRenderWindow* renWin = NMGlobalHelper::getRenderWindow();
+    //NMImageLayer* fLayer = new NMImageLayer(renWin, 0, this);
+    //fLayer->setObjectName(layerName);
+    //fLayer->setLogger(NMGlobalHelper::getMainWindow()->getLogger());
+    //NMGlobalHelper::getMainWindow()->connectImageLayerProcSignals(fLayer);
+    //fLayer->setFileName(extFN);
 }
 
 

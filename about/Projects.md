@@ -4,14 +4,30 @@ permalink: "/about/Projects"
 ---
 <link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
+### Adaptation pathways for sustainable peatland management - Ministry for Primary Industries' Sustainable Land Management and Climate Change Fund (2023-2027)
+
+- Develop scenarios that integrate the social, economic, and environmental impacts of changes in land management and/or use of 
+drained peatlands that can be used by communities, rural professionals, and government to inform land-use decision making and 
+future research activity.
+
 ### Synthesis Scenarios for Future Land Use - Our Land and Water National Science Challenge (2023-2024) [![web]({{ "/assets/images/link_icon_teal.png" | relative_url }}){: width="22"}](https://ourlandandwater.nz/project/future-land-use-scenarios)
 
-- Optimisation-based land-use scenario modelling for achieving water quality targets in different New Zealand catchments while not compromising profitability, increasing greenhouse gas emissions, or resulting in other environmental impacts.
+- Optimisation-based land-use scenario modelling for achieving water quality targets in different New Zealand catchments while not compromising profitability, increasing greenhouse gas emissions, or resulting in other environmental impacts [(Matheson et al. 2024)](https://doi.org/10.57935/AGR.28079825.v1).
+
+### Trees in landscapes | Te Kapunipunitanga a Taane - Ministry of Business, Innovation and Employment's Endeavour Fund (2022-2027) [![web]({{ "/assets/images/link_icon_teal.png" | relative_url }}){: width="22"}](https://www.landcareresearch.co.nz/discover-our-research/climate-change/trees-in-landscapes/)
+
+- We will use a multi-objective optimisation modelling framework to generate optimal landscape templates for spatial prioritisation of clusters of trees in relation to soil properties and plant traits under current and future climate conditions. Outputs from the model will be combined with probabilistic modelling of landowner economic and cultural decisions about tree establishment to deliver probabilistic models of adoption to achieve optimal landscape solutions across multiple co-benefits.
 
 ### Mosaic vs monoculture landscapes - Our Land and Water National Science Challenge (2022-2024) [![web]({{ "/assets/images/link_icon_teal.png" | relative_url }}){: width="22"}](https://ourlandandwater.nz/project/mosaic-vs-monoculture-landscapes/)
 
 - Implementation of a LUMASS interface for non-linear programming solvers utilising the `.nl` file format [(Gay 2005)](https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://ampl.github.io/nlwrite.pdf).
-- Implementation of the National Water, Environment and Economic Land-Use Model in LUMASS (Harris et al. 2024). 
+- Implementation of the National Water, Environment and Economic Land-Use Model in LUMASS [(Harris et al. 2024)](https://doi.org/10.57935/AGR.28050806.v1). 
+
+### Healthy Estuaries | Ki Uta ki Tai - Our Land and Water National Science Challenge (2021 - 2023) [![web]({{ "/assets/images/link_icon_teal.png" | relative_url }}){: width="22"}](https://ourlandandwater.nz/project/healthy-estuaries/)
+
+- Estimation of the effect of contaminant reduction targets for New Zealand estuaries on the health of estuaris.
+- Assessment of the implications of contaminant reduction targets for estuaries for catchment land-use management.
+[(Herzig et al. 2024)](https://doi.org/10.57935/AGR.26001595.v1)
 
 ### Land use for nutrious diets in New Zealand - Our Land and Water National Science Challenge (2021-2022)   [![web]({{ "/assets/images/link_icon_teal.png" | relative_url }}){: width="22"}](https://ourlandandwater.nz/project/land-use-for-nutritious-diets/)
 

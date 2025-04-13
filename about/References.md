@@ -4,8 +4,13 @@ permalink: "/about/References"
 ---
 <link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
-Thomas S, Ausseil A-G, Guo J, Herzig A, Khaembah E, Renwick A, Teixeira E, van der Weerden T, Wakelin S, Vetharaniam I 2024. **Exploring the role of high-value crops to reduce agricultural greenhouse gas emissions in New Zealand**. Regional Environmental Change 24, 105. [https://doi.org/10.1007/s10113-024-02267-8](https://doi.org/10.1007/s10113-024-02267-8)
+Herzig A, Neverman A, Price R, Barnes M 2024. **From mountains to the sea: values and science for an informed kaitiaki/guardian - land**. AgResearch. Report. [https://doi.org/10.57935/AGR.26001595.v1](https://doi.org/10.57935/AGR.26001595.v1)
 
+Harris S, Tamepo R, Herzig A, Fraser C, Lilburne L 2024. **Mosaics Testing Model**. AgResearch. Report. [https://doi.org/10.57935/AGR.28050806.v1](https://doi.org/10.57935/AGR.28050806.v1)
+
+Matheson L, Herzig A, Muller C, Stone C, Dowd A, Brazendale R, Gray S 2024. **Steering land use change to meet water quality targets**. AgResearch. Report. [https://doi.org/10.57935/AGR.28079825.v1](https://doi.org/10.57935/AGR.28079825.v1)
+
+Thomas S, Ausseil A-G, Guo J, Herzig A, Khaembah E, Renwick A, Teixeira E, van der Weerden T, Wakelin S, Vetharaniam I 2024. **Exploring the role of high-value crops to reduce agricultural greenhouse gas emissions in New Zealand**. Regional Environmental Change 24, 105. [https://doi.org/10.1007/s10113-024-02267-8](https://doi.org/10.1007/s10113-024-02267-8)
 
 McDowell RW, Herzig A, van der Weerden TJ, Cleghorn C, Kaye-Blake B 2022. **Growing for good: producing a healthy, low greenhouse gas and water quality footprint diet in Aotearoa, New Zealand.** Journal of the Royal Society of New Zealand. [https://doi.org/10.1080/03036758.2022.2137532](https://doi.org/10.1080/03036758.2022.2137532)
 
@@ -19,9 +24,9 @@ Herzig A, Zoerner J, Dymond J, Smith H, Phillips C 2020. **An Interoperable Low-
 
 Herzig A 2019. **Streaming Geospatial Data into Virtual Reality**. GeoComputation, 18th to 21st September 2019, Queenstown, New Zealand. [Abstract](https://auckland.figshare.com/articles/conference_contribution/Streaming_Geospatial_Data_into_Virtual_Reality/9870113)
 
-Herzig A, Scholten J 2019. **Streaming Geospatial Data into Virtual Reality**. Horizons GIS Forum, October 2019, Palmerston North, New Zealand. [Presentation](https://datastore.landcareresearch.co.nz/dataset/de3767f9-b79d-42f2-92cf-6cb89e07adac/resource/626f2d30-308b-4e4d-af63-35b0f0b5e60d/download/herzig-scholten-2019_streaminggeospatialdataintovirtualreality_presentation.pdf) \| [Video](https://datastore.landcareresearch.co.nz/dataset/de3767f9-b79d-42f2-92cf-6cb89e07adac/resource/7bcae082-e0c6-4115-a700-26f7a4c549d6/download/herzig-scholten-2019_streaminggeospatialdataintovirtualreality.mp4)
-
 Herzig A, Ausseil A-G, Spiekermann R, Jolly B, Burleigh T, Medyckyj-Scott 2019. **Automated Data Provenance Tracking for Ecosystem Services Assessments**. New Zealand Geospatial Research Conference, 18th September 2019, Queenstown, New Zealand. [Presentation](https://datastore.landcareresearch.co.nz/dataset/de3767f9-b79d-42f2-92cf-6cb89e07adac/resource/2fb52293-8b42-443c-877c-b9682614c561/download/herzig-etal-2019_dataprovenanceforesmodels_presentation.pdf) 
+
+Herzig A, Scholten J 2019. **Streaming Geospatial Data into Virtual Reality**. Horizons GIS Forum, October 2019, Palmerston North, New Zealand. [Presentation](https://datastore.landcareresearch.co.nz/dataset/de3767f9-b79d-42f2-92cf-6cb89e07adac/resource/626f2d30-308b-4e4d-af63-35b0f0b5e60d/download/herzig-scholten-2019_streaminggeospatialdataintovirtualreality_presentation.pdf) \| [Video](https://datastore.landcareresearch.co.nz/dataset/de3767f9-b79d-42f2-92cf-6cb89e07adac/resource/7bcae082-e0c6-4115-a700-26f7a4c549d6/download/herzig-scholten-2019_streaminggeospatialdataintovirtualreality.mp4)
 
 Spiekerman R, Jolly B, Herzig A, Burleigh T, Medyckyj-Scott 2019. **Implementations of fine-grained automated data provenance to support transparent environmental modelling**. Environmental Modelling & Software 118: 134-145. [https://doi.org/10.1016/j.envsoft.2019.04.009](https://doi.org/10.1016/j.envsoft.2019.04.009)
 
@@ -29,8 +34,8 @@ Herzig A, Nguyen TT, Ausseil A-G, Maharjan GR, Dymond JR, Arnhold S, Koellner T,
 
 Herzig A, Dymond J, Ausseil A-G 2016. **Exploring limits and trade-offs of irrigation and agricultural intensification in the Ruamahanga catchment, New Zealand**. New Zealand Journal of Agricultural Research, [http://dx.doi.org/10.1080/00288233.2016.1183685](http://dx.doi.org/10.1080/00288233.2016.1183685)
 
-Herzig A, Rutledge D 2013. **Integrated Land Systems Modelling and Optimisation**. In Piantadosi J, Anderssen RS, Boland J (eds.) MODSIM2013, 20th International Congress on Modelling and Simulation. Modelling and Simulation Society of Australia and New Zealand, December 2013, pp. 880-886. [http://www.mssanz.org.au/modsim2013/C8/herzig.pdf](http://www.mssanz.org.au/modsim2013/C8/herzig.pdf)
-
 Herzig A, Ausseil A-GE, Dymond JR 2013. **Sensitivity of land-use pattern optimisation to variation in input data and constraints**. In Piantadosi J, Anderssen RS, Boland J (eds.) MODSIM2013, 20th International Congress on Modelling and Simulation. Modelling and Simulation Society of Australia and New Zealand, December 2013, pp. 1840-1846. [http://www.mssanz.org.au/modsim2013/H12/herzig.pdf](http://www.mssanz.org.au/modsim2013/H12/herzig.pdf)
 
 Herzig A, Ausseil A-GE, Dymond JR 2013. **Spatial optimisation of ecosystem services. In Dymond JR (ed.) Ecosystem services in New Zealand - conditions and trends**, pp. 511-523, Manaaki Whenua Press, Lincoln, New Zealand. [https://goo.gl/koaEhR](https://goo.gl/koaEhR)
+
+Herzig A, Rutledge D 2013. **Integrated Land Systems Modelling and Optimisation**. In Piantadosi J, Anderssen RS, Boland J (eds.) MODSIM2013, 20th International Congress on Modelling and Simulation. Modelling and Simulation Society of Australia and New Zealand, December 2013, pp. 880-886. [http://www.mssanz.org.au/modsim2013/C8/herzig.pdf](http://www.mssanz.org.au/modsim2013/C8/herzig.pdf)

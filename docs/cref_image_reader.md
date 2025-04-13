@@ -31,6 +31,9 @@ Parallel processing | no
 
 The `ImageReader` process component reads an image (raster) and its associated raster attribute table (RAT), if available. If a RAT is available, it is automatically read/accessed and passed on to the next downstream process component together with the image. LUMASS recoginses two types of RATs: i) image format specific internal RATs, and ii) external [SQLite](https://www.sqlite.org)-based LUMASS RATs. The type of table that is going to be passed on downstream, is specified by the `RATType` parameter. Please refer to [RATType]({{ "docs/cref_image_reader#rattype" | relative_url }}) for more information on RATs. 
 
+**Note**: External RATs can be used with any supported image format, even if the image format itself does not support RATs! For example, it is perfectly fine to use an external LUMASS RAT with a TIFF image, as long as the RAT follows LUMASS' RAT specification. You can easily create a RAT for any categorical (integer) image using the `CreateRAT` LUMASS model.
+{: .notice--info}
+
 ## Supported Image Formats
 
 LUMASS uses the Geospatial Data Abstraction Library ([GDAL](https://gdal.org/index.html)) to read and write 2D images. However, LUMASS does not support all image formats that are supported by GDAL. Image formats that are (most likely) supported by LUMASS, are single dataset formats residing on local or network storage and that are referenced by conventional filenames. Additionally, LUMASS provides read/write access to (1D,2D,3D) datasets stored in [netCDF-4](https://www.unidata.ucar.edu/software/netcdf/documentation/historic/netcdf/NetCDF_002d4-Format.html#NetCDF_002d4-Format) files. 

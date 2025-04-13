@@ -57,6 +57,7 @@ permalink: "/docs/Documentation"
 <!-- - [SQLProcessor]({{ "/docs/cref_sql_processor" | relative_url }}) -->
 - [SummarizeZones]({{ "/docs/cref_sum_zones" | relative_url }})
 <!-- - [TableReader]({{ "/docs/cref_table_reader" | relative_url }}) -->
+- [Table2Image]({{ "/docs/cref_table2img" | relative_url }})
 <!-- - [TerrainAttributes]({{ "/docs/cref_terrain_attributes" | relative_url }}) -->
 <!-- - [TextLabel]({{ "/docs/cref_text_label" | relative_url }}) -->
 <!-- - [UniqueCombination]({{ "/docs/cref_unique_combination" | relative_url }}) -->

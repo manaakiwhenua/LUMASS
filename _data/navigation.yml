@@ -86,6 +86,8 @@ docs:
 #        url: "/docs/cref_sql_processor"
       - title: "SummarizeZones"
         url: "/docs/cref_sum_zones"
+      - title: "Table2Image"
+        url: "/docs/cref_table2img"
 #      - title: "TableReader"
 #        url: "/docs/cref_table_reader"
 #      - title: "TerrainAttributes"

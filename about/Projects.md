@@ -29,7 +29,7 @@ future research activity.
 - Assessment of the implications of contaminant reduction targets for estuaries for catchment land-use management.
 [(Herzig et al. 2024)](https://doi.org/10.57935/AGR.26001595.v1)
 
-### Land use for nutrious diets in New Zealand - Our Land and Water National Science Challenge (2021-2022)   [![web]({{ "/assets/images/link_icon_teal.png" | relative_url }}){: width="22"}](https://ourlandandwater.nz/project/land-use-for-nutritious-diets/)
+### Land use for nutritious diets in New Zealand - Our Land and Water National Science Challenge (2021-2022)   [![web]({{ "/assets/images/link_icon_teal.png" | relative_url }}){: width="22"}](https://ourlandandwater.nz/project/land-use-for-nutritious-diets/)
 
 - Constrained land-use optimisation scenarios to identify suitable locations for replacing pastoral agriculture in catchments under nitrogen and phosphorous pressure with horticulture and forest to achieve greenhouse gas emission targets and water quality objectives [(McDowell et al. 2023)](https://doi.org/10.1080/03036758.2022.2137532)
 

@@ -22,6 +22,7 @@
 #include <string>
 #include <QString>
 #include <QFile>
+#include <QThread>
 #include <QMap>
 #include <QVariant>
 #include <yaml-cpp/yaml.h>
@@ -54,14 +55,14 @@ class NMLumassEngine : public QObject
 public:
 
     // NM_ENGINE_MODE
-    using LumassEngineMode = enum _LumassEngineMode {
+    enum EngineMode{
         NM_ENGINE_MODE_MODEL = 1,
         NM_ENGINE_MODE_MOSO = 2,
         NM_ENGINE_MODE_UNKNOWN = 3
     };
 
     // NM_APP_MODE
-    using LumassAppMode = enum _LumassAppMode {
+    enum AppMode{
         NM_APP_ENGINE = 1,
         NM_APP_BMI = 2,
         NM_APP_GUI = 3,
@@ -70,7 +71,7 @@ public:
 
     using BMILog = void(*)(int, const char*);
 
-    NMLumassEngine(int argc, char** argv);
+    NMLumassEngine(int argc, char** argv, NMLumassEngine::AppMode appMode);
     virtual ~NMLumassEngine();
 
     NMModelController* getModelController() {return mController;}
@@ -84,6 +85,7 @@ public:
     void shutdown(void);
 
     QMap<QString, QVariant> getSettings(){return mSettings;}
+
 
 public slots:
     /*! passes a message to the internal logger associcated with this engine*/
@@ -136,8 +138,8 @@ public slots:
      */
     void setLogProvenance(bool logProv);
 
-    LumassEngineMode getEngineMode(void) { return mMode; }
-    LumassAppMode getAppMode(void){return mAppMode;}
+    NMLumassEngine::EngineMode getEngineMode(void) { return mMode; }
+    NMLumassEngine::AppMode getAppMode(void){return mAppMode;}
 
     void doMOSO(const QString& losFileName);
     void doModel(const QString& userFile, QString& workspace, QString& enginePath, bool bLogProv,
@@ -151,6 +153,10 @@ public slots:
      */
     void notifyParentProcess(int msg, int tag);
 
+signals:
+    void signalInitPython(void);
+    void signalFinalisePython(void);
+
 protected:
     QString getYamlNodeTypeAsString(const YAML::Node& node);
 
@@ -163,6 +169,7 @@ protected:
     void readSettings();
 
 private:
+    QThread mModelThread;
     NMModelController* mController;
     NMLogger* mLogger;
     QString mLogFileName;
@@ -181,11 +188,14 @@ private:
     QString m_ThreadSupportStr;
     MPI_Comm mParentComm;
 
-    LumassAppMode mAppMode;
-    LumassEngineMode mMode;
+    NMLumassEngine::AppMode mAppMode;
+    NMLumassEngine::EngineMode mMode;
 
     static const std::string ctx;
 };
+
+Q_DECLARE_METATYPE( NMLumassEngine::AppMode )
+Q_DECLARE_METATYPE( NMLumassEngine::EngineMode )
 
 
 #endif /* NMLUMASSENGINE_H */

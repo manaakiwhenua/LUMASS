@@ -28,8 +28,10 @@
 #include <QTextStream>
 #include <QVariant>
 #include <QThreadPool>
+#include <QThread>
 #include <QScopedPointer>
 #include <QFileInfo>
+#include <QMetaType>
 
 #include <sqlite3.h>
 #include "gdal.h"
@@ -63,24 +65,28 @@ if (m_Rank != rank )         \
 
 const std::string NMLumassEngine::ctx = "NMLumassEngine";
 
-NMLumassEngine::NMLumassEngine(int argc, char** argv)
+NMLumassEngine::NMLumassEngine(int argc, char** argv, AppMode appMode)
     : QObject(nullptr),
       mController(nullptr),
       mMosra(nullptr),
       mBMILogger(nullptr),
       mMode(NM_ENGINE_MODE_UNKNOWN),
-      mAppMode(NM_APP_UNKNOWN),
+      mAppMode(appMode),
       mbMPICleanUp(false),
       m_Rank(0),
       m_Nproc(1)
 {
+    qRegisterMetaType< NMLumassEngine::EngineMode >();
+    qRegisterMetaType< NMLumassEngine::AppMode >();
+
     NMDebugCtx(ctx, << "...");
     mLogger = new NMLogger(this);
     // default is not GUI logging
     mLogger->setHtmlMode(false);
 
-    // determine the AppMode we're running in
-    // we'll use the AppMode to deterimine whether we need to spawn our own ranks
+    // determine whether this ENGINE is the primary (parent) MPI runtime or
+    // whether we're running in 'passive' (child) mode
+    // we'll use the MPIRuntime mode to deterimine whether we need to spawn our own ranks
     // (=GUI) or whether that has been done already prior to executing lumass
     std::stringstream allargs;
     for (int a=0; a < argc; ++a) {allargs << argv[a] << " ";}
@@ -92,25 +98,11 @@ NMLumassEngine::NMLumassEngine(int argc, char** argv)
     if (argc > 0)
     {
         QString app_cmd = allargs.str().c_str();
-        if (    app_cmd.contains(QStringLiteral("lumassengine"), Qt::CaseSensitive)
-             || app_cmd.contains(QStringLiteral("lumassengine.exe"), Qt::CaseSensitive)
-           )
+        if (    mAppMode == NM_APP_GUI
+             && !app_cmd.contains(QStringLiteral("--mpi"), Qt::CaseInsensitive)
+            )
         {
-            mAppMode = NM_APP_ENGINE;
-        }
-        else if (    app_cmd.contains(QStringLiteral("lumass"), Qt::CaseSensitive)
-                  || app_cmd.contains(QStringLiteral("lumass.exe"), Qt::CaseSensitive)
-                )
-        {
-            mAppMode = NM_APP_GUI;
-            if (!app_cmd.contains(QStringLiteral("--mpi"), Qt::CaseInsensitive))
-            {
-                bMPIRuntime = false;
-            }
-        }
-        else
-        {
-            mAppMode = NM_APP_BMI;
+            bMPIRuntime = false;
         }
     }
 
@@ -210,12 +202,52 @@ NMLumassEngine::NMLumassEngine(int argc, char** argv)
                   << " of " << m_Nproc << " child processes overall!");
     }
 
-    mController = new NMModelController(this);
+    mController = new NMModelController(this, nullptr);
     mController->setLogger(mLogger);
     mController->setUsesMPIRuntime(bMPIRuntime);
     mController->setRank(m_Rank);
     mController->setNumProcs(m_Nproc);
     mController->setAppMode(static_cast<int>(mAppMode));
+    mController->moveToThread(&mModelThread);
+    mModelThread.start();
+
+
+    /*  The NMLumassEngine is responsible for providing the resources
+     *  required to run LUMASS models in different 'modes', i.e. inside
+     *  the GUI (meaning started by the GUI and providing live feedback on
+     *  progress) or on the commandline using the lumassengine app. To enable
+     *  an animated model progress feedback in GUI mode, the engine executes
+     *  a model in a separate modelling thread (mModelThread), by signalling
+     *  the ModelController's slot 'executeModel' to execute. (QThread ensures
+     *  that all 'slots' (specifically marked methods of a class) of a QObject
+     *  that has been moved to a QThread object, are executed in a different
+     *  thread.) As progress animation is not required in 'commandline mode',
+     *  i.e. when using the lumassengine app to execute LUMASS models, the
+     *  NMLumassEngine simply calls the NMModelController::executeModel
+     *  function directly.
+     *
+     *  When utilising the LUMASS Python support, the Python interpreter
+     *  initilisation and finalisation is handled in a similar manner.
+     *  In GUI mode, to ensure that communication with the interpeter stays
+     *  on the same thread, NMLumassEngine calls the ModelController's slots
+     *  for initialising and finalising the interpreter. However, in command-
+     *  line mode, the ModelController's methods for initialising and finalising
+     *  the Python interpreter are called directly (to ensure communication on
+     *  the same thread).
+     */
+
+#ifdef LUMASS_PYTHON
+    if (mAppMode == NM_APP_GUI)
+    {
+        connect(this, &NMLumassEngine::signalInitPython, mController, &NMModelController::initPythonInterpreter);
+        connect(this, &NMLumassEngine::signalFinalisePython, mController, &NMModelController::finalizePythonInterpreter);
+        emit signalInitPython();
+    }
+    else
+    {
+        mController->initPythonInterpreter();
+    }
+#endif
 
     if (mAppMode == NM_APP_GUI)
     {
@@ -227,6 +259,7 @@ NMLumassEngine::NMLumassEngine(int argc, char** argv)
         mLogger->setLogLevel(NMLogger::NM_LOG_INFO);
 #endif
     }
+
 
     NMDebugCtx(ctx, << "done!");
 }
@@ -250,20 +283,27 @@ NMLumassEngine::shutdown(void)
     }
 
 #ifdef LUMASS_PYTHON
-    if (Py_IsInitialized())
+    if (mAppMode == NM_APP_GUI)
     {
-        pybind11::finalize_interpreter();
+        emit signalFinalisePython();
+    }
+    else
+    {
+        mController->finalizePythonInterpreter();
     }
 #endif
-
+    mModelThread.quit();
+    mModelThread.wait();
+    delete mController;
 }
 
 int NMLumassEngine::runModel(double fromTimeStep, double toTimeStep)
 {
     // for now we're ignoring any fancy from and to time steps!
 
-    NMLogDebug(<< "Running a model ... ");
+    NMLogDebug(<< "Running a BMI model ... ");
 
+    // don't need to execute in separate thread here
     mController->executeModel("root");
 
     return 0;

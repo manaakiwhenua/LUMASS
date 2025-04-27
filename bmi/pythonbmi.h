@@ -27,8 +27,6 @@
 
 #include "Python_wrapper.h"
 
-namespace py = pybind11;
-
 #if defined _WIN32
 #pragma push_macro("GetCurrentTime")
 #undef GetCurrentTime
@@ -40,6 +38,8 @@ namespace py = pybind11;
 
 #include "lumasspythonbmi_export.h"
 
+//class PyStdErrOutStreamRedirect;
+
 namespace bmi
 {
 
@@ -47,7 +47,7 @@ namespace bmi
     {
     public:
         typedef enum {
-            LEVEL_ALL,
+            LEVEL_ALL = 0,
             LEVEL_DEBUG,
             LEVEL_INFO,
             LEVEL_WARNING,
@@ -120,11 +120,14 @@ namespace bmi
 
         void bmilog(int, const char*);
         void setWrapLog(NMBMIWrapper* wrap, WrapLogFunc func);
+        void logPyOutput(std::string msg);
 
         void setPyObjectName(std::string pymodulename)
         {
             mPyModuleName = pymodulename;
         }
+
+        void setReloadModule(bool bReload) {mbReloadModule = bReload;}
         std::string getPyModuleName(void) { return mPyModuleName; }
 
         std::string getBMIClassName(void) { return mBMIClass; }
@@ -145,6 +148,12 @@ namespace bmi
         NMBMIWrapper* mBMIWrap;
         WrapLogFunc mWrapLogFunc;
 
+        py::module_ mPyModule;
+        py::object  mPyObject;
+        bool mIsSink;
+        bool mbReloadModule;
+
+        //PyStdErrOutStreamRedirect* mPyOutRedirect;
     };
 
 }   // end of namespace bmi

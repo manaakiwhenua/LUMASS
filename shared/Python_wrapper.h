@@ -11,6 +11,7 @@
 #undef slots
 #include <pybind11/pybind11.h>
 #include <pybind11/embed.h>
+#include <pybind11/gil.h>
 #pragma pop_macro("slots")
 
 #include <string>
@@ -21,11 +22,15 @@ namespace py = pybind11;
 
 // defines the process-wide (global) python
 // object store for class-based access
-namespace lumass_python {
-    static std::map<std::string, py::module_> ctrlPyModules;
-    static std::map<std::string, py::object> ctrlPyObjects;
-    static std::map<std::string, bool> ctrlPyObjectSinkMap;
-}
+//namespace lumass_python {
+//    //static std::map<std::string, py::module_> ctrlPyModules;
+//    //static std::map<std::string, py::object> ctrlPyObjects;
+//    //static std::map<std::string, bool> ctrlPyObjectSinkMap;
+//    static std::map<std::string, int> ctrlPyModules;
+//    static std::map<std::string, int> ctrlPyObjects;
+//    static std::map<std::string, bool> ctrlPyObjectSinkMap;
+//
+//}
 
 
 #endif //LUMASS_PYTHON_WRAPPER_H_

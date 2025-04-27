@@ -252,6 +252,7 @@ endif()
 
 set(LUMASS_DEPLIBS
     MuParser
+    LumassBMI
     NMOTBSupplFilters
     NMOTBSupplCore
     NMModFrameCore

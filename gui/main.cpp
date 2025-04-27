@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
 #endif
 
     QApplication lumass(argc, argv);
-    NMLumassEngine engine(argc, argv);
+    NMLumassEngine engine(argc, argv, NMLumassEngine::NM_APP_GUI);
     LUMASSMainWin w(nullptr, &engine);
     w.show();
 

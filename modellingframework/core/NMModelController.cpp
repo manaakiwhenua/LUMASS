@@ -39,7 +39,7 @@
 #ifdef LUMASS_PYTHON
 #include "Python_wrapper.h"
 namespace py = pybind11;
-namespace lupy = lumass_python;
+//namespace lupy = lumass_python;
 #endif
 
 #include <QRegularExpression>
@@ -62,8 +62,9 @@ namespace lupy = lumass_python;
 
 const std::string NMModelController::ctx = "NMModelController";
 
-NMModelController::NMModelController(QObject* parent)
-    : mbModelIsRunning(false),
+NMModelController::NMModelController(NMLumassEngine *engine, QObject* parent)
+    : mEngine(engine),
+      mbModelIsRunning(false),
       mRootComponent(0), mbAbortionRequested(false),
       mbLogProv(false),
       mRank(0),
@@ -107,6 +108,17 @@ void NMModelController::setUsesMPIRuntime(bool hasRuntime)
 NMModelController::~NMModelController()
 {
     this->mComponentMap.clear();
+}
+
+void
+NMModelController::finalizePythonInterpreter()
+{
+#ifdef LUMASS_PYTHON
+        if (!Py_IsInitialized())
+        {
+            py::finalize_interpreter();
+        }
+#endif
 }
 
 void
@@ -236,7 +248,7 @@ NMModelController::isModelRunning(void)
 }
 
 void
-NMModelController::reportExecutionStopped(const QString & compName)
+NMModelController::reportExecutionStopped(const QString compName)
 {
     for (int i=0; i < this->mExecutionStack.size(); ++i)
     {
@@ -249,7 +261,7 @@ NMModelController::reportExecutionStopped(const QString & compName)
 }
 
 void
-NMModelController::reportExecutionStarted(const QString & compName)
+NMModelController::reportExecutionStarted(const QString compName)
 {
     this->mExecutionStack.push(compName);
 }
@@ -277,7 +289,7 @@ NMModelController::abortModel(void)
         }
         this->mbAbortionRequested = true;
 
-        NMLogInfo(<< "ModelController: Model '" << comp->objectName().toStdString()
+        NMLogInfo(<< "ModelController: Model '" << name.toStdString()
                   << "' has been requested to abort execution at the next opportunity!");
     }
     NMDebugCtx(ctx, << "done!");
@@ -344,6 +356,17 @@ NMModelController::deleteLater(QStringList compNames)
     {
         this->removeComponent(name);
     }
+}
+
+void
+NMModelController::initPythonInterpreter(void)
+{
+#ifdef LUMASS_PYTHON
+        if (!Py_IsInitialized())
+        {
+            py::initialize_interpreter();
+        }
+#endif
 }
 
 QString
@@ -483,7 +506,7 @@ NMModelController::clearModelSettings(void)
 }
 
 void
-NMModelController::updateSettings(const QString& key, QVariant value)
+NMModelController::updateSettings(const QString key, QVariant value)
 {
     if (value.isValid())
     {
@@ -514,10 +537,12 @@ NMModelController::notifyParentProcess(int msg, int tag)
 }
 
 void
-NMModelController::executeModel(const QString& compName,
-                                const QString& yamlFN)
+NMModelController::executeModel(const QString compName,
+                                const QString yamlFN)
 {
     NMDebugCtx(ctx, << "...");
+
+    NMLogDebug(<< "ModelController ThreadId: " << QThread::currentThreadId());
 
     // do we have parallel components in the model at all?
     bool bParallelModel = false;
@@ -675,14 +700,16 @@ NMModelController::executeModel(const QString& compName,
     }
     else
     {
-        //executeSeqModel(compName);
-        mConcurrentVoidReturn = QtConcurrent::run(this, &NMModelController::executeSeqModel,
-                                                   compName, QString());
-        mConcurrentVoidWatcher.setFuture(mConcurrentVoidReturn);
+        executeSeqModel(compName);
+        //mConcurrentVoidReturn = QtConcurrent::run(this, &NMModelController::executeSeqModel,
+        //                                           compName, QString());
+        //mConcurrentVoidWatcher.setFuture(mConcurrentVoidReturn);
 
     }
 
     this->mAlphaComps.clear();
+
+    emit signalModelStopped();
 
     NMDebugCtx(ctx, << "done!");
 }
@@ -1327,6 +1354,7 @@ NMModelController::executeMPIChildModel(const QString &compName)
     NMDebugCtx(ctx, << "done!");
 }
 
+
 void
 NMModelController::executeSeqModel(const QString &compName, const QString& yamlFN)
 {
@@ -1462,8 +1490,6 @@ NMModelController::executeSeqModel(const QString &compName, const QString& yamlF
         MPI_Barrier(MPI_COMM_WORLD);
     }
 
-    emit signalModelStopped();
-
     this->mModelStopped = QDateTime::currentDateTime();
     int msec = this->mModelStarted.msecsTo(this->mModelStopped);
     int min = msec / 60000;
@@ -1498,6 +1524,8 @@ NMModelController::executeSeqModel(const QString &compName, const QString& yamlF
     }
     this->mToBeDeleted.clear();
 
+    //emit signalModelStopped();
+
     NMDebugCtx(ctx, << "done!");
 }
 
@@ -1524,7 +1552,7 @@ NMModelController::getSubComponents(NMIterableComponent *ic, QStringList &subCom
 }
 
 void
-NMModelController::resetComponent(const QString& compName)
+NMModelController::resetComponent(const QString compName)
 {
 //	NMDebugCtx(ctx, << "...");
 
@@ -1649,7 +1677,7 @@ NMModelController::addComponent(NMModelComponent* comp,
     return tname;
 }
 
-void NMModelController::setUserId(const QString& oldId, const QString& newId)
+void NMModelController::setUserId(const QString oldId, const QString newId)
 {
     NMModelComponent* comp = qobject_cast<NMModelComponent*>(this->sender());
     if (comp == 0)
@@ -1739,19 +1767,19 @@ bool NMModelController::removeComponent(const QString& name)
         ic->destroySubComponents(this->mComponentMap);
     this->mComponentMap.remove(name);
 
-    std::map<std::string, py::object>::iterator pyit = lupy::ctrlPyObjects.find(name.toStdString());
-    if (pyit != lupy::ctrlPyObjects.end())
-    {
-        pyit->second = py::none();
-        lupy::ctrlPyObjects.erase(name.toStdString());
-    }
+    //std::map<std::string, py::object>::iterator pyit = lupy::ctrlPyObjects.find(name.toStdString());
+    //if (pyit != lupy::ctrlPyObjects.end())
+    //{
+    //    pyit->second = py::none();
+    //    lupy::ctrlPyObjects.erase(name.toStdString());
+    //}
 
-    std::map<std::string, py::module_>::iterator pymodIt = lupy::ctrlPyModules.find(name.toStdString());
-    if (pymodIt != lupy::ctrlPyModules.end())
-    {
-        pymodIt->second = py::none();
-        lupy::ctrlPyModules.erase(name.toStdString());
-    }
+    //std::map<std::string, py::module_>::iterator pymodIt = lupy::ctrlPyModules.find(name.toStdString());
+    //if (pymodIt != lupy::ctrlPyModules.end())
+    //{
+    //    pymodIt->second = py::none();
+    //    lupy::ctrlPyModules.erase(name.toStdString());
+    //}
 
     this->mPythonComponents.removeOne(name);
 
@@ -2065,21 +2093,17 @@ NMModelController::getNextParamExpr(const QString &expr)
     return innerExpr;
 }
 
-void
+bool
 NMModelController::registerPythonRequest(const QString &compName)
 {
+    bool ret = true; // whether or not the module / object needs to be reloaded
     if (!mPythonComponents.contains(compName))
     {
         mPythonComponents << compName;
+        ret = false;
     }
 
-#ifdef LUMASS_PYTHON
-        if (!Py_IsInitialized())
-        {
-            py::initialize_interpreter();
-        }
-#endif
-
+    return ret;
 }
 
 QString
@@ -3003,7 +3027,7 @@ NMModelController::trackIdConceptRev(const QString &id,
 }
 
 void
-NMModelController::writeProv(const QString &provLog)
+NMModelController::writeProv(const QString provLog)
 {
     if (!mbLogProv)
     {
@@ -3568,7 +3592,8 @@ NMModelController::startProv(const QString &fn, const QString& compName)
         return;
     }
 
-    connect(mLogger, SIGNAL(sendProvN(QString)), this, SLOT(writeProv(QString)));
+    //connect(mLogger, SIGNAL(sendProvN(QString)), this, SLOT(writeProv(QString)));
+    connect(mLogger, &NMLogger::sendProvN, this, &NMModelController::writeProv);
 
     this->mMapProvIdConRev.clear();
 
@@ -3591,6 +3616,7 @@ NMModelController::endProv()
         mProvFile.close();
     }
 
-    disconnect(mLogger, SIGNAL(sendProvN(QString)), this, SLOT(writeProv(QString)));
+    //disconnect(mLogger, SIGNAL(sendProvN(QString)), this, SLOT(writeProv(QString)));
+    disconnect(mLogger, &NMLogger::sendProvN, this, &NMModelController::writeProv);
 }
 

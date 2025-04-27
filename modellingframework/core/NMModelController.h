@@ -42,6 +42,8 @@
 #include <QFuture>
 #include <yaml-cpp/yaml.h>
 
+#include "Python_wrapper.h"
+
 #ifndef _WIN32
 #include <mpi.h>
 #endif
@@ -51,6 +53,7 @@
 
 #include "nmmodframecore_export.h"
 
+class NMLumassEngine;
 class NMItkDataObjectWrapper;
 class NMModelComponent;
 class NMIterableComponent;
@@ -118,7 +121,7 @@ public:
         NM_PARALLEL_ITERATOR = 4
     };
 
-    NMModelController(QObject* parent=0);
+    NMModelController(NMLumassEngine* engine=nullptr, QObject* parent=nullptr);
     virtual ~NMModelController();
 
     virtual void setLogger(NMLogger* logger);
@@ -330,11 +333,43 @@ public:
     // some internal hack
     // 1: engine 2: bmi 3: gui
     void setAppMode(const int appMode){mAppMode = appMode;}
+    NMLumassEngine* getLumassEngine(void){return mEngine;}
+    void initPythonInterpreter(void);
+    void finalizePythonInterpreter(void);
+
+    bool registerPythonRequest(const QString& compName);
+    void getSubComponents(NMIterableComponent* ic, QStringList& subComps);
+
+
+    // ------------ parallel processing ----------------------------------
+
+    void identifyParallelComponents(const QString& compName,
+                                    QMap<ModelParallelism, QStringList>& parallelComps,
+                                    QSet<QString>& parallelHosts);
+
+    void setUsesMPIRuntime(bool hasRuntime);
+    bool getUsesMPIRuntime(void);
+    int getRank(void){return mRank;}
+    int getRank(const QString& comp);
+    void setRank(int rank){mRank = rank;}
+    int getNumProcs(void){return mNumProcs;}
+    int getNumProcs(const QString& comp);
+    void setNumProcs(int procs){mNumProcs = procs;}
+
+    void registerParallelGroup(const QString& compName,
+            MPI_Comm comm);
+    void deregisterParallelGroup(
+            const QString& compName);
+
+
+    MPI_Comm getNextUpstrMPIComm(const QString& compName);
+    MPI_Comm getParentMPIComm(){return mParentMPIComm;}
+    void mpiSignalProgress(MPICompProg& progStruct);
 
 public slots:
 
 	/*! Requests the execution of the named component. */
-    void executeModel(const QString &compName, const QString &yamlFN="");
+    void executeModel(const QString compName, const QString yamlFN="");
 
     /*! Component destruction at the next suitble opportunity
      *  (i.e. either directly, or once the current model run has
@@ -349,7 +384,7 @@ public slots:
 	 *  upon next execution (i.e. either explicit update call or
 	 *  implicit execution as part of a pipeline).
 	 */
-	void resetComponent(const QString& compName);
+    void resetComponent(const QString compName);
 
 	/*! Indicates whether any of the process components
 	 *         controlled by this controller is currently
@@ -362,14 +397,14 @@ public slots:
 	 *         to inform the controller about which model is currently
 	 *         being executed or not.
 	 */
-	void reportExecutionStopped(const QString & compNamde);
+    void reportExecutionStopped(const QString compNamde);
 
 	/*! These *Stopped and *Started slots are usually connected
 	 *         to a NMProcess's signalExecutionStarted/Stopped signals
 	 *         to inform the controller about which model is currently
 	 *         being executed or not.
 	 */
-	void reportExecutionStarted(const QString & compName);
+    void reportExecutionStarted(const QString compName);
 
 	/*! Sets NMProcess::mAbortExecution to true for the most recently
 	 *  executed and still running process component at the time this
@@ -396,9 +431,9 @@ public slots:
 	bool isModelAbortionRequested(void)
 		{return this->mbAbortionRequested;}
 
-    void setUserId(const QString& oldId, const QString& newId);
+    void setUserId(const QString oldId, const QString newId);
 
-    void updateSettings(const QString& key, QVariant value);
+    void updateSettings(const QString key, QVariant value);
 
     QStringList getModelSettingsList(void);
     void clearModelSettings(void);
@@ -411,34 +446,7 @@ public slots:
     void setLogProvOff() {mbLogProv = false;}
     void startProv(const QString& fn, const QString& compName);
     void endProv();
-    void writeProv(const QString& provLog);
-
-    void registerPythonRequest(const QString& compName);
-    void getSubComponents(NMIterableComponent* ic, QStringList& subComps);
-
-    // -----------------------------------------------------
-    // parallel processing
-    void identifyParallelComponents(const QString& compName,
-                                    QMap<ModelParallelism, QStringList>& parallelComps,
-                                    QSet<QString>& parallelHosts);
-    void setUsesMPIRuntime(bool hasRuntime);
-    bool getUsesMPIRuntime(void);
-    int getRank(void){return mRank;}
-    int getRank(const QString& comp);
-    void setRank(int rank){mRank = rank;}
-    int getNumProcs(void){return mNumProcs;}
-    int getNumProcs(const QString& comp);
-    void setNumProcs(int procs){mNumProcs = procs;}
-
-    void registerParallelGroup(const QString& compName,
-            MPI_Comm comm);
-    void deregisterParallelGroup(
-            const QString& compName);
-
-
-    MPI_Comm getNextUpstrMPIComm(const QString& compName);
-    MPI_Comm getParentMPIComm(){return mParentMPIComm;}
-    void mpiSignalProgress(MPICompProg& progStruct);
+    void writeProv(const QString provLog);
 
 signals:
 	/*! Signals whether any of the process components controlled
@@ -450,12 +458,12 @@ signals:
     void signalModelStopped();
 
     /*! Notify listeners that a component was deleted from the controller */
-    void componentRemoved(const QString&);
+    void componentRemoved(const QString);
 
-    void settingsUpdated(const QString& key, const QVariant& value);
+    void settingsUpdated(const QString key, const QVariant value);
 
-    void signalMPIEvent(const QString& compName, const NMModelController::ModelEvent& event,
-                        const float& value);
+    //void signalMPIEvent(const QString compName, const NMModelController::ModelEvent event,
+    //                    const float value);
     void signalMPIRunnable(NMMPIRunnable* mpi);
 
 
@@ -485,6 +493,9 @@ protected:
 
     void notifyParentProcess(int msg, int tag);
 
+    /* THE ENGINE */
+    NMLumassEngine* mEngine;
+
     /*! maps ComponentName to model component object */
 	QMap<QString, NMModelComponent*> mComponentMap;
 
@@ -498,7 +509,7 @@ protected:
 	bool mbAbortionRequested;
 
 	QDateTime mModelStarted;
-	QDateTime mModelStopped;
+    QDateTime mModelStopped;
 
     QStringList mToBeDeleted;
     QStringList mPythonComponents;

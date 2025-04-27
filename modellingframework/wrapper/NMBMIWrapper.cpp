@@ -361,8 +361,8 @@ void NMBMIWrapper::bmilog(int ilevel, const char* msg)
     case 1: NMLogDebug(<< msg); break;
     case 2: NMLogInfo(<< msg ); break;
     case 3: NMLogWarn(<< msg ); break;
-    case 4:
-    case 5: NMLogError(<< msg); break;
+    case 4: NMLogError(<< msg); break;
+    case 5:
     default: ;
     }
 }
@@ -374,54 +374,69 @@ NMBMIWrapper::initialiseBMILibrary()
     this->parseYamlConfig();
 
 #ifdef LUMASS_PYTHON
+    bool bReloadPyModule = false;
     if (this->mBMIComponentType == NM_BMI_COMPONENT_TYPE_PYTHON)
     {
         if (this->parent() != nullptr)
         {
-            this->getModelController()->registerPythonRequest(this->parent()->objectName());
+            bReloadPyModule = this->mController->registerPythonRequest(this->parent()->objectName());
         }
     }
 
     if (mBMIComponentType == NM_BMI_COMPONENT_TYPE_PYTHON)
     {
-        std::string compName = this->parent() != nullptr ? this->parent()->objectName().toStdString()
-                                                     : this->objectName().toStdString();
-        std::vector<std::string> pypath;
-        foreach(const QString & pp, mComponentPathList)
+        bmi::PythonBMI* pybmi = nullptr;
+        if (mPtrBMILib == nullptr)
         {
-            pypath.push_back(pp.toStdString());
+            std::string compName = this->parent() != nullptr ? this->parent()->objectName().toStdString()
+                                                         : this->objectName().toStdString();
+            std::vector<std::string> pypath;
+            foreach(const QString & pp, mComponentPathList)
+            {
+                pypath.push_back(pp.toStdString());
+            }
+
+            // strip the '.py' suffix from the component name (if any was provided)
+            QFileInfo modinfo(mComponentName);
+            std::string modulename = modinfo.baseName().toStdString();
+            mPtrBMILib = std::make_shared<bmi::PythonBMI>(bmi::PythonBMI(modulename,
+                                       pypath,
+                                       mBMIClassName.toStdString(),
+                                       compName));
+
+            if (this->mLogger != nullptr)
+            {
+                pybmi = static_cast<bmi::PythonBMI*>(mPtrBMILib.get());
+                if (pybmi != nullptr)
+                {
+                    pybmi->setWrapLog(this, &NMBMIWrapper::bmilog);
+                }
+            }
         }
-
-        // strip the '.py' suffix from the component name (if any was provided)
-        QFileInfo modinfo(mComponentName);
-        std::string modulename = modinfo.baseName().toStdString();
-        mPtrBMILib = std::make_shared<bmi::PythonBMI>(bmi::PythonBMI(modulename,
-                                   pypath,
-                                   mBMIClassName.toStdString(),
-                                   compName));
-
-        if (this->mLogger != nullptr)
+        else
         {
-            bmi::PythonBMI* pybmi = static_cast<bmi::PythonBMI*>(mPtrBMILib.get());
+            pybmi = static_cast<bmi::PythonBMI*>(mPtrBMILib.get());
             if (pybmi != nullptr)
             {
-                pybmi->setWrapLog(this, &NMBMIWrapper::bmilog);
+                pybmi->setReloadModule(bReloadPyModule);
             }
         }
 
         try
         {
             mPtrBMILib->Initialize(mYamlConfigFileName.toStdString());
-            if (!lumass_python::ctrlPyObjects[compName].is_none())
-            {
-                lumass_python::ctrlPyObjectSinkMap[compName] = mIsSink;
+            //if (!lumass_python::ctrlPyObjects[compName].is_none())
+            //if (!mPtrBMILib->IsInitialised())
+            //{
+                //lumass_python::ctrlPyObjectSinkMap[compName] = mIsSink;
+            //
                 //NMLogInfo(<< "Successfully initialised '" << mPtrBMILib->GetComponentName() << "'!");
-
-            }
-            else
-            {
-                NMLogError(<< "Failed initialising '" << mComponentName.toStdString() << "'!");
-            }
+            //
+            //}
+            //else
+            //{
+            //    NMLogError(<< "Failed initialising '" << mComponentName.toStdString() << "'!");
+            //}
         }
         catch(pybind11::cast_error& ce)
         {
@@ -443,6 +458,7 @@ NMBMIWrapper::initialiseBMILibrary()
     }
 }
 
+
 void
 NMBMIWrapper::updateSettings()
 {
@@ -456,6 +472,13 @@ NMBMIWrapper::updateSettings()
         return;
     }
 
+    bmi::PythonBMI* pybmi = static_cast<bmi::PythonBMI*>(mPtrBMILib.get());
+    if (pybmi == nullptr)
+    {
+        NMLogError(<< "Failed forwarding model configuration settings to Python module!");
+        return;
+    }
+
 
     QStringList modelSettings = mController->getModelSettingsList();
     foreach(const QString& s, modelSettings)
@@ -463,7 +486,7 @@ NMBMIWrapper::updateSettings()
         QString expr = mController->getSetting(s).toString();
         QString val = mController->processStringParameter(this, expr);
 
-        mPtrBMILib->SetSetting(s.toStdString(), val.toStdString());
+        pybmi->SetSetting(s.toStdString(), val.toStdString());
 
         //settings[py::str(s.toStdString())] = py::str(val.toStdString());
     }
@@ -541,10 +564,18 @@ NMBMIWrapper::parseYamlConfig()
         return;
     }
 
+    QString yamlStr;
+    QFile rawYaml(this->mParsedYamlConfigFileName);
+    if (rawYaml.open(QIODevice::ReadOnly))
+    {
+        yamlStr = QString(rawYaml.readAll());
+        yamlStr = this->mController->processStringParameter(this, yamlStr);
+    }
 
     try
     {
-        YAML::Node configFile = YAML::LoadFile(mParsedYamlConfigFileName.toStdString());
+        YAML::Node configFile = YAML::Load(yamlStr.toStdString());
+                //YAML::LoadFile(mParsedYamlConfigFileName.toStdString());
         YAML::Node config;
 
         if (configFile.IsMap() && configFile["LumassBMIConfig"])

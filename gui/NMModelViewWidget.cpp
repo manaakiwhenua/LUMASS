@@ -331,7 +331,7 @@ NMModelViewWidget::setupModellingEnvironment(NMModelController *ctrl)
     LUMASSMainWin* mainWin = NMGlobalHelper::getMainWindow();
 
     mModelController = ctrl;
-    mEngine = qobject_cast<NMLumassEngine*>(ctrl->parent());
+    mEngine = mModelController->getLumassEngine();
     this->setLogger(mEngine->getLogger());
 
     NMDebugAI(<< "NMModelViewWidget_thread: " << uint_fast64_t(QThread::currentThreadId()) << std::endl);
@@ -350,19 +350,21 @@ NMModelViewWidget::setupModellingEnvironment(NMModelController *ctrl)
 
     // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    //connect(this, SIGNAL(requestModelExecution(const QString &)),
-    connect(this, SIGNAL(requestModelReset(const QString &)),
-            mModelController, SLOT(resetComponent(const QString &)));
-    connect(this, SIGNAL(requestModelAbortion()),
-            mModelController, SLOT(abortModel()), Qt::DirectConnection);
-    connect(mModelController, SIGNAL(signalIsControllerBusy(bool)),
-            this, SLOT(reportIsModelControllerBusy(bool)));
-
-    connect(mModelController, &NMModelController::signalMPIRunnable, this,
-            &NMModelViewWidget::connectMPIRunnable, Qt::DirectConnection);
-
-    connect(mainWin, SIGNAL(settingsUpdated(const QString &, QVariant)),
-            mModelController, SLOT(updateSettings(const QString &,QVariant)));
+    connect(this, &NMModelViewWidget::signalExecuteModel, mModelController, &NMModelController::executeModel);
+    //connect(this, SIGNAL(requestModelReset(const QString &)),
+    //        mModelController, SLOT(resetComponent(const QString &)));
+    connect(this, &NMModelViewWidget::requestModelReset, mModelController, &NMModelController::resetComponent);
+    connect(this, &NMModelViewWidget::requestModelAbortion, mModelController, &NMModelController::abortModel);
+    connect(this, &NMModelViewWidget::signalUpdateSettings, mModelController, &NMModelController::updateSettings);
+    //connect(this, SIGNAL(requestModelAbortion()),
+    //        mModelController, SLOT(abortModel()), Qt::DirectConnection);
+    //connect(mModelController, SIGNAL(signalIsControllerBusy(bool)),
+    //        this, SLOT(reportIsModelControllerBusy(bool)));
+    connect(mModelController, &NMModelController::signalIsControllerBusy, this, &NMModelViewWidget::reportIsModelControllerBusy);
+    connect(mModelController, &NMModelController::signalMPIRunnable, this, &NMModelViewWidget::connectMPIRunnable, Qt::DirectConnection);
+    //connect(mainWin, SIGNAL(settingsUpdated(const QString &, QVariant)),
+    //        mModelController, SLOT(updateSettings(const QString &,QVariant)));
+    connect(mainWin, &LUMASSMainWin::settingsUpdated, mModelController, &NMModelController::updateSettings);
 
     mRootComponent = qobject_cast<NMSequentialIterComponent*>(mModelController->getComponent(QStringLiteral("root")));
     if (mRootComponent == nullptr)
@@ -2868,7 +2870,8 @@ NMModelViewWidget::configureModel(const YAML::Node& modelConfig)
                  {
                      val = parseYamlSetting(pit, nullptr);
                      // update global setting
-                     mController->updateSettings(propName, val);
+                     //mController->updateSettings(propName, val);
+                     emit signalUpdateSettings(propName, val);
 
                      NMLogInfo(<< "LUMASS: " << propName.toStdString()
                                << "=" << val.toString().toStdString());
@@ -2933,11 +2936,13 @@ NMModelViewWidget::updateToolContext(const QString &tool)
 {
     // disconnect the model view widget's ModelController
     // from receiving settings updates from the tool's ModelController
-    if (mToolContextController != 0)
+    if (mToolContextController != nullptr)
     {
-        disconnect(mToolContextController, SIGNAL(settingsUpdated(QString,QVariant)),
-                mModelController, SLOT(updateSettings(QString,QVariant)));
-        mToolContextController = 0;
+        //disconnect(mToolContextController, SIGNAL(settingsUpdated(QString,QVariant)),
+        //        mModelController, SLOT(updateSettings(QString,QVariant)));
+        disconnect(mToolContextController, &NMModelController::settingsUpdated,
+                   mModelController, &NMModelController::updateSettings);
+        mToolContextController = nullptr;
     }
 
     // in any case remove "YAML File" from combo box if not updated
@@ -3039,8 +3044,10 @@ NMModelViewWidget::updateToolContext(const QString &tool)
                 // connect the ModelViewWidget's ModelController to the tool's
                 // ModelController to receive setting updates
                 mToolContextController = ctrl;
-                connect(mToolContextController, SIGNAL(settingsUpdated(QString,QVariant)),
-                        mModelController, SLOT(updateSettings(QString,QVariant)));
+                //connect(mToolContextController, SIGNAL(settingsUpdated(QString,QVariant)),
+                //        mModelController, SLOT(updateSettings(QString,QVariant)));
+                connect(mToolContextController, &NMModelController::settingsUpdated,
+                                   mModelController, &NMModelController::updateSettings);
 
                 this->mReloadConfigBtn->setEnabled(true);
             }
@@ -5132,23 +5139,23 @@ NMModelViewWidget::connectProcessItem(NMProcess* proc,
     connect(proc, SIGNAL(signalProgress(float)),
             procItem, SLOT(updateProgress(float)));
 
-    connect(proc, SIGNAL(signalExecutionStarted(const QString &)),
+    connect(proc, SIGNAL(signalExecutionStarted(const QString)),
             procItem,
-            SLOT(reportExecutionStarted(const QString &)));
-    connect(proc, SIGNAL(signalExecutionStopped(const QString &)),
+            SLOT(reportExecutionStarted(const QString)));
+    connect(proc, SIGNAL(signalExecutionStopped(const QString)),
             procItem,
-            SLOT(reportExecutionStopped(const QString &)));
+            SLOT(reportExecutionStopped(const QString)));
 
 
-    connect(proc, SIGNAL(signalExecutionStarted(const QString &)),
+    connect(proc, SIGNAL(signalExecutionStarted(const QString )),
             this->mModelController,
-            SLOT(reportExecutionStarted(const QString &)));
-    connect(proc, SIGNAL(signalExecutionStopped(const QString &)),
+            SLOT(reportExecutionStarted(const QString)));
+    connect(proc, SIGNAL(signalExecutionStopped(const QString )),
             this->mModelController,
-            SLOT(reportExecutionStopped(const QString &)));
+            SLOT(reportExecutionStopped(const QString )));
 
-    connect(this->mModelController, SIGNAL(signalExecutionStopped(const QString &)),
-            procItem, SLOT(reportExecutionStopped(const QString &)));
+    connect(this->mModelController, SIGNAL(signalExecutionStopped(const QString)),
+            procItem, SLOT(reportExecutionStopped(const QString)));
 
     // connect some host-component signals
     NMIterableComponent* comp = qobject_cast<NMIterableComponent*>(proc->parent());
@@ -5336,7 +5343,7 @@ NMModelViewWidget::linkProcessComponents(NMComponentLinkItem* link)
 }
 
 void
-NMModelViewWidget::updateTreeEditor(const QString& compName)
+NMModelViewWidget::updateTreeEditor(const QString compName)
 {
     if (compName.isEmpty())
         return;
@@ -5361,9 +5368,11 @@ NMModelViewWidget::updateTreeEditor(const QString& compName)
         }
 
         mTreeCompEditor = const_cast<NMComponentEditor*>(otbwin->getCompEditor());
-        connect(this->mModelController, SIGNAL(componentRemoved(const QString &)),
-                this, SLOT(updateTreeEditor(const QString &)));
-        connect(mTreeCompEditor, SIGNAL(signalPropertyChanged()), this, SLOT(slotComponentChanged()));
+        //connect(this->mModelController, SIGNAL(componentRemoved(const QString &)),
+        //        this, SLOT(updateTreeEditor(const QString &)));
+        connect(mModelController, &NMModelController::componentRemoved, this, &NMModelViewWidget::updateTreeEditor);
+        //connect(mTreeCompEditor, SIGNAL(signalPropertyChanged()), this, SLOT(slotComponentChanged()));
+        connect(mTreeCompEditor, &NMComponentEditor::signalPropertyChanged, this, &NMModelViewWidget::slotComponentChanged);
 #ifdef BUILD_RASSUPPORT
         mTreeCompEditor->setRasdamanConnectorWrapper(this->mRasConn);
 #endif
@@ -5485,9 +5494,8 @@ void NMModelViewWidget::executeModel(void)
         return;
     }
 
-    //emit requestModelExecution(comp->objectName());
-    const QString yamlConfig = this->mConfigPathEdit->text();
-    mModelController->executeModel(comp->objectName(), yamlConfig);
+    QString yamlConfig = this->mConfigPathEdit->text();
+    emit signalExecuteModel(comp->objectName(), yamlConfig);
 }
 
 void
@@ -5496,7 +5504,7 @@ NMModelViewWidget::resetModel(void)
     if (this->mModelController->isModelRunning())
     {
         QMessageBox::information(this, "Reset Model Component",
-                "You cannot reset a model component while a model"
+                "You cannot reset a model component while a model "
                 "is running! Please try again later!");
         return;
     }

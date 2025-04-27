@@ -128,7 +128,7 @@ public slots:
     void zoomToComponent(const QUrl& url);
     void slotFollowFocus(bool follow);
     void focusExecComp(void);
-    void updateTreeEditor(const QString&);
+    void updateTreeEditor(const QString);
     void updateToolContextBox(void);
     void updateToolContext(const QString& tool);
     void changeFont(void);
@@ -170,17 +170,18 @@ signals:
     void moveToolToggled(bool);
     void zoomInToolToggled(bool);
     void zoomOutToolToggled(bool);
-    //void requestModelExecution(const QString& compName);
-    void requestModelReset(const QString& compName);
+    void requestModelReset(QString compName);
     void requestModelAbortion(void);
     void widgetIsExiting(void);
     void modelViewActivated(QObject* obj);
     void modelConfigurationChanged();
     void unselectItems(void);
     void idleMode();
-    void signalModelChanged(const QString& itemName);
+    void signalModelChanged(QString itemName);
     void signalSaveTimerStart();
     void signalSaveTimerStop();
+    void signalExecuteModel(QString comp, QString configFN);
+    void signalUpdateSettings(QString propName, QVariant val);
 
 protected:
     void dragEnterEvent(QDragEnterEvent* event);

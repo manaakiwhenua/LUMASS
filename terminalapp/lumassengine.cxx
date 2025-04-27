@@ -119,13 +119,13 @@ int main(int argc, char** argv)
         return EXIT_SUCCESS;
     }
 
-    enum WhatToDo {
-            NM_ENGINE_MOSO,
-            NM_ENGINE_MODEL,
-            NM_ENGINE_NOPLAN
-    };
+    //enum WhatToDo {
+    //        NM_ENGINE_MOSO,
+    //        NM_ENGINE_MODEL,
+    //        NM_ENGINE_NOPLAN
+    //};
 
-    WhatToDo todo = NM_ENGINE_NOPLAN;
+    NMLumassEngine::EngineMode todo = NMLumassEngine::NM_ENGINE_MODE_UNKNOWN;
     QString losFileName;
     QString modelFileName;
     QString runComponent = QStringLiteral("root");
@@ -147,7 +147,7 @@ int main(int argc, char** argv)
                 NMDebugCtxNoMPI(ctx, << "done!");
                 return EXIT_SUCCESS;
             }
-            todo = NM_ENGINE_MOSO;
+            todo = NMLumassEngine::NM_ENGINE_MODE_MOSO;
         }
         else if (theArg == "--model")
         {
@@ -157,7 +157,7 @@ int main(int argc, char** argv)
                 NMDebugCtxNoMPI(ctx, << "done!");
                 return EXIT_SUCCESS;
             }
-            todo = NM_ENGINE_MODEL;
+            todo = NMLumassEngine::NM_ENGINE_MODE_MODEL;
         }
         else if (theArg == "--workspace")
         {
@@ -181,23 +181,24 @@ int main(int argc, char** argv)
         ++arg;
     }
 
-    QScopedPointer<NMLumassEngine> engine(new NMLumassEngine(argc, argv));
+    QScopedPointer<NMLumassEngine> engine(new NMLumassEngine(argc, argv, NMLumassEngine::NM_APP_ENGINE));
     if (!losFileName.isEmpty() && !modelFileName.isEmpty())
     {
         NMWarn(ctx, << "Please select either --moso or --model!"
                << std::endl);
         showHelp();
         engine->notifyParentProcess(0, 73);
+        engine->shutdown();
         NMDebugCtx(ctx, << "done!");
         return EXIT_SUCCESS;
     }
 
     switch(todo)
     {
-    case NM_ENGINE_MOSO:
+    case NMLumassEngine::NM_ENGINE_MODE_MOSO:
         engine->doMOSO(losFileName);
         break;
-    case NM_ENGINE_MODEL:
+    case NMLumassEngine::NM_ENGINE_MODE_MODEL:
         engine->doModel(modelFileName, workspace, enginePath, bLogProv, runComponent);
         break;
     default:

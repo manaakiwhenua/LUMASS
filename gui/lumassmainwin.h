@@ -189,7 +189,7 @@ signals:
     void isAboutToClose(void);
     //void componentOfInterest(const QString&);
     void windowLoaded(void);
-    void settingsUpdated(const QString&, QVariant);
+    void settingsUpdated(const QString, QVariant);
 
 public slots:
 

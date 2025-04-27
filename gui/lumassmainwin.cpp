@@ -8359,7 +8359,7 @@ LUMASSMainWin::loadUserModelTool(const QString& modelPath,
     uact->setCheckable(false);
 
     // create model context
-    NMModelController* ctrl = new NMModelController(uact);
+    NMModelController* ctrl = new NMModelController(nullptr, uact);
     ctrl->setAppMode(4);
     ctrl->setObjectName(toolName);
     ctrl->getLogger()->setHtmlMode(true);
@@ -8368,8 +8368,8 @@ LUMASSMainWin::loadUserModelTool(const QString& modelPath,
     ctrl->updateSettings("Workspace", mSettings["Workspace"]);
     ctrl->updateSettings("LUMASSPath", mSettings["LUMASSPath"]);
 
-    connect(this, SIGNAL(settingsUpdated(const QString &,QVariant)),
-            uact, SLOT(updateSettings(const QString &,QVariant)));
+    connect(this, SIGNAL(settingsUpdated(const QString ,QVariant)),
+            uact, SLOT(updateSettings(const QString ,QVariant)));
     connect(ctrl->getLogger(), SIGNAL(sendLogMsg(QString)),
             this, SLOT(appendHtmlMsg(QString)));
     connect(ui->modelViewWidget, SIGNAL(requestModelAbortion()),
@@ -9771,21 +9771,22 @@ void LUMASSMainWin::writeSettings(void)
 
 void LUMASSMainWin::closeEvent(QCloseEvent* event)
 {
+    mEngine->shutdown();
     writeSettings();
     QMainWindow::closeEvent(event);
 
-#ifdef LUMASS_PYTHON
-    std::map<std::string, py::object>::iterator pyIt = lumass_python::ctrlPyObjects.begin();
-
-    while (pyIt != lumass_python::ctrlPyObjects.end())
-    {
-        py::object po = pyIt->second;
-        lumass_python::ctrlPyObjects.erase(pyIt);
-        po.dec_ref();
-        ++pyIt;
-    }
-
-#endif
+//#ifdef LUMASS_PYTHON
+//    std::map<std::string, py::object>::iterator pyIt = lumass_python::ctrlPyObjects.begin();
+//
+//    while (pyIt != lumass_python::ctrlPyObjects.end())
+//    {
+//        py::object po = pyIt->second;
+//        lumass_python::ctrlPyObjects.erase(pyIt);
+//        po.dec_ref();
+//        ++pyIt;
+//    }
+//
+//#endif
 }
 
 QString LUMASSMainWin::eventTypeToString(const QEvent::Type type)

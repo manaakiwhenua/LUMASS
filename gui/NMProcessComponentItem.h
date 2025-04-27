@@ -134,8 +134,8 @@ public:
 public slots:
     void setDescription(const QString& descr);
     void updateProgress(float progr);
-	void reportExecutionStarted(const QString& proc);
-	void reportExecutionStopped(const QString& proc);
+    void reportExecutionStarted(const QString proc);
+    void reportExecutionStopped(const QString proc);
     void updateTimeLevel(short level);
 
 protected:

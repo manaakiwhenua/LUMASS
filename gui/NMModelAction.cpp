@@ -65,8 +65,8 @@ NMModelAction::setModelController(NMModelController *ctrl)
     mModelController = ctrl;
     if (ctrl != 0)
     {
-        connect(this, SIGNAL(updatedActionParameter(const QString&, QVariant)),
-                ctrl, SLOT(updateSettings(const QString&, QVariant)));
+        connect(this, SIGNAL(updatedActionParameter(const QString, QVariant)),
+                ctrl, SLOT(updateSettings(const QString, QVariant)));
     }
 }
 

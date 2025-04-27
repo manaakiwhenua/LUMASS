@@ -274,7 +274,7 @@ NMProcessComponentItem::getShapeAsPolygon(void) const
 }
 
 void
-NMProcessComponentItem::reportExecutionStarted(const QString& proc)
+NMProcessComponentItem::reportExecutionStarted(const QString proc)
 {
 	if (proc.compare(this->mTitle) != 0)
 		return;
@@ -283,7 +283,7 @@ NMProcessComponentItem::reportExecutionStarted(const QString& proc)
 }
 
 void
-NMProcessComponentItem::reportExecutionStopped(const QString& proc)
+NMProcessComponentItem::reportExecutionStopped(const QString proc)
 {
 	if (proc.compare(this->mTitle) != 0)
 		return;

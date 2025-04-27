@@ -127,7 +127,7 @@ public slots:
     virtual void reloadUserConfig(void);
 
 signals:
-    void updatedActionParameter(const QString& key, QVariant value);
+    void updatedActionParameter(const QString key, QVariant value);
     void signalRemoveUserTool(NMAbstractAction* act);
 
 

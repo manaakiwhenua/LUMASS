@@ -263,24 +263,23 @@ public:
         { return mUserProperties[propName]; }
     QString mapDisplayToPropertyName(const QString& propName);
 
-
-public slots:
     void removeInputComponent(const QString& input);
-    virtual void abortExecution(void);
     void setInputComponents(QList<QStringList> inputComponents);
+    virtual void abortExecution(void);
+
     QList<QStringList> getInputComponents(void)
             {return this->mInputComponents;}
-
     virtual void setRAT(unsigned idx,
                         QSharedPointer<NMItkDataObjectWrapper> imgWrapper) {}
     virtual void reset(void);
+
 signals:
         void NMProcessChanged();
         void nmChanged();
         void signalInputChanged(QList<QStringList> inputs);
         void signalProgress(float);
-        void signalExecutionStarted(const QString &);
-        void signalExecutionStopped(const QString &);
+        void signalExecutionStarted(const QString);
+        void signalExecutionStopped(const QString);
 
 
 protected:

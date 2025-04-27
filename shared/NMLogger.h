@@ -63,7 +63,7 @@ signals:
     // text message for log files
     void sendLogTxtMsg(const QString& msg);
     // provN logging
-    void sendProvN(const QString& provLog);
+    void sendProvN(const QString provLog);
 
 public slots:
     void processLogMsg(const QString& time,

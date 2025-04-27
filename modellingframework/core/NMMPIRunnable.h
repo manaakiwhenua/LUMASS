@@ -60,8 +60,8 @@ public slots:
     void processAbortionRequest();
 
 signals:
-    void signalMPIEvent(const QString& compName, const NMModelController::ModelEvent& event,
-                        const float& value);
+    void signalMPIEvent(const QString compName, const NMModelController::ModelEvent event,
+                        const float value);
     void signalMPILoopFinished(NMMPIRunnable* obj);
 
 private:

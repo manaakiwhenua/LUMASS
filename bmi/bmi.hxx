@@ -80,6 +80,9 @@ namespace bmi {
       virtual void SetValue(std::string name, void *src) = 0;
       virtual void SetValueAtIndices(std::string name, int *inds, int count, void *src) = 0;
 
+      ///ToDo: find a way of dealing with
+      ///      LUMASS settings without polluting the
+      ///      original bmi API !!!
       // set model configuration settings
       virtual void SetSetting(std::string key, std::string value) = 0;
 

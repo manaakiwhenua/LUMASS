@@ -89,7 +89,7 @@ LINK_DIRECTORIES(
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE -fPIC")
 
 file(GLOB BMI_HEADER
-    ${bmi_SOURCE_DIR}/*.h
+    ${bmi_SOURCE_DIR}/*.h*
 )
 
 file(GLOB BMI_SRC
@@ -131,6 +131,7 @@ SET(PYTHON_BMI_LINKLIBS
     Qt5Core
         #NMModFrameCore
     ${Python3_LIBRARIES}
+    #pybind11::module
     pybind11::pybind11
     pybind11::embed
     ${YAML_CPP_LIBRARIES}
@@ -160,6 +161,9 @@ ADD_DEPENDENCIES(LumassBMI ${BMI_DEPLIBS})
 
 if (PYTHONSUPPORT)
     ADD_DEFINITIONS(-DLUMASS_PYTHON)
+    #SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fvisibility=hidden")
+    #SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fvisibility=hidden")
+    #pybind11_add_module(LumassPyBMI pythonbmi.cpp)
     ADD_LIBRARY(LumassPythonBMI SHARED ${PYTHON_BMI_SRC})
     generate_export_header(LumassPythonBMI)
     TARGET_LINK_LIBRARIES(LumassPythonBMI ${PYTHON_BMI_LINKLIBS} ${MPI_CXX_LIBRARIES}
@@ -200,7 +204,7 @@ endif()
 # INSTALL LIBRARY
 SET(BMI_INSTALL_TARGETS LumassBMI)
 if (PYTHONSUPPORT)
-    list(APPEND BMI_INSTALL_TARGETS LumassPythonBMI)
+    list(APPEND BMI_INSTALL_TARGETS LumassPythonBMI)# LumassPyBMI)
 endif()
 
 #install(FILES ${BMI_HEADER} DESTINATION include)

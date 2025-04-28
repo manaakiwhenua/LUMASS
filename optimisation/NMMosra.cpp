@@ -480,7 +480,7 @@ NMMosraDataSet::getStrValue(const QString &columnName, int row)
                             dsAttr->GetAbstractArray(columnName.toStdString().c_str()));
                 if (sa != nullptr)
                 {
-                    val = sa->GetValue(row);
+                    val = sa->GetValue(row).c_str();
                 }
             }
         }
@@ -627,7 +627,7 @@ NMMosraDataSet::getStrValue(int col, int row)
                             dsAttr->GetAbstractArray(col));
                 if (sa != nullptr)
                 {
-                    val = sa->GetValue(row);
+                    val = sa->GetValue(row).c_str();
                 }
             }
         }
@@ -1669,7 +1669,7 @@ NMMosraDataSet::getRowValues(QVariantList &values, const int &row)
                             MosraLogError(<< "Failed fetching row value for column '" << mRowGetColumns.at(val).toStdString() << "'!");
                             return false;
                         }
-                        varVal = QVariant::fromValue(QString(sa->GetValue(row).operator const char *()));
+                        varVal = QVariant::fromValue(QString(sa->GetValue(row).c_str()));
                     }
                     break;
 
@@ -2003,8 +2003,8 @@ int NMMosra::parseStringSettings(QString strSettings)
 
     ParSec section = nosection;
 
-    sReport << "Import Report" << endl << endl;
-    MosraLogDebug( << "parsing settings file ..." << endl)
+    sReport << "Import Report" << Qt::endl << Qt::endl;
+    MosraLogDebug( << "parsing settings file ..." << Qt::endl)
     while (!str.atEnd())
     {
         sLine = str.readLine();
@@ -2084,7 +2084,7 @@ int NMMosra::parseStringSettings(QString strSettings)
         //check, if we are dealing with a valid data section
         if (section == nosection)
         {
-            sReport << "Line " << numline << " does not belong to a valid data section" << endl;
+            sReport << "Line " << numline << " does not belong to a valid data section" << Qt::endl;
             continue;
         }
 
@@ -2094,7 +2094,7 @@ int NMMosra::parseStringSettings(QString strSettings)
         //if there is no equal sign skip processing of this line
         if (sep == -1)
         {
-            sReport << "Line " << numline << " contains invalid data" << endl;
+            sReport << "Line " << numline << " contains invalid data" << Qt::endl;
             continue;
         }
 
@@ -2119,30 +2119,30 @@ int NMMosra::parseStringSettings(QString strSettings)
                 else // DVTYPE_CONTINUOUS
                     this->meDVType = NMMosra::NM_MOSO_REAL;
 
-                MosraLogInfo( << "DEVTYPE: " << this->meDVType << endl)
+                MosraLogInfo( << "DEVTYPE: " << this->meDVType << std::endl)
             }
             else if (sVarName.compare(tr("CRITERION_LAYER"), Qt::CaseInsensitive) == 0)
             {
                 this->msLayerName = sValueStr;
-                MosraLogInfo( << "LayerName: " << this->msLayerName.toStdString() << endl)
+                MosraLogInfo( << "LayerName: " << this->msLayerName.toStdString() << std::endl)
             }
             else if (sVarName.compare(tr("LAND_USE_FIELD"), Qt::CaseInsensitive) == 0)
             {
                 this->msLandUseField = sValueStr;
-                MosraLogInfo( << "LandUseField: " << this->msLandUseField.toStdString() << endl)
+                MosraLogInfo( << "LandUseField: " << this->msLandUseField.toStdString() << std::endl)
             }
             else if (sVarName.compare(tr("AREA_FIELD"), Qt::CaseInsensitive) == 0)
             {
                 this->msAreaField = sValueStr;
-                MosraLogInfo( << "AreaField: " << this->msAreaField.toStdString() << endl)
+                MosraLogInfo( << "AreaField: " << this->msAreaField.toStdString() << std::endl)
             }
             else if (sVarName.compare(tr("PERFORMANCE_SUM_ZONES"), Qt::CaseInsensitive) == 0)
             {
                 if (!sValueStr.isEmpty())
                 {
-                    this->mslPerfSumZones = sValueStr.split(" ", QString::SkipEmptyParts);
+                    this->mslPerfSumZones = sValueStr.split(" ", Qt::SkipEmptyParts);
                 }
-                MosraLogInfo( << "PerformanceSumZones: " << mslPerfSumZones.join(" ").toStdString() << endl)
+                MosraLogInfo( << "PerformanceSumZones: " << mslPerfSumZones.join(" ").toStdString() << std::endl)
             }
             else if (sVarName.compare("TIMEOUT", Qt::CaseInsensitive) == 0)
             {
@@ -2152,7 +2152,7 @@ int NMMosra::parseStringSettings(QString strSettings)
                     {
                         this->muiTimeOut = 0;
                         this->mbBreakAtFirst = true;
-                        MosraLogInfo(<< "Solver timeout: break at first feasible solution!" << endl);
+                        MosraLogInfo(<< "Solver timeout: break at first feasible solution!" << std::endl);
                     }
                     else
                     {
@@ -2162,7 +2162,7 @@ int NMMosra::parseStringSettings(QString strSettings)
                         {
                             this->mbBreakAtFirst = false;
                             this->muiTimeOut = timeout;
-                            MosraLogInfo(<< "Solver timeout: " << timeout << endl);
+                            MosraLogInfo(<< "Solver timeout: " << timeout << std::endl);
                         }
                     }
                 }
@@ -2170,14 +2170,14 @@ int NMMosra::parseStringSettings(QString strSettings)
             else if (sVarName.compare("DATAPATH", Qt::CaseInsensitive) == 0)
             {
                 this->msDataPath = sValueStr;
-                MosraLogInfo(<< "batch data path: " << this->msDataPath.toStdString() << endl);
+                MosraLogInfo(<< "batch data path: " << this->msDataPath.toStdString() << std::endl);
             }
             else if (sVarName.compare("OPT_FEATURES", Qt::CaseInsensitive) == 0)
             {
                 if (!sValueStr.isEmpty())
                 {
                     this->msOptFeatures = sValueStr;
-                    MosraLogInfo(<< "OPT_FEATURES: " << this->msOptFeatures.toStdString() << endl);
+                    MosraLogInfo(<< "OPT_FEATURES: " << this->msOptFeatures.toStdString() << std::endl);
                 }
             }
         }
@@ -2193,16 +2193,16 @@ int NMMosra::parseStringSettings(QString strSettings)
                     this->miNumOptions = lo;
                 else
                 {
-                    MosraLogError(<< "Line " << numline << " contains an invalid number" << endl;)
-                    sReport << "Line " << numline << " contains an invalid number" << endl;
+                    MosraLogError(<< "Line " << numline << " contains an invalid number" << std::endl;)
+                    sReport << "Line " << numline << " contains an invalid number" << Qt::endl;
                 }
 
 
-                MosraLogInfo( << "number of resource options: " << this->miNumOptions << endl)
+                MosraLogInfo( << "number of resource options: " << this->miNumOptions << std::endl)
             }
             else if (sVarName.compare(tr("OPTIONS"), Qt::CaseInsensitive) == 0)
             {
-                QStringList tmpList = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList tmpList = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (tmpList.size() == this->miNumOptions)
                 {
                     this->mslOptions.clear();
@@ -2210,45 +2210,45 @@ int NMMosra::parseStringSettings(QString strSettings)
                 }
                 else
                 {
-                    MosraLogError(<< "Line " << numline << " contains an invalid number of options" << endl)
-                    sReport << "Line " << numline << " contains an invalid number of options" << endl;
+                    MosraLogError(<< "Line " << numline << " contains an invalid number of options" << std::endl)
+                    sReport << "Line " << numline << " contains an invalid number of options" << Qt::endl;
                 }
 
-                MosraLogInfo( << "options: " << this->mslOptions.join(tr(" ")).toStdString() << endl)
+                MosraLogInfo( << "options: " << this->mslOptions.join(tr(" ")).toStdString() << std::endl)
 
             }
             else if (sVarName.indexOf(tr("CRI_"), Qt::CaseInsensitive) != -1)
             {
-                QStringList criFieldNames = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList criFieldNames = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (criFieldNames.size() == this->miNumOptions + 1)
                 {
                     QString scri = criFieldNames.at(0);
                     criFieldNames.removeAt(0);
                     this->mmslCriteria.insert(scri, criFieldNames);
 
-                    MosraLogDebug( << "criterion: " << scri.toStdString() << " " << this->mmslCriteria.find(scri).value().join(tr(" ")).toStdString() << endl);
+                    MosraLogDebug( << "criterion: " << scri.toStdString() << " " << this->mmslCriteria.find(scri).value().join(tr(" ")).toStdString() << std::endl);
                 }
                 else
                 {
-                    MosraLogError(<< "Line " << numline << " contains an invalid number of criteria" << endl;)
-                    sReport << "Line " << numline << " contains an invalid number of criteria" << endl;
+                    MosraLogError(<< "Line " << numline << " contains an invalid number of criteria" << std::endl;)
+                    sReport << "Line " << numline << " contains an invalid number of criteria" << Qt::endl;
                 }
             }
             else if (sVarName.indexOf(tr("EVAL_"), Qt::CaseInsensitive) != -1)
             {
-                QStringList evalFieldNames = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList evalFieldNames = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (evalFieldNames.size() == this->miNumOptions + 1)
                 {
                     QString scri = evalFieldNames.at(0);
                     evalFieldNames.removeAt(0);
                     this->mmslEvalFields.insert(scri, evalFieldNames);
 
-                    MosraLogDebug( << "criterion evaluation fields: " << scri.toStdString() << " " << this->mmslEvalFields.find(scri).value().join(tr(" ")).toStdString() << endl);
+                    MosraLogDebug( << "criterion evaluation fields: " << scri.toStdString() << " " << this->mmslEvalFields.find(scri).value().join(tr(" ")).toStdString() << std::endl);
                 }
                 else
                 {
-                    MosraLogError(<< "Line " << numline << " contains an invalid number of criterion evaluation fields" << endl;)
-                    sReport << "Line " << numline << " contains an invalid number of criterion evaluation fields" << endl;
+                    MosraLogError(<< "Line " << numline << " contains an invalid number of criterion evaluation fields" << std::endl;)
+                    sReport << "Line " << numline << " contains an invalid number of criterion evaluation fields" << Qt::endl;
                 }
             }
 
@@ -2259,11 +2259,11 @@ int NMMosra::parseStringSettings(QString strSettings)
         {
             if (sVarName.indexOf(tr("INC_"), Qt::CaseInsensitive) != -1)
             {
-                QStringList incfields = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList incfields = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (!incfields.isEmpty())
                 {
                     QString incName = incfields.takeFirst();
-                    QStringList namePair = incName.split("_", QString::SkipEmptyParts);
+                    QStringList namePair = incName.split("_", Qt::SkipEmptyParts);
                     if (namePair.size() == 2)
                     {
                         mmslIncentives.insert(incName, incfields);
@@ -2276,7 +2276,7 @@ int NMMosra::parseStringSettings(QString strSettings)
                                       << "is comprised of two criteria names concatenated by and underscore \'_\'. Thereby, the "
                                       << "leading name represents the objective and the second name represents the criterion "
                                       << "whose per unit reduction is incentivised by the values specified in the column given "
-                                      << "whose name is given after the incentive name." << endl;
+                                      << "whose name is given after the incentive name." << std::endl;
                         sReport << QString(errmsg.str().c_str());
                     }
                 }
@@ -2299,17 +2299,17 @@ int NMMosra::parseStringSettings(QString strSettings)
                     this->meScalMeth = NMMosra::NM_MOSO_INTERACTIVE;
                     sAggrMeth = tr("Interactive");
                 }
-                MosraLogInfo( << "Scalarisation method is '" << sAggrMeth.toStdString() << "'" << endl)
+                MosraLogInfo( << "Scalarisation method is '" << sAggrMeth.toStdString() << "'" << std::endl)
             }
             else if (sVarName.indexOf(tr("OBJ_"), Qt::CaseInsensitive) != -1)
             {
-                 QStringList objs = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                 QStringList objs = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                  if (objs.size() != 0)
                  {
                      QString obj = objs.takeAt(1);
                      this->mmslObjectives.insert(obj, objs);
                      MosraLogInfo( << "obj: " << obj.toStdString() << ": "
-                             << this->mmslObjectives.find(obj).value().join(tr(" ")).toStdString() << endl)
+                             << this->mmslObjectives.find(obj).value().join(tr(" ")).toStdString() << std::endl)
                  }
             }
         }
@@ -2319,23 +2319,23 @@ int NMMosra::parseStringSettings(QString strSettings)
         {
             if (sVarName.indexOf(tr("AREAL_CONS_"), Qt::CaseInsensitive) != -1)
             {
-                QStringList arCons = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList arCons = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (arCons.size() != 0)
                 {
                     this->mmslAreaCons.insert(sVarName, arCons);
                     MosraLogDebug( << "areal cons: " << sVarName.toStdString() << ": "
-                            << this->mmslAreaCons.find(sVarName).value().join(tr(" ")).toStdString() << endl);
+                            << this->mmslAreaCons.find(sVarName).value().join(tr(" ")).toStdString() << std::endl);
 
                     // check, whether we've got a zoning constraint here and if so, initialise the
                     // zones area with 0
                     QString luopt = arCons.at(0);
                     if (luopt.contains(':', Qt::CaseInsensitive))
                     {
-                        QStringList luoptlist = luopt.split(tr(":"), QString::SkipEmptyParts);
+                        QStringList luoptlist = luopt.split(tr(":"), Qt::SkipEmptyParts);
                         QString zonefield = luoptlist.at(1);
                         // allow for multiple land use options being specified separated by comata
                         // !without whitespace!
-                        QStringList options = luoptlist.at(0).split("+", QString::SkipEmptyParts);
+                        QStringList options = luoptlist.at(0).split("+", Qt::SkipEmptyParts);
 
                         // check, whether we've got already a map created for this zonefield
                         QMap<QString, QMap<QString, double> >::iterator zonesIt;
@@ -2374,12 +2374,12 @@ int NMMosra::parseStringSettings(QString strSettings)
         {
             if (sVarName.indexOf(tr("FEAT_CONS_"), Qt::CaseInsensitive) != -1)
             {
-                QStringList featCons = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList featCons = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (featCons.size() != 0)
                 {
                     this->mmslFeatCons.insert(sVarName, featCons);
                     MosraLogDebug( << "feature cons: " << sVarName.toStdString() << ": "
-                            << this->mmslFeatCons.find(sVarName).value().join(tr(" ")).toStdString() << endl);
+                            << this->mmslFeatCons.find(sVarName).value().join(tr(" ")).toStdString() << std::endl);
                 }
             }
         }
@@ -2389,11 +2389,11 @@ int NMMosra::parseStringSettings(QString strSettings)
         {
             if (sVarName.indexOf(tr("FEATSET_CONS_"), Qt::CaseInsensitive) != -1)
             {
-                QStringList featsetCons = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList featsetCons = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (featsetCons.size() != 0)
                 {
                     QString keyPair = featsetCons.at(0);
-                    QStringList keyPairList = keyPair.split(":", QString::SkipEmptyParts);
+                    QStringList keyPairList = keyPair.split(":", Qt::SkipEmptyParts);
                     QStringList consValueSpec = featsetCons.mid(1, -1);
                     // just checking whether the length of the keypair list is alright,
                     // no point to look for valid values as they could LUMASS expressions
@@ -2403,7 +2403,7 @@ int NMMosra::parseStringSettings(QString strSettings)
                          this->msFeatureSetConsLabel.insert(keyPair, sVarName);
                          this->mslFeatSetCons.insert(keyPair, consValueSpec);
                          MosraLogDebug( << "featset_cons: " << sVarName.toStdString() << ": "
-                                          << featsetCons.join(" ").toStdString() << endl);
+                                          << featsetCons.join(" ").toStdString() << std::endl);
                     }
                 }
             }
@@ -2414,11 +2414,11 @@ int NMMosra::parseStringSettings(QString strSettings)
         {
             if (sVarName.indexOf(tr("ZONE_CONS_"), Qt::CaseInsensitive) != -1)
             {
-                QStringList fullZoneCons = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList fullZoneCons = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (fullZoneCons.size() == 3)
                 {
                     QString label = sVarName;
-                    QStringList zonespec = fullZoneCons.at(0).split(":", QString::SkipEmptyParts);
+                    QStringList zonespec = fullZoneCons.at(0).split(":", Qt::SkipEmptyParts);
                     QString zoneOp = fullZoneCons.at(1);
                     QString valueCol = fullZoneCons.at(2);
 
@@ -2464,14 +2464,14 @@ int NMMosra::parseStringSettings(QString strSettings)
         {
             if (sVarName.indexOf(tr("CRI_CONS_"), Qt::CaseInsensitive) != -1)
             {
-                MosraLogDebug(<< "\tgonna split raw list: " << sValueStr.toStdString() << endl);
-                QStringList outerList = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                MosraLogDebug(<< "\tgonna split raw list: " << sValueStr.toStdString() << std::endl);
+                QStringList outerList = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (outerList.size() != 0)
                 {
                     QString criLabel = outerList.takeAt(0);
-                    MosraLogDebug( << "\tcriLabel is '" << criLabel.toStdString() << "'" << endl);
+                    MosraLogDebug( << "\tcriLabel is '" << criLabel.toStdString() << "'" << std::endl);
                     QString luLabel = outerList.takeAt(0);
-                    MosraLogDebug( << "\tland use is '" << luLabel.toStdString() << "'" << endl);
+                    MosraLogDebug( << "\tland use is '" << luLabel.toStdString() << "'" << std::endl);
 
                     QMap<QString, QStringList> innerMap;
                     innerMap.insert(luLabel, outerList);
@@ -2480,7 +2480,7 @@ int NMMosra::parseStringSettings(QString strSettings)
 
                     MosraLogDebug( << "cri cons: " << criLabel.toStdString() << ": "
                             << luLabel.toStdString() << ": "
-                            << outerList.join(tr(" ")).toStdString() << endl);
+                            << outerList.join(tr(" ")).toStdString() << std::endl);
                 }
             }
         }
@@ -2490,13 +2490,13 @@ int NMMosra::parseStringSettings(QString strSettings)
         {
             if (sVarName.indexOf(tr("OBJ_CONS_"), Qt::CaseInsensitive) != -1)
             {
-                QStringList objCons = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                QStringList objCons = sValueStr.split(tr(" "), Qt::SkipEmptyParts);
                 if (objCons.size() > 0)
                 {
                     QString objkey = sVarName + QString(tr("_%1")).arg(objCons.value(0));
                     this->mmslObjCons.insert(objkey, objCons);
                     MosraLogInfo( << objkey.toStdString() << ": "
-                            << this->mmslObjCons.find(objkey).value().join(tr(" ")).toStdString() << endl);
+                            << this->mmslObjCons.find(objkey).value().join(tr(" ")).toStdString() << std::endl);
                 }
             }
         }
@@ -2507,7 +2507,7 @@ int NMMosra::parseStringSettings(QString strSettings)
             if (sVarName.compare("DATAPATH", Qt::CaseInsensitive) == 0)
             {
                 this->msDataPath = sValueStr;
-                MosraLogInfo(<< "batch data path: " << this->msDataPath.toStdString() << endl);
+                MosraLogInfo(<< "batch data path: " << this->msDataPath.toStdString() << std::endl);
             }
             else if (sVarName.compare("PERTURB", Qt::CaseInsensitive) == 0)
             {
@@ -2519,11 +2519,11 @@ int NMMosra::parseStringSettings(QString strSettings)
                     {
                         NMDebug(<< pc.toStdString() << " ");
                     }
-                    NMDebug(<< endl);
+                    NMDebug(<< std::endl);
                 }
                 else
                 {
-                    MosraLogInfo(<< "No perturbation criteria provided!" << endl);
+                    MosraLogInfo(<< "No perturbation criteria provided!" << std::endl);
                 }
             }
             else if (sVarName.compare("UNCERTAINTIES", Qt::CaseInsensitive) == 0)
@@ -2566,7 +2566,7 @@ int NMMosra::parseStringSettings(QString strSettings)
                 }
                 else
                 {
-                    MosraLogInfo(<< "No uncertainty levels for perturbation provided!" << endl);
+                    MosraLogInfo(<< "No uncertainty levels for perturbation provided!" << std::endl);
                 }
             }
             else if (sVarName.compare("REPETITIONS", Qt::CaseInsensitive) == 0)
@@ -2578,7 +2578,7 @@ int NMMosra::parseStringSettings(QString strSettings)
                     if (bok)
                     {
                         this->mlReps = reps;
-                        MosraLogInfo(<< "Number of perturbations: " << reps << endl);
+                        MosraLogInfo(<< "Number of perturbations: " << reps << std::endl);
                     }
                 }
             }
@@ -2590,7 +2590,7 @@ int NMMosra::parseStringSettings(QString strSettings)
                     {
                         this->muiTimeOut = 0;
                         this->mbBreakAtFirst = true;
-                        MosraLogInfo(<< "Solver timeout: break at first feasible solution!" << endl);
+                        MosraLogInfo(<< "Solver timeout: break at first feasible solution!" << std::endl);
                     }
                     else
                     {
@@ -2600,7 +2600,7 @@ int NMMosra::parseStringSettings(QString strSettings)
                         {
                             this->mbBreakAtFirst = false;
                             this->muiTimeOut = timeout;
-                            MosraLogInfo(<< "Solver timeout: " << timeout << endl);
+                            MosraLogInfo(<< "Solver timeout: " << timeout << std::endl);
                         }
                     }
                 }
@@ -2613,7 +2613,7 @@ int NMMosra::parseStringSettings(QString strSettings)
     }
 
 
-    NMDebug(<< endl << "Report..." << endl << sReport.readAll().toStdString() << endl);
+    NMDebug(<< endl << "Report..." << endl << sReport.readAll().toStdString() << std::endl);
 
     NMDebugCtx(ctxNMMosra, << "done!");
 
@@ -2793,7 +2793,7 @@ void NMMosra::solveProblem(void)
 
     this->createReport();
 
-    MosraLogInfo(<< "Optimisation Report ... \n" << this->getReport().toStdString() << endl);
+    MosraLogInfo(<< "Optimisation Report ... \n" << this->getReport().toStdString() << std::endl);
 
     NMDebugCtx(ctxNMMosra, << "done!");
 }
@@ -2819,14 +2819,14 @@ void NMMosra::createReport(void)
     sRes.setRealNumberNotation(QTextStream::SmartNotation);
     sRes.setRealNumberPrecision(15);
 
-    sRes << endl << endl;
-    sRes << "====================================================" << endl;
-    sRes << "\t" << mScenarioName << " -- " << QDateTime::currentDateTime().toString(Qt::ISODate) << endl;
-    sRes << "====================================================" << endl;
-    sRes << endl << endl;
-    sRes << tr("\tProblem setting details") << endl;
-    sRes << tr("\t-----------------------") << endl << endl;
-    sRes << this->msSettingsReport << endl;
+    sRes << Qt::endl << Qt::endl;
+    sRes << "====================================================" << Qt::endl;
+    sRes << "\t" << mScenarioName << " -- " << QDateTime::currentDateTime().toString(Qt::ISODate) << Qt::endl;
+    sRes << "====================================================" << Qt::endl;
+    sRes << Qt::endl << Qt::endl;
+    sRes << tr("\tProblem setting details") << Qt::endl;
+    sRes << tr("\t-----------------------") << Qt::endl << Qt::endl;
+    sRes << this->msSettingsReport << Qt::endl;
 
     sRes << tr("\n\n\tResults from lp_solve 5.5\n"
                    "\t-------------------------\n\n"
@@ -2859,14 +2859,14 @@ void NMMosra::createReport(void)
         sRes << "There was neither a sub-optimal\n"
                 "nor an optimal solution found by\n"
                 "lp_solve 5.5!\n"
-                "RETURN CODE = " << ret << " - see lp_solve doc!\n" << endl;
+                "RETURN CODE = " << ret << " - see lp_solve doc!\n" << Qt::endl;
     }
 
     //log the number of solutions
-    sRes << "Number of solutions: " << this->mLp->GetSolutionCount() << endl << endl;
+    sRes << "Number of solutions: " << this->mLp->GetSolutionCount() << Qt::endl << Qt::endl;
 
     //log the objective function
-    sRes << "Objective function result = " << this->mLp->GetObjective() << endl << endl;
+    sRes << "Objective function result = " << this->mLp->GetObjective() << Qt::endl << Qt::endl;
 
     //get the values of the constraints
     int iNumCons = this->mLp->GetNRows();
@@ -2884,9 +2884,9 @@ void NMMosra::createReport(void)
             int index = this->mLp->GetNameIndex(oit.key().toStdString(), true);
             if (index >= 0)
                 sRes << oit.key() << " = " << pdCons[index-1] << " ( "
-                    << oit.value().at(1) << " " << oit.value().at(2) << " )" << endl;
+                    << oit.value().at(1) << " " << oit.value().at(2) << " )" << Qt::endl;
         }
-        sRes << endl;
+        sRes << Qt::endl;
     }
 
     //log the explicit areal constraints
@@ -2908,13 +2908,13 @@ void NMMosra::createReport(void)
 
             if (ait.value().at(0).contains(":", Qt::CaseInsensitive))
             {
-                zonespec = ait.value().at(0).split(tr(":"), QString::SkipEmptyParts);
-                options = zonespec.at(0).split(tr("+"), QString::SkipEmptyParts);
+                zonespec = ait.value().at(0).split(tr(":"), Qt::SkipEmptyParts);
+                options = zonespec.at(0).split(tr("+"), Qt::SkipEmptyParts);
                 //nit = 2;
             }
             else
             {
-                options << ait.value().at(0).split(tr("+"), QString::SkipEmptyParts);
+                options << ait.value().at(0).split(tr("+"), Qt::SkipEmptyParts);
             }
 
             for (int q=0; q < nit; ++q)
@@ -2939,12 +2939,12 @@ void NMMosra::createReport(void)
                         maxval = 0;
 
                     sRes << sACL << " = " << pdCons[index-1] << " ( "
-                        << ait.value().at(1) << " " << maxval << " )" << endl;
+                        << ait.value().at(1) << " " << maxval << " )" << Qt::endl;
                 }
                 ++totalcount;
             }
         }
-        sRes << endl;
+        sRes << Qt::endl;
     }
 
     //log the attributive constraints
@@ -2973,21 +2973,21 @@ void NMMosra::createReport(void)
 
                 if (index >= 0)
                 {
-                    sRes << sCL << " " << compOp << " " << pdCons[index -1] << endl;
+                    sRes << sCL << " " << compOp << " " << pdCons[index -1] << Qt::endl;
                 }
                 else
                 {
                     QString tmplab = crilabit.key() + QString(tr("_%1")).arg(criit.key());
                     sRes << "error reading cirterion constraint for '"
-                            << tmplab << "'!" << endl;
+                            << tmplab << "'!" << Qt::endl;
                 }
             }
         }
-        sRes << endl;
+        sRes << Qt::endl;
     }
 
     // DEBUG - we just dump all constraints values here
-//    MosraLogDebug( << endl << "just dumping all constraint values .... " << endl);
+//    MosraLogDebug( << Qt::endl << "just dumping all constraint values .... " << Qt::endl);
 //	int nrows = this->mLp->GetNRows();
 //	for (int q=1; q < nrows; ++q)
 //	{
@@ -2998,12 +2998,12 @@ void NMMosra::createReport(void)
 //		double cv = pdCons[q-1];
 //		char fv[256];
 //		::sprintf(fv, "%g", cv);
-//        MosraLogDebug(<< name.toStdString() << " " << op << " " << fv << endl);
+//        MosraLogDebug(<< name.toStdString() << " " << op << " " << fv << Qt::endl);
 //	}
-    //NMDebug(<< endl);
+    //NMDebug(<< Qt::endl);
 
 
-    sRes << endl;
+    sRes << Qt::endl;
 
     QString platz = tr("\t\t");
     sRes << "SENSITIVITY - CONSTRAINTS\n\n";
@@ -3027,7 +3027,7 @@ void NMMosra::createReport(void)
                )
             {
                 sRes << consname << platz << tr("\t") <<
-                        pDuals[r] << platz << pDualsFrom[r] << platz << pDualsTill[r] << endl;
+                        pDuals[r] << platz << pDualsFrom[r] << platz << pDualsTill[r] << Qt::endl;
             }
         }
     }
@@ -3054,9 +3054,9 @@ NMMosra::writeBaselineReductions(QString filename)
         {
             QTextStream incstr(&incFile);
 
-            incstr << endl << endl;
-            incstr << "Let's get a feeling for those reduction variables (r_i_r_q) ...." << endl;
-            incstr << "     with: i: feature index, r: land use index, q: incentive index" << endl << endl;
+            incstr << Qt::endl << Qt::endl;
+            incstr << "Let's get a feeling for those reduction variables (r_i_r_q) ...." << Qt::endl;
+            incstr << "     with: i: feature index, r: land use index, q: incentive index" << Qt::endl << Qt::endl;
 
             double* pdVars = nullptr;
             this->mLp->GetPtrVariables(&pdVars);
@@ -3094,9 +3094,9 @@ NMMosra::writeBaselineReductions(QString filename)
                         }
                     }
                 }
-                incstr << endl;
+                incstr << Qt::endl;
             }
-            incstr << endl << endl;
+            incstr << Qt::endl << Qt::endl;
             incFile.close();
         }
         else
@@ -3175,7 +3175,7 @@ int NMMosra::checkSettings(void)
     QString settrep;
     QTextStream sstr(&settrep);
 
-    sstr << "type of DV (0=REAL | 1=INT | 2=BINARY): " << this->meDVType << endl;
+    sstr << "type of DV (0=REAL | 1=INT | 2=BINARY): " << this->meDVType << Qt::endl;
 
     // get the attributes of the layer
     MosraLogInfo(<< "Optimisation - Checking settings ...")
@@ -3211,7 +3211,7 @@ int NMMosra::checkSettings(void)
         NMDebugCtx(ctxNMMosra, << "done!");
         return 0;
     }
-    MosraLogInfo(<< "area field OK" << endl);
+    MosraLogInfo(<< "area field OK" << std::endl);
 
     // --------------------------------------------------------------------------------------------------------
     //MosraLogInfo(<< "calculating area and counting features ..." << endl);
@@ -3277,7 +3277,7 @@ int NMMosra::checkSettings(void)
     // report total area to the user
     this->mlNumOptFeat = numFeat;
     sstr << "total area from " << this->msAreaField
-            << "(" << numTuples << " | " << numFeat << ")" << " is " << this->mdAreaTotal << endl;
+            << "(" << numTuples << " | " << numFeat << ")" << " is " << this->mdAreaTotal << Qt::endl;
 
 
     // iterate over the initialised zones and report areas
@@ -3297,9 +3297,9 @@ int NMMosra::checkSettings(void)
         for (; optIt != zonesIt.value().end(); ++optIt, ++optLenIt)
         {
             sstr << "total area for option '" << optIt.key() << "' with respect to zone field '" << zonesIt.key() <<
-                    "' = " << optIt.value() << endl;
+                    "' = " << optIt.value() << Qt::endl;
             sstr << "no of features for option '" << optLenIt.key() << "' with respect to zone field '"
-                    << zonesLenIt.key() << "' = " << optLenIt.value() << endl;
+                    << zonesLenIt.key() << "' = " << optLenIt.value() << Qt::endl;
         }
     }
 
@@ -3328,8 +3328,8 @@ int NMMosra::checkSettings(void)
         QString OptZone = acIt.value().at(0);
         if (OptZone.contains(":", Qt::CaseInsensitive))
         {
-            QStringList ozlist = OptZone.split(tr(":"), QString::SkipEmptyParts);
-            QStringList options = ozlist.at(0).split(tr("+"), QString::SkipEmptyParts);
+            QStringList ozlist = OptZone.split(tr(":"), Qt::SkipEmptyParts);
+            QStringList options = ozlist.at(0).split(tr("+"), Qt::SkipEmptyParts);
             QString zone = ozlist.at(1);
 
             double zval = 0;
@@ -3475,7 +3475,7 @@ int NMMosra::checkSettings(void)
                 QString zone = "";
                 if (criit.key().contains(tr(":"), Qt::CaseInsensitive))
                 {
-                    zonespec = criit.key().split(tr(":"), QString::SkipEmptyParts);
+                    zonespec = criit.key().split(tr(":"), Qt::SkipEmptyParts);
                     landuse = zonespec.at(0);
                     zone = zonespec.at(1);
 
@@ -3652,14 +3652,14 @@ int NMMosra::checkSettings(void)
     QMap<QString, QStringList>::ConstIterator fsconsIt = this->mslFeatSetCons.constBegin();
     while(fsconsIt != this->mslFeatSetCons.constEnd())
     {
-        QStringList keyPair = fsconsIt.key().split(":", QString::SkipEmptyParts);
+        QStringList keyPair = fsconsIt.key().split(":", Qt::SkipEmptyParts);
         if (keyPair.size() == 2)
         {
             if (    keyPair.at(0).compare(QStringLiteral("total"), Qt::CaseInsensitive) != 0
                  && !this->mslOptions.contains(keyPair.at(0))
                )
             {
-                QStringList uses = keyPair.at(0).split("+", QString::SkipEmptyParts);
+                QStringList uses = keyPair.at(0).split("+", Qt::SkipEmptyParts);
                 if (this->mslOptions.size() < uses.size())
                 {
                     featsetconsValid = false;
@@ -3783,7 +3783,7 @@ int NMMosra::checkSettings(void)
     this->mlNumArealDVar = this->miNumOptions * this->mlNumOptFeat;
     sstr << "mlNumArealDVar = miNumOptions * mlNumOptFeat = "
             << this->mlNumArealDVar << " = " << this->miNumOptions << " * "
-            << this->mlNumOptFeat << endl;
+            << this->mlNumOptFeat << Qt::endl;
 
     this->mlNumDVar =  this->mlNumArealDVar;// + this->mlNumOptFeat;
 
@@ -3804,11 +3804,11 @@ int NMMosra::checkSettings(void)
     sstr << "mlNumDvar = mlNumArealDVar" << plusRedVar
          << " = " << this->mlNumDVar << " = " << this-> mlNumArealDVar
          << addNumVar;
-            //<< " + " << this->mlNumOptFeat << endl;
+            //<< " + " << this->mlNumOptFeat << Qt::endl;
 
     // number of columns of the decision matrix
     this->mlLpCols = this->mlNumDVar + 1;
-    sstr << "mlLpCols = mlNumDvar + 1  = " << this->mlLpCols << endl;
+    sstr << "mlLpCols = mlNumDvar + 1  = " << this->mlLpCols << Qt::endl;
 
     // Scalarisation method
     QString sMeth;
@@ -3816,12 +3816,12 @@ int NMMosra::checkSettings(void)
         sMeth = tr("Weighted Sum");
     else
         sMeth = tr("Interactive");
-    sstr << "Scalarisation Method: " << sMeth << endl << endl;
+    sstr << "Scalarisation Method: " << sMeth << Qt::endl << Qt::endl;
 
     this->msSettingsReport = sstr.readAll();
 
     MosraLogDebug(<< "Optimisation Settings Report ...\n"
-               << this->msSettingsReport.toStdString() << endl);
+               << this->msSettingsReport.toStdString() << Qt::endl);
 
     NMDebugCtx(ctxNMMosra, << "done!");
     if (!criValid || !criConsValid || !evalValid || !arealCriValid || !incentivesValid || !featsetconsValid)
@@ -4316,7 +4316,7 @@ NMMosra::perturbCriterion(const QString& criterion,
     // criterion identifier: "Nleach,Sediment"
     // -> split by ','
 
-    QStringList metaList = criterion.split(",", QString::SkipEmptyParts);
+    QStringList metaList = criterion.split(",", Qt::SkipEmptyParts);
 
     // check for criterion or constraint
     if (metaList.size() == 0)
@@ -4355,7 +4355,7 @@ NMMosra::perturbCriterion(const QString& criterion,
         {
             // get the incentives field
             const QString incSpec = metaList.at(m).trimmed();
-            const QStringList incDetails = incSpec.split(":", QString::SkipEmptyParts);
+            const QStringList incDetails = incSpec.split(":", Qt::SkipEmptyParts);
 
             QString incField;
             if (incDetails.size() >= 2)
@@ -4394,7 +4394,7 @@ NMMosra::perturbCriterion(const QString& criterion,
             QString isolatedCriterion = metaList.at(ptbItem).trimmed();
 
             // extract the land use
-            QStringList splitCriterion = isolatedCriterion.split(":", QString::SkipEmptyParts);
+            QStringList splitCriterion = isolatedCriterion.split(":", Qt::SkipEmptyParts);
             if (splitCriterion.size() < 2)
             {
                 MosraLogError( << "Invalid criterion identifier: '"
@@ -5198,8 +5198,8 @@ int NMMosra::addFeatureSetConsDb(void)
     {
         MosraLogInfo(<< "   -> " << this->msFeatureSetConsLabel[fsIt.key()].toStdString() << "...");
         // extract the options & feature-set id column index
-        QStringList optColPair = fsIt.key().split(":", QString::SkipEmptyParts);
-        QStringList optraw = optColPair.at(0).split("+", QString::SkipEmptyParts);
+        QStringList optColPair = fsIt.key().split(":", Qt::SkipEmptyParts);
+        QStringList optraw = optColPair.at(0).split("+", Qt::SkipEmptyParts);
         QStringList options;
         if (optraw.size() == 1)
         {
@@ -5513,7 +5513,7 @@ int NMMosra::addZoneCons(void)
                 {
                     QVector<int> resIdx;
                     QStringList perfFields;
-                    QStringList zoneRes = mDataSet->getStrValue(resField, f).split(" ", QString::SkipEmptyParts);
+                    QStringList zoneRes = mDataSet->getStrValue(resField, f).split(" ", Qt::SkipEmptyParts);
                     foreach(const QString& res, zoneRes)
                     {
                         int idx = mslOptions.indexOf(QRegExp(res, Qt::CaseInsensitive,  QRegExp::FixedString));
@@ -5704,25 +5704,25 @@ int NMMosra::addFeatureCons(void)
     QMap<QString, QStringList>::const_iterator it =
             this->mmslFeatCons.constBegin();
 
-    MosraLogDebug(<< this->mmslFeatCons.size() << " cons to process" << endl);
+    MosraLogDebug(<< this->mmslFeatCons.size() << " cons to process" << std::endl);
     // ------------------------------------------------------ for each constraint
     for(int iConsCounter=1; it != this->mmslFeatCons.constEnd(); it++, iConsCounter++)
     {
         MosraLogDebug( << it.key().toStdString() << " "
-                << it.value().join(tr(" ")).toStdString() << " - reading props" << endl);
+                << it.value().join(tr(" ")).toStdString() << " - reading props" << std::endl);
 
         // set the constraint label
         QString sConsLabel = it.key() + QString(tr("_%1")).arg(it.value().at(0));
         vsConsLabel.push_back(sConsLabel);
 
-        QStringList options = it.value().at(0).split(tr("+"), QString::SkipEmptyParts);
+        QStringList options = it.value().at(0).split(tr("+"), Qt::SkipEmptyParts);
         std::vector<unsigned int> noptidx;
         for(int no=0; no < options.size(); ++no)
         {
             unsigned int idx = this->mslOptions.indexOf(
                     QRegExp(options.at(no), Qt::CaseInsensitive, QRegExp::FixedString));
             noptidx.push_back(idx);
-            MosraLogDebug( << "option index for '" << options.at(no).toStdString() << "' = " << idx + 1 << endl);
+            MosraLogDebug( << "option index for '" << options.at(no).toStdString() << "' = " << idx + 1 << std::endl);
         }
         vvnOptionIndex.push_back(noptidx);
 
@@ -5737,7 +5737,7 @@ int NMMosra::addFeatureCons(void)
             vnConsType.push_back(2);
         else
             vnConsType.push_back(3);
-        MosraLogDebug( << "constraint type (1: <= | 2: >= | 3: =): " << vnConsType.at(iConsCounter-1) << endl);
+        MosraLogDebug( << "constraint type (1: <= | 2: >= | 3: =): " << vnConsType.at(iConsCounter-1) << std::endl);
     }
 
 
@@ -5759,7 +5759,7 @@ int NMMosra::addFeatureCons(void)
     //-------------------------------------------------------------------- for each constraint
     for (int r=0; it != this->mmslFeatCons.constEnd(); ++it, ++r)
     {
-        MosraLogDebug( << vsConsLabel.at(r).toStdString() << " - adding constraint" << endl);
+        MosraLogDebug( << vsConsLabel.at(r).toStdString() << " - adding constraint" << std::endl);
 
         const long numOptions = vvnOptionIndex.at(r).size();
         pdRow = new double[numOptions];
@@ -5826,7 +5826,7 @@ int NMMosra::addFeatureCons(void)
 
             ++nonHoleCounter;
         }
-        NMDebug(<< "finished!" << endl);
+        NMDebug(<< "finished!" << std::endl);
 
         delete[] pdRow;
         delete[] piColno;
@@ -5863,13 +5863,13 @@ int NMMosra::addExplicitAreaCons(void)
     QMap<QString, QStringList>::const_iterator it =
             this->mmslAreaCons.constBegin();
 
-    MosraLogDebug( << this->mmslAreaCons.size() << " cons to process" << endl);
+    MosraLogDebug( << this->mmslAreaCons.size() << " cons to process" << std::endl);
 
     // ----------------------------------------------------for each constraint
     for(int iConsCounter=1; it != this->mmslAreaCons.constEnd(); it++, iConsCounter++)
     {
         MosraLogDebug( << it.key().toStdString() << " "
-                << it.value().join(tr(" ")).toStdString() << " - reading props" << endl);
+                << it.value().join(tr(" ")).toStdString() << " - reading props" << std::endl);
 
         // set the constraint label
         QString sConsLabel = it.key() + QString(tr("_%1")).arg(it.value().at(0));
@@ -5881,13 +5881,13 @@ int NMMosra::addExplicitAreaCons(void)
         QStringList options;
         if (it.value().at(0).contains(tr(":"), Qt::CaseInsensitive))
         {
-            optzones = it.value().at(0).split(tr(":"), QString::SkipEmptyParts);
-            options = optzones.at(0).split(tr("+"), QString::SkipEmptyParts);
+            optzones = it.value().at(0).split(tr(":"), Qt::SkipEmptyParts);
+            options = optzones.at(0).split(tr("+"), Qt::SkipEmptyParts);
             zone = optzones.at(1);
         }
         else
         {
-            options = it.value().at(0).split(tr("+"), QString::SkipEmptyParts);
+            options = it.value().at(0).split(tr("+"), Qt::SkipEmptyParts);
             zone = "";
         }
         vsZoneField.push_back(zone);
@@ -5897,7 +5897,7 @@ int NMMosra::addExplicitAreaCons(void)
         bool bConvOK;
         dUserVal = it.value().at(2).toDouble(&bConvOK);
         double dtval = 0;
-        MosraLogDebug( << "dUserVal (" << dUserVal << ") as '" << it.value().at(3).toStdString() << "' = " << dtval << endl);
+        MosraLogDebug( << "dUserVal (" << dUserVal << ") as '" << it.value().at(3).toStdString() << "' = " << dtval << std::endl);
 
         int maxzonelen = 0;
 
@@ -5909,7 +5909,7 @@ int NMMosra::addExplicitAreaCons(void)
             unsigned int idx = this->mslOptions.indexOf(
                     QRegExp(options.at(no), Qt::CaseInsensitive, QRegExp::FixedString));
             noptidx.push_back(idx);
-            MosraLogDebug( << "option index for '" << options.at(no).toStdString() << "' = " << idx + 1 << endl);
+            MosraLogDebug( << "option index for '" << options.at(no).toStdString() << "' = " << idx + 1 << std::endl);
 
             QStringList ozspec;
             ozspec << options.at(no) << zone;
@@ -5945,7 +5945,7 @@ int NMMosra::addExplicitAreaCons(void)
             vnConsType.push_back(2);
         else
             vnConsType.push_back(3);
-        MosraLogDebug( << "constraint type (1: <= | 2: >= | 3: =): " << vnConsType.at(iConsCounter-1) << endl);
+        MosraLogDebug( << "constraint type (1: <= | 2: >= | 3: =): " << vnConsType.at(iConsCounter-1) << std::endl);
 
     }
 
@@ -5984,7 +5984,7 @@ int NMMosra::addExplicitAreaCons(void)
     // ------------------------------------------------ for each constraint
     for (int r=0; it != this->mmslAreaCons.constEnd(); ++it, ++r)
     {
-        MosraLogDebug( << vsConsLabel.at(r).toStdString() << " - adding constraint" << endl);
+        MosraLogDebug( << vsConsLabel.at(r).toStdString() << " - adding constraint" << std::endl);
 
         // array defining zones for this constraints
         bool bZoneCons = false;
@@ -6093,7 +6093,7 @@ int NMMosra::addExplicitAreaCons(void)
             ++nonHoleCounter;
         }
 
-        NMDebug(<< " finished!" << endl);
+        NMDebug(<< " finished!" << std::endl);
 
         // add the constraint
         this->mLp->AddConstraintEx((vnZoneLength.at(r) * numOptions),
@@ -6354,7 +6354,7 @@ int NMMosra::addCriCons(void)
 
             if (criit.key().contains(tr(":"), Qt::CaseInsensitive))
             {
-                zonespec = criit.key().split(tr(":"), QString::SkipEmptyParts);
+                zonespec = criit.key().split(tr(":"), Qt::SkipEmptyParts);
                 opt = zonespec.at(0);
                 zone = zonespec.at(1);
             }
@@ -6405,7 +6405,7 @@ int NMMosra::addCriCons(void)
 
     for (int labelidx = 0; labelidx < vLabels.size(); ++labelidx)
     {
-        MosraLogDebug(<< "preparing constraint " << vLabels[labelidx].toStdString() << endl);
+        MosraLogDebug(<< "preparing constraint " << vLabels[labelidx].toStdString() << std::endl);
 
         // get the performance indicator fields, land use indices
         // and allocate the constraint buffers
@@ -7501,7 +7501,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
         // make sure, we're not fooled by any leading or trailing white spaces
         curResource = curResource.simplified();
         QString optResource = colvalues.at(valOffsets["optLU"]).toString();
-        QStringList optResList = optResource.split(tr(" "), QString::SkipEmptyParts);
+        QStringList optResList = optResource.split(tr(" "), Qt::SkipEmptyParts);
         const double curArea = colvalues.at(valOffsets["cellArea"]).toDouble();
 
         // ===============================================================================
@@ -7550,14 +7550,14 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
         }
 
         // DEBUG
-        //		NMDebugInd(ind, << "curResource: " << curResource.toStdString() << endl);
-        //		NMDebugInd(ind, << "optResource: " << optResource.toStdString() << endl);
+        //		NMDebugInd(ind, << "curResource: " << curResource.toStdString() << std::endl);
+        //		NMDebugInd(ind, << "optResource: " << optResource.toStdString() << std::endl);
         //		NMDebugInd(ind, << "optResList: ");
         //		for (int r=0; r < optResList.size(); ++r)
         //		{
         //			NMDebug(<< "-" << optResList.at(r).toStdString() << "-");
         //		}
-        //		NMDebug(<< endl << endl);
+        //		NMDebug(<< std::endl << std::endl);
 
         // ===============================================================================
         //                      PERFORMANCE ANALYSIS (TOTAL and per ZONE)

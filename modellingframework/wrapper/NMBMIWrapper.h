@@ -33,7 +33,7 @@
 #include <QStringList>
 #include <QList>
 
-#include "bmi.hxx"
+#include "pythonbmi.h"
 
 #include "nmlog.h"
 #include "NMMacros.h"
@@ -42,20 +42,30 @@
 
 #include "nmbmiwrapper_export.h"
 
-template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
+namespace bmi {
+class PythonBMI;
+}
 
+template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class NMBMIWrapper_Internal;
 
 class
 NMBMIWrapper : public NMProcess
 {
     Q_OBJECT
-    //Q_PROPERTY(QList<QStringList> OutputNames READ getOutputNames WRITE setOutputNames)
+    Q_PROPERTY(QList<QStringList> KernelRadius READ getKernelRadius WRITE setKernelRadius)
+    Q_PROPERTY(QString KernelShapeType READ getKernelShapeType WRITE setKernelShapeType)
+    Q_PROPERTY(QStringList KernelShapeEnum READ getKernelShapeEnum)
     Q_PROPERTY(QString YamlConfigFileName READ getYamlConfigFileName WRITE setYamlConfigFileName)
+
 
 public:
 
     //NMPropertyGetSet( OutputNames, QList<QStringList> )
+    NMPropertyGetSet( KernelRadius, QList<QStringList> )
+    NMPropertyGetSet( KernelShapeType, QString )
+    NMPropertyGetSet( KernelShapeEnum, QStringList )
+
 
     enum NMBMIComponetType
     {
@@ -101,8 +111,10 @@ protected:
     bool mbIsStreamable;
     bool mbIsThreadable; // no for python
     NMBMIComponetType mBMIComponentType;
+    std::vector<int64_t> m_AuxIntData;
+    std::vector<double_t> m_AuxDoubleData;
 
-    std::shared_ptr<bmi::Bmi> mPtrBMILib;
+    std::shared_ptr<bmi::PythonBMI> mPtrBMILib;
     QString mComponentName;
     QString mComponentPath;
     QStringList mComponentPathList;
@@ -110,8 +122,10 @@ protected:
 
     QString mYamlConfigFileName;
     QString mParsedYamlConfigFileName;
-    //QList<QStringList>  mOutputNames;
 
+    QList<QStringList> mKernelRadius;
+    QString mKernelShapeType;
+    QStringList mKernelShapeEnum;
 };
 
 

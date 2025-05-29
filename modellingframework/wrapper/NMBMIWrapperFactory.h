@@ -39,7 +39,7 @@ public:
     NMProcess* createWrapper();
     bool isSinkProcess(void) {return false;}
     QString getWrapperClassName() {return QStringLiteral("NMBMIWrapper");}
-    QString getComponentAlias() {return QStringLiteral("BMIModel");}
+    QString getComponentAlias() {return QStringLiteral("PyBMIModel");}
 };
 
 #endif // NMBMIWrapperFactory_H

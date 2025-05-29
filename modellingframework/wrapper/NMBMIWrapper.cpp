@@ -215,7 +215,7 @@ public:
                 {
                     userIDs.push_back(inputname);
                 }
-                else if (comp != 0)
+                else if (comp != nullptr)
                 {
                     if (comp->getUserID().isEmpty())
                     {
@@ -237,50 +237,63 @@ public:
         f->SetInputNames(userIDs);
         QString inputNamesProvN = QString("nm:InputNames=\"%1\"").arg(inputNamesProvVal.join(' '));
         p->addRunTimeParaProvN(inputNamesProvN);
-        //p->initialiseBMILibrary();
 
-        //QVariant curOutputNamesVar = p->getParameter(QStringLiteral("OutputNames"));
-        //QStringList curOutputNames;
-        //if (curOutputNamesVar.isValid())
-        //{
-        //    curOutputNames = curOutputNamesVar.toString();
-        //    std::vector<std::string> voutnames;
-        //    foreach (const QString& oname, curOutputNames)
-        //    {
-        //        voutnames.push_back(oname.toStdString());
-        //    }
-        //    f->SetOutputNames(voutnames);
-        //
-        //    QString outputNamesProvN = QString("nm:OutputNames=\"%1\"").arg(curOutputNames.join(''));
-        //    p->addRunTimeParaProvN(outputNamesProvN);
-        //
-        //}
 
-        // pass on the wrapper object name, so the filter can fetch
-        // associated python modules from the global module map
-        f->SetWrapperName(p->objectName().toStdString());
+        QVariant curRadiusVar = p->getParameter("KernelRadius");
+        if (curRadiusVar.isValid())
+        {
+           std::vector<int> vecRadius;
+           QStringList curValVarList = curRadiusVar.toStringList();
+           foreach(const QString& vStr, curValVarList)
+           {
+                int curRadius = vStr.toInt(&bok);
+                if (bok)
+                {
+                    vecRadius.push_back(static_cast<int>(curRadius));
+                }
+                else
+                {
+                    NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                    e.setSource(p->parent()->objectName().toStdString());
+                    e.setDescription("Invalid value for 'KernelRadius'!");
+                    throw e;
+                }
+            }
+            if (vecRadius.size() > 0)
+            {
+                f->SetKernelRadius(vecRadius);
+            }
+            QString radiusVarProvN = QString("nm:KernelRadius=\"%1\"").arg(curValVarList.join(' '));
+            p->addRunTimeParaProvN(radiusVarProvN);
+        }
 
-        // need to do this after initialisation, i.e.
-        // after the yaml config for the BMI model has
-        // been parsed
-        f->SetIsStreamable(p->mbIsStreamable);
-        f->SetIsThreadable(p->mbIsThreadable);
+        QVariant curKernelShapeVar = p->getParameter("KernelShapeType");
+        std::string curKernelShape;
+        if (curKernelShapeVar.isValid())
+        {
+            curKernelShape = curKernelShapeVar.toString().toStdString();
+            f->SetKernelShape(curKernelShape);
+            QString kernelShapeProvN = QString("nm:KernelShapeType=\"%1\"").arg(curKernelShape.c_str());
+            p->addRunTimeParaProvN(kernelShapeProvN);
+        }
 
-        //if (p->mPtrBMILib.get() == nullptr)
-        //{
-        //    NMErr("NMBMIWrapper", << "BMI library initialisation failed!");
-        //    NMMfwException be(NMMfwException::NMProcess_UninitialisedProcessObject);
-        //    be.setDescription("BMI library initialisation failed!");
-        //    throw be;
-        //}
-        //f->SetBMIModule(p->mPtrBMILib);
 
         p->initialiseBMILibrary();
         p->updateSettings();
 
+        if (p->m_AuxIntData.size() > 0)
+        {
+            f->SetAuxIntData(p->m_AuxIntData);
+        }
+        if (p->m_AuxDoubleData.size() > 0)
+        {
+            f->SetAuxDoubleData(p->m_AuxDoubleData);
+        }
+
+        /// DEPRECATED
         // pass on the wrapper object name, so the filter can fetch
         // associated python modules from the global module map
-        f->SetWrapperName(p->objectName().toStdString());
+        //f->SetWrapperName(p->objectName().toStdString());
 
         // need to do this after initialisation, i.e.
         // after the yaml config for the BMI model has
@@ -288,6 +301,8 @@ public:
         f->SetIsStreamable(p->mbIsStreamable);
         f->SetIsThreadable(p->mbIsThreadable);
 
+        NMModelController* ctrl = p->getModelController();
+        f->SetWorkspacePath(ctrl->getSetting(QStringLiteral("Workspace")).toString().toStdString());
         if (p->mPtrBMILib.get() == nullptr)
         {
             NMErr("NMBMIWrapper", << "BMI library initialisation failed!");
@@ -295,7 +310,11 @@ public:
             be.setDescription("BMI library initialisation failed!");
             throw be;
         }
+
+        // note setting outputnames is done by the filter 'f' itself once the
+        // PyBMI module is set
         f->SetBMIModule(p->mPtrBMILib);
+        p->setAuxDataIndex(f->GetAuxVarDataIndex());
 
         std::vector<std::string> voutnames = p->mPtrBMILib->GetOutputVarNames();
         QStringList curOutNames;
@@ -303,13 +322,10 @@ public:
         {
             curOutNames << voutnames[n].c_str();
         }
-        //f->SetOutputNames(voutnames);
 
         QString outputNamesProvN = QString("nm:OutputNames=\"%1\"").arg(curOutNames.join(' '));
         p->addRunTimeParaProvN(outputNamesProvN);
 
-
-        NMModelController* ctrl = p->getModelController();
         p->connect(ctrl, &NMModelController::signalModelStopped,
                    p, &NMBMIWrapper::reset);
 
@@ -336,12 +352,20 @@ NMBMIWrapper
     this->mInputNumBands = 1;
     this->mParameterHandling = NMProcess::NM_USE_UP;
 
+    mKernelShapeType = QString(tr("RECTANGULAR"));
+    mKernelShapeEnum.clear();
+    mKernelShapeEnum << "NO_KERNEL" << "RECTANGULAR" << "CIRCULAR";
+    this->mAuxDataIdx = -1;
+
     mUserProperties.clear();
     mUserProperties.insert(QStringLiteral("NMInputComponentType"), QStringLiteral("InputPixelType"));
     mUserProperties.insert(QStringLiteral("NMOutputComponentType"), QStringLiteral("OutputPixelType"));
     mUserProperties.insert(QStringLiteral("OutputNumDimensions"), QStringLiteral("NumDimensions"));
     //mUserProperties.insert(QStringLiteral("OutputNames"), QStringLiteral("OutputNames"));
     mUserProperties.insert(QStringLiteral("YamlConfigFileName"), QStringLiteral("YamlConfigFileName"));
+    mUserProperties.insert(QStringLiteral("KernelRadius"), QStringLiteral("KernelRadius"));
+    //mUserProperties.insert(QStringLiteral("KernelShapeType"), QStringLiteral("KernelShape"));
+
 }
 
 void NMBMIWrapper::bmilog(int ilevel, const char* msg)
@@ -379,7 +403,14 @@ NMBMIWrapper::initialiseBMILibrary()
     {
         if (this->parent() != nullptr)
         {
-            bReloadPyModule = this->mController->registerPythonRequest(this->parent()->objectName());
+            //bReloadPyModule = this->mController->registerPythonRequest(this->parent()->objectName());
+            if (    this->mPtrBMILib != nullptr
+                 && !this->mPtrBMILib->mPyModule.is_none()
+                 && this->mPtrBMILib->mPyModule.ptr() != nullptr
+               )
+            {
+                bReloadPyModule = true;
+            }
         }
     }
 
@@ -425,26 +456,20 @@ NMBMIWrapper::initialiseBMILibrary()
         try
         {
             mPtrBMILib->Initialize(mYamlConfigFileName.toStdString());
-            //if (!lumass_python::ctrlPyObjects[compName].is_none())
-            //if (!mPtrBMILib->IsInitialised())
-            //{
-                //lumass_python::ctrlPyObjectSinkMap[compName] = mIsSink;
-            //
-                //NMLogInfo(<< "Successfully initialised '" << mPtrBMILib->GetComponentName() << "'!");
-            //
-            //}
-            //else
-            //{
-            //    NMLogError(<< "Failed initialising '" << mComponentName.toStdString() << "'!");
-            //}
         }
         catch(pybind11::cast_error& ce)
         {
-            NMLogError(<< "Failed initialisation of '" << mComponentName.toStdString() << "': " << ce.what());
+            std::string msg = "Failed initialisation of '" + mComponentName.toStdString() + "': " + std::string(ce.what());
+            NMLogError(<< msg);
+            PythonBMIException be(msg.c_str());
+            throw be;
         }
         catch(std::exception& e)
         {
-            NMLogError(<< "Failed initialisation of '" << mComponentName.toStdString() << "': " << e.what());
+            std::string msg = "Failed initialisation of '" + mComponentName.toStdString() + "': " + std::string(e.what());
+            NMLogError(<< msg);
+            PythonBMIException be(msg.c_str());
+            throw be;
         }
     }
     else
@@ -479,6 +504,7 @@ NMBMIWrapper::updateSettings()
         return;
     }
 
+    QStringList auxInputDataKeys = {"kernel_int_data", "kernel_float_data"};
 
     QStringList modelSettings = mController->getModelSettingsList();
     foreach(const QString& s, modelSettings)
@@ -488,52 +514,45 @@ NMBMIWrapper::updateSettings()
 
         pybmi->SetSetting(s.toStdString(), val.toStdString());
 
-        //settings[py::str(s.toStdString())] = py::str(val.toStdString());
+        if (auxInputDataKeys.contains(s))
+        {
+            val = val.simplified();
+            QStringList valList = val.split(' ', Qt::SkipEmptyParts);
+            if (valList.size() < 2)
+            {
+                valList = val.split(',', Qt::SkipEmptyParts);
+            }
+
+            if (valList.size() > 0)
+            {
+                bool bok;
+                if (s.contains("int"))
+                {
+                    m_AuxIntData.clear();
+                    foreach(const QString& v, valList)
+                    {
+                        const int64_t ival = v.toLongLong(&bok);
+                        if (bok)
+                        {
+                            m_AuxIntData.push_back(ival);
+                        }
+                    }
+                }
+                else // must be of type float then
+                {
+                    m_AuxDoubleData.clear();
+                    foreach(const QString& v, valList)
+                    {
+                        const double_t dval = v.toDouble(&bok);
+                        if (bok)
+                        {
+                            m_AuxDoubleData.push_back(dval);
+                        }
+                    }
+                }
+            }
+        }
     }
-
-
-
-//    namespace py = pybind11;
-//    namespace lupy = lumass_python;
-//
-//    std::string compName = this->parent() != nullptr ? this->parent()->objectName().toStdString()
-//                                                 : this->objectName().toStdString();
-//
-//    py::object model = lupy::ctrlPyObjects.at(compName);
-//    if (model.is_none())
-//    {
-//        return;
-//    }
-//
-//    NMDebugAI(<< "getting py model: '" << compName << "' ..." << std::endl);
-//
-//    try
-//    {
-//        py::object settings = model.attr("settings");
-//        if (settings.is_none())
-//        {
-//            NMDebugAI(<< "didn't get the settings!");
-//            return;
-//        }
-//
-//        QStringList modelSettings = mController->getModelSettingsList();
-//        foreach(const QString& s, modelSettings)
-//        {
-//            QString expr = mController->getSetting(s).toString();
-//            QString val = mController->processStringParameter(this, expr);
-//
-//            settings[py::str(s.toStdString())] = py::str(val.toStdString());
-//        }
-//    }
-//    catch (py::error_already_set& eas)
-//    {
-//        NMLogError(<< eas.what());
-//    }
-//    catch (std::exception& se)
-//    {
-//        NMLogError(<< se.what());
-//    }
-
 }
 
 void

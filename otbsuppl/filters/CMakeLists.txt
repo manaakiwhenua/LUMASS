@@ -21,6 +21,7 @@ INCLUDE_DIRECTORIES(
     ${MPI_CXX_INCLUDE_DIRS}
     ${opt_SOURCE_DIR}
     ${muparser_SOURCE_DIR}
+    ${bmi_SOURCE_DIR}
 )
 
 LINK_DIRECTORIES(

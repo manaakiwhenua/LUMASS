@@ -23,7 +23,7 @@
 //#include "NMLogger.h"
 #include <string>
 #include <vector>
-//#include "bmi.hxx"
+#include "bmi.hxx"
 
 #include "Python_wrapper.h"
 
@@ -38,8 +38,68 @@
 
 #include "lumasspythonbmi_export.h"
 
-//class PyStdErrOutStreamRedirect;
+class PythonBMIException : public std::exception
+{
+public:
+    PythonBMIException(const char* msg)
+    {
+        _what = msg;
+    }
 
+    const char* what(void)
+    {
+        return _what.c_str();
+    }
+
+protected:
+    std::string _what;
+};
+
+/* very useful python sys.stdout and sys.stderr redirect class
+ * by madebr published here: https://github.com/pybind/pybind11/issues/1622
+ */
+
+class PyStdErrOutStreamRedirect {
+public:
+    PyStdErrOutStreamRedirect() {
+        auto sysm = py::module::import("sys");
+        _stdout = sysm.attr("stdout");
+        _stderr = sysm.attr("stderr");
+        auto stringio = py::module::import("io").attr("StringIO");
+        _stdout_buffer = stringio();  // Other filelike object can be used here as well, such as objects created by pybind11
+        _stderr_buffer = stringio();
+        sysm.attr("stdout") = _stdout_buffer;
+        sysm.attr("stderr") = _stderr_buffer;
+    }
+    std::string stdoutString() {
+        _stdout_buffer.attr("seek")(0);
+        return py::str(_stdout_buffer.attr("read")());
+    }
+    std::string stderrString() {
+        _stderr_buffer.attr("seek")(0);
+        return py::str(_stderr_buffer.attr("read")());
+    }
+    ~PyStdErrOutStreamRedirect() {
+        auto sysm = py::module::import("sys");
+        sysm.attr("stdout") = _stdout;
+        sysm.attr("stderr") = _stderr;
+    }
+protected:
+    py::object _stdout;
+    py::object _stderr;
+    py::object _stdout_buffer;
+    py::object _stderr_buffer;
+};
+
+#define LogPyOutputStart()\
+    ::PyStdErrOutStreamRedirect redir{};
+
+#define LogPyOutputEnd()\
+    std::string pyout = redir.stdoutString();        \
+    logPyOutput(pyout);
+
+
+class NMBMIWrapper;
 namespace bmi
 {
 
@@ -126,20 +186,18 @@ namespace bmi
         {
             mPyModuleName = pymodulename;
         }
-
         void setReloadModule(bool bReload) {mbReloadModule = bReload;}
         std::string getPyModuleName(void) { return mPyModuleName; }
-
         std::string getBMIClassName(void) { return mBMIClass; }
-
         std::string getBMIWrapperName(void) { return mBMIWrapperName; }
 
+        //py::module_ getPyModule(void){return mPyModule;}
         //void setPyObjects(std::map<std::string, pybind11::object> *pyobjects);
         //std::map<std::string, py::object>* getPyObjects();
         //void setPyObjectSinkMap(std::map<std::string, bool>* sinkmap);
         //bool isPyObjectSink(std::string objname);
 
-    private:
+    //private:
         std::string mPyModuleName;
         std::vector<std::string> mPythonPath;
         std::string mBMIClass;

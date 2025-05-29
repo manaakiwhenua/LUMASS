@@ -32,7 +32,7 @@ NMProcCompList::NMProcCompList(QWidget* parent)
 {
 	ctx = "NMProcCompList";
 
-    this->addItem(QString::fromLatin1("BMIModel"));
+    this->addItem(QString::fromLatin1("PyBMIModel"));
     this->addItem(QString::fromLatin1("CastImage"));
     //this->addItem(QString::fromLatin1("CombineTwo"));
     this->addItem(QString::fromLatin1("CostDistanceBuffer"));

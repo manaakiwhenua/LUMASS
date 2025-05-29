@@ -196,6 +196,8 @@ public:
     bool isInitialised(void)
         {return this->mbIsInitialised;}
 
+    void setAuxDataIndex(int auxDataIdx) {mAuxDataIdx=auxDataIdx;}
+
     bool isSink(void) {return mIsSink;}
     void setReleaseData(bool release){mbReleaseData = release;}
     bool getReleaseData(void){return mbReleaseData;}

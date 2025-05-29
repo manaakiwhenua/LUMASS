@@ -796,7 +796,7 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
         {
             this->mAuxTab = static_cast<otb::AttributeTable*>(
                         this->mOtbProcess->GetIndexedOutputs()[mAuxDataIdx].GetPointer());
-            if (this->mAuxTab != nullptr)
+            if (this->mAuxTab.GetPointer() != nullptr)
             {
                 this->mAuxTab->DisconnectPipeline();
             }

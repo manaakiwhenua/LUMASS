@@ -385,8 +385,8 @@ void NMBMIWrapper::bmilog(int ilevel, const char* msg)
     case 1: NMLogDebug(<< msg); break;
     case 2: NMLogInfo(<< msg ); break;
     case 3: NMLogWarn(<< msg ); break;
-    case 4: NMLogError(<< msg); break;
-    case 5:
+    case 4:
+    case 5: NMLogError(<< msg); break;
     default: ;
     }
 }

@@ -116,6 +116,11 @@ namespace bmi
         std::cout << msg << std::endl;
 #endif
         ((*mBMIWrap).*(mWrapLogFunc))(ilevel, msg);
+        if (ilevel == 4 || ilevel == 5)
+        {
+            PythonBMIException pe(msg);
+            throw pe;
+        }
     }
 
 
@@ -132,7 +137,6 @@ namespace bmi
 
         try
         {
-            ////py::gil_scoped_acquire acquire;
             LogPyOutputStart();
             std::stringstream msg;
 
@@ -198,6 +202,7 @@ namespace bmi
             mPyModule = py::module_::import(this->mPyModuleName.c_str());
             if (mPyModule.is_none() || mPyModule.ptr() == nullptr)
             {
+                LogPyOutputEnd();
                 msg << "Module '" << this->mPyModuleName << "' import failed!";
                 bmilog(LEVEL_ERROR, msg.str().c_str());
                 return;
@@ -211,6 +216,7 @@ namespace bmi
             mPyObject = mPyModule.attr(this->mBMIClass.c_str())();
             if (mPyObject.is_none())
             {
+                LogPyOutputEnd();
                 msg << "PythonBMI model '" << this->mBMIClass << "' instantiation failed!";
                 bmilog(LEVEL_ERROR, msg.str().c_str());
                 return;

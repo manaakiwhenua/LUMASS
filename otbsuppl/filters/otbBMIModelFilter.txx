@@ -113,7 +113,7 @@ BMIModelFilter<TInputImage, TOutputImage>
        m_LPRName("LPR"),
        m_SRName("SR"),
        m_RegionValueType(0),
-       m_ActiveNeighborhoodSize(0),
+       //m_ActiveNeighborhoodSize(0),
        m_AuxIntDataSize(0),
        m_AuxDoubleDataSize(0),
        m_AuxVarDataIndex(-1),
@@ -328,7 +328,7 @@ template <class TInputImage, class TOutputImage>
 void BMIModelFilter<TInputImage, TOutputImage>
 ::PrepareNeighbourhoodProcessing(void)
 {
-    // if we've got a shaped neighbourhood iterator,
+/*    // if we've got a shaped neighbourhood iterator,
     // determine the active offsets
     m_ActiveKernelIndices.clear();
     m_ActiveKernelIndices.resize(m_NumNeighbourPixel);
@@ -390,7 +390,7 @@ void BMIModelFilter<TInputImage, TOutputImage>
         m_CentrePixelIndex = 0;
         m_ActiveNeighborhoodSize = 1;
     }
-
+*/
 }
 
 template <class TInputImage, class TOutputImage>
@@ -609,7 +609,9 @@ void BMIModelFilter<TInputImage, TOutputImage>
     // process image admin info last as it relies in part on the
     // correct dimension information provided by the region admin info
     std::vector<std::string> bmiInputNames = this->m_BMIModule->GetInputVarNames();
+    std::string pybmiClassName = this->m_BMIModule->mBMIClass;
     m_InputNumPix.clear();
+    int inputs_cnt = 0;
     for (int in=0; in < m_InputNames.size(); ++in)
     {
         if (std::find(bmiInputNames.begin(), bmiInputNames.end(), m_InputNames.at(in)) != bmiInputNames.end())
@@ -625,13 +627,17 @@ void BMIModelFilter<TInputImage, TOutputImage>
                               &m_InputNumPix[in], &m_ImageBufferDimension,
                               &m_InputNumPix[in], m_LPRSpacing, m_LPROrigin,
                               static_cast<void*>(inbuf));
+            ++inputs_cnt;
         }
-        else
-        {
-            NMProcErr(<< "Sorry, but the BMI module is actually not looking for "
-                      << "an input such as '" << m_InputNames.at(in) << "'!");
-            return;
-        }
+    }
+
+    if (    inputs_cnt != m_InputNames.size()
+         || inputs_cnt != bmiInputNames.size()
+       )
+    {
+        itkExceptionMacro(<< "Mismatch between PyBMIModel's input names and "
+                          << "'" << pybmiClassName << "''s "
+                          << "'inputNames' array!");
     }
 
     std::vector<std::string> outNames = this->m_BMIModule->GetOutputVarNames();
@@ -715,7 +721,14 @@ void BMIModelFilter<TInputImage, TOutputImage>
         {
             OutputImageType* outImg = this->GetOutput(i);
             outImg->SetBufferedRegion(outImg->GetRequestedRegion());
-            outImg->Allocate();
+            //if (m_NumNeighbourPixel > 0)
+            //{
+            //    outImg->Allocate(true);
+            //}
+            //else
+            {
+                outImg->Allocate();
+            }
         }
     }
 }
@@ -728,12 +741,12 @@ void BMIModelFilter<TInputImage, TOutputImage>
     // don't have the same size
     this->CheckInputDataCongruence();
     this->AllocateOutputs();
-    if (    m_KernelShape.compare("NO_KERNEL") != 0
-         && m_NumNeighbourPixel >= 1
-       )
-    {
-        this->PrepareNeighbourhoodProcessing();
-    }
+    //if (    m_KernelShape.compare("NO_KERNEL") != 0
+    //     && m_NumNeighbourPixel >= 1
+    //   )
+    //{
+    //    this->PrepareNeighbourhoodProcessing();
+    //}
 
     // run the model
     if (this->m_BMIModule.get() == nullptr)
@@ -854,14 +867,36 @@ BMIModelFilter<TInputImage, TOutputImage>
     // here we rely on parallel processing implemented in the
     // model itself
 
-    if (    m_KernelShape.compare("NO_KERNEL") == 0
-         || m_NumNeighbourPixel <= 1
+    if (    //m_KernelShape.compare("NO_KERNEL") == 0
+         m_NumNeighbourPixel == 0
          || m_KernelFunc == nullptr
        )
     {
-        NMProcInfo(<< "::Update() ...");
         this->m_BMIModule->Update();
-        NMProcInfo(<< "::Update() - done!");
+
+        // update output BufferedRegion
+
+        // fetch  the output data from the m_BMIModule
+        using ImportContainerType = itk::ImportImageContainer<OutputImageSizeValueType, OutputImagePixelType>;
+        using ImportContainerPointer = typename ImportContainerType::Pointer;
+
+        OutputImageType* out;
+        std::vector<std::string> outnames = this->m_BMIModule->GetOutputVarNames();
+        for(int i=0; i < outnames.size(); ++i)
+        {
+            out = this->GetOutput(i);
+            out->SetBufferedRegion(out->GetRequestedRegion());
+
+            const int gid = this->m_BMIModule->GetVarGrid(outnames[i]);
+            const int gsize = this->m_BMIModule->GetGridSize(gid);
+            OutputImagePixelType* bmibuf = static_cast<OutputImagePixelType*>(this->m_BMIModule->GetValuePtr(outnames[i]));
+
+            // graft the output data from the m_BMIModule onto the output image
+            ImportContainerPointer pixCont = ImportContainerType::New();
+            pixCont->SetImportPointer(bmibuf, static_cast<OutputImageSizeValueType>(gsize), false);
+            out->SetPixelContainer(pixCont);
+        }
+
     }
     else if (m_KernelFunc != nullptr)
     {
@@ -889,43 +924,54 @@ BMIModelFilter<TInputImage, TOutputImage>
 
         std::vector<InputImageType*> inImgVec;
         std::vector<OutputImageType*> outImgVec;
-        std::vector<InputShapedIterator> inIterVec;
+        std::vector<InputNeighborhoodIterator> inIterVec;
+        //std::vector<OutputNeighborhoodIterator> outIterVec;
         std::vector<OutputRegionIterator> outIterVec;
 
-        itk::ZeroFluxNeumannBoundaryCondition<InputImageType> nbc;
+        itk::ZeroFluxNeumannBoundaryCondition<InputImageType> in_nbc;
+        //itk::ZeroFluxNeumannBoundaryCondition<OutputImageType> out_nbc;
         typedef typename itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType>::FaceListType FaceListType;
         typedef typename FaceListType::iterator FaceListIteratorType;
         itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType> bC;
         FaceListType faceList = bC(inImg, outputRegionForThread, m_KernelRadius);
         FaceListIteratorType fit;
 
+        //OutputImagePixelType* out_nhbufCont[numOutputs];
+        //OutputNeighborhoodType out_nhCont[numOutputs];
         OutputImagePixelType outbuf[numOutputs];
-        InputImagePixelType* nhbufCont[numInputs];
-        NeighborhoodType nhCont[numInputs];
+
+        InputImagePixelType* in_nhbufCont[numInputs];
+        InputNeighborhoodType in_nhCont[numInputs];
+
         int64_t outPixIndex[TInputImage::ImageDimension];
         for (int in=0; in < numInputs; ++in)
         {
             inImgVec.push_back(const_cast<InputImageType*>(this->GetInput(in)));
-            inIterVec.push_back(InputShapedIterator());
+            inIterVec.push_back(InputNeighborhoodIterator());
         }
         for (int out=0; out < numOutputs; ++out)
         {
             outImgVec.push_back(const_cast<OutputImageType*>(this->GetOutput(out)));
+            //outIterVec.push_back(OutputNeighborhoodIterator());
             outIterVec.push_back(OutputRegionIterator());
         }
+
+        // center pixel index (1D)
+        const int cpid = m_NumNeighbourPixel / 2;
 
         // process boundary faces
         for (fit = faceList.begin(); fit != faceList.end() && !this->GetAbortGenerateData(); ++fit)
         {
             for (int in=0; in < numInputs; ++in)
             {
-                inIterVec[in] = InputShapedIterator(m_KernelRadius, inImgVec[in], *fit);
-                inIterVec[in].OverrideBoundaryCondition(&nbc);
-                inIterVec[in].SetActiveIndexList(m_ActiveKernelIndices);
+                inIterVec[in] = InputNeighborhoodIterator(m_KernelRadius, inImgVec[in], *fit);
+                inIterVec[in].OverrideBoundaryCondition(&in_nbc);
                 inIterVec[in].GoToBegin();
             }
             for (int out=0; out < numOutputs; ++out)
             {
+                //outIterVec[out] = OutputNeighborhoodIterator(m_KernelRadius, outImgVec[out], *fit);
+                //outIterVec[out].OverrideBoundaryCondition(&out_nbc);
                 outIterVec[out] = OutputRegionIterator(outImgVec[out], *fit);
                 outIterVec[out].GoToBegin();
             }
@@ -934,9 +980,27 @@ BMIModelFilter<TInputImage, TOutputImage>
             {
                 for (int in=0; in < numInputs; ++in)
                 {
-                    nhCont[in] = inIterVec[in].GetNeighborhood();
-                    nhbufCont[in] = &nhCont[in].GetBufferReference()[0];
+                    in_nhCont[in] = inIterVec[in].GetNeighborhood();
+                    in_nhbufCont[in] = &in_nhCont[in].GetBufferReference()[0];
                 }
+                //for (int out=0; out < numOutputs; ++out)
+                //{
+                //    out_nhCont[out] = outIterVec[out].GetNeighborhood();
+                //    out_nhbufCont[out] = &out_nhCont[out].GetBufferReference()[0];
+
+//              //      int x = outIterVec[out].GetIndex()[0];
+//              //      int y = outIterVec[out].GetIndex()[1];
+//              //      NMDebugAINoMPI(<< "pos: " << x << ", " << y << std::endl);
+//              //      for (int k=0; k < 3; ++k)
+//              //      {
+//              //          for (int m=0; m < 3; ++m)
+//              //          {
+//              //              NMDebugAINoMPI(<< out_nhCont[out][k*3+m] << " ")
+//              //          }
+//              //          NMDebugAINoMPI(<< std::endl);
+//              //      }
+//              //      NMDebugAINoMPI(<< std::endl << std::endl);
+                //}
                 for (int d=0; d < TInputImage::ImageDimension; ++d)
                 {
                     outPixIndex[d] = static_cast<int64_t>(outIterVec[0].GetIndex()[d]);
@@ -946,11 +1010,11 @@ BMIModelFilter<TInputImage, TOutputImage>
                 m_KernelFunc(TInputImage::ImageDimension, numInputs, numOutputs, m_NumNeighbourPixel,
                              m_AuxIntData.size(), m_AuxDoubleData.size(), m_AuxVarArLen,
                              m_LPRSize, m_LPRSpacing, outPixIndex,
-                             nhbufCont, outbuf,
+                             in_nhbufCont, outbuf, //out_nhbufCont,
                              m_AuxIntData.data(), m_AuxDoubleData.data(), m_vthAuxVarAr[threadId].data());
 
                 // store aux variable stats
-                for (int l=0; l < m_AuxVarArLen; ++l)
+                for (int l=0; l < m_AuxVarNames.size(); ++l)
                 {
                     m_vthAuxVarValMin[threadId][l] = std::min(m_vthAuxVarValMin[threadId][l], m_vthAuxVarAr[threadId][l]);
                     m_vthAuxVarValMax[threadId][l] = std::max(m_vthAuxVarValMax[threadId][l], m_vthAuxVarAr[threadId][l]);
@@ -960,6 +1024,7 @@ BMIModelFilter<TInputImage, TOutputImage>
 
                 for (int out=0; out < numOutputs; ++out)
                 {
+                    //outIterVec[out].SetCenterPixel(out_nhbufCont[out][cpid]);
                     outIterVec[out].Set(outbuf[out]);
                     ++outIterVec[out];
                 }
@@ -1070,108 +1135,100 @@ void BMIModelFilter<TInputImage, TOutputImage>
     std::string pyListErrMsg =
             "Please provide 'auxVarNames' as Python List (e.g. settings['auxVarNames'] = ['var1', 'var2'])";
     double_t* auxVar = static_cast<double_t*>(m_BMIModule->GetValuePtr(m_AuxVarAr_Name));
-    //if (auxVar != nullptr)
-    //{
-        // establish admin data structures
-        const int gid = this->m_BMIModule->GetVarGrid(m_AuxVarAr_Name);
-        m_AuxVarArLen = 0;
-        if (gid >= 0)
+
+    // establish admin data structures
+    const int gid = this->m_BMIModule->GetVarGrid(m_AuxVarAr_Name);
+    m_AuxVarArLen = 0;
+    if (gid >= 0)
+    {
+        m_AuxVarArLen = this->m_BMIModule->GetGridSize(gid);
+    }
+
+    const int numThreads = this->GetNumberOfThreads();
+    py::dict settings = this->m_BMIModule->mPyObject.attr("settings");
+    if (    settings.is_none()
+         || settings.ptr() == nullptr
+       )
+    {
+        itkExceptionMacro(<< pyListErrMsg);
+    }
+
+    for (auto item : settings)
+    {
+        std::string key = item.first.cast<std::string>();
+        if (key.compare(m_AuxVarNames_Name) == 0)
         {
-            m_AuxVarArLen = this->m_BMIModule->GetGridSize(gid);
+            if (py::isinstance<py::list>(item.second))
+            {
+                for (auto name : item.second)
+                {
+                    if (py::isinstance<py::str>(name))
+                    {
+                        m_AuxVarNames.push_back(name.cast<std::string>());
+                    }
+                }
+            }
+            else if (py::isinstance<py::array>(item.second))
+            {
+                itkExceptionMacro(<< pyListErrMsg);
+            }
+            else if (py::isinstance<py::tuple>(item.second))
+            {
+                itkExceptionMacro(<< pyListErrMsg);
+            }
+            else if (py::isinstance<py::buffer>(item.second))
+            {
+                itkExceptionMacro(<< pyListErrMsg);
+            }
         }
+    }
 
-            //if (m_AuxVarArLen > 0)
-            //{
-                const int numThreads = this->GetNumberOfThreads();
-                py::dict settings = this->m_BMIModule->mPyObject.attr("settings");
-                if (    settings.is_none()
-                     || settings.ptr() == nullptr
-                   )
+    if (    m_PixCount == 0
+         //&& m_AuxVarArLen > 0
+       )
+    {
+        for (int t=0; t < numThreads + 1; ++t)
+        {
+            std::vector<double_t> val;
+            std::vector<double_t> minVal;
+            std::vector<double_t> maxVal;
+            std::vector<double_t> sumVal;
+            std::vector<double_t> sumVal2;
+            for (int l=0; l < m_AuxVarArLen; ++l)
+            {
+                if (t < numThreads)
                 {
-                    itkExceptionMacro(<< pyListErrMsg);
+                    val.push_back(auxVar[l]);
                 }
-
-                for (auto item : settings)
-                {
-                    std::string key = item.first.cast<std::string>();
-                    if (key.compare(m_AuxVarNames_Name) == 0)
-                    {
-                        if (py::isinstance<py::list>(item.second))
-                        {
-                            for (auto name : item.second)
-                            {
-                                if (py::isinstance<py::str>(name))
-                                {
-                                    m_AuxVarNames.push_back(name.cast<std::string>());
-                                }
-                            }
-                        }
-                        else if (py::isinstance<py::array>(item.second))
-                        {
-                            itkExceptionMacro(<< pyListErrMsg);
-                        }
-                        else if (py::isinstance<py::tuple>(item.second))
-                        {
-                            itkExceptionMacro(<< pyListErrMsg);
-                        }
-                        else if (py::isinstance<py::buffer>(item.second))
-                        {
-                            itkExceptionMacro(<< pyListErrMsg);
-                        }
-                    }
-                }
-
-                if (m_PixCount == 0)
-                {
-                    for (int t=0; t < numThreads + 1; ++t)
-                    {
-                        std::vector<double_t> val;
-                        std::vector<double_t> minVal;
-                        std::vector<double_t> maxVal;
-                        std::vector<double_t> sumVal;
-                        std::vector<double_t> sumVal2;
-                        for (int l=0; l < m_AuxVarArLen; ++l)
-                        {
-                            if (t < numThreads)
-                            {
-                                val.push_back(auxVar[l]);
-                            }
-                            minVal.push_back(itk::NumericTraits<double_t>::max());
-                            maxVal.push_back(itk::NumericTraits<double_t>::NonpositiveMin());
-                            sumVal.push_back(itk::NumericTraits<double_t>::ZeroValue());
-                            sumVal2.push_back(itk::NumericTraits<double_t>::ZeroValue());
-                        }
-                        if (t < numThreads)
-                        {
-                            m_vthAuxVarAr.push_back(val);
-                        }
-                        m_vthAuxVarValMin.push_back(minVal);
-                        m_vthAuxVarValMax.push_back(maxVal);
-                        m_vthAuxVarValSum.push_back(sumVal);
-                        m_vthAuxVarValSum2.push_back(sumVal2);
-                    }
-                }
-                // re-init min, max, and zero to 'neutral' starting values
-                else if (m_PixCount < m_NumLPRPixels)
-                {
-                    for (int th=0; th < numThreads; ++th)
-                    {
-                        for (int len=0; len < m_AuxVarArLen; ++len)
-                        {
-                            m_vthAuxVarValMin[th][len] = itk::NumericTraits<double_t>::max();
-                            m_vthAuxVarValMax[th][len] = itk::NumericTraits<double_t>::NonpositiveMin();
-                            m_vthAuxVarValSum[th][len] = itk::NumericTraits<double_t>::ZeroValue();
-                            m_vthAuxVarValSum2[th][len] = itk::NumericTraits<double_t>::ZeroValue();
-                        }
-                    }
-                }
-            //}
-        //}
-        //else
-        //{
-        //    m_AuxVarArLen = 0;
-        //}
-    //}
+                minVal.push_back(itk::NumericTraits<double_t>::max());
+                maxVal.push_back(itk::NumericTraits<double_t>::NonpositiveMin());
+                sumVal.push_back(itk::NumericTraits<double_t>::ZeroValue());
+                sumVal2.push_back(itk::NumericTraits<double_t>::ZeroValue());
+            }
+            if (t < numThreads)
+            {
+                m_vthAuxVarAr.push_back(val);
+            }
+            m_vthAuxVarValMin.push_back(minVal);
+            m_vthAuxVarValMax.push_back(maxVal);
+            m_vthAuxVarValSum.push_back(sumVal);
+            m_vthAuxVarValSum2.push_back(sumVal2);
+        }
+    }
+    // re-init min, max, and zero to 'neutral' starting values
+    else if (m_PixCount < m_NumLPRPixels)
+    {
+        for (int th=0; th < numThreads; ++th)
+        {
+            for (int len=0; len < m_AuxVarArLen; ++len)
+            {
+                m_vthAuxVarValMin[th][len] = itk::NumericTraits<double_t>::max();
+                m_vthAuxVarValMax[th][len] = itk::NumericTraits<double_t>::NonpositiveMin();
+                m_vthAuxVarValSum[th][len] = itk::NumericTraits<double_t>::ZeroValue();
+                m_vthAuxVarValSum2[th][len] = itk::NumericTraits<double_t>::ZeroValue();
+            }
+        }
+    }
 }
 
 template <class TInputImage, class TOutputImage>
@@ -1187,7 +1244,8 @@ template <class TInputImage, class TOutputImage>
 void BMIModelFilter<TInputImage, TOutputImage>
 ::AfterThreadedGenerateData(void)
 {
-    if (m_AuxVarArLen == 0)
+    if (    m_AuxVarNames.size() == 0
+         || m_AuxVarArLen < m_AuxVarNames.size())
     {
         ResetPipeline();
         return;
@@ -1197,10 +1255,31 @@ void BMIModelFilter<TInputImage, TOutputImage>
     const int numThreads = this->GetNumberOfThreads();
     const int total = numThreads;
 
+    // in case of not using the (non-threaded) (C callback) kernel function,
+    // we need to fetch the python buffer and update the local auVar vectors
+    if (     (    m_KernelFunc == nullptr
+               || m_NumNeighbourPixel == 0
+             )
+         &&  this->m_BMIModule != nullptr
+       )
+    {
+        double_t* auxVar = static_cast<double_t*>(m_BMIModule->GetValuePtr(m_AuxVarAr_Name));
+        for (int t=0; t < numThreads; ++t)
+        {
+            for (int l=0; l < m_AuxVarNames.size(); ++l)
+            {
+                m_vthAuxVarValMin[t][l] = std::min(m_vthAuxVarValMin[t][l], auxVar[l]);
+                m_vthAuxVarValMax[t][l] = std::max(m_vthAuxVarValMax[t][l], auxVar[l]);
+                m_vthAuxVarValSum[t][l] += auxVar[l];
+                m_vthAuxVarValSum2[t][l] += auxVar[l] * auxVar[l];
+            }
+        }
+    }
+
     // adding the overall thread totals!
     for (int t=0; t < numThreads; ++t)
     {
-        for (int l=0; l < m_AuxVarArLen; ++l)
+        for (int l=0; l < m_AuxVarNames.size(); ++l)
         {
             m_vthAuxVarValMin[total][l] = std::min(m_vthAuxVarValMin[total][l], m_vthAuxVarValMin[t][l]);
             m_vthAuxVarValMax[total][l] = std::max(m_vthAuxVarValMax[total][l], m_vthAuxVarValMax[t][l]);
@@ -1217,7 +1296,7 @@ void BMIModelFilter<TInputImage, TOutputImage>
 
     std::vector<double_t> auxVarMean;
     std::vector<double_t> auxVarStDev;
-    for (int n=0; n < m_AuxVarArLen; ++n)
+    for (int n=0; n < m_AuxVarNames.size(); ++n)
     {
         const double_t sum_val2 = m_vthAuxVarValSum2[total][n];
         const double_t sum_val = m_vthAuxVarValSum[total][n];
@@ -1259,7 +1338,7 @@ void BMIModelFilter<TInputImage, TOutputImage>
     colvalues.push_back(sval);
     std::string statName[] = {"min", "max", "mean", "stdev"};
 
-    for (int var=0; var < m_AuxVarArLen; ++var)
+    for (int var=0; var < m_AuxVarNames.size(); ++var)
     {
         auxTab->AddColumn(m_AuxVarNames[var], otb::AttributeTable::ATTYPE_DOUBLE);
         colnames.push_back(m_AuxVarNames[var]);
@@ -1279,7 +1358,7 @@ void BMIModelFilter<TInputImage, TOutputImage>
         char* sname = new char[statName[s].length()];
         ::sprintf(sname, "%s", statName[s].c_str());
         colvalues[0].tval = sname;
-        for (int vl=1; vl < m_AuxVarArLen + 1; ++vl)
+        for (int vl=1; vl < m_AuxVarNames.size() + 1; ++vl)
         {
             colvalues[vl].dval = stats[s][vl-1];
         }

@@ -80,16 +80,11 @@ public:
     typedef typename OutputImageType::PixelType  OutputImagePixelType;
     typedef typename OutputImageType::SizeValueType OutputImageSizeValueType;
 
-    typedef typename itk::NMConstShapedNeighborhoodIterator<InputImageType> InputShapedIterator;
-    typedef typename InputShapedIterator::OffsetType  OffsetType;
-    typedef typename InputShapedIterator::NeighborIndexType NeighborIndexType;
-
-    typedef typename itk::ImageRegionConstIterator<InputImageType> InputRegionIterator;
     typedef typename itk::ConstNeighborhoodIterator<InputImageType> InputNeighborhoodIterator;
     typedef typename itk::ImageRegionIterator<OutputImageType> OutputRegionIterator;
 
-    typedef itk::NeighborhoodAllocator<InputImagePixelType> NeighborhoodAllocType;
-    typedef itk::Neighborhood<InputImagePixelType, InputImageType::ImageDimension, NeighborhoodAllocType> NeighborhoodType;
+    typedef itk::NeighborhoodAllocator<InputImagePixelType> InputNeighborhoodAllocType;
+    typedef itk::Neighborhood<InputImagePixelType, InputImageType::ImageDimension, InputNeighborhoodAllocType> InputNeighborhoodType;
 
     /* Signature of kernel callback function to be implemented in python
     /  void(numDim, numInputs, numOutputs, numNHPix,
@@ -245,12 +240,12 @@ protected:
     size_t m_ImageRegionDimension;
     size_t m_ImageBufferDimension;
 
-    std::vector<NeighborIndexType> m_ActiveKernelIndices;
-    std::vector<OutputImagePixelType> m_NeighbourDistance;
-    std::map<std::string, InputShapedIterator> m_mapNameImgNeighbourValues;
+    //std::vector<NeighborIndexType> m_ActiveKernelIndices;
+    //std::vector<OutputImagePixelType> m_NeighbourDistance;
+    //std::map<std::string, InputShapedIterator> m_mapNameImgNeighbourValues;
 
-    NeighborIndexType m_CentrePixelIndex;
-    OutputImageSizeValueType m_ActiveNeighborhoodSize;
+    //NeighborIndexType m_CentrePixelIndex;
+    //OutputImageSizeValueType m_ActiveNeighborhoodSize;
 
     std::string m_WorkspacePath;
     otb::SQLiteTable::Pointer m_AuxTable;

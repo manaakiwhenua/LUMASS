@@ -435,6 +435,7 @@ protected:
     void writeSettings(void);
     void populateSettingsBrowser();
     void addModelToUserModelList(const QString& modelName);
+    void updateMainSplitter(bool bMapView, bool bVis);
 
     void processUserPickAction(long long cellId, bool bSelection);
 
@@ -728,6 +729,7 @@ private:
 
     NMLogger* mLogger;
     QObject* mActiveWidget;
+    QList<int> mMainSplitterSizes;
 
     // the last event objects filtered by LUMASSMainWin
     QObject* mLastSender;

@@ -40,7 +40,14 @@
      <enum>QLayout::SetDefaultConstraint</enum>
     </property>
     <item>
-     <widget class="NMModelViewWidget" name="modelViewWidget" native="true"/>
+     <widget class="NMModelViewWidget" name="modelViewWidget" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+     </widget>
     </item>
     <item>
      <widget class="QVTKOpenGLNativeWidget" name="qvtkWidget" native="true"/>

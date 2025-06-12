@@ -695,8 +695,6 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent, NMLumassEngine *engine)
             SLOT(setMapBackgroundColour()));
     connect(ui->actionMake_Z_Slice_Movie, SIGNAL(triggered()), this, SLOT(makeZSliceMovie()));
 
-    connect(ui->actionShow_Map_View, SIGNAL(toggled(bool)), this, SLOT(showMapView(bool)));
-    connect(ui->actionShow_Model_View, SIGNAL(toggled(bool)), this, SLOT(showModelView(bool)));
     connect(ui->actionMap_View_Mode, SIGNAL(triggered()), this, SLOT(mapViewMode()));
     connect(ui->actionModel_View_Mode, SIGNAL(triggered()), this, SLOT(modelViewMode()));
     connect(ui->actionShowTable, SIGNAL(triggered()), this, SLOT(showTable()));
@@ -1030,12 +1028,11 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent, NMLumassEngine *engine)
     splitter->setChildrenCollapsible(true);
     splitter->addWidget(ui->qvtkWidget);
     splitter->addWidget(ui->modelViewWidget);
-    boxL->addWidget(splitter);
     QSize totalSize = splitter->size();
-    QList<int> sizes;
-    sizes << totalSize.width() / 2 << totalSize.width() / 2;
-    splitter->setSizes(sizes);
-
+    mMainSplitterSizes.clear();
+    mMainSplitterSizes << totalSize.width() / 2 << totalSize.width() / 2;
+    splitter->setSizes(mMainSplitterSizes);
+    boxL->addWidget(splitter);
 
     connect(ui->modelViewWidget, SIGNAL(modelViewActivated(QObject *)),
             this, SLOT(modelViewActivated(QObject *)));
@@ -1060,6 +1057,10 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent, NMLumassEngine *engine)
     // set menu's check buttons to right state
     this->ui->actionShow_Map_View->setChecked(true);
     this->ui->actionShow_Model_View->setChecked(true);
+    // connect controls to handlers after initiating control status
+    // and associated member state variables
+    connect(ui->actionShow_Map_View, SIGNAL(toggled(bool)), this, SLOT(showMapView(bool)));
+    connect(ui->actionShow_Model_View, SIGNAL(toggled(bool)), this, SLOT(showModelView(bool)));
 
     this->ui->modelViewWidget->updateToolContextBox();
 
@@ -2551,6 +2552,9 @@ LUMASSMainWin::mapViewMode()
     ui->infoDock->setVisible(true);
     ui->actionShow_Components_Info->setChecked(true);
 
+    ui->logDock->setVisible(false);
+    ui->actionShow_Notifications->setChecked(false);
+
     ui->componentsWidget->setVisible(true);
     ui->actionComponents_View->setChecked(true);
 
@@ -2578,6 +2582,10 @@ LUMASSMainWin::modelViewMode()
     ui->infoDock->setVisible(true);
     ui->actionShow_Components_Info->setChecked(true);
 
+    // show notifications dock for model progress/status reporting
+    ui->logDock->setVisible(true);
+    ui->actionShow_Notifications->setChecked(true);
+
     ui->compWidgetList->setWidgetItemVisible(0, false);
     ui->compWidgetList->setWidgetItemVisible(1, true);
 
@@ -2588,30 +2596,66 @@ LUMASSMainWin::modelViewMode()
 void
 LUMASSMainWin::showMapView(bool vis)
 {
-    ui->qvtkWidget->setVisible(vis);
-    if (!vis)
-    {
-        this->mActiveWidget = ui->modelViewWidget;
-    }
+    updateMainSplitter(true, vis);
     QAction* actMapBtn = ui->mainToolBar->findChild<QAction*>("actMapBtn");
     if (actMapBtn) actMapBtn->setChecked(vis);
-
-    ui->actionShow_Map_View->setChecked(vis);
-
 }
 
 void
 LUMASSMainWin::showModelView(bool vis)
 {
-    ui->modelViewWidget->setVisible(vis);
-    if (!vis)
-    {
-        this->mActiveWidget = ui->qvtkWidget;
-    }
+    updateMainSplitter(false, vis);
     QAction* actModelBtn = ui->mainToolBar->findChild<QAction*>("actModelBtn");
     if (actModelBtn) actModelBtn->setChecked(vis);
+}
 
-    ui->actionShow_Model_View->setChecked(vis);
+void
+LUMASSMainWin::updateMainSplitter(bool bMapView, bool bVis)
+{
+    QSplitter* splitter = this->ui->centralWidget->findChild<QSplitter*>("MainSplitter");
+    QList<int> sizes = splitter->sizes();
+    if (!bVis)
+    {
+        if (bMapView)
+        {
+            this->mActiveWidget = ui->modelViewWidget;
+            ui->qvtkWidget->setVisible(bVis);
+        }
+        else
+        {
+            this->mActiveWidget = ui->qvtkWidget;
+            ui->modelViewWidget->setVisible(bVis);
+        }
+        for (int i=0; i < 2; ++i)
+        {
+            if (sizes[i] > 0 && sizes[i] < splitter->size().width())
+            {
+                mMainSplitterSizes[i] = sizes[i];
+            }
+        }
+        sizes[(bMapView ? 0 : 1)] = 0;
+        sizes[(bMapView ? 1 : 0)] = splitter->size().width();
+        splitter->setSizes(sizes);
+    }
+    else
+    {
+        if (bMapView)
+        {
+            ui->qvtkWidget->setVisible(bVis);
+        }
+        else
+        {
+            ui->modelViewWidget->setVisible(bVis);
+        }
+        int nsize = mMainSplitterSizes.at((bMapView ? 0 : 1));
+        if (nsize == 0)
+        {
+            nsize = splitter->size().width()/2;
+        }
+        sizes[(bMapView ? 0 : 1)] = nsize;
+        sizes[(bMapView ? 1 : 0)] = splitter->size().width() - sizes[(bMapView ? 0 : 1)];
+        splitter->setSizes(sizes);
+    }
 }
 
 const vtkRenderer*
@@ -9459,6 +9503,7 @@ void LUMASSMainWin::readSettings()
     {
         QSplitter* splitter = this->ui->centralWidget->findChild<QSplitter*>("MainSplitter");
         splitter->restoreState(val.toByteArray());
+        mMainSplitterSizes = splitter->sizes();
     }
 
     val = settings.value("DarkMode");

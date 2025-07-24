@@ -175,7 +175,7 @@ void
 BMIModelFilter<TInputImage, TOutputImage>
 ::SetBMIModule(const std::shared_ptr<bmi::PythonBMI>& bmiModule)
 {
-    if (bmiModule.get() == nullptr)
+    if (bmiModule == nullptr)
     {
         NMProcErr(<< "bmi::PythonBMI module is NULL!");
         return;
@@ -183,6 +183,7 @@ BMIModelFilter<TInputImage, TOutputImage>
 
     // determine name of kernel function associated with this class
     m_BMIModule = bmiModule;
+    NMProcDebug(<< ">>>>>>>>>>>> m_BMIModule::use_count()=" << m_BMIModule.use_count() << std::endl);
     m_KernelFuncName = m_BMIModule->mBMIClass + "_kfunc";
 
 
@@ -208,8 +209,25 @@ BMIModelFilter<TInputImage, TOutputImage>
     // init the number of output images
     this->m_NumOuputImages = m_NumOutputs;
 
-    double_t* auxVar = static_cast<double_t*>(m_BMIModule->GetValuePtr(m_AuxVarAr_Name));
-    if (auxVar != nullptr)
+    py::array_t<double> auxVarArPy = m_BMIModule->mPyObject.attr("values").attr("get")(py::cast(m_AuxVarAr_Name));
+    int auxvarlen = 0;
+    if (    !auxVarArPy.is_none()
+         && auxVarArPy.ptr() != nullptr
+       )
+    {
+        py::buffer_info binfo = auxVarArPy.request();
+        if (binfo.ndim > 0 && binfo.size > 0)
+        {
+            auxvarlen = binfo.size;
+        }
+    }
+
+    //double_t* auxVar = static_cast<double_t*>(m_BMIModule->GetValuePtr(m_AuxVarAr_Name));
+    //const int gid = this->m_BMIModule->GetVarGrid(m_AuxVarAr_Name);
+
+    //if (auxVar != nullptr)
+    //if (gid >= 0)
+    if (auxvarlen > 0)
     {
         time_t timestamp;
         struct tm* timeinfo;
@@ -226,8 +244,8 @@ BMIModelFilter<TInputImage, TOutputImage>
         std::string timeStr = curTime;
 
         // establish admin data structures
-        const int gid = this->m_BMIModule->GetVarGrid(m_AuxVarAr_Name);
-        if (gid >= 0)
+        //const int gid = this->m_BMIModule->GetVarGrid(m_AuxVarAr_Name);
+        //if (gid >= 0)
         {
             m_AuxTable = otb::SQLiteTable::New();
             m_AuxTable->SetUseSharedCache(false);
@@ -274,7 +292,7 @@ BMIModelFilter<TInputImage, TOutputImage>
 {
     InputImageType* img = dynamic_cast<InputImageType*>(input);
 
-    if (img)
+    if (img != nullptr)
     {
         int idx = num >= this->GetNumberOfIndexedInputs() ? this->GetNumberOfIndexedInputs(): num;
         if (idx > m_InputNames.size()-1)
@@ -285,9 +303,7 @@ BMIModelFilter<TInputImage, TOutputImage>
                        << imgnamestr.str() << "' instead!");
             m_InputNames.push_back(imgnamestr.str());
         }
-
         Superclass::SetNthInput(idx, input);
-
     }
 }
 
@@ -737,25 +753,17 @@ template <class TInputImage, class TOutputImage>
 void BMIModelFilter<TInputImage, TOutputImage>
 ::GenerateData(void)
 {
-    // throws exception if input layers
-    // don't have the same size
-    this->CheckInputDataCongruence();
-    this->AllocateOutputs();
-    //if (    m_KernelShape.compare("NO_KERNEL") != 0
-    //     && m_NumNeighbourPixel >= 1
-    //   )
-    //{
-    //    this->PrepareNeighbourhoodProcessing();
-    //}
-
     // run the model
-    if (this->m_BMIModule.get() == nullptr)
+    if (this->m_BMIModule == nullptr)
     {
         NMProcErr(<< "BMI module is NULL!");
         BMIModelException be("BMI module is NULL!");
         throw be;
         return;
     }
+
+    this->CheckInputDataCongruence();
+    this->AllocateOutputs();
 
 
     // -----------------------------------------------
@@ -1011,7 +1019,7 @@ BMIModelFilter<TInputImage, TOutputImage>
                              m_AuxIntData.size(), m_AuxDoubleData.size(), m_AuxVarArLen,
                              m_LPRSize, m_LPRSpacing, outPixIndex,
                              in_nhbufCont, outbuf, //out_nhbufCont,
-                             m_AuxIntData.data(), m_AuxDoubleData.data(), m_vthAuxVarAr[threadId].data());
+                             m_AuxIntData.data(), m_AuxDoubleData.data(), m_vthAuxVarAr.at(threadId).data());
 
                 // store aux variable stats
                 for (int l=0; l < m_AuxVarNames.size(); ++l)
@@ -1134,14 +1142,28 @@ void BMIModelFilter<TInputImage, TOutputImage>
     }
     std::string pyListErrMsg =
             "Please provide 'auxVarNames' as Python List (e.g. settings['auxVarNames'] = ['var1', 'var2'])";
-    double_t* auxVar = static_cast<double_t*>(m_BMIModule->GetValuePtr(m_AuxVarAr_Name));
 
     // establish admin data structures
-    const int gid = this->m_BMIModule->GetVarGrid(m_AuxVarAr_Name);
     m_AuxVarArLen = 0;
-    if (gid >= 0)
+    double_t* auxVar = nullptr; // = static_cast<double_t*>(m_BMIModule->d(m_AuxVarAr_Name));
+    py::array_t<double> auxVarArPy = m_BMIModule->mPyObject.attr("values").attr("get")(py::cast(m_AuxVarAr_Name));
+
+    if (    !auxVarArPy.is_none()
+         && auxVarArPy.ptr() != nullptr
+       )
     {
-        m_AuxVarArLen = this->m_BMIModule->GetGridSize(gid);
+        py::buffer_info binfo = auxVarArPy.request();
+        if (binfo.ndim > 0 && binfo.size > 0)
+        {
+            m_AuxVarArLen = binfo.size;
+            auxVar = static_cast<double_t*>(binfo.ptr);
+        }
+
+        //const int gid = this->m_BMIModule->GetVarGrid(m_AuxVarAr_Name);
+        //if (gid >= 0)
+        //{
+        //    m_AuxVarArLen = this->m_BMIModule->GetGridSize(gid);
+        //}
     }
 
     const int numThreads = this->GetNumberOfThreads();
@@ -1247,7 +1269,10 @@ void BMIModelFilter<TInputImage, TOutputImage>
     if (    m_AuxVarNames.size() == 0
          || m_AuxVarArLen < m_AuxVarNames.size())
     {
-        ResetPipeline();
+        if (m_PixCount >= m_NumLPRPixels)
+        {
+            ResetPipeline();
+        }
         return;
     }
 

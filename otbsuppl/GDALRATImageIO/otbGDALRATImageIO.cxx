@@ -559,6 +559,10 @@ void GDALRATImageIO::InternalReadImageInformation()
 
   // Get Number of Bands
   m_NbBands = m_Dataset->GetRasterCount();
+  if (m_NbBands == 0)
+  {
+      NMLogError(<< "'" << this->m_FileName << "' has no bands!");
+  }
 
   NMLogDebug(<< "Input file dimension: " << m_Dimensions[0] << ", " << m_Dimensions[1]);
   NMLogDebug(<< "Number of bands inside input file: " << m_NbBands);
@@ -571,7 +575,14 @@ void GDALRATImageIO::InternalReadImageInformation()
   NMLogDebug(<< "Nb of Dimensions of the input file: " << m_NumberOfDimensions);
 
   // fetch overview information
-  this->m_NbOverviews = m_Dataset->GetRasterBand(1)->GetOverviewCount();
+  GDALRasterBand* rband = m_Dataset->GetRasterBand(1);
+  if (rband == nullptr)
+  {
+      NMLogError(<< "Failed to fetch band #1 from '" <<
+                 this->m_FileName << "'!");
+  }
+
+  this->m_NbOverviews = rband->GetOverviewCount();
   this->m_OvvSize.clear();
   for (int ov=0; ov < m_NbOverviews; ++ov)
   {

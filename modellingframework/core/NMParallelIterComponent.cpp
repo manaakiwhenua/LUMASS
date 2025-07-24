@@ -158,6 +158,8 @@ NMParallelIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelCom
             if (titer.value().second.contains(rank) && !allocatedRanks.contains(rank))
             {
                 MPI_Comm_split(comm, titer.value().first, rank, &iterComm);
+                std::string cname = this->objectName().toStdString() + "-" + std::to_string(splitId);
+                MPI_Comm_set_name(iterComm, cname.c_str());
                 wulog(-1, " lr" << rank << ": splitId=" << titer.value().first
                       << ": taskId=" << titer.key() << " iterComm=" << iterComm << endl)
                 mController->registerParallelGroup(this->objectName(), iterComm);

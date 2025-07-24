@@ -1866,7 +1866,7 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
 
     if (aggrComp->getProcess() != nullptr)
     {
-        aggrComp = aggrComp->getHostComponent();
+        aggrComp = qobject_cast<NMIterableComponent*>(aggrComp->getHostComponent());
     }
 
     if (aggrComp == nullptr)
@@ -1879,21 +1879,24 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
     // =========================================
     // DEBUG DEBUG DEBUG
     // =========================================
+    char comm_name[MPI_MAX_OBJECT_NAME];
+    int  cn_len;
     NMDebugAI(<< "MPI-Debug: Registered comms ... " << endl);
     auto iter = mAlphaComps.cbegin();
     while (iter != mAlphaComps.cend())
     {
-        NMDebugAI(<< "  ... '" << iter.key().toStdString() << "' : #" << iter.value() << endl);
+        MPI_Comm_get_name(iter.value(), comm_name, &cn_len);
+        NMDebugAI(<< "  ... '" << iter.key().toStdString() << "' : #" << comm_name << endl);
         ++iter;
     }
     // =========================================
     // DEBUG DEBUG DEBUG
     // =========================================
-
     QMap<QString, MPI_Comm>::iterator citer = mAlphaComps.find(aggrComp->objectName());
     if (citer != mAlphaComps.end())
     {
-        NMDebugAI(<< "'" << compName.toStdString() << "' is managed by comm#" << citer.value()
+        MPI_Comm_get_name(citer.value(), comm_name, &cn_len);
+        NMDebugAI(<< "'" << compName.toStdString() << "' is managed by comm #" << comm_name
                   << " registered with '" << citer.key().toStdString() << "'" << endl);
         NMDebugCtx(ctx, << "done!");
         return citer.value();
@@ -1904,7 +1907,8 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
         citer = mAlphaComps.find(aggrComp->objectName());
         if (citer != mAlphaComps.end())
         {
-            NMDebugAI(<< "'" << compName.toStdString() << "' is managed by comm" << citer.value()
+            MPI_Comm_get_name(citer.value(), comm_name, &cn_len);
+            NMDebugAI(<< "'" << compName.toStdString() << "' is managed by comm #" << comm_name
                       << " registered with '" << citer.key().toStdString() << "'" << endl);
             NMDebugCtx(ctx, << "done!");
             return citer.value();
@@ -1912,7 +1916,7 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
     }
 
 
-    // if havent' found a registered component yet, but do have more than
+    // if haven't found a registered component yet, but do have more than
     // one process available to execute the model, the user is just
     // executing a subcomponent of the whole model and 'compName' is it and we
     // therefore need to register it NOW to make use of the processes

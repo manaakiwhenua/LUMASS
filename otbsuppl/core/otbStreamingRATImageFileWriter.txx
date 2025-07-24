@@ -739,9 +739,12 @@ StreamingRATImageFileWriter<TInputImage>
                     nioPtr->SetFileName(m_FileNames[io].c_str());
                     if (this->m_ParallelIO)
                     {
-                       // std::string haveComm = m_MpiComm == MPI_COMM_NULL ? "no" : "yes";
+                        int cn_len;
+                        char comm_name[MPI_MAX_OBJECT_NAME];
+                        MPI_Comm_get_name(m_MpiComm, comm_name, &cn_len);
+                        // std::string haveComm = m_MpiComm == MPI_COMM_NULL ? "no" : "yes";
                         NMDebugAI(<< "+++++ StreamWriter: about to initiate parallel IO!"
-                                << " haveComm=" << m_MpiComm << std::endl);
+                                << " Comm=" << comm_name << std::endl);
                         //MPI_Comm comm = MPI_COMM_WORLD;
                         MPI_Info info = MPI_INFO_NULL;
                         MPI_Barrier(m_MpiComm);

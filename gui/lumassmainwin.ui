@@ -191,7 +191,7 @@
     <set>Qt::AllDockWidgetAreas</set>
    </property>
    <property name="windowTitle">
-    <string>&amp;Layers and Components</string>
+    <string>Layers and Components</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>1</number>
@@ -215,8 +215,14 @@
           <x>0</x>
           <y>0</y>
           <width>83</width>
-          <height>267</height>
+          <height>270</height>
          </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="acceptDrops">
          <bool>false</bool>
@@ -234,11 +240,17 @@
      <verstretch>0</verstretch>
     </sizepolicy>
    </property>
+   <property name="minimumSize">
+    <size>
+     <width>103</width>
+     <height>133</height>
+    </size>
+   </property>
    <property name="features">
     <set>QDockWidget::AllDockWidgetFeatures</set>
    </property>
    <property name="windowTitle">
-    <string>Att&amp;ributes and Properties</string>
+    <string>Attributes and Properties</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>1</number>
@@ -262,8 +274,14 @@
           <x>0</x>
           <y>0</y>
           <width>83</width>
-          <height>267</height>
+          <height>269</height>
          </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
        </widget>
       </widget>
@@ -272,8 +290,11 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="logDock">
+   <property name="autoFillBackground">
+    <bool>false</bool>
+   </property>
    <property name="windowTitle">
-    <string>&amp;Notifications</string>
+    <string>Notifications</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>

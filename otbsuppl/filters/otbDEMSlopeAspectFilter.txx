@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include "NMMacros.h"
 
 #include "otbDEMSlopeAspectFilter.h"
 #include "itkImageRegionIterator.h"
@@ -94,7 +95,7 @@ void DEMSlopeAspectFilter<TInputImage, TOutputImage>
 {
     InputImageType* img = dynamic_cast<InputImageType*>(input);
 
-    if (img)
+    if (img != nullptr)
     {
         int idx = num >= this->GetNumberOfIndexedInputs() ? this->GetNumberOfIndexedInputs(): num;
         Superclass::SetNthInput(idx, input);

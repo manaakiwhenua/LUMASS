@@ -314,7 +314,7 @@ namespace bmi
     int PythonBMI::
         GetVarGrid(std::string name)
     {
-        PyBMIFuncGuard(<< "Update() - Python module object invalid!");
+        PyBMIFuncGuard(<< "GetVarGrid() - Python module object invalid!");
 
         try
         {
@@ -584,7 +584,7 @@ namespace bmi
             py::array res = mPyObject.attr("get_value_ptr")(py::cast(name));
             if (!res.is_none() && res.ptr() != nullptr)
             {
-                py::buffer_info resinfo = res.request(false);
+                py::buffer_info resinfo = res.request(true);
                 return resinfo.ptr;
             }
             LogPyOutputEnd();

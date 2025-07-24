@@ -114,6 +114,7 @@ NMProcess::linkInPipeline(unsigned int step,
         {
             this->mOtbProcess->ReleaseDataFlagOn();
         }
+        mOtbProcess->SetObjectName(this->parent()->objectName().toStdString());
 
         bool bConv;
         unsigned int maxThreadCount = mController->getSetting(QStringLiteral("MaxThreadCount")).toUInt(&bConv);
@@ -435,8 +436,9 @@ NMProcess::getOutputNames(void)
 void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 {
     NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
-
     NMDebugAI(<< "step #" << step << std::endl);
+
+    const otb::ImageIOBase::IOComponentType recvIOCompType = this->getInputComponentType();
 
     unsigned int inputstep = step;
     if (this->mInputComponents.size() == 0)
@@ -568,6 +570,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                         {
                             outName = ic->objectName();
                         }
+                        iw->getDataObject()->SetObjectName(ic->objectName().toStdString());
                         this->setNthInput(effTargetIdx, iw, outName);
                         bInvalidOutput = false;
                         NMDebugAI(<< "input #" << effTargetIdx << ": " << inputSrc.toStdString()
@@ -584,6 +587,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                     if (iw->getOTBTab().IsNotNull())
                     {
                         // note: this method does nothing, if it is not reimplemented by the subclass
+                        iw->getOTBTab()->SetObjectName(ic->objectName().toStdString());
                         this->setRAT(effTargetIdx, iw);
                         bInvalidOutput = false;
                         NMDebugAI(<< "input #" << effTargetIdx << ": " << inputSrc.toStdString()
@@ -669,7 +673,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
  * \return the value of mInputComponentType
  */
 otb::ImageIOBase::IOComponentType
-NMProcess::getInputComponentType(void)
+NMProcess::getInputComponentType()
 {
     return this->mInputComponentType;
 }

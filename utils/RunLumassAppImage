@@ -19,6 +19,7 @@ engine=0
 gui=0
 modelfile=""
 losfile=""
+logfile=""
 
 # if there aren't any arguments, we launch LUMASS in its
 # default mode, i.e. mpi-enabled GUI
@@ -28,7 +29,7 @@ fi
 
 
 # evaluating arguments
-TEMP=$(getopt --options h --long help,seq,np:,model:,moso: -- "$@")
+TEMP=$(getopt --options h --long help,seq,np:,model:,moso:,logfile: -- "$@")
 if [ $? != 0 ]; then echo "Abort!" >&2 ; exit 1; fi
 
 eval set -- "$TEMP"
@@ -36,7 +37,7 @@ eval set -- "$TEMP"
 while true; do
   case "$1" in
     -h | --help )
-      echo "Usage: lumass.AppImage [--seq | --np num_procs] [--model <*.lmx | *.yaml> | --moso <*.los>]"
+      echo "Usage: lumass.AppImage [--seq | --np num_procs] [[--model <*.lmx | *.yaml> | --moso <*.los>] [--logfile <*.*>]]"
       break;;
     --np )
       re='^[0-9]+$'
@@ -52,6 +53,7 @@ while true; do
     --model ) modelfile="$2"; shift 2; engine=1; gui=0;;
     --moso  ) losfile="$2"; shift 2; engine=1; gui=0;;
     --seq ) gui=1; shift; nprocs=0;;
+    --logfile ) logfile="$2"; shift 2;;
     -- ) shift; break;;
     *)
       break ;;
@@ -67,14 +69,19 @@ elif [ ! -z "${losfile}" ]; then
   engine_work="--moso $losfile"
 fi
 
+# add logfile if set
+if [ ! -z "${engine_work}"  ] && [ ! -z "${logfile}" ]; then
+    engine_work+=" $logfile"
+fi
+
 # launch lumass
 dir="$this_dir/usr/bin"
 if [ $gui -eq 1 ]; then
   if [ $nprocs -eq 0 ]; then
-    echo "Starting LUMASS in 'sequential' GUI mode ..."
+    echo "Starting LUMASS in sequential GUI mode ..."
     exec "$dir"/lumass --seq "$@"
   else
-    echo "Starting LUMASS in 'parallel' GUI mode ..."
+    echo "Starting LUMASS in parallel GUI mode ..."
     exec "$dir"/mpiexec -np 1 "$dir"/lumass --mpi "$@"
   fi
 elif [ $engine -eq 1 ]; then

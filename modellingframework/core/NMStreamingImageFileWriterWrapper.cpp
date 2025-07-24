@@ -214,7 +214,10 @@ public:
                               << " numSplits=" << numSplits << std::endl);
                 }
 
-                NMDebugAI(<< "proc#" << rank << " arriving at barrier ... " << std::endl);
+                char comm_name[MPI_MAX_OBJECT_NAME];
+                int  cn_len;
+                MPI_Comm_get_name(comm, comm_name, &cn_len);
+                NMDebugAI(<< "proc#" << rank << " arriving at barrier (" << comm_name << ") ... " << std::endl);
                 MPI_Barrier(comm);
                 NMDebugAI(<< "proc#" << rank << " stepped past the barrier!" << std::endl);
 
@@ -322,22 +325,34 @@ public:
             {
                 FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
                 ImgType* img = dynamic_cast<ImgType*>(dataObj);
-                filter->SetInput(idx, img);
-                filter->SetWriteImage(writeImage);
+                if (img != nullptr)
+                {
+                    filter->SetInput(idx, img);
+                    filter->SetWriteImage(writeImage);
+                }
+                SetNthInputStandardTypeError
             }
             else if (numBands == 3 && rgbMode)
             {
                 RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
                 RGBImgType* img = dynamic_cast<RGBImgType*>(dataObj);
-                filter->SetInput(idx, img);
-                filter->SetWriteImage(writeImage);
+                if (img != nullptr)
+                {
+                    filter->SetInput(idx, img);
+                    filter->SetWriteImage(writeImage);
+                }
+                SetNthInputStandardTypeError
             }
             else
             {
                 VecImgType* img = dynamic_cast<VecImgType*>(dataObj);
                 VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
-                filter->SetInput(idx, img);
-                filter->SetWriteImage(writeImage);
+                if (img != nullptr)
+                {
+                    filter->SetInput(idx, img);
+                    filter->SetWriteImage(writeImage);
+                }
+                SetNthInputStandardTypeError
             }
         }
 
@@ -898,6 +913,7 @@ NMStreamingImageFileWriterWrapper
         break;
     }
     this->mbIsInitialised = init;
+    this->mInputComponentType = this->mOutputComponentType;
     NMDebugAI( << "... " << this->objectName().toStdString() << " - " << init << std::endl);
 }
 
@@ -1003,10 +1019,14 @@ NMStreamingImageFileWriterWrapper
     {
         ret = true;
 
-        // clean up again if file did exist
+        // clean up again
         if (!bexists)
         {
             file.remove();
+        }
+        else
+        {
+            file.close();
         }
     }
 
@@ -1062,6 +1082,10 @@ NMStreamingImageFileWriterWrapper
     int procs = mController->getNumProcs(this->parent()->objectName());
     MPI_Comm comm = mController->getNextUpstrMPIComm(this->parent()->objectName());
 
+    int cn_len;
+    char comm_name[MPI_MAX_OBJECT_NAME];
+    MPI_Comm_get_name(comm, comm_name, &cn_len);
+
     bool bParallel = false;
     if (this->getWriteProcs() > 1 && procs > 1)
     {
@@ -1092,7 +1116,8 @@ NMStreamingImageFileWriterWrapper
 
                 if (bParallel && comm != MPI_COMM_NULL)
                 {
-                    NMDebugAI(<< "broadcasting writeability to fellow ranks ... " << endl);
+                    NMDebugAI(<< "broadcasting writeability to fellow ranks via comm #"
+                              << comm_name << " ... " << endl);
 
                     int errc = MPI_Bcast(&bWriteable, 1, MPI_CXX_BOOL, 0, comm);
                     MPI_Barrier(comm);

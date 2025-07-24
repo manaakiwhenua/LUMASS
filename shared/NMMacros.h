@@ -3263,4 +3263,50 @@ void ClassName::setRAT(unsigned int numInput,  		\
     }                                                                             \
 }
 
+
+/*********************************************************************************
+ *********************************************************************************
+ ****                 ERROR REPORTING MACROS                                  ****
+ *********************************************************************************
+ *********************************************************************************/
+
+/**********************************************************************************
+ * ::setNthInput - else block of if (dynamic_cast<ImgType*>(dataObj) != nullptr)
+ **********************************************************************************/
+
+#define ProcObj_SetNthInputStandardTypeError \
+else \
+{ \
+    NMProcErr(<< this->GetObjectName() << ": " \
+              << "Input #" << (num+1) << ": " << input->GetObjectName()    \
+              << " 's pixel type doesn't match " << this->GetObjectName()  \
+              << "'s expected pixel type!");                                \
+}
+
+
+#define SetNthInputStandardTypeError \
+else \
+{ \
+    NMMfwException mfw_exception(NMMfwException::NMProcess_InvalidInput); \
+    std::stringstream msg; \
+    msg << otbFilter->GetObjectName() << ": "  \
+        << "Input #" << (idx+1) << ": " << dataObj->GetObjectName() \
+        << " 's pixel type doesn't match " << otbFilter->GetObjectName() \
+        << "'s expected pixel type!";\
+    mfw_exception.setDescription(msg.str()); \
+    throw mfw_exception; \
+}
+
+
+#define SetNthInputTypeError( nachricht ) \
+else \
+{ \
+    NMMfwException mfw_exception(NMMfwException::NMProcess_InvalidInput); \
+    std::stringstream msg; \
+    msg << otbFilter->GetObjectName() << ": " nachricht; \
+    mfw_exception.setDescription(msg.str()); \
+    throw mfw_exception; \
+}
+
+
 #endif /* NMMACROS_H_ */

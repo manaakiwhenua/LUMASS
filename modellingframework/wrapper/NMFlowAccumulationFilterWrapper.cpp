@@ -69,11 +69,15 @@ public:
     {
         InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-        if (!name.isEmpty())
+        if (img != nullptr)
         {
-            filter->SetInput(name.toLower().toStdString(), dataObj);
+            if (!name.isEmpty())
+            {
+                filter->SetInput(name.toLower().toStdString(), dataObj);
+            }
+            filter->SetInput(idx, img);
         }
-        filter->SetInput(idx, img);
+        SetNthInputStandardTypeError
     }
 
 

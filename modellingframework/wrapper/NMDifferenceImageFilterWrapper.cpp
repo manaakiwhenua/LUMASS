@@ -79,17 +79,26 @@ public:
         if (idx == 0)
         {
             InImgType* img = dynamic_cast<InImgType*>(dataObj);
-            filter->SetValidInput(img);
+            if (img != nullptr)
+            {
+                filter->SetValidInput(img);
+            }
+            SetNthInputStandardTypeError
         }
         else if (idx == 1)
         {
             InImgType* img = dynamic_cast<InImgType*>(dataObj);
-            filter->SetTestInput(img);
+            if (img != nullptr)
+            {
+                filter->SetTestInput(img);
+            }
+            SetNthInputStandardTypeError
+
         }
         else
         {
             NMMfwException e(NMMfwException::NMProcess_InvalidInput);
-            e.setDescription("This component does not accespt more than two inputs!");
+            e.setDescription("This component does not accept more than two inputs!");
 
             throw e;
             return;

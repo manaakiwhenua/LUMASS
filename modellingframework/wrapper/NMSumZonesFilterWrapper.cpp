@@ -33,6 +33,7 @@
 #include "otbSumZonesFilter.h"
 //#include "otbSumZonesFilter_ExplicitInst.h"
 
+
 /*! Internal templated helper class linking to the core otb/itk filter
  *  by static methods.
  */
@@ -65,6 +66,11 @@ public:
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
                     unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
+        std::string zone_info = " pixel type doesn't match the expected pixel type of ";
+        zone_info += otbFilter->GetObjectName() + "'s ZoneImage!";
+        std::string value_info = " pixel type doesn't match the expected pixel type of ";
+        value_info += otbFilter->GetObjectName() + "'s ValueImage!";
+
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
         if (!name.isEmpty())
         {
@@ -76,6 +82,7 @@ public:
                     filter->SetZoneImage(img);
                     filter->SetInput(name.toLower().toStdString(), dataObj);
                 }
+                SetNthInputTypeError( << dataObj->GetObjectName() << " 's " << name.toStdString() << zone_info );
             }
             else if (name.toLower().contains("value"))
             {
@@ -85,6 +92,7 @@ public:
                     filter->SetValueImage(img);
                     filter->SetInput(name.toLower().toStdString(), dataObj);
                 }
+                SetNthInputTypeError( << dataObj->GetObjectName() << " 's " << name.toStdString() << value_info );
             }
             else if (idx == 0)
             {
@@ -94,6 +102,7 @@ public:
                     filter->SetZoneImage(img);
                     filter->SetInput(name.toLower().toStdString(), dataObj);
                 }
+                SetNthInputTypeError( << dataObj->GetObjectName() << " 's " << zone_info );
             }
             else if (idx == 1)
             {
@@ -103,6 +112,7 @@ public:
                     filter->SetValueImage(img);
                     filter->SetInput(name.toLower().toStdString(), dataObj);
                 }
+                SetNthInputTypeError( << dataObj->GetObjectName() << " 's " << value_info);
             }
         }
         else
@@ -114,6 +124,7 @@ public:
                 {
                     filter->SetZoneImage(img);
                 }
+                SetNthInputTypeError( << dataObj->GetObjectName() << " 's" << zone_info );
             }
             else if (idx == 1)
             {
@@ -122,6 +133,7 @@ public:
                 {
                     filter->SetValueImage(img);
                 }
+                SetNthInputTypeError( << dataObj->GetObjectName() << " 's " << value_info );
             }
         }
     }
@@ -585,3 +597,5 @@ NMSumZonesFilterWrapper
 ::~NMSumZonesFilterWrapper()
 {
 }
+
+

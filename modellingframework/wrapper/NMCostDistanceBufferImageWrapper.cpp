@@ -84,11 +84,15 @@ public:
     {
         InputImgType* img = dynamic_cast<InputImgType*>(dataObj);
         DistanceFilterType* filter = dynamic_cast<DistanceFilterType*>(otbFilter.GetPointer());
-        if (!name.isEmpty())
+        if (img != nullptr)
         {
-            filter->SetInput(name.toStdString(), img);
+            if (!name.isEmpty())
+            {
+                filter->SetInput(name.toStdString(), img);
+            }
+            filter->SetInput(idx, img);
         }
-        filter->SetInput(idx, img);
+        SetNthInputStandardTypeError
     }
 
     static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,

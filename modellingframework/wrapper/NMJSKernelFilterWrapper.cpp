@@ -69,13 +69,17 @@ public:
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
                     unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
-        //InImgType* img = dynamic_cast<InImgType*>(dataObj);
+        InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-        if (!name.isEmpty())
+        if (img != nullptr)
         {
-            filter->SetInput(name.toStdString(), dataObj);
+            if (!name.isEmpty())
+            {
+                filter->SetInput(name.toStdString(), dataObj);
+            }
+            filter->SetNthInput(idx, dataObj);
         }
-        filter->SetNthInput(idx, dataObj);
+        SetNthInputStandardTypeError
     }
 
     static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,

@@ -81,16 +81,13 @@ public:
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
             unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
         {
-            //NMDebugCtx(ctxNMRATBandMathWrapper, << "...");
             ImgType* img = dynamic_cast<ImgType*>(dataObj);
-            FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-
-            //NMDebugAI(<< "used input ..." << std::endl);
-            //NMDebugAI(<< "  index: " << idx << std::endl);
-            //NMDebugAI(<< "  varName: " << varName.toStdString() << std::endl);
-
-            filter->SetNthInput(idx, img); //, varName.toStdString());
-            //NMDebugCtx(ctxNMRATBandMathWrapper, << "done!");
+            if (img != nullptr)
+            {
+                FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+                filter->SetNthInput(idx, img);
+            }
+            SetNthInputStandardTypeError;
         }
 
     static void setNthInputName(itk::ProcessObject::Pointer& otbFilter,

@@ -66,8 +66,12 @@ public:
                     unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
         InImgType* img = dynamic_cast<InImgType*>(dataObj);
-        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-        filter->SetInput(idx, img);
+        if (img != nullptr)
+        {
+            FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+            filter->SetInput(idx, img);
+        }
+        SetNthInputStandardTypeError;
     }
 
 

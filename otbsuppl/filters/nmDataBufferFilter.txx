@@ -20,6 +20,7 @@
 #define __nmDataBufferFilter_txx
 
 #include "nmlog.h"
+#include "NMMacros.h"
 #include "nmDataBufferFilter.h"
 #include <itkDataObject.h>
 #include <itkImportImageContainer.h>
@@ -58,6 +59,7 @@ void DataBufferFilter<TInputImage>
     {
         this->SetInput(0, img);
     }
+    ProcObj_SetNthInputStandardTypeError
 
     this->Modified();
 }

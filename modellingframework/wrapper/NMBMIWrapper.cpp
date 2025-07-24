@@ -117,11 +117,16 @@ public:
                             unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, const QString& name)
     {
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-        if (!name.isEmpty())
+        InImgType* img = dynamic_cast<InImgType*>(dataObj);
+        if (img != nullptr)
         {
-            filter->SetInput(name.toStdString(), dataObj);
+            if (!name.isEmpty())
+            {
+                filter->SetInput(name.toStdString(), dataObj);
+            }
+            filter->SetNthInput(idx, dataObj);
         }
-        filter->SetNthInput(idx, dataObj);
+        SetNthInputStandardTypeError
     }
 
     static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
@@ -437,19 +442,22 @@ NMBMIWrapper::initialiseBMILibrary()
 
             if (this->mLogger != nullptr)
             {
-                pybmi = static_cast<bmi::PythonBMI*>(mPtrBMILib.get());
-                if (pybmi != nullptr)
+                //pybmi = static_cast<bmi::PythonBMI*>(mPtrBMILib.get());
+                //if (pybmi != nullptr)
+                if (mPtrBMILib != nullptr)
                 {
-                    pybmi->setWrapLog(this, &NMBMIWrapper::bmilog);
+                    //pybmi->setWrapLog(this, &NMBMIWrapper::bmilog);
+                    mPtrBMILib->setWrapLog(this, &NMBMIWrapper::bmilog);
                 }
             }
         }
         else
         {
-            pybmi = static_cast<bmi::PythonBMI*>(mPtrBMILib.get());
-            if (pybmi != nullptr)
+            //pybmi = static_cast<bmi::PythonBMI*>(mPtrBMILib.get());
+            //if (pybmi != nullptr)
+            if (mPtrBMILib != nullptr)
             {
-                pybmi->setReloadModule(bReloadPyModule);
+                mPtrBMILib->setReloadModule(bReloadPyModule);
             }
         }
 
@@ -492,13 +500,14 @@ NMBMIWrapper::updateSettings()
         return;
     }
 
-    if (this->mPtrBMILib == nullptr)
-    {
-        return;
-    }
+    //if (this->mPtrBMILib == nullptr)
+    //{
+    //    return;
+    //}
 
-    bmi::PythonBMI* pybmi = static_cast<bmi::PythonBMI*>(mPtrBMILib.get());
-    if (pybmi == nullptr)
+    //bmi::PythonBMI* pybmi = static_cast<bmi::PythonBMI*>(mPtrBMILib.get());
+    //if (pybmi == nullptr)
+    if (mPtrBMILib == nullptr)
     {
         NMLogError(<< "Failed forwarding model configuration settings to Python module!");
         return;
@@ -512,7 +521,7 @@ NMBMIWrapper::updateSettings()
         QString expr = mController->getSetting(s).toString();
         QString val = mController->processStringParameter(this, expr);
 
-        pybmi->SetSetting(s.toStdString(), val.toStdString());
+        mPtrBMILib->SetSetting(s.toStdString(), val.toStdString());
 
         if (auxInputDataKeys.contains(s))
         {

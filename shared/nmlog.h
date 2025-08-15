@@ -69,24 +69,29 @@
 #ifndef _WIN32
 #define NMDebugAI(arg) \
 {\
-    int rank=0; \
-    int init=0; \
-    MPI_Initialized(&init); \
-    if (init)\
+    std::ostringstream str; \
+    int __rank=0; \
+    int __init=0; \
+    MPI_Initialized(&__init); \
+    if (__init)\
     {\
-        MPI_Comm p_comm;\
-        MPI_Comm_get_parent(&p_comm);\
+        MPI_Comm __p_comm;\
+        MPI_Comm_get_parent(&__p_comm);\
         std::string pIndi = ""; \
-        if (p_comm != MPI_COMM_NULL)\
+        if (__p_comm != MPI_COMM_NULL)\
             pIndi = "C";\
         else \
             pIndi = "P";\
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
-        std::ostringstream str; \
-        str << "  " << pIndi << "r" << rank << ": " arg; \
-        std::cout << str.str(); \
+        MPI_Comm_rank(MPI_COMM_WORLD, &__rank); \
+        str << "  " << pIndi << "r" << __rank << ": " arg; \
    } \
+   else \
+   {\
+        str << " " arg;    \
+   } \
+   std::cout << str.str(); \
 }
+
 #define NMDebugAINoMPI(arg) \
 { \
     std::ostringstream str; \
@@ -165,20 +170,20 @@
             {\
                 str << "--"; \
             }\
-            int rank=0; \
-            int init=0; \
-            MPI_Initialized(&init); \
-            if (init)\
+            int __rank=0; \
+            int __init=0; \
+            MPI_Initialized(&__init); \
+            if (__init)\
             {\
-                MPI_Comm p_comm;\
-                MPI_Comm_get_parent(&p_comm);\
+                MPI_Comm __p_comm;\
+                MPI_Comm_get_parent(&__p_comm);\
                 std::string pIndi = ""; \
-                if (p_comm != MPI_COMM_NULL)\
+                if (__p_comm != MPI_COMM_NULL)\
                     pIndi = "C";\
                 else \
                     pIndi = "P";\
-                MPI_Comm_rank(MPI_COMM_WORLD, &rank);\
-                str << pIndi << "r" << rank << ":" << context << "::" << \
+                MPI_Comm_rank(MPI_COMM_WORLD, &__rank);\
+                str << pIndi << "r" << __rank << ":" << context << "::" << \
                 __FUNCTION__ << ": " arg; \
             }\
             else\

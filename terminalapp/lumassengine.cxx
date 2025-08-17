@@ -110,7 +110,6 @@ int main(int argc, char** argv)
     QString enginePath = engineApp.applicationDirPath();
 
     NMDebugCtxNoMPI(ctx, << "...");
-
     // process args
     if (argc < 2)
     {
@@ -118,12 +117,6 @@ int main(int argc, char** argv)
         NMDebugCtxNoMPI(ctx, << "done!");
         return EXIT_SUCCESS;
     }
-
-    //enum WhatToDo {
-    //        NM_ENGINE_MOSO,
-    //        NM_ENGINE_MODEL,
-    //        NM_ENGINE_NOPLAN
-    //};
 
     NMLumassEngine::EngineMode todo = NMLumassEngine::NM_ENGINE_MODE_UNKNOWN;
     QString losFileName;
@@ -177,12 +170,29 @@ int main(int argc, char** argv)
         {
             runComponent = argv[arg+1];
         }
-
+#ifdef LUMASS_DEBUG
+        else if (theArg == "--test")
+        {
+            todo = NMLumassEngine::NM_ENGINE_MODE_TEST;
+        }
+#endif
         ++arg;
     }
 
     QScopedPointer<NMLumassEngine> engine(new NMLumassEngine(argc, argv, NMLumassEngine::NM_APP_ENGINE));
-    if (!losFileName.isEmpty() && !modelFileName.isEmpty())
+    if (engine.isNull())
+    {
+        NMWarn(ctx, << "Failed to launch lumassengine app!"
+               << std::endl);
+        showHelp();
+        NMDebugCtx(ctx, << "done!");
+        return EXIT_SUCCESS;
+    }
+    if (!losFileName.isEmpty() && !modelFileName.isEmpty()
+#ifdef LUMASS_DEBUG
+         && todo != NMLumassEngine::NM_ENGINE_MODE_TEST
+#endif
+       )
     {
         NMWarn(ctx, << "Please select either --moso or --model!"
                << std::endl);
@@ -201,6 +211,11 @@ int main(int argc, char** argv)
     case NMLumassEngine::NM_ENGINE_MODE_MODEL:
         engine->doModel(modelFileName, workspace, enginePath, bLogProv, runComponent);
         break;
+#ifdef LUMASS_DEBUG
+    case NMLumassEngine::NM_ENGINE_MODE_TEST:
+        engine->test();
+        break;
+#endif
     default:
         NMWarn(ctx, << "Please specify either an optimisation "
                     << " settings file or a model file!"

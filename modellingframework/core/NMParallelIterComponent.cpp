@@ -53,6 +53,7 @@ NMParallelIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelCom
     // get comm
     MPI_Comm comm = mController->getNextUpstrMPIComm(this->objectName());
 
+    // establish MPI context
     // get procs
     // get rank
     int worldRank = 0;
@@ -72,7 +73,8 @@ NMParallelIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelCom
     NMModelController::MPICompProg compProg;
     compProg.compName = this->objectName();
 
-
+    // ----------------------------------------------------------
+    // determine workload (ie number of tasks)
     int numIterations = this->mNumIterations;
     if (this->mNumIterationsExpression.size() != 0)
     {
@@ -82,8 +84,6 @@ NMParallelIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelCom
         mController->mpiSignalProgress(compProg);
     }
 
-    // re-allocate ranks (IterComm) to tasks; where
-    // a task is one iteration of this component
     int ntasks = numIterations - (mIterationStep - 1);
     int nsplits = std::min(ntasks, procs);
     QMap<int, QPair<int, QVector<int>>> mapTaskSplitRanks;
@@ -109,6 +109,7 @@ NMParallelIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelCom
     // remove debug above
 
 
+    // --------------------  ALLOCATE ITERATION TASKS TO RANKS  -------------------------
     int rankId = 0;
     int splitId = 0;
     int taskId = mIterationStep - 1;
@@ -157,27 +158,26 @@ NMParallelIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelCom
         {
             if (titer.value().second.contains(rank) && !allocatedRanks.contains(rank))
             {
-                MPI_Comm_split(comm, titer.value().first, rank, &iterComm);
-                std::string cname = this->objectName().toStdString() + "-" + std::to_string(splitId);
+                const int splitID = titer.value().first;
+                std::string cname = this->objectName().toStdString() + "-" + std::to_string(splitID);
+                NMDebugAI(<< "*** MPI_Comm_split(comm, "<< splitID << ", " << rank
+                               << ", " << cname << ")" << std::endl);
+                MPI_Comm_split(comm, splitID, rank, &iterComm);
                 MPI_Comm_set_name(iterComm, cname.c_str());
-                wulog(-1, " lr" << rank << ": splitId=" << titer.value().first
-                      << ": taskId=" << titer.key() << " iterComm=" << iterComm << endl)
                 mController->registerParallelGroup(this->objectName(), iterComm);
                 allocatedRanks.push_back(rank);
             }
-            //else
-            //{
-            //    MPI_Comm_split(comm, -1, rank, &iterComm);
-            //    wulog(-1, " lr" << rank << ": splitId=-1 : taskId=" << titer.key() << " iterComm=" << iterComm << endl)
-            //}
         }
     }
 
-    // iterate over rank list
-    //    register IterComm / ranks for this component
-    //    call componentUpdateLogic with iteration parameters
-    //    BARRIER - IterComm
-    QVector<int> busyRanks;
+    // DEBUG
+    //if (procs > 1 && !allocatedRanks.contains(rank))
+    //{
+    //    NMDebugAI(<< "*** MISSING A SPLIT HERE! Rank #" << rank
+    //              << " should have been assigned splitID=-1!!" << std::endl);
+    //}
+
+    // --------------------  EXECUTE ITERATIONS IN PARALLEL  ---------------------------------------------
     unsigned int niter = numIterations;
     mIterationStepRun = mIterationStep;
     for (unsigned int i = mIterationStepRun-1; i < niter && !mController->isModelAbortionRequested(); ++i)
@@ -185,30 +185,17 @@ NMParallelIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelCom
         auto mtrIter = mapTaskSplitRanks.find(i);
         if (mtrIter != mapTaskSplitRanks.end())
         {
-
             if (mtrIter.value().second.contains(rank))
             {
-                std::stringstream pmsg;
-                pmsg << " lr" << rank << ": " << this->objectName().toStdString() <<
-                        " step #" << i << ": splitId=" << mtrIter.value().first
-                     << " : taskId=" << mtrIter.key();
-                wulog(-1, pmsg.str());
+                NMDebugAI(<< "*** r" << rank << ":  is running: " << this->objectName().toStdString()
+                          << "'s iteration #" << mIterationStepRun << std::endl);
 
-                busyRanks.push_back(rank);
                 emit signalProgress(mIterationStepRun);
                 compProg.event = NMModelController::NM_EVENT_PROGRESS;
                 compProg.progress = mIterationStepRun;
                 mController->mpiSignalProgress(compProg);
                 this->componentUpdateLogic(repo, minLevel, maxLevel, i);
             }
-        }
-
-        // once we've engaged all available ranks in allocated tasks,
-        // we need to wait untill they're finished before we're
-        // re-engaging a rank for the second time
-        if (busyRanks.size() == procs)
-        {
-            busyRanks.clear();
         }
 
         niter = evalNumIterationsExpression(mIterationStepRun+1);
@@ -219,8 +206,6 @@ NMParallelIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelCom
             mController->mpiSignalProgress(compProg);
         }
 
-        //NMDebugAI(<< this->objectName().toStdString() << ": in-loop: IterStep=" << getIterationStep()
-        //                                        << " i=" << i << " niter=" << niter << std::endl);
         this->setNumIterations(niter);
         ++mIterationStepRun;
     }
@@ -240,6 +225,7 @@ NMParallelIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelCom
         MPI_Comm_free(&iterComm);
     }
 
+    // re-register 'original' comm
     if (comm != MPI_COMM_NULL)
     {
         mController->registerParallelGroup(this->objectName(), comm);

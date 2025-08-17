@@ -67,7 +67,7 @@ NMExternalExecWrapper::instantiateObject(void)
 {
     reset();
 
-    mCmdProcess = new QProcess(this);
+    mCmdProcess = new QProcess();
     mCmdProcess->setProcessChannelMode(QProcess::MergedChannels);
 
     this->mbIsInitialised = true;

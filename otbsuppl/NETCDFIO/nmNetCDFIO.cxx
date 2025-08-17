@@ -950,18 +950,27 @@ bool NetCDFIO::InitParallelIO(MPI_Comm &comm, MPI_Info &info, bool write)
         return false;
     }
 
-    // if (!m_bParallelIO)
-    // {
-    //     mFile.close();
-    //     NMDebugAI(<< "NetCDFIO: m_bParallelIO = false : closed file '" << this->GetFileName() << " opened for sequential access'!" << std::endl);
-    // }
+    if (!mFile.isNull())
+    {
+        mFile.close();
+    }
 
-    int mrank;
+    int mrank = -1;
+    int mprocs = 1;
     int  cn_len;
     char comm_name[MPI_MAX_OBJECT_NAME];
 
-    MPI_Comm_get_name(comm, comm_name, &cn_len);
-    MPI_Comm_rank(comm, &mrank);
+    if (comm != MPI_COMM_NULL)
+    {
+        MPI_Comm_get_name(comm, comm_name, &cn_len);
+        MPI_Comm_rank(comm, &mrank);
+        MPI_Comm_size(comm, &mprocs);
+    }
+    else
+    {
+        ::sprintf(comm_name, "MPI_COMM_NULL");
+    }
+
 
     try
     {
@@ -1007,7 +1016,7 @@ bool NetCDFIO::InitParallelIO(MPI_Comm &comm, MPI_Info &info, bool write)
                 NMDebugAI(<< "proc #" << mrank << ": trying to open file '" << this->m_FileContainerName
                           << "' for parallel create/write with comm="
                           << comm_name << std::endl);
-                mFile.open(comm, info, this->m_FileContainerName, NcFile::newFile);
+                mFile.open(comm, info, this->m_FileContainerName, NcFile::replace);
                 NMDebugAI(<< "proc #" << mrank << " opened file '" << this->m_FileContainerName
                           << "' for parallel create/write!'" << std::endl);
                 this->m_bCanWrite = true;

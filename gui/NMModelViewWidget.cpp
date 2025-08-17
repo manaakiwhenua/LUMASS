@@ -398,6 +398,7 @@ NMModelViewWidget::processMPIEvent(const QString &obj,
         break;
     case NMModelController::ModelEvent::NM_EVENT_EXEC_STOPPED:
     case NMModelController::ModelEvent::NM_EVENT_EXEC_ABORTED:
+    case NMModelController::ModelEvent::NM_EVENT_MODEL_COMPLETED:
         if (ai != nullptr)
         {
             ai->slotExecutionStopped();
@@ -418,6 +419,13 @@ NMModelViewWidget::processMPIEvent(const QString &obj,
             //this->resetModel();
             NMDebugAI(<< "Parent reseted model after child aborted it!\n");
         }
+        if (event == NMModelController::ModelEvent::NM_EVENT_MODEL_COMPLETED)
+        {
+            str_event = "completed";
+            NMDebugAI(<< "Child process completed the model!" << std::endl);
+            NMLogInfo(<< "Child Process completed the model!" << std::endl);
+        }
+
         break;
     case NMModelController::ModelEvent::NM_EVENT_PROGRESS:
         if (ai != nullptr)
@@ -5127,6 +5135,7 @@ NMModelViewWidget::connectMPIRunnable(NMMPIRunnable *mpi)
             &NMModelViewWidget::processMPIEvent, Qt::DirectConnection);
     connect(mpi, &NMMPIRunnable::signalMPILoopFinished, this,
             &NMModelViewWidget::resetModel);
+    connect(this, &NMModelViewWidget::requestModelAbortion, mpi, &NMMPIRunnable::processAbortionRequest);
 }
 
 void

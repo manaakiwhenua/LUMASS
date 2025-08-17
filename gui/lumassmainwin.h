@@ -402,6 +402,7 @@ protected slots:
     void settingsFeeder(QtProperty* prop, const QStringList& strVal);
     void updateSettings(QtProperty* prop, const QVariant& val);
     void updateSettings(const QString& setting, const QVariant& val);
+    void updateDarkMode();
 
     void updateCursor();
     void populateProcCompList();
@@ -423,6 +424,7 @@ protected slots:
     void onTabifiedDockWidgetActivated(QDockWidget* dockWidget);
     void onDockWidgetAreaChanged(Qt::DockWidgetArea dockArea);
     void setDockWidgetVisibility(QDockWidget *dw, bool bVisible);
+    void changeEvent(QEvent* event) override;
 
 protected:
 
@@ -614,6 +616,10 @@ private:
     // indicates whether the main window is being
     // loaded for the first time
     bool mbFirstTimeLoaded;
+
+    // store's whether we are currently in dark mode or not
+    bool mbInternalPaletteChange;
+    bool mbOSDarkMode;
 
     class OptProc : public QProcess
     {

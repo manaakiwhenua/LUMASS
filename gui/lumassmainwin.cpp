@@ -27,6 +27,7 @@
 #include <array>
 #include <map>
 #include "math.h"
+#include <unordered_set>
 
 // GDAL support
 #include "gdal.h"
@@ -358,7 +359,8 @@
 
 LUMASSMainWin::LUMASSMainWin(QWidget *parent, NMLumassEngine *engine)
     : QMainWindow(parent), ui(new Ui::LUMASSMainWin),
-      mpLuProc(nullptr), mpMosra(nullptr), mEngine(engine), mModelController(nullptr)
+      mpLuProc(nullptr), mpMosra(nullptr), mEngine(engine), mModelController(nullptr),
+      mbInternalPaletteChange(false)
       //, mServer(nullptr)
 {
     // **********************************************************************
@@ -1070,46 +1072,6 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent, NMLumassEngine *engine)
     mServer = nullptr;
     mClientList.clear();
 
-    // ==================================================
-    //      DARK MODE
-    // ==================================================
-#if defined _WIN32
-    //
-    // below code sourced from
-    // https://successfulsoftware.net/2021/03/31/how-to-add-a-dark-theme-to-your-qt-application/
-    // https://stackoverflow.com/questions/15035767/is-the-qt-5-dark-fusion-theme-available-for-windows
-    // THANKS FOR SHARING!
-    //
-    // check for dark mode
-
-    // do we support dark mode?
-    // dark mode supported Windows 10 1809 10.0.17763 onward
-    // https://stackoverflow.com/questions/53501268/win10-dark-theme-how-to-use-in-winapi
-
-
-    bool bDarkSupported = false;
-    if (QOperatingSystemVersion::current().majorVersion() == 10)
-    {
-        bDarkSupported = QOperatingSystemVersion::current().microVersion() >= 17763;
-    }
-    else if (QOperatingSystemVersion::current().majorVersion() > 10)
-    {
-        bDarkSupported = true;
-    }
-
-
-    //-----------------------------------
-    // setdark mode, if windows is in dark mode
-    // and if dark mode is supported at al
-
-    if (bDarkSupported)
-    {
-        if (this->isInDarkMode())
-        {
-            this->setDarkMode(true);
-        }
-    }
-#endif
 }
 
 LUMASSMainWin::~LUMASSMainWin()
@@ -1196,6 +1158,8 @@ void LUMASSMainWin::callInitFunctions()
 {
     readSettings();
     populateProcCompList();
+    mbOSDarkMode = this->isInDarkMode();
+    updateDarkMode();
 }
 
 void LUMASSMainWin::onTabifiedDockWidgetActivated(QDockWidget* dockWidget)
@@ -2090,9 +2054,29 @@ bool LUMASSMainWin::isInDarkMode(void)
     QSettings sysSettings("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", QSettings::NativeFormat);
     return sysSettings.value("AppsUseLightTheme", 1).toInt() == 0;
 #else
-    return false;
+    //return false;
+    // source: Gemeni AI search:
+    const QPalette defaultPalette = QGuiApplication::palette(); // Get the application's palette
+    const QColor text = defaultPalette.color(QPalette::WindowText);
+    const QColor window = defaultPalette.color(QPalette::Window);
 
+    // In a dark theme, text color is typically lighter than the window background
+    return text.lightness() > window.lightness();
 #endif
+}
+
+void LUMASSMainWin::changeEvent(QEvent *event)
+{
+    if (event->type() == QEvent::PaletteChange)
+    {
+        if (!mbInternalPaletteChange)
+        {
+            mbOSDarkMode = this->isInDarkMode();
+            updateDarkMode();
+        }
+        mbInternalPaletteChange = false;
+    }
+    QMainWindow::changeEvent(event);
 }
 
 void LUMASSMainWin::setDarkMode(bool bdark)
@@ -4615,18 +4599,6 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
-    QMessageBox::StandardButton yesno =
-            QMessageBox::question(this, "Dark Mode", "Turn on dark mode?");
-
-    if (yesno == QMessageBox::StandardButton::Yes)
-    {
-        this->setDarkMode(true);
-    }
-    else
-    {
-        this->setDarkMode(false);
-    }
-
 }
 
 void
@@ -8045,8 +8017,8 @@ void LUMASSMainWin::toggle3DSimpleMode()
 
 void LUMASSMainWin::toggle3DStereoMode()
 {
-        this->ui->qvtkWidget->renderWindow()->SetStereoRender(
-                !this->ui->qvtkWidget->renderWindow()->GetStereoRender());
+    this->ui->qvtkWidget->renderWindow()->SetStereoRender(
+            !this->ui->qvtkWidget->renderWindow()->GetStereoRender());
 }
 
 void
@@ -8071,6 +8043,8 @@ LUMASSMainWin::configureSettings()
     dlg->deleteLater();
     delete bro;
     mSettingsBrowser = nullptr;
+
+    writeSettings();
 }
 
 void
@@ -8176,29 +8150,19 @@ LUMASSMainWin::updateSettings(const QString &setting, const QVariant &val)
         {
         case 0:
             mSettings["DarkMode"] = QVariant::fromValue(QStringLiteral("ON"));
-            this->setDarkMode(true);
             break;
         case 1:
             mSettings["DarkMode"] = QVariant::fromValue(QStringLiteral("OFF"));
-            this->setDarkMode(false);
             break;
         default:
             mSettings["DarkMode"] = QVariant::fromValue(QStringLiteral("SYSTEM"));
-            if (this->isInDarkMode())
-            {
-                this->setDarkMode(true);
-            }
-            else
-            {
-                this->setDarkMode(false);
-            }
             break;
         }
+        updateDarkMode();
     }
 
     populateSettingsBrowser();
     emit settingsUpdated(setting, mSettings[setting]);
-
 }
 
 void
@@ -9710,6 +9674,55 @@ void LUMASSMainWin::readSettings()
     /// this needs to go because eventually, we want to start with where we left off
     /// the last time (do we?)
     this->createNewSessionDb();
+}
+
+void LUMASSMainWin::updateDarkMode()
+{
+    bool bDarkModeSupported = true;
+#if defined _WIN32
+    //
+    // below code sourced from
+    // https://successfulsoftware.net/2021/03/31/how-to-add-a-dark-theme-to-your-qt-application/
+    // https://stackoverflow.com/questions/15035767/is-the-qt-5-dark-fusion-theme-available-for-windows
+    // THANKS FOR SHARING!
+    //
+    // check for dark mode
+
+    // do we support dark mode?
+    // dark mode supported Windows 10 1809 10.0.17763 onward
+    // https://stackoverflow.com/questions/53501268/win10-dark-theme-how-to-use-in-winapi
+
+    if (QOperatingSystemVersion::current().majorVersion() == 10)
+    {
+        bDarkModeSupported = QOperatingSystemVersion::current().microVersion() >= 17763;
+    }
+    else if (QOperatingSystemVersion::current().majorVersion() > 10)
+    {
+        bDarkModeSupported = true;
+    }
+#endif
+
+    mbInternalPaletteChange = true;
+    if (bDarkModeSupported)
+    {
+        const QString dmSetting = mSettings[QStringLiteral("DarkMode")].toString();
+        if (dmSetting.compare(QStringLiteral("SYSTEM")) == 0)
+        {
+            this->setDarkMode(mbOSDarkMode);
+        }
+        else if (dmSetting.compare(QStringLiteral("ON")) == 0)
+        {
+            this->setDarkMode(true);
+        }
+        else
+        {
+            this->setDarkMode(false);
+        }
+    }
+    else
+    {
+        this->setDarkMode(false);
+    }
 }
 
 void LUMASSMainWin::writeSettings(void)

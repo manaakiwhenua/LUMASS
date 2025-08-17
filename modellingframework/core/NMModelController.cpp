@@ -59,6 +59,7 @@ namespace py = pybind11;
 #include "otbMultiParser.h"
 #include "NMStreamingImageFileWriterWrapper.h"
 #include "NMMPIRunnable.h"
+#include "NMLumassEngine.h"
 
 const std::string NMModelController::ctx = "NMModelController";
 
@@ -86,6 +87,14 @@ NMModelController::NMModelController(NMLumassEngine *engine, QObject* parent)
 
     qRegisterMetaType<NMMPIRunnable*>("NMMPIRunnable*");
 
+    // mParentMPIComm is ever only not MPI_COMM_NULL
+    // for child processes spawned by the GUI
+    // that are running the 'GUI model' in
+    // multiple instances of the lumassengine,
+    // calling NMModelController::executeMPIChildModel()
+    // which lumassengine processes are exeting
+    // afterwards
+    NMDebugAI(<< "+++++ MPI_Comm_get_parent() ...")
     MPI_Comm_get_parent(&mParentMPIComm);
 
     // create the one and only root model component
@@ -107,7 +116,6 @@ void NMModelController::setUsesMPIRuntime(bool hasRuntime)
 
 NMModelController::~NMModelController()
 {
-    this->mComponentMap.clear();
 }
 
 void
@@ -219,6 +227,7 @@ NMModelController::mpiSignalProgress(MPICompProg &progStruct)
         case 6: eventName = "START_EXEC"; break;
         case 7: eventName = "EXEC_ABORTED"; break;
         case 8: eventName = "NUMITER_CHGD"; break;
+        case 9: eventName = "MODEL_COMPLETED"; break;
         case 1:
         default:
              eventName = "UNKNOWN"; break;
@@ -344,7 +353,7 @@ NMModelController::identifyRootComponent(void)
 //}
 
 void
-NMModelController::deleteLater(QStringList compNames)
+NMModelController::deleteComponentsLater(QStringList compNames)
 {
     if (this->isModelRunning())
     {
@@ -1214,16 +1223,19 @@ NMModelController::executeMPIParentModel(const QString &compName,
 void NMModelController::slotMPIEventLoopFinished(NMMPIRunnable* obj)
 {
     mbIsMPIEventLoopRunning = false;
-
     MPI_Win_free(&mMPICompProgWin);
+    mMPICompProgWin = MPI_WIN_NULL;
     MPI_Win_free(&mMPIParentAbort);
+    mMPIParentAbort = MPI_WIN_NULL;
+
     mMPIAbort = 0;
     mbAbortionRequested = false;
     NMDebugAI(<< "ParentProcess freed RMA window" << std::endl);
     MPI_Comm_free(&mMergedComm);
+    mMergedComm = MPI_COMM_NULL;
     NMDebugAI(<< "ParentProcess freed merged MPI_Comm" << std::endl);
-    MPI_Comm_free(&mInterComm);
-    NMDebugAI(<< "ParentProcess freed inter comm" << std::endl);
+    //MPI_Comm_free(&mInterComm);
+    //NMDebugAI(<< "ParentProcess freed inter comm" << std::endl);
 
     // free RMA resources
     MPI_Free_mem(static_cast<void*>(mMPIAbort));
@@ -1233,6 +1245,10 @@ void NMModelController::slotMPIEventLoopFinished(NMMPIRunnable* obj)
     mMPICompState = nullptr;
     NMDebugAI(<< "ParentProcess freed mMPICompState array" << std::endl);
 
+    NMLogDebug(<< "ParentProc is disconnecting intercomm to children ...!\n");
+    //MPI_Barrier(mInterComm);
+    MPI_Comm_disconnect(&mInterComm);
+    mInterComm = MPI_COMM_NULL;
 
     NMLogInfo(<< "MPI child processes have completed!");
     NMDebugAI(<< "MPI parent model's event cleaned up!");
@@ -1288,7 +1304,7 @@ NMModelController::executeMPIChildModel(const QString &compName)
     // ModelComponents = {compId=0, compId=1, ..., compId=ncomps-1}
     // States per Component (=Values) = {val=0, val=1=nvals-1}
     // Number of Processes = {proc=0, proc=1, ..., proc=nprocs-1}
-    // this is a conceptual 3D array [ncomps][nvals][nprocs], that is
+    // this is a conceptual 3D array [ncomps][nvals][nprocs] that is
     // flattend to 1D; its index is calucated as:
     //          mMPICompState[proc * ncomps * nvals + compId * nvals + val];
     const int ncomps = sortedModelComps.size();
@@ -1333,11 +1349,24 @@ NMModelController::executeMPIChildModel(const QString &compName)
     // wait for siblings to finish their models
     MPI_Barrier(MPI_COMM_WORLD);
 
+    // it can happen that we're reaching this point
+    // without any model components having actually
+    // started and therefore no progress messages
+    // have reached the parent controller, so
+    // we just be explicit that the model is completed!
+    NMModelController::MPICompProg compProg;
+    compProg.compName = compName;
+    compProg.event = NMModelController::NM_EVENT_MODEL_COMPLETED;
+    compProg.progress = 100;
+    mpiSignalProgress(compProg);
+
     NMDebugAI(<< "ChildPROC #" << prank << " has completed seqModel\n");
     NMLogDebug(<< "ChildPROC #" << prank << " has completed seqModel\n");
 
     MPI_Win_free(&mMPICompProgWin);
     MPI_Win_free(&mMPIParentAbort);
+    mMPICompProgWin = MPI_WIN_NULL;
+    mMPIParentAbort = MPI_WIN_NULL;
 
     MPI_Free_mem(static_cast<void*>(mMPICompState));
     mMPICompState = nullptr;
@@ -1346,12 +1375,18 @@ NMModelController::executeMPIChildModel(const QString &compName)
     NMLogDebug(<< "ChildPROC #" << prank << " freed mMPICompState array\n");
 
     MPI_Comm_free(&mMergedComm);
+    mMergedComm = MPI_COMM_NULL;
     NMLogDebug(<< "ChildPROC #" << prank << " freed merged MPI_Comm\n");
-    MPI_Comm_free(&mParentMPIComm);
-    NMLogDebug(<< "ChildPROC #" << prank << " freed parent MPI_Comm\n");
 
+    NMLogDebug(<< "ChildPROC #" << prank << " is disconnecting itercomm to parent\n");
+    //MPI_Barrier(mParentMPIComm);
+    MPI_Comm_disconnect(&mParentMPIComm);
 
-    NMDebugCtx(ctx, << "done!");
+    //MPI_Comm_free(&mParentMPIComm);
+    NMLogDebug(<< "ChildPROC #" << prank << " freed MPI Intercomm to parent!\n");
+    std::stringstream ctd;
+    ctd << "Cr" << prank << ": NMModelController::executeMPIChildModel(): done!";
+    NMDebug(<< ctd.str() << std::endl);
 }
 
 
@@ -1480,15 +1515,15 @@ NMModelController::executeSeqModel(const QString &compName, const QString& yamlF
 
     // FOR MPI RUNS ONLY
     // wait for all children and then exit in an orderly fashion
-    if (    //(bUnexpectedEnd || this->mbAbortionRequested)
-         //&&
-         mParentMPIComm != MPI_COMM_NULL
-         && mMergedComm != MPI_COMM_NULL
-       )
-    {
-        NMDebugAI(<< "Waiting in executeSeqModel for the others ... \n")
-        MPI_Barrier(MPI_COMM_WORLD);
-    }
+    //if ( (bUnexpectedEnd || this->mbAbortionRequested)
+    //     &&
+    //     mParentMPIComm != MPI_COMM_NULL
+    //     && mMergedComm != MPI_COMM_NULL
+    //   )
+    //{
+    //    NMDebugAI(<< "Waiting in executeSeqModel for the others ... \n")
+    //    MPI_Barrier(MPI_COMM_WORLD);
+    //}
 
     this->mModelStopped = QDateTime::currentDateTime();
     int msec = this->mModelStarted.msecsTo(this->mModelStopped);
@@ -1710,10 +1745,16 @@ bool
 NMModelController::contains(const QString& compName)
 {
     bool ret;
-    if (this->mComponentMap.keys().contains(compName))
+    if (    this->mComponentMap.size() > 0
+         && this->mComponentMap.keys().contains(compName)
+       )
+    {
         ret = true;
+    }
     else
+    {
         ret = false;
+    }
 
     return ret;
 }
@@ -1864,10 +1905,10 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
 
     NMIterableComponent* aggrComp = qobject_cast<NMIterableComponent*>(this->getComponent(compName));
 
-    if (aggrComp->getProcess() != nullptr)
-    {
-        aggrComp = qobject_cast<NMIterableComponent*>(aggrComp->getHostComponent());
-    }
+    //if (aggrComp->getProcess() != nullptr)
+    //{
+    //    aggrComp = qobject_cast<NMIterableComponent*>(aggrComp->getHostComponent());
+    //}
 
     if (aggrComp == nullptr)
     {
@@ -1879,13 +1920,22 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
     // =========================================
     // DEBUG DEBUG DEBUG
     // =========================================
+    MPI_Comm _tmpComm = MPI_COMM_NULL;
     char comm_name[MPI_MAX_OBJECT_NAME];
     int  cn_len;
     NMDebugAI(<< "MPI-Debug: Registered comms ... " << endl);
     auto iter = mAlphaComps.cbegin();
     while (iter != mAlphaComps.cend())
     {
-        MPI_Comm_get_name(iter.value(), comm_name, &cn_len);
+        _tmpComm = iter.value();
+        if (_tmpComm != MPI_COMM_NULL)
+        {
+            MPI_Comm_get_name(_tmpComm, comm_name, &cn_len);
+        }
+        else
+        {
+            ::sprintf(comm_name, "MPI_COMM_NULL");
+        }
         NMDebugAI(<< "  ... '" << iter.key().toStdString() << "' : #" << comm_name << endl);
         ++iter;
     }
@@ -1895,7 +1945,15 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
     QMap<QString, MPI_Comm>::iterator citer = mAlphaComps.find(aggrComp->objectName());
     if (citer != mAlphaComps.end())
     {
-        MPI_Comm_get_name(citer.value(), comm_name, &cn_len);
+        _tmpComm = citer.value();
+        if (_tmpComm != MPI_COMM_NULL)
+        {
+            MPI_Comm_get_name(_tmpComm, comm_name, &cn_len);
+        }
+        else
+        {
+            ::sprintf(comm_name, "MPI_COMM_NULL");
+        }
         NMDebugAI(<< "'" << compName.toStdString() << "' is managed by comm #" << comm_name
                   << " registered with '" << citer.key().toStdString() << "'" << endl);
         NMDebugCtx(ctx, << "done!");
@@ -1907,7 +1965,15 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
         citer = mAlphaComps.find(aggrComp->objectName());
         if (citer != mAlphaComps.end())
         {
-            MPI_Comm_get_name(citer.value(), comm_name, &cn_len);
+            _tmpComm = citer.value();
+            if (_tmpComm != MPI_COMM_NULL)
+            {
+                MPI_Comm_get_name(_tmpComm, comm_name, &cn_len);
+            }
+            else
+            {
+                ::sprintf(comm_name, "MPI_COMM_NULL");
+            }
             NMDebugAI(<< "'" << compName.toStdString() << "' is managed by comm #" << comm_name
                       << " registered with '" << citer.key().toStdString() << "'" << endl);
             NMDebugCtx(ctx, << "done!");

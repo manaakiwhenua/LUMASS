@@ -93,7 +93,8 @@ public:
         NM_EVENT_ABORT_EXEC = 5,
         NM_EVENT_START_EXEC = 6,
         NM_EVENT_EXEC_ABORTED = 7,
-        NM_EVENT_NUMITER_CHGD = 8
+        NM_EVENT_NUMITER_CHGD = 8,
+        NM_EVENT_MODEL_COMPLETED = 9
     };
 
 
@@ -374,7 +375,7 @@ public slots:
     /*! Component destruction at the next suitble opportunity
      *  (i.e. either directly, or once the current model run has
      *  finished) */
-    void deleteLater(QStringList compNames);
+    void deleteComponentsLater(QStringList compNames);
 
 
 	/*! Resets the named model component and (recursively!)

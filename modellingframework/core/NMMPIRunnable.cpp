@@ -98,6 +98,7 @@ NMMPIRunnable::run()
     const int nvals  = 2; // {event==value, progress==value+1}
 
     QDateTime modelStarted = QDateTime::currentDateTime();
+    QSet<int> abortedChildRanks;
 
     // give every process a chance to convey their message
     // we loop over each component and collect progress information
@@ -128,13 +129,14 @@ NMMPIRunnable::run()
 
         for (int mcomp=0; mcomp < modelComps.size(); ++mcomp)
         {
-            // determine the (min.) state across model children's components
+            // determine the (min.) state across child processes' model components
 
             // if at least one of the child comps is currently executing this is true!
             bool bStarted = false;
             bool bStopped = false;
             bool bProgress = false;
             bool bNumIterChgd = false;
+            bool bCompleted = false;
 
             // least progress of a given component across all parallel processes
             int minProgress = 100;
@@ -193,6 +195,7 @@ NMMPIRunnable::run()
                     logstr << "aborted!";
                     mbAbortionRequested = true;
                     bChildAborted = true;
+                    abortedChildRanks.insert(rs);
                     minProgress = 0;
                     sumProgress = 0;
                     break;
@@ -201,6 +204,17 @@ NMMPIRunnable::run()
                     bNumIterChgd = true;
                     numIter = std::max(prog, numIter);
                     break;
+                case NMModelController::NM_EVENT_MODEL_COMPLETED: //9
+                    logstr << "model completed!";
+                    abortedChildRanks.insert(rs);
+                    if (abortedChildRanks.size() == nprocs)
+                    {
+                        bCompleted = true;
+                    }
+                    //minProgress = 0;
+                    //sumProgress = 100;
+                    break;
+
                 case NMModelController::NM_EVENT_UNKNOWN:
                 default:
                     //logstr << " not started yet!";
@@ -258,6 +272,11 @@ NMMPIRunnable::run()
                 emit signalMPIEvent(compName, NMModelController::NM_EVENT_EXEC_STOPPED, 0);
                 execStack.remove(compName);
             }
+            else if (bCompleted)
+            {
+                NMDebugAI(<< "server: signal: model completed!" << std::endl);
+                emit signalMPIEvent(compName, NMModelController::NM_EVENT_MODEL_COMPLETED, 100);
+            }
             //else if (bNumIterChgd)
             //{
             //    NMDebugAI(<< "server: signal: " << compName.toStdString()
@@ -278,6 +297,7 @@ NMMPIRunnable::run()
 
         if (    (bChildAborted && bSignalledAbortion)
              || (execStack.size() == 0 && bHaveStarted)
+             || abortedChildRanks.size() == nprocs
            )
         {
             execute = false;

@@ -13,8 +13,8 @@
 export CPP_DIR=$HOME/garage/cpp
 export BIN_DIR=$HOME/garage/build
 
-export KEA_VERSION=1.5.3
-export LIBKEA_VERSION=1.5
+export KEA_VERSION=1.6.2
+export LIBKEA_VERSION=1.6
 export KEA_SRC=$HOME/garage/cpp/kealib
 export KEA_BIN=$HOME/garage/build/kealib-$KEA_VERSION
 
@@ -90,7 +90,7 @@ git clone https://github.com/heralex/netcdf-c.git -b b_4.9.0
 mkdir -p $BIN_DIR/netcdf-c-$NCVERSION
 cd $BIN_DIR/netcdf-c-$NCVERSION
 
-cmake -DHDF5_ROOT=/usr/lib/x86_64-linux-gnu/hdf5/mpich -DCMAKE_INSTALL_PREFIX=$BIN_DIR/netcdf-c-$NCVERSION/install -DBUILD_SHARED_LIBS:BOOL=ON  -DHDF5_HL_LIBRARY:STRING=/usr/lib/x86_64-linux-gnu/hdf5/mpich/libhdf5_hl.so -DHDF5_C_LIBRARY:STRING=/usr/lib/x86_64-linux-gnu/hdf5/mpich/libhdf5.so -DHDF5_INCLUDE_DIR:STRING=/usr/lib/x86_64-linux-gnu/hdf5/mpich/include -DHDF5_VERSION:STRING="1.10.7" -DNETCDF_LIB_NAME:STRING=netcdf_par $CPP_DIR/netcdf-c
+cmake -DHDF5_ROOT=/usr/lib/x86_64-linux-gnu/hdf5/mpich -DCMAKE_INSTALL_PREFIX=$BIN_DIR/netcdf-c-$NCVERSION/install -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_SHARED_LIBS:BOOL=ON -DHDF5_HL_LIBRARY:STRING=/usr/lib/x86_64-linux-gnu/hdf5/mpich/libhdf5_hl.so -DHDF5_C_LIBRARY:STRING=/usr/lib/x86_64-linux-gnu/hdf5/mpich/libhdf5.so -DHDF5_INCLUDE_DIR:STRING=/usr/lib/x86_64-linux-gnu/hdf5/mpich/include -DHDF5_VERSION:STRING="1.10.7" -DNETCDF_LIB_NAME:STRING=netcdf_par $CPP_DIR/netcdf-c
 make -j 14 install
 
 
@@ -99,7 +99,7 @@ cd $CPP_DIR
 git clone https://github.com/heralex/netcdf-cxx4.git -b heralex_v4.3.1
 mkdir $BIN_DIR/netcdf-cxx-4.3.1
 cd $BIN_DIR/netcdf-cxx-4.3.1
-cmake -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX=$BIN_DIR/netcdf-cxx-4.3.1/install -DHDF5_ROOT=/usr/lib/x86_64-linux-gnu/hdf5/mpich -DBUILD_SHARED_LIBS:BOOL=OFF -DnetCDF_DIR=$BIN_DIR/netcdf-c-$NCVERSION/install/lib/cmake/netCDF -DnetCDF_LIBRARIES:STRING=$BIN_DIR/netcdf-c-$NCVERSION/install/lib/libnetcdf_par.a -DnetCDF_INCLUDE_DIR:STRING=$BIN_DIR/netcdf-c-$NCVERSION/install/include -DCMAKE_CXX_FLAGS=-fPIC $CPP_DIR/netcdf-cxx4
+cmake -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX=$BIN_DIR/netcdf-cxx-4.3.1/install -DHDF5_ROOT=/usr/lib/x86_64-linux-gnu/hdf5/mpich -DBUILD_SHARED_LIBS:BOOL=OFF -DnetCDF_DIR=$BIN_DIR/netcdf-c-$NCVERSION/install/lib/cmake/netCDF -DnetCDF_LIBRARIES:STRING=$BIN_DIR/netcdf-c-$NCVERSION/install/lib/libnetcdf_par.so -DnetCDF_INCLUDE_DIR:STRING=$BIN_DIR/netcdf-c-$NCVERSION/install/include -DCMAKE_CXX_FLAGS=-fPIC $CPP_DIR/netcdf-cxx4
 make -j 14 install
 
 

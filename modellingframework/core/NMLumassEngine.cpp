@@ -74,7 +74,8 @@ NMLumassEngine::NMLumassEngine(int argc, char** argv, AppMode appMode)
       mAppMode(appMode),
       mbMPICleanUp(false),
       m_Rank(0),
-      m_Nproc(1)
+      m_Nproc(1),
+      mParentComm(MPI_COMM_NULL)
 {
     qRegisterMetaType< NMLumassEngine::EngineMode >();
     qRegisterMetaType< NMLumassEngine::AppMode >();
@@ -139,15 +140,24 @@ NMLumassEngine::NMLumassEngine(int argc, char** argv, AppMode appMode)
     MPI_Comm_size(MPI_COMM_WORLD, &m_Nproc);
     MPI_Comm_rank(MPI_COMM_WORLD, &m_Rank);
 
+    NMDebugAI(<< "+++++ MPI_Comm_get_parent() ...")
     MPI_Comm_get_parent(&mParentComm);
+    std::string commParentName = "Cr" + std::to_string(m_Rank) + "'s ParentComm";
+    if (mParentComm != MPI_COMM_NULL)
+    {
+        MPI_Comm_set_name(mParentComm, commParentName.c_str());
+    }
+    else
+    {
+        commParentName = "MPI_COMM_NULL";
+    }
+
 
     std::string init = (mpiinit==1 ? "yes" : "no");
     NMDebugAI(<< "MPI: initialized=" << init << std::endl);
     NMDebugAI(<< "have MPI runtime: " << bMPIRuntime << std::endl);
-    NMDebugAI(<< "MPI: n_procs=" << m_Nproc << "\n");
-    NMDebugAI(<< "MPI: mParentComm="
-              << (mParentComm == MPI_COMM_NULL ? "MPI_COMM_NULL" : std::to_string(mParentComm).c_str())
-                  << std::endl);
+    NMDebugAI(<< "MPI: n_procs=" << m_Nproc << std::endl);
+    NMDebugAI(<< "MPI: mParentComm=" << commParentName << std::endl);
 
     // --------------------------------------------------------
     // look for logfile
@@ -197,7 +207,6 @@ NMLumassEngine::NMLumassEngine(int argc, char** argv, AppMode appMode)
 
     if (mParentComm != MPI_COMM_NULL)
     {
-
         NMLogInfo(<< "This engine runs process r" << m_Rank
                   << " of " << m_Nproc << " child processes overall!");
     }
@@ -210,7 +219,7 @@ NMLumassEngine::NMLumassEngine(int argc, char** argv, AppMode appMode)
     mController->setAppMode(static_cast<int>(mAppMode));
     mController->moveToThread(&mModelThread);
     mModelThread.start();
-
+    connect(&mModelThread, &QThread::finished, mController, &QObject::deleteLater);
 
     /*  The NMLumassEngine is responsible for providing the resources
      *  required to run LUMASS models in different 'modes', i.e. inside
@@ -269,32 +278,33 @@ NMLumassEngine::~NMLumassEngine()
 }
 
 void
+NMLumassEngine::test(void)
+{
+}
+
+void
 NMLumassEngine::shutdown(void)
 {
-    // clean up mpi
-    NMDebugAI(<< ctx << ": MPI_Finalize()\n");
-    NMLogDebug(<< ctx << ": MPI_Finalize()\n");
-    MPI_Finalize();
-
-    if (mLogFile.isOpen())
-    {
-        mLogFile.flush();
-        mLogFile.close();
-    }
-
-#ifdef LUMASS_PYTHON
     if (mAppMode == NM_APP_GUI)
     {
-        emit signalFinalisePython();
+#ifdef LUMASS_PYTHON
+       emit signalFinalisePython();
+#endif
     }
     else
     {
         mController->finalizePythonInterpreter();
     }
-#endif
+
     mModelThread.quit();
     mModelThread.wait();
-    delete mController;
+
+    int bfin;
+    MPI_Finalized(&bfin);
+    if (!bfin)
+    {
+        MPI_Finalize();
+    }
 }
 
 int NMLumassEngine::runModel(double fromTimeStep, double toTimeStep)
@@ -1412,7 +1422,7 @@ NMLumassEngine::writeLogMsg(const QString& msg)
     {
         NMErr("NMLumassEngine", << "Failed writing log message - log file is closed!");
         //mBMILogger(4, "NMLumassEngine: Failed writing log message - log file is closed!");
-        log("ERROR", "NMLumassEngine: Failed writing log message - log file is closed!");
+        //log("ERROR", "NMLumassEngine: Failed writing log message - log file is closed!");
         return;
     }
 

@@ -50,14 +50,12 @@ INCLUDE_DIRECTORIES(
     ${mfw_core_BINARY_DIR}
     ${mfw_wrapper_SOURCE_DIR}
     ${mfw_wrapper_BINARY_DIR}
-    ${LPSOLVE_INCLUDE_DIR}
     ${OTB_INCLUDE_DIRS}
     ${RASDAMAN_INCLUDE_DIR}
     ${RASDAMAN_INCLUDE_DIR}/raslib
     ${RASDAMAN_SOURCE_DIR}/applications/rasgeo
     ${bmi_SOURCE_DIR}
     ${bmi_SOURCE_DIR}/test
-    ${YAML_CPP_INCLUDE_DIR}
     ${Python3_INCLUDE_DIRS}
     ${pybind11_INCLUDE_DIRS}
     #${lumassengine_SOURCE_DIR}
@@ -87,7 +85,6 @@ LINK_DIRECTORIES(
     ${SPATIALITE_LIBLIB_DIR}
     ${NCXX4_LIB_DIR}
     ${NETCDF_LIB_DIR}
-    ${YAML_CPP_LIB_DIR}
     ${Python3_LIBRARIES_DIR}
     ${HDF5_ROOT}
 )
@@ -102,7 +99,7 @@ file(GLOB BMI_HEADER
 file(GLOB BMI_SRC
     #${opt_SOURCE_DIR}/*.cpp
     ${bmi_SOURCE_DIR}/lumassbmi.cpp
-    ${bmi_SOURCE_DIR}/NMLumassEngine.cpp
+    #${bmi_SOURCE_DIR}/NMLumassEngine.cpp
     ${NMVtk_SOURCE_DIR}/NMvtkDelimitedTextWriter.cxx
 
     ${shared_SOURCE_DIR}/*.cpp
@@ -119,11 +116,12 @@ SET(LumassBMI_TEST_FILES
 
 SET(BMI_LINKLIBS
     Qt5Core Qt5Sql Qt5Xml
-    ${NCXX4_LIBRARY}
-    ${NETCDF_LIBRARY}
+    #${NCXX4_LIBRARY}
+    #${NETCDF_LIBRARY}
     curl xml2
     ${MPI_CXX_LIBRARIES}
-    ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
+    NMNetCDFIO
+    #${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
     NMMosra
     #NMOTBSupplFilters
     #NMOTBSupplCore

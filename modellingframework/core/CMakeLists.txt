@@ -22,7 +22,6 @@ INCLUDE_DIRECTORIES(
 #    ${RASDAMAN_SOURCE_DIR}/applications/rasgeo
 #    ${RASDAMAN_INCLUDE_DIR}
 #    ${RASDAMAN_INCLUDE_DIR}/raslib
-    ${VTK_INCLUDE_DIRS}
     ${mfw_core_BINARY_DIR}
     ${mfw_core_SOURCE_DIR}
     ${mfw_wrapper_SOURCE_DIR}
@@ -49,6 +48,12 @@ INCLUDE_DIRECTORIES(
     ${pybind11_INCLUDE_DIRS}
     ${shared_BINARY_DIR}
     ${MPI_CXX_INCLUDE_DIRS}
+    ${bmi_SOURCE_DIR}
+    ${bmi_BINARY_DIR}
+    ${opt_SOURCE_DIR}
+    ${opt_BINARY_DIR}
+    ${LPSOLVE_INCLUDE_DIR}
+    ${YAML_CPP_INCLUDE_DIR}
 )
 
 LINK_DIRECTORIES(
@@ -65,6 +70,7 @@ LINK_DIRECTORIES(
     ${SPATIALITE_LIBLIB_DIR}
     ${NETCDF_LIB_DIR}
     ${NCXX4_LIB_DIR}
+    ${YAML_CPP_LIB_DIR}
 )
 
 file(GLOB MFW_CORE_CPP
@@ -110,16 +116,14 @@ set(MFW_CORE_LINK_LIBS
     Qt5::Xml
     Qt5::Core
     Qt5::Concurrent
+    ${MFW_CORE_VTK_LIBRARIES}
     MuParser
     NMNetCDFIO
     NMOTBSupplCore
-    #${OTB_LIBRARIES}
-    #${OTB_LINK_LIBS}
     NMOTBGDALRATImageIO
     NMOTBSupplFilters
-    #RasImageIO
-    #ITKCommon
-    #spatialite
+    NMMosra
+    ${YAML_CPP_LIBRARIES}
 )
 
 if(PYTHONSUPPORT)
@@ -133,6 +137,7 @@ endif()
 
 set(MFW_CORE_DEP_LIBS
     MuParser
+    NMMosra
     NMNetCDFIO
     NMOTBGDALRATImageIO
     NMOTBSupplCore

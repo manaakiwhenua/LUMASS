@@ -58,7 +58,8 @@ public:
     enum EngineMode{
         NM_ENGINE_MODE_MODEL = 1,
         NM_ENGINE_MODE_MOSO = 2,
-        NM_ENGINE_MODE_UNKNOWN = 3
+        NM_ENGINE_MODE_TEST = 3,
+        NM_ENGINE_MODE_UNKNOWN = 4
     };
 
     // NM_APP_MODE
@@ -85,6 +86,8 @@ public:
     void shutdown(void);
 
     QMap<QString, QVariant> getSettings(){return mSettings;}
+
+    void test(void);
 
 
 public slots:

@@ -305,6 +305,8 @@ else()
 #            message(FATAL_ERROR "LUMASS >= 0.9.60 requires VTK >= 8.2")
 #        endif ()
 #    endif()
+
+    message(STATUS "VTK_SOURCE_DIR: ${VTK_SOURCE_DIR}")
 endif()
 
 #find_package(VTK NO_MODULE)
@@ -675,8 +677,8 @@ SET(OTB_LINK_LIBS
 ADD_SUBDIRECTORY(shared ${lumass_BINARY_DIR}/shared)
 ADD_SUBDIRECTORY(utils ${lumass_BINARY_DIR}/utils)
 ADD_SUBDIRECTORY(otbsuppl ${lumass_BINARY_DIR}/otbsuppl)
-ADD_SUBDIRECTORY(modellingframework/core ${lumass_BINARY_DIR}/modellingframework/core)
 ADD_SUBDIRECTORY(optimisation ${lumass_BINARY_DIR}/optimisation)
+ADD_SUBDIRECTORY(modellingframework/core ${lumass_BINARY_DIR}/modellingframework/core)
 ADD_SUBDIRECTORY(modellingframework/wrapper ${lumass_BINARY_DIR}/modellingframework/wrapper)
 ADD_SUBDIRECTORY(bmi ${lumass_BINARY_DIR}/bmi)
 ADD_SUBDIRECTORY(terminalapp ${lumass_BINARY_DIR}/terminalapp)

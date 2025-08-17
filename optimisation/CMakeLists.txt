@@ -24,6 +24,7 @@ LINK_DIRECTORIES(
     ${NCXX4_LIB_DIR}
     ${NETCDF_LIB_DIR}
     ${mfw_core_SOURCE_DIR}
+    ${VTK_BINARY_DIR}
 )
 
 
@@ -33,7 +34,7 @@ file(GLOB OPT_CPP
 )
 
 file(GLOB OPT_HEADER
-    ${NMVtk_SOURCE_DIR}/NMvtkDelimitedTextWriter.h
+   ${NMVtk_SOURCE_DIR}/NMvtkDelimitedTextWriter.h
    ${opt_SOURCE_DIR}/NMMosra.h
    ${opt_SOURCE_DIR}/MOSORunnable.h
 )
@@ -50,7 +51,6 @@ TARGET_LINK_LIBRARIES(NMMosra
     ${NCXX4_LIBRARY}
     ${NETCDF_LIBRARY}
     NMQt
-    NMModFrameCore
     VTK::CommonCore VTK::CommonDataModel VTK::IOCore VTK::IOSQL VTK::IOLegacy VTK::IOXML
     SQLite
     NMOTBSupplCore

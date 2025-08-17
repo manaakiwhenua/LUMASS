@@ -1192,6 +1192,11 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 
     // ==============================================================================
     // UPDATE LOGIC
+
+    // declarations potentially required in catch-block for clean exit under excpetion
+    int commRank = 0;
+    QMap<int, QPair<QString, MPI_Comm>> mapRankNameSplitComm;
+
     try
     {
 
@@ -1236,7 +1241,6 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
         {
             args << "-";
         }
-        //args << startTime.toString(Qt::ISODate);
         args << startTime.toString(controller->getSetting("TimeFormat").toString());
         controller->getLogger()->logProvN(NMLogger::NM_PROV_START, args, attrs);
 
@@ -1299,15 +1303,15 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
     // get responsible comm for this component
     MPI_Comm comm = controller->getNextUpstrMPIComm(this->objectName());
 
-    MPI_Comm interComm;
-    MPI_Comm_get_parent(&interComm);
-    if (interComm != MPI_COMM_NULL)
+    int _cn_len;
+    char _commName[MPI_MAX_OBJECT_NAME];
+    ::sprintf(_commName, "MPI_COMM_MULL");
+    if (comm != MPI_COMM_NULL)
     {
-        NMDebugAI(<< "We're running a subprocess-model here ...!" << std::endl);
+        MPI_Comm_get_name(comm, _commName, &_cn_len);
     }
 
     int commProcs = 1;
-    int commRank = 0;
     int worldRank = 0;
     int worldProcs = 1;
 
@@ -1324,9 +1328,15 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
     NMDebugCtx(this->objectName().toStdString(), << exmsg.str());
 
     //// have all procs on this branch of execution catch up to this point
-    //NMDebugAI(<< "commRank-#" << commRank << " of comm-#" << comm << ", running " << this->objectName().toStdString()
-    //          << " on #" << commProcs << " procs..." << endl);
+    NMDebugAI(<< "commRank-#" << commRank << " of comm-#" << _commName << " is running " << this->objectName().toStdString()
+              << " on #" << commProcs << " procs..." << endl);
 
+    if (comm != MPI_COMM_NULL)
+    {
+        NMDebugAI(<< "*** waiting at " << this->objectName().toStdString()
+                  << "'s ENTRY barrier prior to task allocation/execution ..." << std::endl);
+        MPI_Barrier(comm);
+    }
     // =========================================================================
 
     // we identify and execute processing pipelines and components
@@ -1380,14 +1390,16 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
         QList<QStringList> parallelTasks, sequentialTasks;
         QStringList parallelExe, sequentialExe, parallelWriters;
         QVector<int> parallelWriterProcs;
-        QMap<QString, QVector<int> > mapCompRnks;
-        QMap<int, QPair<QVector<int>, QVector<int>>> mapSplitRanksTasks;
+        QMap<QString, QStringList> mapExePipe;
+        QMap<int, std::pair<std::unordered_set<int>, std::string>> mapSplitRanksTasks;
+        mapRankNameSplitComm.clear();
 
-        MPI_Comm splitComm = MPI_COMM_NULL;
+        //MPI_Comm splitComm = MPI_COMM_NULL;
         if (commProcs > 1)
         {
             // distinguish between sequential st and parallel tasks pt
-            NMDebugAI( << "filling splitList and stayList ..." << endl);
+            NMDebugAI( << "*** parallel parallel execution of tasks on " << this->objectName().toStdString()
+                       << "'s TimeLevel #" << level << std::endl);
 
             // identify components/pipelines that may utilise
             // more than one process
@@ -1395,6 +1407,8 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
             {
                 NMModelComponent* comp = controller->getComponent(pipe.last());
                 NMIterableComponent* icomp = qobject_cast<NMIterableComponent*>(comp);
+
+                mapExePipe.insert(pipe.last(), pipe);
 
                 /// ToDo: need to look at this at one point!
                 /// HAVE IMPLEMENTED THIS INTO ::createExecSequence();
@@ -1454,6 +1468,293 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
                 }
             }
 
+
+            NMDebugAI(<< "parallelExe: " << parallelExe.join(" ").toStdString());
+            NMDebugAI(<< "parallelWriters: " << parallelWriters.join(" ").toStdString());
+            NMDebugAI(<< "parallelWriterProcs: ");
+            for (int wp=0; wp < parallelWriterProcs.size(); ++wp)
+            {
+                NMDebug(<< parallelWriterProcs.at(wp) << " ");
+            }
+            NMDebugAI(<< "sequentialExe: " << sequentialExe.join(" ").toStdString());
+
+            // list / vector of REMAINING exe / writer / write proc demand
+            QStringList _parallelExe = parallelExe;
+            QStringList _sequentialExe = sequentialExe;
+            QStringList _parallelWriters = parallelWriters;
+            std::vector<int> _parallelWriterProcs(parallelWriterProcs.begin(), parallelWriterProcs.end());
+
+            const int num_paraTasks = parallelExe.size();
+            const int num_seqTasks = sequentialExe.size();
+            const int num_totalTasks = num_paraTasks + num_seqTasks;
+
+            std::deque<int> idleProcs;
+            for (int r=0; r < commProcs; ++r)
+            {
+                idleProcs.push_back(r);
+            }
+
+            // ========================== TASK ALLOCATION ==================================
+            // To execute tasks in parallel, we split the communicator registered with this
+            // Aggregate Component into as many communicators as there are tasks that
+            // can be executed concurrently given the number of ranks available. As we may
+            // have more tasks that could be executed concurrently as available ranks,
+            // we may need more than one iteration.
+            // While allocating ranks to tasks, we distinguish between sequential and
+            // parallel tasks. Parallel tasks are able to utilise more than one process (rank)
+            // during their execution. This is the case for Aggregate Components (nested
+            // inside this Aggregate Component) and for processing pipelines with a parallel
+            // ImageWriter component. While ImageWriter components are actually checked
+            // for being configured for parallel writing before allocating more than one
+            // rank, Aggregate Components are not checked for containing sub components
+            // that could actually be processed in parallel.
+            // In each iteration, we're aiming to allocate all available ranks across the
+            // available tasks on a given time level. Each task receives it's own communicator
+            // identified by its allocated splitID (>= 0). Any ranks not allocated to a sequential
+            // or a parallel task are assigned splitID=-1 and MPI_COMM_NULL, respectively.
+            // Once all ranks are allocated, the associated tasks are executed. Once ALL tasks
+            // have completed, their associated communicators are freed. Any remaining tasks
+            // left to be executed on this time level are being dealt with in the next
+            // iteration.
+
+            int cnt = 1;
+            int splitID = 0;
+            int para_done = 0, seq_done = 0, total_done = 0;
+            while (commProcs > 0 && total_done < num_totalTasks && cnt <= num_totalTasks)
+            {
+                MPI_Comm splitComm = MPI_COMM_NULL;
+                int total_left = _parallelExe.size() + _sequentialExe.size();
+
+                if (commRank == 0)
+                {
+                    NMDebug(<< "***>>> ROUND #" << cnt << " - allocating tasks <<<***" << std::endl);
+                    NMDebugAI(<< "idle procs: " << idleProcs.size() << ": (");
+                    for (int ip=0; ip < idleProcs.size(); ++ip)
+                    {
+                        NMDebug(<< idleProcs.at(ip) << " ");
+                    }
+                    NMDebug(<< ")" << std::endl);
+                    NMDebugAI(<< "total tasks left: " << total_left << "(" << num_totalTasks << ")" << std::endl);
+                    NMDebugAI(<< "seq tasks left:   " << _sequentialExe.size() << "(" << num_seqTasks << ")" << std::endl);
+                    NMDebugAI(<< "para tasks left:  " << _parallelExe.size()  << "(" << num_paraTasks << ")" << std::endl);
+                    NMDebugAI(<< "procs available:  " << idleProcs.size() << "(" << commProcs << ")" << std::endl);
+                    NMDebug(<< std::endl);
+
+                    NMDebugAI(<< "***>>> sequential tasks <<<***" << std::endl);
+                }
+
+                // -------------------------- SEQUENTIAL ----------------------------------------
+                if (commRank == 0 && seq_done >= num_seqTasks)
+                {
+                    NMDebugAI(<< "     nothing to be done here!   " << std::endl << std::endl);
+                }
+
+                while (idleProcs.size() > 0 && seq_done < num_seqTasks)
+                {
+                    std::pair<std::unordered_set<int>, std::string> seq_taskAdmin = {{}, ""};
+                    const QString sexe = _sequentialExe.front();
+                    seq_taskAdmin.second = sexe.toStdString();
+                    _sequentialExe.pop_front();
+
+                    const int seqRank = idleProcs.front();
+                    seq_taskAdmin.first.insert(seqRank);
+                    idleProcs.pop_front();
+
+                    if (seqRank == commRank)
+                    {
+                        std::string seqSplitCommName = seq_taskAdmin.second + "-" + std::to_string(splitID);
+                        NMDebugAI(<< "*** MPI_Comm_split(comm, "<< splitID << ", " << seqRank
+                                       << ", " << seqSplitCommName << ")" << std::endl);
+                        MPI_Comm_split(comm, splitID, seqRank, &splitComm);
+                        MPI_Comm_set_name(splitComm, seqSplitCommName.c_str());
+                        mController->registerParallelGroup(sexe, splitComm);
+                        mapRankNameSplitComm.insert(commRank, qMakePair(sexe, splitComm));
+                    }
+                    mapSplitRanksTasks.insert(splitID, seq_taskAdmin);
+
+                    ++splitID;
+                    ++seq_done;
+                    ++total_done;
+                }
+
+
+                // -------------------------- PARALLEL ----------------------------------------
+                // calc resources for parallel tasks
+                int procs_left = idleProcs.size();
+                int pprocs_per_task = 1, __pprocs_per_task = 0;
+                if (_parallelExe.size() > 0 && procs_left > _parallelExe.size())
+                {
+                    pprocs_per_task = std::floor(procs_left / double(_parallelExe.size()));
+                }
+                int rest_procs = procs_left - pprocs_per_task * _parallelExe.size();
+
+                if (commRank == 0)
+                {
+                    NMDebug(<< std::endl);
+                    NMDebugAI(<< "procs available:  " << procs_left << "(" << commProcs << ")" << std::endl);
+                    NMDebugAI(<< "pprocs per ptask: " << pprocs_per_task << std::endl);
+                    NMDebugAI(<< "rest_procs:       " << rest_procs << std::endl);
+                    NMDebug(<< std::endl);
+                    NMDebugAI(<< "***>>> parallel tasks <<<***" << std::endl);
+                }
+
+                //const int para_left = _parallelExe.size();
+                for (int p=0, rp=0; p < procs_left && para_done < num_paraTasks; p += __pprocs_per_task, ++rp, ++para_done, ++total_done, ++splitID)
+                {
+                    __pprocs_per_task = pprocs_per_task;
+                    if (rp < rest_procs)
+                    {
+                        ++__pprocs_per_task;
+                        NMDebugAI(<< "*** parallel task with splitID=" << splitID
+                                  << " receives 1 extra process!" << std::endl);
+                    }
+
+                    std::pair<std::unordered_set<int>, std::string> taskAdmin = {{}, ""};
+                    const QString pexe = _parallelExe.front();
+                    taskAdmin.second = pexe.toStdString();
+                    _parallelExe.pop_front();
+                    // only allocate the configured WriteProcs to parallel writer
+                    const int pw_id = _parallelWriters.indexOf(pexe);
+                    if (pw_id >= 0)
+                    {
+                        __pprocs_per_task = std::min(_parallelWriterProcs.at(pw_id), __pprocs_per_task);
+                        rest_procs += __pprocs_per_task - pprocs_per_task;
+                    }
+
+                    for (int pp=0; pp < __pprocs_per_task; ++pp)
+                    {
+                        const int procRank = idleProcs.front();
+                        taskAdmin.first.insert(procRank);
+                        idleProcs.pop_front();
+
+                        // if current rank is part of the crew running this task, it needs to call MPI_Comm_split for registration
+                        if (commRank == procRank)
+                        {
+                            std::string paraCommName = taskAdmin.second + "-" + std::to_string(splitID);
+                            NMDebugAI(<< "*** MPI_Comm_split(comm, "<< splitID << ", " << commRank
+                                           << ", " << paraCommName << ")" << std::endl);
+                            MPI_Comm_split(comm, splitID, commRank, &splitComm);
+                            MPI_Comm_set_name(splitComm, paraCommName.c_str());
+                            mController->registerParallelGroup(pexe, splitComm);
+                            mapRankNameSplitComm.insert(commRank, qMakePair(pexe, splitComm));
+                        }
+                    }
+                    mapSplitRanksTasks.insert(splitID, taskAdmin);
+                }
+
+
+                // make sure we've assigned all ranks to a split communicator
+                while(idleProcs.size() > 0)
+                {
+                    const int procRank = idleProcs.front();
+                    idleProcs.pop_front();
+                    if (commRank == procRank)
+                    {
+                        NMDebugAI(<< "*** MPI_Comm_split(comm, "<< -1 << ", " << commRank
+                                       << ", MPI_COMM_NULL)" << std::endl);
+                        MPI_Comm_split(comm, -1, commRank, &splitComm);
+                    }
+                }
+
+                // ========================== TASK EXECUTION ==================================
+                 if (commRank == 0)
+                {
+                    NMDebug(<< std::endl);
+                    NMDebugAI(<< "***>>> running tasks <<<***" << std::endl);
+                }
+
+                // run tasks
+                auto srt_it = mapSplitRanksTasks.cbegin();
+                for (; srt_it != mapSplitRanksTasks.cend(); ++srt_it)
+                {
+                    auto procIt = srt_it.value().first.cbegin();
+                    for (; procIt != srt_it.value().first.cend(); ++procIt)
+                    {
+                        // if commRank is part of the crew running this, by all means chip in!!
+                        if (*procIt == commRank)
+                        {
+                            // find the pipeline for the task
+                            auto pipeit = mapExePipe.constFind(srt_it.value().second.c_str());
+                            if (pipeit == mapExePipe.constEnd())
+                            {
+                                NMMfwException ex(NMMfwException::NMModelComponent_InvalidParameter);
+                                ex.setSource(srt_it.value().second);
+                                QString msg = QString("Executable component '%1' couldn't be mapped to a valid task!")
+                                                .arg(srt_it.value().second.c_str());
+                                ex.setDescription(msg.toStdString());
+                                throw ex;
+                            }
+
+                            NMDebugAI(<< "*** r" << commRank << ":  is running: " << srt_it.value().second << std::endl);
+                            QStringList exePipe = pipeit.value();
+                            bool bParallelWriter = false;
+                            if (    parallelWriters.contains(srt_it.value().second.c_str())
+                                 && srt_it.value().first.size() > 1
+                               )
+                            {
+                                bParallelWriter = true;
+                            }
+                            executeTask(exePipe, bParallelWriter, repo, step, commRank, worldRank);
+                        }
+                    }
+                }
+                if (commRank == 0)
+                {
+                    NMDebug(<< std::endl);
+                }
+
+                // ========================== CLEAN UP ==================================
+                //MPI_Barrier(comm);
+
+                auto rsc_it = mapRankNameSplitComm.cbegin();
+                for (; rsc_it != mapRankNameSplitComm.cend(); ++rsc_it)
+                {
+                    if (rsc_it.key() == commRank)
+                    {
+                        MPI_Comm _rsc = rsc_it.value().second;
+                        if (_rsc != MPI_COMM_NULL)
+                        {
+                            mController->deregisterParallelGroup(rsc_it.value().first);
+                            int cn_len;
+                            char cname[MPI_MAX_OBJECT_NAME];
+                            MPI_Comm_get_name(_rsc, cname, &cn_len);
+                            MPI_Comm_free(&_rsc);
+                            NMDebugAI(<< "freed splitComm=" << cname << std::endl);
+                        }
+                    }
+                }
+
+
+                // resume
+                if (commRank == 0)
+                {
+                    NMDebugAI(<< "total tasks left: " << (_sequentialExe.size() + _parallelExe.size())
+                              << "(" << num_totalTasks << ")" << std::endl);
+                    NMDebugAI(<< "seq tasks left:   " << _sequentialExe.size() << "(" << num_seqTasks << ")" << std::endl);
+                    NMDebugAI(<< "para tasks left:  " << _parallelExe.size()  << "(" << num_paraTasks << ")" << std::endl);
+                    NMDebug(<< std::endl);
+                }
+
+                // re-fill idle procs
+                for (int ap=0; ap < commProcs; ++ap)
+                {
+                    idleProcs.push_back(ap);
+                }
+
+                // empty the task management map
+                mapSplitRanksTasks.clear();
+                mapRankNameSplitComm.clear();
+
+                // reset split count
+                splitID = 0;
+                ++cnt;
+
+                // wait for everybody to have completed their tasks + clean-up before starting the next round
+                NMDebugAI(<< "*** waiting at " << this->objectName().toStdString()
+                          << "'s TimeLevel #" << level << " parallel task execution loop-end barrier ..." << std::endl);
+                MPI_Barrier(comm);
+            }
+ /*
 
             // allocate processes to tasks
 
@@ -1631,7 +1932,15 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
                                 regCompName = this->mController->getComponent(execComp)->getHostComponent()->objectName();
                             }
                             MPI_Comm regComm = controller->getNextUpstrMPIComm(execComp);
-                            MPI_Comm_get_name(regComm, comm_name, &cn_len);
+                            if (regComm != MPI_COMM_NULL)
+                            {
+                                MPI_Comm_get_name(comm, comm_name, &cn_len);
+                            }
+                            else
+                            {
+                                ::sprintf(comm_name, "MPI_COMM_NULL");
+                            }
+
                             wulog(-1, "lr" << commRank << ": " << this->objectName().toStdString()
                                   << ": splitId=" << splitId << " rankId=" << rankId
                                   << " also registers comm=" << comm_name << " also with "
@@ -1679,28 +1988,42 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
             slstr(rankExecComps, " ", rec)
             wulog(-1, "lr" << commRank << ": <<" << this->objectName().toStdString() << ">> RankExecComps: " << rec)
             // ------ DEBUG -------
+
+            */
         }
         else
         {
             // ... task distribution is easy with just one process!
-            QPair<QVector<int>, QVector<int>> ranksTasks;
-            ranksTasks.first.push_back(commRank);
-            for (int ft=0; ft < execList.size(); ++ft)
-            {
-                ranksTasks.second.push_back(ft);
-                rankExecComps << execList.at(ft).last();
-                rankRegComps << execList.at(ft).last();
-            }
-            mapSplitRanksTasks[0] = ranksTasks;
+            //QPair<QVector<int>, QVector<int>> ranksTasks;
+//            QPair<QVector<int>, QSet<QString>> ranksTasks;
+//            ranksTasks.first.push_back(commRank);
+//            for (int ft=0; ft < execList.size(); ++ft)
+//            {
+//                //ranksTasks.second.push_back(ft);
+//                ranksTasks.second.insert(execList.at(ft).last());
+//                rankExecComps << execList.at(ft).last();
+//                rankRegComps << execList.at(ft).last();
+//            }
+//            mapSplitRanksTasks[0] = ranksTasks;
 
-            sequentialTasks = execList;
+//            sequentialTasks = execList;
 
+              NMDebugAI( << "*** sequential execution of tasks on " << this->objectName().toStdString()
+                       << "'s TimeLevel #" << level << std::endl);
+
+              for (int t=0; t < execList.size(); ++t)
+              {
+                  std::pair<std::unordered_set<int>, std::string> taskAdmin = {{commRank}, execList.at(t).last().toStdString()};
+                  mapSplitRanksTasks.insert(t, taskAdmin);
+
+                  executeTask(execList.at(t), false, repo, step, commRank, worldRank);
+              }
         }
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         //          PROCESS COMPS and PIPES sequential or parallel
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/*
         foreach(const QStringList& pipeline, execList)
         {
             // skip this pipeline, if it's not this rank's business!
@@ -1862,7 +2185,13 @@ wulog(-1, "lr" << commRank << ": init parallel IO " << (bpio ? " successful!" : 
                   << "'s time level SPLIT barrier ... ");
             MPI_Comm_free(&splitComm);
         }
-    }
+
+*/
+
+
+
+
+    }// end time-level loop
 
     NMDebugAI(<< ">>>> END ITERATION #" << step+1 << std::endl);
     NMDebugCtx(this->objectName().toStdString(), << "done!");
@@ -1918,8 +2247,10 @@ wulog(-1, "lr" << commRank << ": init parallel IO " << (bpio ? " successful!" : 
     }
     catch (std::exception& e)
     {
-        exStackInfo << (exObjName.empty() ? hostName.toStdString() : exObjName) << " step #" << hostStep << ": "
-            << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString()) << " step #" << step+1;
+        exStackInfo << (exObjName.empty() ? hostName.toStdString() : exObjName)
+                    << " step #" << hostStep << ": "
+                    << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString())
+                    << " step #" << step+1;
         exDescription << e.what();
         bThrow = true;
     }
@@ -1932,6 +2263,26 @@ wulog(-1, "lr" << commRank << ": init parallel IO " << (bpio ? " successful!" : 
         mfwe.setSource(exSource);
         NMErr(ctx, << mfwe.what());
 
+        // clear any allocated splitComms
+        auto rsc_it = mapRankNameSplitComm.cbegin();
+        for (; rsc_it != mapRankNameSplitComm.cend(); ++rsc_it)
+        {
+            if (rsc_it.key() == commRank)
+            {
+                MPI_Comm _rsc = rsc_it.value().second;
+                if (_rsc != MPI_COMM_NULL)
+                {
+                    mController->deregisterParallelGroup(rsc_it.value().first);
+                    int cn_len;
+                    char cname[MPI_MAX_OBJECT_NAME];
+                    MPI_Comm_get_name(_rsc, cname, &cn_len);
+                    MPI_Comm_free(&_rsc);
+                    NMDebugAI(<< "freed splitComm=" << cname << std::endl);
+                }
+            }
+        }
+
+
         NMDebugCtx(this->objectName().toStdString(), << "done!");
 
         NMModelController::MPICompProg compProg;
@@ -1943,6 +2294,151 @@ wulog(-1, "lr" << commRank << ": init parallel IO " << (bpio ? " successful!" : 
         emit signalExecutionStopped();
         mIsUpdating = false;
         throw mfwe;
+    }
+}
+
+void
+NMIterableComponent::executeTask(const QStringList pipeline,
+                                 bool bParallelWriter,
+                                 const QMap<QString, NMModelComponent *> &repo,
+                                 unsigned int step, int rank, int worldRank)
+{
+    //// skip this pipeline, if it's not this rank's business!
+    //if (!rankExecComps.contains(pipeline.last()))
+    //{
+    //    wulog(-1, "lr" << commRank << ": >> skip " << pipeline.last().toStdString());
+    //    continue;
+    //}
+
+    // for each pipeline, we first link each individual component
+    // (from head to toe), before we finally call update on the
+    // last (i.e. executable) component of the pipeline
+    std::vector<otb::NetCDFIO::Pointer> parallelReaders;
+
+    NMModelController* controller = mController;
+    NMModelComponent* comp = nullptr;
+    for (int c=0; c < pipeline.size(); ++c)
+    {
+        QString in = pipeline.at(c);
+        comp = controller->getComponent(in);
+        if (comp == 0)
+        {
+            NMMfwException e(NMMfwException::NMModelController_UnregisteredModelComponent);
+            e.setSource(in.toStdString());
+            std::stringstream msg;
+            msg << "'" << in.toStdString() << "'";
+            e.setDescription(msg.str());
+            NMDebugCtx(this->objectName().toStdString(), << "done!");
+            emit signalExecutionStopped();
+            throw e;
+        }
+        // link component
+        comp->linkComponents(step, repo);
+
+        // if comp is a reader in a parallel write pipeline and
+        // if comp is reading a netcdf file, initiate parallel read!
+        //if (rankPioWriters.contains(pipeline.last()))
+        if (bParallelWriter)
+        {
+            NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
+            if (ic != nullptr && ic->objectName().startsWith("ImageReader"))
+            {
+                NMImageReader* reader = qobject_cast<NMImageReader*>(ic->getProcess());
+                if (reader != nullptr)
+                {
+                    otb::ImageIOBase* bio = const_cast<otb::ImageIOBase*>(reader->getImageIOBase());
+                    otb::NetCDFIO::Pointer nio = dynamic_cast<otb::NetCDFIO*>(bio);
+
+                    if (nio.GetPointer() != nullptr)
+                    {
+wulog(-1, "lr" << rank << ": '" << nio->GetFileName() << "' needs opening in parallel mode ...!");
+                        MPI_Comm niopioComm = this->mController->getNextUpstrMPIComm(comp->objectName());
+                        MPI_Info info = MPI_INFO_NULL;
+                        bool bpio = nio->InitParallelIO(niopioComm, info, false);
+wulog(-1, "lr" << rank << ": init parallel IO " << (bpio ? " successful!" : " failed!"));
+                        parallelReaders.push_back(nio);
+                    }
+                }
+            }
+        }
+
+
+        // gather some info, we could use for debugging purposes in case
+        // the execution fails
+        QString hostName = QStringLiteral("Unknown");
+        int hostStep = -1;
+        if (comp->getHostComponent())
+        {
+            hostName = comp->getHostComponent()->objectName();
+            hostStep = comp->getHostComponent()->getIterationStep();
+        }
+
+        NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
+        NMProcess* pc = ic == nullptr ? nullptr : ic->getProcess();
+
+        // log provenance
+        QStringList args;
+        QStringList attrs = controller->getProvNAttributes(comp);
+
+        QString respId = QString("nm:%1").arg(this->objectName());
+
+
+        QString actId = QString("nm:%1_Update-%2").arg(comp->objectName()).arg(this->getIterationStep());
+        QString agId = QString("nm:%1").arg(comp->objectName());
+
+
+        args << agId;
+        controller->getLogger()->logProvN(NMLogger::NM_PROV_AGENT, args, attrs);
+
+        attrs.clear();
+        args.clear();
+        args << agId << respId << "-";
+        controller->getLogger()->logProvN(NMLogger::NM_PROV_DELEGATION, args, attrs);
+
+        attrs.clear();
+        if (pc != nullptr)
+        {
+            attrs.append(pc->getRunTimeParaProvN());
+        }
+        args.clear();
+        args << actId << "-" << "-";
+        controller->getLogger()->logProvN(NMLogger::NM_PROV_ACTIVITY, args, attrs);
+
+        attrs.clear();
+        args.clear();
+        args << actId << agId << "-";
+        controller->getLogger()->logProvN(NMLogger::NM_PROV_ASSOCIATION, args, attrs);
+    }
+
+    // calling update on the last component of the pipeline
+    // (the most downstream)
+    if (!controller->isModelAbortionRequested())
+    {
+        wulog(-1, "lr" << rank << ": >> " << pipeline.last().toStdString() << "::update() ...");
+        comp->update(repo);
+
+        // clase parallel readers, if any
+        for (int pr=0; pr < parallelReaders.size(); ++pr)
+        {
+            parallelReaders.at(pr)->FinaliseParallelIO();
+        }
+    }
+    else
+    {
+        NMDebugAI(<< ">>>> END ITERATION #" << step+1 << std::endl);
+        NMDebugCtx(this->objectName().toStdString(), << "done!");
+        return;
+    }
+
+    // release resources
+    foreach (const QString in, pipeline)
+    {
+        comp = controller->getComponent(in);
+        NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
+        if (ic && ic->getProcess() != 0)
+        {
+            ic->getProcess()->reset();
+        }
     }
 }
 

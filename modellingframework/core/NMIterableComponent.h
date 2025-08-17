@@ -327,6 +327,9 @@ protected:
     int isInExecList(const QList<QStringList>& execList,
             const QString& compName);
 
+    void executeTask(const QStringList pipeline, bool bParallelWriter,
+                     const QMap<QString, NMModelComponent*>& repo,
+                     unsigned int step, int rank, int worldRank);
 
     virtual void iterativeComponentUpdate(const QMap<QString, NMModelComponent*>& repo,
             unsigned int minLevel, unsigned int maxLevel)=0;//{};

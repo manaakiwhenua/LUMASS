@@ -517,15 +517,11 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 
 
                 // double check, whether the input is meant to be linked in as input for this run
-                //NMSequentialIterComponent* seqComp = qobject_cast<NMSequentialIterComponent*>(it.value());
                 NMIterableComponent* iterComp = qobject_cast<NMIterableComponent*>(it.value());
-                //if (seqComp != nullptr)
                 if (iterComp != nullptr)
                 {
-                    if (    //seqComp
-                            iterComp->getNumIterations() == 0
-                         || //seqComp
-                            iterComp->evalNumIterationsExpression(step+1) == 0
+                    if (    (iterComp->getIterationStep() >  iterComp->getNumIterations())
+                         || iterComp->evalNumIterationsExpression(step+1) == 0
                        )
                     {
                         NMLogDebug(<< "'" << inputCompName.toStdString() << "' skipped as input for this run!")
@@ -542,7 +538,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                 //       not! -> gives greater flexibility
                 NMDebugAI(<< targetName.toStdString() << " <-(" << ii << ")- "
                           << ic->objectName().toStdString()
-                          << "[" << outIdx << "] ... " << std::endl);
+                          << "[" << (outIdx >= 0 ? std::to_string(outIdx) : outName.toStdString()) << "] ... " << std::endl);
 
                 QSharedPointer<NMItkDataObjectWrapper> iw;
                 if (outIdx >= 0)

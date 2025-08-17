@@ -87,10 +87,10 @@ if [ $gui -eq 1 ]; then
 elif [ $engine -eq 1 ]; then
   if [ $nprocs -gt 1 ]; then
     echo "Running the LUMASS engine in parallel on $nprocs processes ..."
-    exec "$dir"/mpiexec -np $nprocs "$dir"/lumassengine "$engine_work"
+    exec "$dir"/mpiexec -np $nprocs "$dir"/lumassengine $engine_work
   else
     echo "Running a single LUMASS engine process ..."
-    exec "$dir"/lumassengine "$engine_work"
+    exec "$dir"/lumassengine $engine_work
   fi
 fi
 

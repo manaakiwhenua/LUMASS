@@ -196,13 +196,20 @@ public:
                 std::vector<itk::ImageIORegion> paraRegions;
 
                 int numSplits = splitter->GetNumberOfSplits(lpr, nprocs);
+                NMDebugAI(<< "Given " << nprocs << " processes, write splitter suggests "
+                          << numSplits << " parallel write regions ..." << std::endl);
                 int subtract=1;
                 while (numSplits > nprocs)
                 {
+                    if (subtract == 1)
+                    {
+                        NMDebugAI(<< "... adjusting write regions: ");
+                    }
                     numSplits = splitter->GetNumberOfSplits(lpr, (nprocs-subtract));
+                    NMDebug(<< numSplits << " ... ");
                     ++subtract;
                 }
-
+                NMDebug(<< std::endl);
 
                 unsigned long totalNumPix = lpr.GetNumberOfPixels();
                 unsigned long pixPerRegion = totalNumPix / numSplits;
@@ -216,7 +223,15 @@ public:
 
                 char comm_name[MPI_MAX_OBJECT_NAME];
                 int  cn_len;
-                MPI_Comm_get_name(comm, comm_name, &cn_len);
+                if (comm != MPI_COMM_NULL)
+                {
+                    MPI_Comm_get_name(comm, comm_name, &cn_len);
+                }
+                else
+                {
+                    ::sprintf(comm_name, "MPI_COMM_NULL");
+                }
+
                 NMDebugAI(<< "proc#" << rank << " arriving at barrier (" << comm_name << ") ... " << std::endl);
                 MPI_Barrier(comm);
                 NMDebugAI(<< "proc#" << rank << " stepped past the barrier!" << std::endl);
@@ -264,6 +279,9 @@ public:
                     }
                 }
 
+                // we may have been allocated more procs than the number of splits we're
+                // actually processing, so gather all processes here again, before moving on
+                MPI_Barrier(comm);
             }
             else if (numBands == 3 && rgbMode)
             {
@@ -1078,13 +1096,24 @@ NMStreamingImageFileWriterWrapper
         bJustStreaming = true;
     }
 
-    int rank = mController->getRank(this->parent()->objectName());
-    int procs = mController->getNumProcs(this->parent()->objectName());
     MPI_Comm comm = mController->getNextUpstrMPIComm(this->parent()->objectName());
+
+    int rank, procs;
+    MPI_Comm_size(comm, &procs);
+    MPI_Comm_rank(comm, &rank);
+
 
     int cn_len;
     char comm_name[MPI_MAX_OBJECT_NAME];
-    MPI_Comm_get_name(comm, comm_name, &cn_len);
+    if (comm != MPI_COMM_NULL)
+    {
+        MPI_Comm_get_name(comm, comm_name, &cn_len);
+    }
+    else
+    {
+        ::sprintf(comm_name, "MPI_COMM_NULL");
+    }
+
 
     bool bParallel = false;
     if (this->getWriteProcs() > 1 && procs > 1)
@@ -1139,7 +1168,7 @@ NMStreamingImageFileWriterWrapper
                             NMErr("NMStreamingImageFileWriterWrapper", << errtxt.str());
                         }
                         NMDebugCtx(ctxNMStreamWriter, << "done!");
-                        MPI_Finalize();
+                        //MPI_Finalize();
                         exit(1);
                     }
                     else
@@ -1208,7 +1237,7 @@ NMStreamingImageFileWriterWrapper
                         NMErr("NMStreamingImageFileWriterWrapper", << errtxt.str());
                     }
                     NMDebugCtx(ctxNMStreamWriter, << "done!");
-                    MPI_Finalize();
+                    //MPI_Finalize();
                     exit(1);
                 }
                 else
@@ -1377,6 +1406,10 @@ NMStreamingImageFileWriterWrapper
         return;
     }
 
+    int cn_len;
+    char cname[MPI_MAX_OBJECT_NAME];
+    MPI_Comm_get_name(comm, cname, &cn_len);
+    NMDebugAI(<< ctxNMStreamWriter << ": secured access to MPI_comm '" << cname << "'! for parallel write!" << std::endl);
 
     switch(this->mOutputComponentType)
     {
@@ -1410,14 +1443,10 @@ NMStreamingImageFileWriterWrapper
     if (!this->mbIsInitialised)
         return;
 
-    const int nprocs = std::min(mController->getNumProcs(this->parent()->objectName()), this->mWriteProcs);
-    const int rank =   mController->getRank(this->parent()->objectName());
-    MPI_Comm comm =    mController->getNextUpstrMPIComm(this->parent()->objectName());
-
-    //MPI_Comm comm = MPI_COMM_WORLD;
-    //int nprocs, rank;
-    //MPI_Comm_rank(comm, &rank);
-    //MPI_Comm_size(comm, &nprocs);
+    MPI_Comm comm = mController->getNextUpstrMPIComm(this->parent()->objectName());
+    int nprocs, rank;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &nprocs);
 
     if (comm == MPI_COMM_NULL)
     {

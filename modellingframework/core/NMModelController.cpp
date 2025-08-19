@@ -710,10 +710,6 @@ NMModelController::executeModel(const QString compName,
     else
     {
         executeSeqModel(compName);
-        //mConcurrentVoidReturn = QtConcurrent::run(this, &NMModelController::executeSeqModel,
-        //                                           compName, QString());
-        //mConcurrentVoidWatcher.setFuture(mConcurrentVoidReturn);
-
     }
 
     this->mAlphaComps.clear();
@@ -765,7 +761,8 @@ NMModelController::identifyParallelComponents(const QString& compName,
             bool bParallel = false;
             foreach(const QString& fn, filenames)
             {
-                if (    fn.contains(QStringLiteral(".nc"))
+                const QString _fn = this->processStringParameter(ic, fn);
+                if (    _fn.contains(QStringLiteral(".nc"))
                      && writer->getWriteProcs() > 1
                    )
                 {
@@ -913,32 +910,73 @@ NMModelController::executeMPIParentModel(const QString &compName,
     QFileInfo modelInfo(modelFN);
     QString modelBaseName = QString("$[LUMASS:ConfigPath]$/%1.lmx").arg(modelInfo.completeBaseName());
 
-    // --------------------------------------------------------------
-    // create new yaml config file adapting the model file name
+
+    // ------------------------- CREATE YAML config file for parallel model -----------------------
     YAML::Node node;
-    this->setYamlConfigValue(yamlFN, node, "EngineConfig", QString(), "modelfile", modelBaseName);
-
-
-    // ..................................................
-    // replace 'ConfigPath' with original path
-
-    // work out original value of `ConfigPath`
-    QFileInfo yfinfo(yamlFN);
+    QString engineConfig;
+    QString modelConfig;
+    QString pathExpr;
     QString origConfigPath;
-    if (yfinfo.isFile() && yfinfo.isReadable())
+    // work off base of provided yaml
+    if (yamlFN.contains(QStringLiteral("yaml")) || yamlFN.contains(QStringLiteral("yml")))
     {
-        origConfigPath = yfinfo.absolutePath();
+        // --------------------------------------------------------------
+        // replace $[LUMASS:ConfigPath]$ with actual value, as new yaml will have a
+        // different path, i.e. $[LUMASS:ConfigPath]$ will have a different value
+        this->setYamlConfigValue(yamlFN, node, "EngineConfig", QString(), "modelfile", modelBaseName);
+
+        // ..................................................
+        // replace 'ConfigPath' with original path
+
+        // work out original value of `ConfigPath`
+        QFileInfo yfinfo(yamlFN);
+        if (yfinfo.isFile() && yfinfo.isReadable())
+        {
+            origConfigPath = yfinfo.absolutePath();
+        }
+        pathExpr = QStringLiteral("$[LUMASS:ConfigPath]$");
+
+        YAML::Emitter emitter;
+        emitYaml(emitter, node);
+        QString yamlStr = emitter.c_str();
+        int settingPos = yamlStr.indexOf(QStringLiteral("Settings:"));
+
+        engineConfig = yamlStr.left(settingPos);
+        modelConfig = yamlStr.right(yamlStr.size() - settingPos);
+        modelConfig = modelConfig.replace(pathExpr, origConfigPath);
     }
-    const QString pathExpr = QStringLiteral("$[LUMASS:ConfigPath]$");
+    else
+    {
+        YAML::Node engine;
+        engine["mode"] = "model";
+        engine["enginepath"] = getSetting(QStringLiteral("LUMASSPath")).toString().toStdString();
+        engine["modelfile"] = modelFN.toStdString();
+        engine["workspace"] = getSetting(QStringLiteral("Workspace")).toString().toStdString();
+        engine["logfile"] = logFN.toStdString();
+        engine["logprovenance"] = "true";
 
-    YAML::Emitter emitter;
-    emitYaml(emitter, node);
-    QString yamlStr = emitter.c_str();
-    int settingPos = yamlStr.indexOf(QStringLiteral("Settings:"));
+        YAML::Node settings;
+        QStringList keys = getModelSettingsList();
+        foreach(const QString key, keys)
+        {
+            settings[key.toStdString()] = getSetting(key).toString().toStdString();
+        }
 
-    QString engineConf = yamlStr.left(settingPos);
-    QString settingStr = yamlStr.right(yamlStr.size() - settingPos);
-    settingStr = settingStr.replace(pathExpr, origConfigPath);
+        YAML::Node model;
+        model["Settings"] = settings;
+
+        YAML::Node fileNode_1;
+        fileNode_1["EngineConfig"] = engine;
+        YAML::Emitter fn1_emit;
+        emitYaml(fn1_emit, fileNode_1);
+        engineConfig = fn1_emit.c_str();
+
+        YAML::Node fileNode_2;
+        fileNode_2["ModelConfig"] = model;
+        YAML::Emitter fn2_emit;
+        emitYaml(fn2_emit, fileNode_2);
+        modelConfig = fn2_emit.c_str();
+    }
 
     // ........................................................
     // write new YAML file
@@ -953,8 +991,9 @@ NMModelController::executeMPIParentModel(const QString &compName,
 
     // write yaml
     QTextStream yamlOut(&yamlFile);
-    yamlOut << engineConf.toStdString().c_str() << settingStr.toStdString().c_str();
+    yamlOut << engineConfig.toStdString().c_str() << Qt::endl << modelConfig.toStdString().c_str();
     yamlFile.close();
+
 
     // --------------------------------------------------------------------
     // create model file (*.lmx)
@@ -1873,28 +1912,6 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
     NMDebugCtx(ctx, << "...");
     MPI_Comm nextComm = MPI_COMM_NULL;
 
-    //// if we're (g)root ( ;-) ) create the top most comm...
-    //MPI_Comm rootComm = MPI_COMM_NULL;
-    //if (this->objectName().compare(QStringLiteral("root")) == 0)
-    //{
-    //    MPI_Comm_dup(MPI_COMM_WORLD, &rootComm);
-    //    controller->registerParallelGroup(QStringLiteral("root"), rootComm);
-    //}
-
-
-    //auto aiter = mAlphaComps.find("root");
-    //if (aiter == mAlphaComps.end())
-    //{
-    //    nextComm = MPI_COMM_NULL;
-    //    NMLogDebug(<< "root component has no registered MPI_COMM! "
-    //               << "Something went horribly wrong!");
-    //    return nextComm;
-    //}
-    //else
-    //{
-    //    nextComm = aiter.value();
-    //}
-
     if (this->getNumProcs() == 1)
     {
         NMDebugAI(<< "Controller says, we've got just 1 proc! :-( "
@@ -1904,12 +1921,6 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
     }
 
     NMIterableComponent* aggrComp = qobject_cast<NMIterableComponent*>(this->getComponent(compName));
-
-    //if (aggrComp->getProcess() != nullptr)
-    //{
-    //    aggrComp = qobject_cast<NMIterableComponent*>(aggrComp->getHostComponent());
-    //}
-
     if (aggrComp == nullptr)
     {
         NMDebugAI(<< "'" << compName.toStdString() << "' does not reference a registered model component!"<< endl);
@@ -1939,6 +1950,7 @@ MPI_Comm NMModelController::getNextUpstrMPIComm(const QString &compName)
         NMDebugAI(<< "  ... '" << iter.key().toStdString() << "' : #" << comm_name << endl);
         ++iter;
     }
+
     // =========================================
     // DEBUG DEBUG DEBUG
     // =========================================
@@ -2723,17 +2735,6 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
         {
             QString tStr = innerExp.at(inner);
             tStr = tStr.simplified();
-            //tStr.replace(QString(" "), QString(""));
-
-//            QRegularExpression rexexp("((?<open>\\$\\[)*"
-//                                         "(?(<open>)|\\b)"
-//                                         "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
-//                                         "(?<sep1>(?(<open>):|(?>__)))*"
-//                                         "(?<arith>(?(<sep1>)|([ ]*(?<opr>[+\\-])?[ ]*(?<sum>[\\d]+))))*"
-//                                         "(?<prop>(?(?<!math:|func:)(?(<sep1>)\\g<comp>)|([a-zA-Z0-9_ \\/\\(\\)&%\\|\\>\\!\\=\\<\\-\\+\\*\\^\\?:;.,'\"])*))*"
-//                                         "(?<sep2>(?(<prop>)(?(<open>)):))*"
-//                                         "(?(<sep2>)(?<idx>[0-9]+)*|([ ]*(?<opr2>[+\\-]+)[ ]*(?<sum2>[\\d]+))*))(?>\\]\\$)*");
-
             QRegularExpression rexexp("((?<open>\\$\\[)*"
                                             "(?(<open>)|\\b)"
                                             "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
@@ -2745,9 +2746,8 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
 
             int pos = 0;
             bool bRecognisedExpression = false;
-            //while((pos = rex.indexIn(tStr, pos)) != -1)
             QRegularExpressionMatchIterator mit = rexexp.globalMatch(tStr);
-            //while (mit.hasNext())
+
             // we ever only expect to have one match here!
             if (mit.hasNext())
             {
@@ -2770,8 +2770,6 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                     m << stridx.toString();
                 }
 
-                //m << match.capturedRef("idx").toString();  // 2
-
                 bool sep1 = match.capturedRef("sep1").toString().isEmpty() ? false : true;
                 bool sep2 = match.capturedRef("sep2").toString().isEmpty() ? false : true;
 
@@ -2785,8 +2783,6 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
 
 
                 NMDebugAI(<< m.join(" | ").toStdString() << std::endl);
-                //NMDebugAI(<< "---------------" << std::endl);
-                //pos += rex.matchedLength();
 
                 // --------------------------------------------------------------------------
                 // retrieve model component
@@ -2814,30 +2810,6 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                     }
 
                     tStr = resStr;
-
-
-//                    otb::MultiParser::Pointer parser = otb::MultiParser::New();
-//                    try
-//                    {
-//                        parser->SetExpr(m.at(1).toStdString());
-//                        otb::MultiParser::ValueType res = parser->Eval();
-//                        tStr = QString("%1").arg(static_cast<double>(res), 0, 'g', 15);
-//                    }
-//                    catch (mu::ParserError& evalerr)
-//                    {
-//                        std::stringstream errmsg;
-//                        errmsg << "ERROR:" << obj->objectName().toStdString() << std::endl
-//                               << "Math expression evaluation: ";
-//                        errmsg << std::endl
-//                               << "Message:    " << evalerr.GetMsg() << std::endl
-//                               << "Formula:    " << evalerr.GetExpr() << std::endl
-//                               << "Token:      " << evalerr.GetToken() << std::endl
-//                               << "Position:   " << evalerr.GetPos() << std::endl << std::endl;
-
-
-//                        //NMLogError(<< errmsg.str());
-//                        return QString(errmsg.str().c_str());
-//                    }
                 }
                 else if (m.at(0).compare(QString("LUMASS"), Qt::CaseInsensitive) == 0)
                 {
@@ -2852,7 +2824,6 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                         errstr << "WARNING: Couldn't find LUMASS setting '"
                                << m.at(1).toStdString() << "' - used an empty string instead!";
                         NMLogDebug(<< errstr.str());
-                        //return QString(errstr.str().c_str());
                     }
                 }
                 else if (m.at(0).compare(QString("func"), Qt::CaseInsensitive) == 0)
@@ -2880,7 +2851,6 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                     {
                         std::stringstream msg;
                         msg << ret.right(ret.size()-6).toStdString();
-                        //NMLogError(<< msg.str());
                         return QString(msg.str().c_str());
                     }
 
@@ -3248,12 +3218,6 @@ NMModelController::writeProv(const QString provLog)
                     this->trackIdConceptRev(id2, concept, 0);
                 }
             }
-            //            else
-            //            {
-            //                // mmh, there should be an entity present before
-            //                // we can use it!
-            //                return;
-            //            }
         }
         else
         {
@@ -3287,14 +3251,6 @@ NMModelController::writeProv(const QString provLog)
                 }
                 this->trackIdConceptRev(id, "wasDerivedFrom", e_rx+1);
             }
-            // ... no -> sweet, no problem then
-            //            else
-            //            {
-            //                //writeLog = provLog;
-
-            //                // don't need to really track this
-            //                //this->trackIdConceptRev(id, concept, 0);
-            //            }
         }
         else
         {
@@ -3317,23 +3273,6 @@ NMModelController::writeProv(const QString provLog)
         {
             e_rx = conIter.value();
         }
-        // ... in case this entity is being revised for the first time
-        //        else if (bIdFound)
-        //        {
-        //            e_
-        //            conIter = idIter.value().find("entity");
-        //            if (conIter != idIter.value().end())
-        //            {
-        //                e_rx = conIter.value();
-        //            }
-        //            else
-        //            {
-        //                NMLogError(<< "PROVENANCE ERROR: Cannot derive from nothing! "
-        //                           << "Expected '" << id.toStdString() << "' "
-        //                           << "to be present in the log!");
-        //                return;
-        //            }
-        //        }
 
         if (e_rx == 0)
         {
@@ -3383,92 +3322,6 @@ NMModelController::writeProv(const QString provLog)
     {
         out << '\t' << entityLog << '\n';
     }
-
-//    QString logNewEntity;
-//    QStringList watchout;
-//    watchout << "wasGeneratedBy" << "wasDerivedFrom" << "entity" << "activity" << "agent";
-//    QMap<QString, QString>::iterator idIter = mMapProvIdConcept.find(id);
-//    if (watchout.contains(concept) && idIter != mMapProvIdConcept.end())
-//    {
-//        if (concept.compare("wasGeneratedBy") == 0)
-//        {
-//            newId = QString("%1_2").arg(id);
-
-//            if (attrs.isEmpty())
-//            {
-//                writeLog = QString("wasDerivedFrom(%1,%2,%3,-,-,[prov:type='prov:Revision'])\n")
-//                           .arg(newId).arg(id).arg(id2);
-//            }
-//            else
-//            {
-//                writeLog = QString("wasDerivedFrom(%1,%2,%3,-,-,[prov:type='prov:Revision',%4])\n")
-//                           .arg(newId).arg(id).arg(id2).arg(attrs);
-//            }
-//            logNewEntity = QString("entity(%1)\n").arg(newId);
-//            mMapProvIdConcept.insert(newId, "entity");
-//        }
-//        else if (concept.compare("wasDerivedFrom") == 0)
-//        {
-//            int underscore = id.lastIndexOf('_');
-//            QString baseId = id.left(underscore);
-//            QString cnt = id.right(id.size()-underscore-1);
-//            bool bok;
-//            int num = cnt.toInt(&bok);
-//            if (bok)
-//            {
-//                newId = QString("%1_%2").arg(baseId).arg(++num);
-//            }
-
-//            if (attrs.isEmpty())
-//            {
-//                writeLog = QString("wasDerivedFrom(%1,%2,%3,-,-,[prov:type='prov:Revision'])\n")
-//                           .arg(newId).arg(id).arg(id3);
-//            }
-//            else
-//            {
-//                // we expect that the 'wasDerivedFrom' had been properly formatted
-//                // so that we can just re-use the 'revision' specification
-//                writeLog = QString("wasDerivedFrom(%1,%2,%3,-,-,[%4])\n")
-//                           .arg(newId).arg(id).arg(id3).arg(attrs);
-//            }
-//            logNewEntity = QString("entity(%1)\n").arg(newId);
-//            mMapProvIdConcept.insert(newId, "entity");
-//        }
-//        //else if (concept.compare(idIter.value()) != 0)
-//        else if (concept.compare(idIter.value()) == 0)
-//        {
-//            NMLogWarn(<< "Model Controller: PROV-N issue: '"
-//                      << concept.toStdString() << "' has already been logged for '"
-//                      << id.toStdString() << "'!");
-//            return;
-//        }
-//        //        else
-//        //        {
-//        //            NMLogWarn(<< "Model Controller: PROV-N issue: '"
-//        //                      << concept.toStdString() << "' has already been logged for '"
-//        //                      << id.toStdString() << "'!");
-//        //            return;
-//        //        }
-
-//    }
-//    else if (concept.compare("wasDerivedFrom") == 0)
-//    {
-//        // create companion entity
-//        logNewEntity = QString("entity(%1)\n").arg(id);
-//        mMapProvIdConcept.insert(id, "entity");
-//    }
-//    else
-//    {
-//        mMapProvIdConcept.insert(id, concept);
-//    }
-
-//    QTextStream out(&mProvFile);
-//    out << '\t' << writeLog;
-
-//    if (!logNewEntity.isEmpty())
-//    {
-//        out << '\t' << logNewEntity;
-//    }
 }
 
 QStringList

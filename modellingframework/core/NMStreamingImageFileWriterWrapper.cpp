@@ -1097,11 +1097,8 @@ NMStreamingImageFileWriterWrapper
     }
 
     MPI_Comm comm = mController->getNextUpstrMPIComm(this->parent()->objectName());
-
-    int rank, procs;
-    MPI_Comm_size(comm, &procs);
-    MPI_Comm_rank(comm, &rank);
-
+    int rank=mController->getRank(this->parent()->objectName());
+    int procs=mController->getNumProcs(this->parent()->objectName());
 
     int cn_len;
     char comm_name[MPI_MAX_OBJECT_NAME];
@@ -1378,11 +1375,6 @@ NMStreamingImageFileWriterWrapper
     if (!this->mbIsInitialised)
         return;
 
-    //MPI_Comm comm = MPI_COMM_WORLD;
-    //int rank, procs;
-    //MPI_Comm_size(comm,&procs);
-    //MPI_Comm_rank(comm,&rank);
-
 
     if (this->mWriteProcs > 1 && mController->getNumProcs(this->parent()->objectName()) > 1)
     {
@@ -1444,9 +1436,8 @@ NMStreamingImageFileWriterWrapper
         return;
 
     MPI_Comm comm = mController->getNextUpstrMPIComm(this->parent()->objectName());
-    int nprocs, rank;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &nprocs);
+    int rank = mController->getRank(this->parent()->objectName());
+    int nprocs = mController->getNumProcs(this->parent()->objectName());
 
     if (comm == MPI_COMM_NULL)
     {

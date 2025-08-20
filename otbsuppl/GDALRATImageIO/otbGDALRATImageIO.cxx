@@ -212,7 +212,7 @@ void GDALRATImageIO::Read(void* buffer)
   // Check if conversion succeed
   if (p == NULL)
     {
-    NMLogError(<< "GDAL : Bad alloc");
+    NMProcErr(<< "GDAL : Bad alloc");
     return;
     }
 
@@ -282,7 +282,7 @@ void GDALRATImageIO::Read(void* buffer)
                                      0);
     if (lCrGdal == CE_Failure)
       {
-      NMLogError(<< "Error while reading image (GDAL format) " << m_FileName.c_str() << ".");
+      NMProcErr(<< "Error while reading image (GDAL format) " << m_FileName.c_str() << ".");
       }
     // Interpret index as color
     std::streamoff cpt(0);
@@ -383,7 +383,7 @@ void GDALRATImageIO::Read(void* buffer)
     // Check if gdal call succeed
     if (lCrGdal == CE_Failure)
       {
-      NMLogError(<< "Error while reading image (GDAL format) " << m_FileName.c_str() << ".");
+      NMProcErr(<< "Error while reading image (GDAL format) " << m_FileName.c_str() << ".");
       return;
       }
     //printDataBuffer(p, m_GDALComponentType, m_NbBands, lNbColumns*lNbLines);
@@ -539,7 +539,7 @@ void GDALRATImageIO::InternalReadImageInformation()
     //      }
     //    else
     //      {
-    //      NMLogError(<< "Dataset requested does not exist (" << names.size() << " datasets)");
+    //      NMProcErr(<< "Dataset requested does not exist (" << names.size() << " datasets)");
     //      }
     //    }
 
@@ -548,7 +548,7 @@ void GDALRATImageIO::InternalReadImageInformation()
   // Get image dimensions
   if ( m_Dataset->GetRasterXSize() == 0 || m_Dataset->GetRasterYSize() == 0 )
     {
-    NMLogError(<< "Dimension is undefined.");
+    NMProcErr(<< "Dimension is undefined.");
     }
 
   // Set image dimensions into IO
@@ -561,7 +561,7 @@ void GDALRATImageIO::InternalReadImageInformation()
   m_NbBands = m_Dataset->GetRasterCount();
   if (m_NbBands == 0)
   {
-      NMLogError(<< "'" << this->m_FileName << "' has no bands!");
+      NMProcErr(<< "'" << this->m_FileName << "' has no bands!");
   }
 
   NMLogDebug(<< "Input file dimension: " << m_Dimensions[0] << ", " << m_Dimensions[1]);
@@ -578,7 +578,7 @@ void GDALRATImageIO::InternalReadImageInformation()
   GDALRasterBand* rband = m_Dataset->GetRasterBand(1);
   if (rband == nullptr)
   {
-      NMLogError(<< "Failed to fetch band #1 from '" <<
+      NMProcErr(<< "Failed to fetch band #1 from '" <<
                  this->m_FileName << "'!");
   }
 
@@ -667,7 +667,7 @@ void GDALRATImageIO::InternalReadImageInformation()
     }
   else
     {
-    NMLogError(<< "Pixel type unknown");
+    NMProcErr(<< "Pixel type unknown");
     }
 
   if (this->GetComponentType() == CHAR)
@@ -743,7 +743,7 @@ void GDALRATImageIO::InternalReadImageInformation()
     }
   else
     {
-    NMLogError(<< "Component type unknown");
+    NMProcErr(<< "Component type unknown");
     }
 
   /******************************************************************/
@@ -1218,7 +1218,7 @@ void GDALRATImageIO::Write(const void* buffer)
     // Check if conversion succeed
     if (buffer == NULL)
     {
-        NMLogError(<< "GDAL : Bad alloc");
+        NMProcErr(<< "GDAL : Bad alloc");
         //NMDebugCtx(ctx, << "done!");
         return;
     }
@@ -1260,13 +1260,13 @@ void GDALRATImageIO::Write(const void* buffer)
         {
             if (m_CreatedNotWritten)
             {
-                NMLogError(
+                NMProcErr(
                         << "GDAL: couldn't write to freshly created dataset '"
                         << m_FileName << "'!");
             }
             else
             {
-                NMLogError(
+                NMProcErr(
                         << "GDAL: couldn't open '" << m_FileName << "' in update mode."
                         << " Double check whether the file format supports update!");
             }
@@ -1274,8 +1274,8 @@ void GDALRATImageIO::Write(const void* buffer)
     }
     else if (m_ImageUpdateMode && !m_CanStreamWrite)
     {
-        NMLogError(
-                << "GDAL: file (format) cannot be used in update mode!")
+        std::string gdalDriverShortName = FilenameToGdalDriverShortName(m_FileName);
+        NMProcErr(<< "GDAL: file (" << gdalDriverShortName << ") cannot be used in update mode!")
     }
 
     // Compute offset and size
@@ -1368,7 +1368,7 @@ void GDALRATImageIO::Write(const void* buffer)
         // Check if writing succeed
         if (lCrGdal == CE_Failure)
         {
-            NMLogError(
+            NMProcErr(
                     << "Error while writing image (GDAL format) " << m_FileName.c_str() << ".");
         }
 
@@ -1410,7 +1410,7 @@ void GDALRATImageIO::Write(const void* buffer)
         //						gdalDriverShortName);
         //		if (driver == NULL)
         //		{
-        //			NMLogError(
+        //			NMProcErr(
         //                    << "Unable to instantiate driver " << gdalDriverShortName
         //                        << " to write " << m_FileName);
         //		}
@@ -2091,7 +2091,7 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
 //    if (m_Dataset == 0)
 //    {
 //        //NMProcWarn(<< "ReadRAT: unable to access data set!");
-//        //NMLogError(<< "ReadRAT: unable to access data set!");
+//        //NMProcErr(<< "ReadRAT: unable to access data set!");
 //        return 0;
 //    }
 
@@ -2264,7 +2264,7 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
                 char** valPtr = (char**)CPLCalloc(sizeof(char*), chunksize);
                 if (valPtr == 0)
                 {
-                    NMLogError(<< "Not enough memory to allocate chunk of string records!");
+                    NMProcErr(<< "Not enough memory to allocate chunk of string records!");
                     break;
                 }
                 rat->ValuesIO(GF_Read, col, s, chunksize, valPtr);
@@ -2834,7 +2834,7 @@ GDALDataset* GDALRATImageIO::CreateCopy()
                     gdalDriverShortName.c_str());
     if (driver == NULL)
     {
-        NMLogError(
+        NMProcErr(
                 << "Unable to instantiate driver " << gdalDriverShortName
                     << " to write " << m_FileName);
     }
@@ -2926,7 +2926,7 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
 //    {
 //        //std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
 //        NMProcWarn(<< "ReadRAT: unable to access data set!");
-//        //NMLogError(<< "ReadRAT: unable to access data set!");
+//        //NMProcErr(<< "ReadRAT: unable to access data set!");
 //        return;
 //    }
 
@@ -2992,7 +2992,7 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
                             type, usage);
         if (err == CE_Failure)
         {
-            NMLogError(<< "Failed creating column #" << col
+            NMProcErr(<< "Failed creating column #" << col
                     << " '" << tab->GetColumnName(col).c_str() << "!");
         }
         NMLogDebug(<< "Created column #" << col << " '"
@@ -3040,7 +3040,7 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
         {
             if (bClose) this->CloseDataset();
             delete gdaltab;
-            NMLogError(<< "Failed writing table to band!");
+            NMProcErr(<< "Failed writing table to band!");
         }
         m_Dataset->FlushCache();
     }
@@ -3170,7 +3170,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
             break;
         default:
             {
-                NMLogError(<< "Type of column #" << col
+                NMProcErr(<< "Type of column #" << col
                     << " '" << tab->GetColumnName(col).c_str() << "' is undefined!");
             }
         }
@@ -3180,7 +3180,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
                             type, usage);
         if (err == CE_Failure)
         {
-            NMLogError(<< "Failed creating column #" << col
+            NMProcErr(<< "Failed creating column #" << col
                     << " '" << tab->GetColumnName(col).c_str() << "!");
         }
 
@@ -3229,7 +3229,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
             default:
                 delete gdaltab;
                 gdaltab = nullptr;
-                NMLogError(<< "Unrecognised field type! Couldn't set value col=" << col
+                NMProcErr(<< "Unrecognised field type! Couldn't set value col=" << col
                         << " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
                 break;
             }
@@ -3256,7 +3256,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
             if (bCloseDataSet) this->CloseDataset();
             delete gdaltab;
             gdaltab = nullptr;
-            NMLogError(<< "Failed writing table to band!");
+            NMProcErr(<< "Failed writing table to band!");
         }
         else
         {

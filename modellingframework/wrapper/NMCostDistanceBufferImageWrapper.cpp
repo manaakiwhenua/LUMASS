@@ -134,13 +134,12 @@ public:
                 }
                 else
                 {
+                    NMDebugAI(<< "Invalid ObjectValue: " << vStr.toStdString());
+                    NMDebugCtx("CostDistanceInternal", << "done!");
                     NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
                     e.setSource(p->parent()->objectName().toStdString());
                     e.setDescription("Invalid ObjectValue!");
                     throw e;
-
-                    NMLogError(<<  "NMCostDistanceBufferImageWrapper" << "Invalid ObjectValue!");
-                    return;
                 }
             }
             f->SetCategories(objValueVec);
@@ -249,12 +248,14 @@ public:
 
         if (fileName.isEmpty())
         {
+            NMDebugAI(<< "Please provide an input image file name!");
+            NMDebugCtx("CostDistanceInternal", << "done!");
             NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
             e.setSource(p->parent()->objectName().toStdString());
             e.setDescription("No input image filename!");
             throw e;
 
-            NMLogError(<< "CostDistanceInternal: Please provide an input image file name!");
+
             return;
         }
 
@@ -289,13 +290,12 @@ public:
 
         if (out.isEmpty())
         {
+            NMDebugAI(<< "No output image filename!");
+            NMDebugCtx("CostDistanceInternal", << "done!");
             NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
             e.setSource(p->parent()->objectName().toStdString());
             e.setDescription("No output image filename!");
             throw e;
-
-            NMLogError(<< "NMCostDistanceBufferImageWrapper: No output image filename!");
-            return;
         }
 
         bool bOutRas = false;
@@ -443,19 +443,23 @@ public:
         }
         if (chunksize < 3)
             chunksize = 3;
+
         unsigned long niter = chunksize == 0 ? nrows : nrows / (chunksize-1);
         unsigned long rest = nrows - (niter * (chunksize-1));
         while (rest > 0 && rest < 2)
         {
             --chunksize;
             niter = nrows / (chunksize-1);
-            rest = nrows - (niter * (chunksize - 1));
+            rest = nrows - niter * (chunksize-1);
         }
         if (chunksize < 2)
         {
-            NMLogError(<< "CostDistanceInternal: Chunk size below minimum (< 2)!");
+            NMDebugAI(<< "Chunk size below minimum of 2 rows!");
             NMDebugCtx("CostDistanceInternal", << "done!");
-            return;
+            NMMfwException ex(NMMfwException::NMProcess_InvalidParameter);
+            ex.setSource("CostDistanceInternal");
+            ex.setDescription("Chunk size below minimum of 2 rows!");
+            throw ex;
         }
 
         long startrow = lpr.GetIndex()[1];

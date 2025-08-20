@@ -514,6 +514,30 @@ StreamingRATImageFileWriter<TInputImage>
     return strregstr.str();
 }
 
+template<class TInputImage>
+void
+StreamingRATImageFileWriter<TInputImage>
+::SetUpdateMode(bool bUpdate)
+{
+    this->m_UpdateMode = bUpdate;
+
+    for (int io=0; io < this->m_ImageIOs.size(); ++io)
+    {
+        if (m_ImageIOs.at(io).IsNotNull())
+        {
+            GDALRATImageIO* gio = dynamic_cast<otb::GDALRATImageIO*>(m_ImageIOs.at(io).GetPointer());
+            NetCDFIO* nio = dynamic_cast<NetCDFIO*>(m_ImageIOs.at(io).GetPointer());
+            if (gio != nullptr)
+            {
+                gio->SetImageUpdateMode(bUpdate);
+            }
+            else if (nio != nullptr)
+            {
+                nio->SetImageUpdateMode(bUpdate);
+            }
+        }
+    }
+}
 
 template<class TInputImage>
 void

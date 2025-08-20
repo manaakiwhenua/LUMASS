@@ -281,7 +281,7 @@ public:
    *  allowing externally driven streaming as well as updating
    *  parts of existing images
    */
-  itkSetMacro(UpdateMode, bool)
+  void SetUpdateMode(bool bUpdate);
   itkGetMacro(UpdateMode, bool)
   itkBooleanMacro(UpdateMode)
 

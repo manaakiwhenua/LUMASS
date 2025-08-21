@@ -970,6 +970,7 @@ NMModelController::executeMPIParentModel(const QString &compName,
         YAML::Emitter fn1_emit;
         emitYaml(fn1_emit, fileNode_1);
         engineConfig = fn1_emit.c_str();
+        engineConfig = engineConfig.append("\n");
 
         YAML::Node fileNode_2;
         fileNode_2["ModelConfig"] = model;
@@ -991,7 +992,7 @@ NMModelController::executeMPIParentModel(const QString &compName,
 
     // write yaml
     QTextStream yamlOut(&yamlFile);
-    yamlOut << engineConfig.toStdString().c_str() << Qt::endl << modelConfig.toStdString().c_str();
+    yamlOut << engineConfig.toStdString().c_str() << modelConfig.toStdString().c_str();
     yamlFile.close();
 
 
@@ -2790,7 +2791,7 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                 NMProcess* procObj = qobject_cast<NMProcess*>(const_cast<QObject*>(obj));
                 NMIterableComponent* host = nullptr;
 
-                if (procObj == 0)
+                if (procObj == nullptr)
                 {
                     host = qobject_cast<NMIterableComponent*>(const_cast<QObject*>(obj));
                 }

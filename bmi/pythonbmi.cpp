@@ -173,26 +173,26 @@ namespace bmi
             // ================================================================
             // double check, whether we just have to 'reload' the module and class ...
 
-            if (mbReloadModule)
-            {
-                msg << "Re-loading module '" << mPyModuleName << "' ...";
-                bmilog(LEVEL_INFO, msg.str().c_str());
-                msg.str("");
-                mPyModule.reload();
-
-
-                msg << "Instantiate model class '" << mBMIClass << "' ...";
-                bmilog(LEVEL_INFO, msg.str().c_str());
-                msg.str("");
-                mPyObject = mPyModule.attr(mBMIClass.c_str())();
-                mPyObject.attr("initialize")(config_file);
-
-                msg << "'" << mBMIClass << "' successfully re-initialised!";
-                bmilog(LEVEL_INFO, msg.str().c_str());
-                msg.str("");
-                LogPyOutputEnd();
-                return;
-            }
+            //if (mbReloadModule)
+            //{
+            //    msg << "Re-loading module '" << mPyModuleName << "' ...";
+            //    bmilog(LEVEL_INFO, msg.str().c_str());
+            //    msg.str("");
+            //    mPyModule.reload();
+//
+//
+            //    msg << "Instantiate model class '" << mBMIClass << "' ...";
+            //    bmilog(LEVEL_INFO, msg.str().c_str());
+            //    msg.str("");
+            //    mPyObject = mPyModule.attr(mBMIClass.c_str())();
+            //    mPyObject.attr("initialize")(config_file);
+//
+            //    msg << "'" << mBMIClass << "' successfully re-initialised!";
+            //    bmilog(LEVEL_INFO, msg.str().c_str());
+            //    msg.str("");
+            //    LogPyOutputEnd();
+            //    return;
+            //}
 
             // ================================================================
             // ... nope, nothing there. We'll do a first time init ...
@@ -207,6 +207,7 @@ namespace bmi
                 bmilog(LEVEL_ERROR, msg.str().c_str());
                 return;
             }
+            mPyModule.reload();
 
             msg << "Module '" << this->mPyModuleName << "' imported";
             bmilog(LEVEL_INFO, msg.str().c_str());
@@ -305,9 +306,15 @@ namespace bmi
     void PythonBMI::
         Finalize()
     {
-        LogPyOutputStart();
-        // amazing code goes here ...
-        LogPyOutputEnd();
+        if (!mPyModule.is_none() && mPyModule.ptr() != nullptr)
+        {
+            mPyModule.release();
+        }
+
+        if (!mPyObject.is_none() && mPyObject.ptr() != nullptr)
+        {
+            mPyObject.release();
+        }
     }
 
 

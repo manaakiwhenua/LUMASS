@@ -1556,11 +1556,10 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
                     _sequentialExe.pop_front();
 
                     const int seqRank = idleProcs.front();
-                    seq_taskAdmin.first.insert(seqRank);
                     idleProcs.pop_front();
-
                     if (seqRank == commRank)
                     {
+                        seq_taskAdmin.first.insert(seqRank);
                         std::string seqSplitCommName = seq_taskAdmin.second + "-" + std::to_string(splitID);
                         NMDebugAI(<< "*** MPI_Comm_split(comm, "<< splitID << ", " << seqRank
                                        << ", " << seqSplitCommName << ")" << std::endl);
@@ -1612,23 +1611,16 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
                     const QString pexe = _parallelExe.front();
                     taskAdmin.second = pexe.toStdString();
                     _parallelExe.pop_front();
-                    // only allocate the configured WriteProcs to parallel writer
-                    const int pw_id = _parallelWriters.indexOf(pexe);
-                    if (pw_id >= 0)
-                    {
-                        __pprocs_per_task = std::min(_parallelWriterProcs.at(pw_id), __pprocs_per_task);
-                        rest_procs += __pprocs_per_task - pprocs_per_task;
-                    }
 
                     for (int pp=0; pp < __pprocs_per_task; ++pp)
                     {
                         const int procRank = idleProcs.front();
-                        taskAdmin.first.insert(procRank);
                         idleProcs.pop_front();
 
                         // if current rank is part of the crew running this task, it needs to call MPI_Comm_split for registration
                         if (commRank == procRank)
                         {
+                            taskAdmin.first.insert(procRank);
                             std::string paraCommName = taskAdmin.second + "-" + std::to_string(splitID);
                             NMDebugAI(<< "*** MPI_Comm_split(comm, "<< splitID << ", " << commRank
                                            << ", " << paraCommName << ")" << std::endl);
@@ -1703,7 +1695,6 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
                 }
 
                 // ========================== CLEAN UP AND PREP NEXT ROUND ==================================
-                //MPI_Barrier(comm);
 
                 auto rsc_it = mapRankNameSplitComm.cbegin();
                 for (; rsc_it != mapRankNameSplitComm.cend(); ++rsc_it)
@@ -1722,7 +1713,6 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
                         }
                     }
                 }
-
 
                 // resume
                 if (commRank == 0)

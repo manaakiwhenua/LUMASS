@@ -94,7 +94,7 @@ NMModelController::NMModelController(NMLumassEngine *engine, QObject* parent)
     // calling NMModelController::executeMPIChildModel()
     // which lumassengine processes are exeting
     // afterwards
-    NMDebugAI(<< "+++++ MPI_Comm_get_parent() ...")
+    NMDebugAI(<< "::NMModelController(): +++++ MPI_Comm_get_parent() ..." << std::endl)
     MPI_Comm_get_parent(&mParentMPIComm);
 
     // create the one and only root model component
@@ -122,10 +122,12 @@ void
 NMModelController::finalizePythonInterpreter()
 {
 #ifdef LUMASS_PYTHON
-        if (!Py_IsInitialized())
-        {
-            py::finalize_interpreter();
-        }
+    if (Py_IsInitialized())
+    {
+        NMDebugAINoMPI(<< "finalising the PythonInterpreter ... " << std::endl);
+        py::finalize_interpreter();
+        NMDebugAINoMPI(<< "PythonInterpreter finalized! ... " << std::endl);
+    }
 #endif
 }
 

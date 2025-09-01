@@ -79,7 +79,8 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     : QWidget(parent, f), mbControllerIsBusy(false), mScaleFactor(1.075),
       mLogger(nullptr), mToolContextController(nullptr),
       mCopyBufferVis(nullptr), mCopyBufferDoc(nullptr), mbFollowFocus(false),
-      mModelController(nullptr), mEngine(nullptr), mModelRunThread(nullptr), mTimerThread(nullptr)
+      mModelController(nullptr), mEngine(nullptr), mModelRunThread(nullptr),
+      mTimerThread(nullptr)
 {
     this->setAcceptDrops(true);
     this->mLastItem = 0;
@@ -354,7 +355,8 @@ NMModelViewWidget::setupModellingEnvironment(NMModelController *ctrl)
     //connect(this, SIGNAL(requestModelReset(const QString &)),
     //        mModelController, SLOT(resetComponent(const QString &)));
     connect(this, &NMModelViewWidget::requestModelReset, mModelController, &NMModelController::resetComponent);
-    connect(this, &NMModelViewWidget::requestModelAbortion, mModelController, &NMModelController::abortModel);
+    connect(this, &NMModelViewWidget::requestModelAbortion, mModelController, &NMModelController::abortModel,
+            Qt::DirectConnection);
     connect(this, &NMModelViewWidget::signalUpdateSettings, mModelController, &NMModelController::updateSettings);
     //connect(this, SIGNAL(requestModelAbortion()),
     //        mModelController, SLOT(abortModel()), Qt::DirectConnection);
@@ -374,11 +376,18 @@ NMModelViewWidget::setupModellingEnvironment(NMModelController *ctrl)
 }
 
 void
+NMModelViewWidget::removeParallelExec(const QString compName)
+{
+    mActiveCompRects.remove(compName);
+}
+
+void
 NMModelViewWidget::processMPIEvent(const QString &obj,
                                    const NMModelController::ModelEvent &event,
                                    const float &value)
 {
     QGraphicsItem* item = mModelScene->getComponentItem(obj);
+    NMIterableComponent* icomp = qobject_cast<NMIterableComponent*>(mModelController->getComponent(obj));
     NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
     NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 
@@ -456,12 +465,8 @@ NMModelViewWidget::processMPIEvent(const QString &obj,
         break;
     }
 
-    this->mModelScene->invalidate();
-
     NMDebugAI(<< "ParentPROC processed: " << obj.toStdString() << ": "
               << str_event << " value: " << value << std::endl);
-
-    //NMDebugAI(<< "MPIEvent: " << )
 }
 
 void
@@ -665,7 +670,6 @@ NMModelViewWidget::saveCurrentModel(void)
 void
 NMModelViewWidget::callAutoSaveModel(void)
 {
-    NMLogDebug(<< "callAutoSaveModel - called!")
     QtConcurrent::run(this, &NMModelViewWidget::autoSaveCurrentModel);
 }
 
@@ -982,7 +986,7 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType, QList<
     //else
     //{
     //    aggrItem->updateNumIterations(0);
-    //}
+    //}aggrComp
 
     connect(aggrComp, SIGNAL(NumIterationsChanged(uint)),
             aggrItem, SLOT(updateNumIterations(uint)));
@@ -4049,12 +4053,14 @@ NMModelViewWidget::zoomToComponent(const QString &name)
 void
 NMModelViewWidget::slotFollowFocus(bool follow)
 {
+    NMLogDebug(<< "mbFollowFocus = " << follow << std::endl);
     this->mbFollowFocus = follow;
 }
 
 void
 NMModelViewWidget::translateModelView(qreal chgval)
 {
+    NMLogDebug(<< "translateModelView() ..." << std::endl);
     QPointF diff = mNewCentre - mOldCentre;
     const qreal frac = chgval / 100.0;
     QPointF interCen = mOldCentre + QPointF(diff.x() * frac, diff.y() * frac);
@@ -4067,40 +4073,147 @@ NMModelViewWidget::focusExecComp(void)
     NMIterableComponent* icomp = qobject_cast<NMIterableComponent*>(this->sender());
     if (icomp != nullptr && this->mbFollowFocus)
     {
-        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(mModelScene->getComponentItem(icomp->objectName()));
-        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(mModelScene->getComponentItem(icomp->objectName()));
         QRect viewrect = mModelView->viewport()->rect();
-        if (pi != nullptr)
+        QRectF _rectF = getCompRect(icomp->objectName(), viewrect);
+        if (!_rectF.isValid())
         {
-            QRectF piperect(pi->sceneBoundingRect());
-            QStringList pipeline;
-            icomp->getUpstreamPipelineComponents(pipeline);
-            foreach(const QString& item, pipeline)
-            {
-                QGraphicsItem* gi = mModelScene->getComponentItem(item);
-                if (gi != nullptr)
-                {
-                    QRectF irect(gi->sceneBoundingRect());
-                    piperect = piperect.united(irect);
-                }
-            }
-
-            if (viewrect.contains(piperect.toRect(), true))
-            {
-                return;
-            }
-            else
-            {
-                mNewCentre = piperect.center();
-            }
+            return;
         }
-        else if (ai != nullptr)
-        {
-            mNewCentre = ai->boundingRect().center();
-        }
+        mNewCentre = _rectF.center();
         mOldCentre = mModelView->mapToScene(viewrect.center());
         mTimeLine->start();
     }
+}
+
+void NMModelViewWidget::focusParallelExec(const QString compName)
+{
+    NMIterableComponent* icomp = qobject_cast<NMIterableComponent*>(
+               this->mModelController->getComponent(compName));
+    if (icomp == nullptr || !this->mbFollowFocus)
+    {
+        return;
+    }
+
+    QRect viewrect = mModelView->viewport()->rect();
+    QRectF _rectF = getCompRect(compName, viewrect);
+    if (_rectF.isValid())
+    {
+        mActiveCompRects.insert(compName, _rectF);
+    }
+
+    // find the most 'nested active components'
+    QPointF _newCentre;
+    if (mActiveCompRects.size() > 1)
+    {
+        QMap<int, QVector<QRectF>> mapDepthVRect;
+        QList<QRectF> allRects = mActiveCompRects.values();
+        foreach(const QRectF& rect1, allRects)
+        {
+            int depth = 0;
+            foreach(const QRectF& rect2, allRects)
+            {
+                if (    rect1 != rect2
+                     && rect2.contains(rect1)
+                   )
+                {
+                    ++depth;
+                }
+            }
+            if (mapDepthVRect.constFind(depth) == mapDepthVRect.cend())
+            {
+                QVector<QRectF> rv;
+                rv.push_back(rect1);
+                mapDepthVRect.insert(depth, rv);
+            }
+            else
+            {
+                mapDepthVRect[depth].push_back(rect1);
+            }
+        }
+
+        QVector<QRectF>& deepRects = mapDepthVRect.last();
+        QRectF uniRect;
+        for (int r=0; r < deepRects.size(); ++r)
+        {
+            if (r == 0)
+            {
+                uniRect = deepRects.at(r);
+            }
+            else
+            {
+                uniRect = uniRect.united(deepRects.at(r));
+            }
+        }
+        _newCentre = uniRect.center();
+    }
+    else
+    {
+        _newCentre = mActiveCompRects.begin().value().center();
+    }
+    QPointF _oldCentre = mModelView->mapToScene(viewrect.center());
+
+    // as we get progress updates for each process; we only really react, if
+    // we're actually moving to a new component
+    if (_oldCentre != mOldCentre && _newCentre != mNewCentre)
+    {
+        mOldCentre = _oldCentre;
+        mNewCentre = _newCentre;
+        mTimeLine->start();
+    }
+}
+
+void
+NMModelViewWidget::getUpstreamPipeline(QList<NMProcessComponentItem*> &pipe, NMProcessComponentItem *item)
+{
+    foreach(NMComponentLinkItem* link, item->getInputLinks())
+    {
+        pipe.push_back(link->sourceItem());
+        getUpstreamPipeline(pipe, link->sourceItem());
+    }
+}
+
+void NMModelViewWidget::getDownstreamPipeline(QList<NMProcessComponentItem*> &pipe, NMProcessComponentItem *item)
+{
+    foreach(NMComponentLinkItem* link, item->getOutputLinks())
+    {
+        pipe.push_back(link->targetItem());
+        getDownstreamPipeline(pipe, link->targetItem());
+    }
+}
+
+
+QRectF
+NMModelViewWidget::getCompRect(const QString& compName, QRect& viewrect)
+{
+    QRectF _rectF;
+    NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(mModelScene->getComponentItem(compName));
+    NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(mModelScene->getComponentItem(compName));
+    if (pi != nullptr)
+    {
+        QRectF piperect(pi->sceneBoundingRect());
+        QList<NMProcessComponentItem*> pipeline;
+        getUpstreamPipeline(pipeline, pi);
+        getDownstreamPipeline(pipeline, pi);
+        foreach(NMProcessComponentItem* gi, pipeline)
+        {
+            if (gi != nullptr)
+            {
+                QRectF irect(gi->sceneBoundingRect());
+                piperect = piperect.united(irect);
+            }
+        }
+
+        if (!viewrect.contains(piperect.toRect(), true))
+        {
+            _rectF = piperect;
+        }
+    }
+    else if (ai != nullptr)
+    {
+        _rectF = ai->boundingRect();
+    }
+
+    return _rectF;
 }
 
 void
@@ -5131,8 +5244,12 @@ void NMModelViewWidget::editRootComponent()
 void
 NMModelViewWidget::connectMPIRunnable(NMMPIRunnable *mpi)
 {
+    connect(mpi, &NMMPIRunnable::signalExecStarted, this,
+            &NMModelViewWidget::focusParallelExec);
+    connect(mpi, &NMMPIRunnable::signalExecStopped, this,
+            &NMModelViewWidget::removeParallelExec);
     connect(mpi, &NMMPIRunnable::signalMPIEvent, this,
-            &NMModelViewWidget::processMPIEvent, Qt::DirectConnection);
+            &NMModelViewWidget::processMPIEvent);
     connect(mpi, &NMMPIRunnable::signalMPILoopFinished, this,
             &NMModelViewWidget::resetModel);
     connect(this, &NMModelViewWidget::requestModelAbortion, mpi, &NMMPIRunnable::processAbortionRequest);

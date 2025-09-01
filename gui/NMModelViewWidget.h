@@ -128,6 +128,8 @@ public slots:
     void zoomToComponent(const QUrl& url);
     void slotFollowFocus(bool follow);
     void focusExecComp(void);
+    void focusParallelExec(const QString compName);
+    void removeParallelExec(const QString compName);
     void updateTreeEditor(const QString);
     void updateToolContextBox(void);
     void updateToolContext(const QString& tool);
@@ -164,6 +166,9 @@ public slots:
     void processMPIEvent(const QString& obj, const NMModelController::ModelEvent &event,
                          const float& value);
 
+    void getUpstreamPipeline(QList<NMProcessComponentItem*> &pipe, NMProcessComponentItem *item);
+    void getDownstreamPipeline(QList<NMProcessComponentItem*>& pipe, NMProcessComponentItem* item);
+
 signals:
     void linkToolToggled(bool);
     void selToolToggled(bool);
@@ -182,6 +187,7 @@ signals:
     void signalSaveTimerStop();
     void signalExecuteModel(QString comp, QString configFN);
     void signalUpdateSettings(QString propName, QVariant val);
+    void signalTimeLineStart();
 
 protected:
     void dragEnterEvent(QDragEnterEvent* event);
@@ -250,6 +256,8 @@ private:
     // in all of the other lists (i.e. inputs, which change over
     // iteration steps)
     QStringList dynamicInputs(QList<QStringList>& inputs);
+
+    QRectF getCompRect(const QString &compName, QRect &viewrect);
 
 
     QRectF unionRects(const QRectF& r1, const QRectF& r2)
@@ -328,6 +336,8 @@ private:
     QTimeLine* mTimeLine;
     QPointF mNewCentre;
     QPointF mOldCentre;
+
+    QMap<QString, QRectF> mActiveCompRects;
 
     static const std::string ctx;
 

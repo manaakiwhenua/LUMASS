@@ -244,6 +244,7 @@ NMMPIRunnable::run()
             {
                 NMDebugAI(<< "server: signal: " << compName.toStdString()
                           << " model aborted!" << std::endl);
+                emit signalExecStopped(compName);
                 emit signalMPIEvent(compName, NMModelController::NM_EVENT_EXEC_ABORTED, minProgress);
                 //execStack.clear();
                 // don't continue processing! Child processes may have stopped and terminated themselves already!
@@ -253,6 +254,7 @@ NMMPIRunnable::run()
             {
                 NMDebugAI(<< "server: signal: " << compName.toStdString()
                           << " is at " << minProgress << " %" << std::endl);
+                emit signalExecStarted(compName);
                 emit signalMPIEvent(compName, NMModelController::NM_EVENT_PROGRESS, minProgress);
                 execStack << compName;
                 bHaveStarted = true;
@@ -261,6 +263,7 @@ NMMPIRunnable::run()
             {
                 NMDebugAI(<< "server: signal: " << compName.toStdString()
                           << " started" << std::endl);
+                emit signalExecStarted(compName);
                 emit signalMPIEvent(compName, NMModelController::NM_EVENT_EXEC_STARTED, 0);
                 execStack << compName;
                 bHaveStarted = true;
@@ -269,6 +272,7 @@ NMMPIRunnable::run()
             {
                 NMDebugAI(<< "server: signal: " << compName.toStdString()
                           << " stopped" << std::endl);
+                emit signalExecStopped(compName);
                 emit signalMPIEvent(compName, NMModelController::NM_EVENT_EXEC_STOPPED, 0);
                 execStack.remove(compName);
             }

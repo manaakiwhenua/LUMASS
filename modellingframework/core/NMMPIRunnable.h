@@ -63,6 +63,9 @@ signals:
     void signalMPIEvent(const QString compName, const NMModelController::ModelEvent event,
                         const float value);
     void signalMPILoopFinished(NMMPIRunnable* obj);
+    void signalExecStarted(const QString compName);
+    void signalExecStopped(const QString compName);
+
 
 private:
     int         nprocs;

@@ -1158,12 +1158,6 @@ void BMIModelFilter<TInputImage, TOutputImage>
             m_AuxVarArLen = binfo.size;
             auxVar = static_cast<double_t*>(binfo.ptr);
         }
-
-        //const int gid = this->m_BMIModule->GetVarGrid(m_AuxVarAr_Name);
-        //if (gid >= 0)
-        //{
-        //    m_AuxVarArLen = this->m_BMIModule->GetGridSize(gid);
-        //}
     }
 
     const int numThreads = this->GetNumberOfThreads();

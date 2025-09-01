@@ -140,7 +140,7 @@ NMLumassEngine::NMLumassEngine(int argc, char** argv, AppMode appMode)
     MPI_Comm_size(MPI_COMM_WORLD, &m_Nproc);
     MPI_Comm_rank(MPI_COMM_WORLD, &m_Rank);
 
-    NMDebugAI(<< "+++++ MPI_Comm_get_parent() ...")
+    NMDebugAI(<< "::NMLumassEngine(): +++++ MPI_Comm_get_parent() ..." << std::endl)
     MPI_Comm_get_parent(&mParentComm);
     std::string commParentName = "Cr" + std::to_string(m_Rank) + "'s ParentComm";
     if (mParentComm != MPI_COMM_NULL)
@@ -219,8 +219,7 @@ NMLumassEngine::NMLumassEngine(int argc, char** argv, AppMode appMode)
     mController->setAppMode(static_cast<int>(mAppMode));
     mController->moveToThread(&mModelThread);
     mModelThread.start();
-    connect(&mModelThread, &QThread::finished, mController, &QObject::deleteLater);
-
+    
     /*  The NMLumassEngine is responsible for providing the resources
      *  required to run LUMASS models in different 'modes', i.e. inside
      *  the GUI (meaning started by the GUI and providing live feedback on
@@ -298,6 +297,8 @@ NMLumassEngine::shutdown(void)
 
     mModelThread.quit();
     mModelThread.wait();
+
+    delete mController;
 
     int bfin;
     MPI_Finalized(&bfin);

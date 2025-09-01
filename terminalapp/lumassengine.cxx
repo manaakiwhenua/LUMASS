@@ -55,6 +55,8 @@
 #include <QScopedPointer>
 #include <QDateTime>
 
+#include <csignal>
+
 #include "NMLumassEngine.h"
 
 //////////////////////////////////////////////////////
@@ -63,11 +65,24 @@
 
 static const std::string ctx = "LUMASS_engine";
 
+//signal handler
+namespace
+{
+  volatile std::sig_atomic_t gSignalStatus;
+}
+
+extern "C" void signal_handler(int signal)
+{
+  gSignalStatus = signal;
+  std::cout << "LUMASS (engine) received SIGNAL=" << gSignalStatus
+            << " and gracefully bows out ... good bye!" << std::endl;
+  exit(gSignalStatus);
+}
+
 /*
  * \brief terminal version of LUMASS to run models without graphical user interface
  *
  */
-
 void showHelp()
 {
     std::cout << std::endl << "LUMASS (lumassengine) "
@@ -105,6 +120,12 @@ bool isFileAccessible(const QString& fileName)
 
 int main(int argc, char** argv)
 {
+    std::signal(SIGINT, signal_handler);
+    std::signal(SIGSEGV, signal_handler);
+    std::signal(SIGABRT, signal_handler);
+    std::signal(SIGTERM, signal_handler);
+    std::signal(SIGFPE, signal_handler);
+
     // capture path to lumassengine
     QCoreApplication engineApp(argc, argv);
     QString enginePath = engineApp.applicationDirPath();
@@ -209,7 +230,7 @@ int main(int argc, char** argv)
         engine->doMOSO(losFileName);
         break;
     case NMLumassEngine::NM_ENGINE_MODE_MODEL:
-        engine->doModel(modelFileName, workspace, enginePath, bLogProv, runComponent);
+         engine->doModel(modelFileName, workspace, enginePath, bLogProv, runComponent);
         break;
 #ifdef LUMASS_DEBUG
     case NMLumassEngine::NM_ENGINE_MODE_TEST:

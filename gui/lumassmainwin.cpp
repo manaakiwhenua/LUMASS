@@ -891,7 +891,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent, NMLumassEngine *engine)
     connect(actModelBtn, SIGNAL(toggled(bool)), this, SLOT(showModelView(bool)));
 
     connect(execAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(executeModel()));
-    connect(stopAction, SIGNAL(triggered()), this->ui->modelViewWidget, SIGNAL(requestModelAbortion()));
+    connect(stopAction, SIGNAL(triggered()), this->ui->modelViewWidget, SIGNAL(requestModelAbortion()), Qt::DirectConnection);
     connect(resetAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(resetModel()));
     connect(focusFollowsExec, SIGNAL(toggled(bool)), this->ui->modelViewWidget, SLOT(slotFollowFocus(bool)));
 
@@ -1078,9 +1078,12 @@ LUMASSMainWin::~LUMASSMainWin()
 {
     NMDebugCtx(ctxLUMASSMainWin, << "...");
 
+    // writes out GUI state in ::closeEvent()
+    emit isAboutToClose();
+
+    // remove all layers
     this->removeAllObjects();
 
-    //GDALDestroyDriverManager();
 
 #ifdef BUILD_RASSUPPORT
     // close the table view and delete;
@@ -1095,35 +1098,19 @@ LUMASSMainWin::~LUMASSMainWin()
         delete this->mpRasconn;
 #endif
 
+    // close the websockets server, if running
     if (mServer != nullptr)
     {
         mServer->close();
         delete mServer;
     }
 
-    // wait for the logging thread to quit
-    emit isAboutToClose();
-    //mLoggingThread->wait();
+    // shutdown the engine ...
+    // ... i.e. PythonInterpreter and MPI
+    mEngine->shutdown();
 
-#ifdef LUMASS_PYTHON
-    if (Py_IsInitialized())
-    {
-        try
-        {
-            pybind11::finalize_interpreter();
-        }
-        catch (pybind11::error_already_set& eas)
-        {
-            NMLogError(<< eas.what());
-        }
-
-    }
-#endif
-
-    NMDebugAI(<< "delete ui ..." << std::endl);
     delete ui;
-
-    NMDebugCtx(ctxLUMASSMainWin, << "done!");
+    NMDebugCtxNoMPI(ctxLUMASSMainWin, << "done!");
 }
 
 void LUMASSMainWin::populateProcCompList()
@@ -9832,19 +9819,6 @@ void LUMASSMainWin::closeEvent(QCloseEvent* event)
     mEngine->shutdown();
     writeSettings();
     QMainWindow::closeEvent(event);
-
-//#ifdef LUMASS_PYTHON
-//    std::map<std::string, py::object>::iterator pyIt = lumass_python::ctrlPyObjects.begin();
-//
-//    while (pyIt != lumass_python::ctrlPyObjects.end())
-//    {
-//        py::object po = pyIt->second;
-//        lumass_python::ctrlPyObjects.erase(pyIt);
-//        po.dec_ref();
-//        ++pyIt;
-//    }
-//
-//#endif
 }
 
 QString LUMASSMainWin::eventTypeToString(const QEvent::Type type)

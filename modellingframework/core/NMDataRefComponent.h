@@ -72,6 +72,8 @@ protected:
     QString mInputCompName;
     unsigned int mInputOutputIdx;
     unsigned int mLastInputOutputIdx;
+    QString mInOutDatasetName;
+    QString mLastInOutDatasetName;
 
     virtual QVariant getModelParameter(const QString &paramSpec);
 

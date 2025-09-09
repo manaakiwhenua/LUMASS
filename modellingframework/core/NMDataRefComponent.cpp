@@ -217,6 +217,7 @@ NMDataRefComponent::linkComponents(unsigned int step, const QMap<QString, NMMode
 
     this->mLastInputCompName = this->mInputCompName;
     this->mLastInputOutputIdx = this->mInputOutputIdx;
+    this->mLastInOutDatasetName = this->mInOutDatasetName;
     if (inputSpec.contains(":"))
     {
         QStringList inputSrcParams = inputSpec.split(":", Qt::SkipEmptyParts);
@@ -228,18 +229,17 @@ NMDataRefComponent::linkComponents(unsigned int step, const QMap<QString, NMMode
             mInputOutputIdx = inputSrcParams.at(1).toInt(&bOK);
             if (!bOK)
             {
-                msg << "Failed to interpret input source parameter '"
-                    << inputSpec.toStdString() << "'";
-                e.setDescription(msg.str());
-                NMDebugCtx(ctx, << "done!");
-                throw e;
+                mInOutDatasetName = inputSrcParams.at(1);
+                mInputOutputIdx = 0;
             }
+            mInOutDatasetName.clear();
         }
     }
     else
     {
         mInputCompName = inputSpec;
         mInputOutputIdx = 0;
+        mInOutDatasetName.clear();
     }
 
     // fetch the data from the source object
@@ -470,7 +470,16 @@ NMDataRefComponent::fetchData(NMModelComponent* comp)
         this->mSourceMTime = ic->getProcess()->getModifiedTime();
     }
 
-    QSharedPointer<NMItkDataObjectWrapper> to = comp->getOutput(mInputOutputIdx);
+    QSharedPointer<NMItkDataObjectWrapper> to;
+    if (mInOutDatasetName.isEmpty())
+    {
+        to = comp->getOutput(mInputOutputIdx);
+    }
+    else
+    {
+        to = comp->getOutput(mInOutDatasetName);
+    }
+
     if (to.isNull())
     {
         //NMLogError(<< ctx << ": input object is NULL!");

@@ -429,111 +429,94 @@ void BMIModelFilter<TInputImage, TOutputImage>
     else
     {
         Superclass::GenerateInputRequestedRegion();
+    }
 
-        long long nPixels = -1;
-        InputImageType* inputPtr = nullptr;
+    // if we don't want to process pixel neighbourhoods,
+    // we don't need to pad the input stream region
+    if (m_KernelShape.compare("NO_KERNEL") == 0)
+    {
+        return;
+    }
 
-        int cnt = 0;
-        while (nPixels < 0 && cnt < this->GetNumberOfIndexedInputs())
-        {
-            inputPtr = dynamic_cast<InputImageType*>(
-                            this->GetIndexedInputs().at(cnt).GetPointer());
-            if (inputPtr != nullptr)
-            {
-                nPixels = inputPtr->GetLargestPossibleRegion().GetNumberOfPixels();
-                m_Spacing = inputPtr->GetSignedSpacing(); //GetGetSpacing();
-                m_Origin = inputPtr->GetOrigin();
-            }
-            ++cnt;
-        }
-
-        // if we don't want to process pixel neighbourhoods,
-        // we don't need to pad the input stream region
-        if (m_KernelShape.compare("NO_KERNEL") == 0)
-        {
-            return;
-        }
-
-        // when we're working on a circular neighbourhood,
-        // we make sure the fetched neighbourhood is square
-        // rather than only rectangular; thereby, we're taking
-        // the biggest radius across all dimension to determine
-        // the size of the square;
-        if (m_KernelShape.compare("CIRCULAR") == 0)
-        {
-            int maxRadius = 0;
-            for (int d=0; d < m_KernelRadius.GetSizeDimension(); ++d)
-            {
-                maxRadius = m_KernelRadius[d] > maxRadius ? m_KernelRadius[d] : maxRadius;
-            }
-            for (int d=0; d < m_KernelRadius.GetSizeDimension(); ++d)
-            {
-                m_KernelRadius[d] = maxRadius;
-            }
-        }
-
-        // determine kernel size
-        m_NumNeighbourPixel = 1;
+    // when we're working on a circular neighbourhood,
+    // we make sure the fetched neighbourhood is square
+    // rather than only rectangular; thereby, we're taking
+    // the biggest radius across all dimension to determine
+    // the size of the square;
+    if (m_KernelShape.compare("CIRCULAR") == 0)
+    {
+        int maxRadius = 0;
         for (int d=0; d < m_KernelRadius.GetSizeDimension(); ++d)
         {
-            if (m_KernelRadius[d] > 0)
-            {
-                m_NumNeighbourPixel *= (m_KernelRadius[d] * 2 + 1);
-            }
+            maxRadius = m_KernelRadius[d] > maxRadius ? m_KernelRadius[d] : maxRadius;
         }
-        m_NumNeighbourPixel = m_NumNeighbourPixel == 1 ? 0 : m_NumNeighbourPixel;
-
-
-        // no need to pad the input requested region,
-        // if we're not operating on a kernel
-        if (m_NumNeighbourPixel == 0)
+        for (int d=0; d < m_KernelRadius.GetSizeDimension(); ++d)
         {
-            return;
+            m_KernelRadius[d] = maxRadius;
+        }
+    }
+
+    // determine kernel size
+    m_NumNeighbourPixel = 1;
+    for (int d=0; d < m_KernelRadius.GetSizeDimension(); ++d)
+    {
+        if (m_KernelRadius[d] > 0)
+        {
+            m_NumNeighbourPixel *= (m_KernelRadius[d] * 2 + 1);
+        }
+    }
+    m_NumNeighbourPixel = m_NumNeighbourPixel == 1 ? 0 : m_NumNeighbourPixel;
+
+
+    // no need to pad the input requested region,
+    // if we're not operating on a kernel
+    if (m_NumNeighbourPixel == 0)
+    {
+        return;
+    }
+
+    for (int ip=0; ip < this->GetNumberOfIndexedInputs() && this->m_IsStreamable; ++ip)
+    {
+        InputImageType* inputPtr = dynamic_cast<InputImageType*>(
+                    this->GetIndexedInputs().at(ip).GetPointer());
+
+        if (inputPtr == 0)
+        {
+            continue;
         }
 
-        for (int ip=0; ip < this->GetNumberOfIndexedInputs(); ++ip)
+        // get a copy of the input requested region (should equal the output
+        // requested region)
+        typename TInputImage::RegionType inputRequestedRegion;
+        inputRequestedRegion = inputPtr->GetRequestedRegion();
+
+        // pad the input requested region by the operator radius
+        SizeType radius;
+        for (int r=0; r < m_KernelRadius.GetSizeDimension(); ++r)
         {
-            inputPtr = dynamic_cast<InputImageType*>(
-                        this->GetIndexedInputs().at(ip).GetPointer());
+            radius[r] = m_KernelRadius[r];
+        }
+        inputRequestedRegion.PadByRadius( radius );
 
-            if (inputPtr == 0)
-            {
-                continue;
-            }
+        // crop the input requested region at the input's largest possible region
+        if ( inputRequestedRegion.Crop(inputPtr->GetLargestPossibleRegion()) )
+        {
+            inputPtr->SetRequestedRegion( inputRequestedRegion );
+        }
+        else
+        {
+            // Couldn't crop the region (requested region is outside the largest
+            // possible region).  Throw an exception.
 
-            // get a copy of the input requested region (should equal the output
-            // requested region)
-            typename TInputImage::RegionType inputRequestedRegion;
-            inputRequestedRegion = inputPtr->GetRequestedRegion();
+            // store what we tried to request (prior to trying to crop)
+            inputPtr->SetRequestedRegion( inputRequestedRegion );
 
-            // pad the input requested region by the operator radius
-            SizeType radius;
-            for (int r=0; r < m_KernelRadius.GetSizeDimension(); ++r)
-            {
-                radius[r] = m_KernelRadius[r];
-            }
-            inputRequestedRegion.PadByRadius( radius );
-
-            // crop the input requested region at the input's largest possible region
-            if ( inputRequestedRegion.Crop(inputPtr->GetLargestPossibleRegion()) )
-            {
-                inputPtr->SetRequestedRegion( inputRequestedRegion );
-            }
-            else
-            {
-                // Couldn't crop the region (requested region is outside the largest
-                // possible region).  Throw an exception.
-
-                // store what we tried to request (prior to trying to crop)
-                inputPtr->SetRequestedRegion( inputRequestedRegion );
-
-                // build an exception
-                itk::InvalidRequestedRegionError e(__FILE__, __LINE__);
-                e.SetLocation(ITK_LOCATION);
-                e.SetDescription("Requested region is (at least partially) outside the largest possible region.");
-                e.SetDataObject(inputPtr);
-                throw e;
-            }
+            // build an exception
+            itk::InvalidRequestedRegionError e(__FILE__, __LINE__);
+            e.SetLocation(ITK_LOCATION);
+            e.SetDescription("Requested region is (at least partially) outside the largest possible region.");
+            e.SetDataObject(inputPtr);
+            throw e;
         }
     }
 }

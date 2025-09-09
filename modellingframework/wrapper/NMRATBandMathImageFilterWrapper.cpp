@@ -319,6 +319,11 @@ NMRATBandMathImageFilterWrapper::NMRATBandMathImageFilterWrapper(QObject* parent
     mUserProperties.insert(QStringLiteral("UserOutputNames"), QStringLiteral("OutputNames"));
     mUserProperties.insert(QStringLiteral("MapExpressions"), QStringLiteral("MapExpressions"));
     mUserProperties.insert(QStringLiteral("UseTableColumnCache"), QStringLiteral("UseTableColumnCache"));
+
+    // We need to make sure that input and output types are the same. In the 'WrapFlexiGetOutput...'
+    // macros the OutputNMComponentType is used to define the component type, however in this class
+    // the output component type is actually defined by the mInputComponentType (s. above).
+    connect(this, &NMProcess::inputComponentTypeChanged, this, &NMProcess::setOutputNMComponentType);
 }
 
 NMRATBandMathImageFilterWrapper::~NMRATBandMathImageFilterWrapper(void)

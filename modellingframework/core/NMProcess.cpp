@@ -1063,6 +1063,7 @@ NMProcess::setInputNMComponentType(NMItkDataObjectWrapper::NMComponentType nmtyp
         this->mbIsInitialised = false;
         emit NMProcessChanged();
         emit nmChanged();
+        emit inputComponentTypeChanged(nmtype);
     }
 }
 

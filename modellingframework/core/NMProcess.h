@@ -282,7 +282,7 @@ signals:
         void signalProgress(float);
         void signalExecutionStarted(const QString);
         void signalExecutionStopped(const QString);
-
+        void inputComponentTypeChanged(NMItkDataObjectWrapper::NMComponentType nmType);
 
 protected:
     NMProcess(QObject *parent=0);

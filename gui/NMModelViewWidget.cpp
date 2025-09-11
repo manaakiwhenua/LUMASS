@@ -1223,24 +1223,22 @@ void NMModelViewWidget::initItemContextMenu()
     scaleLabels->setText(tr("Scale Labels ..."));
     this->mActionMap.insert("Scale Labels ...", scaleLabels);
 
+    this->mItemContextMenu->addAction(resetComp);
+    this->mItemContextMenu->addAction(runComp);
+    this->mItemContextMenu->addSeparator();
+
     this->mItemContextMenu->addAction(actDeltaTimeLevel);
     this->mItemContextMenu->addAction(actGroupTimeLevel);
     this->mItemContextMenu->addSeparator();
+
     this->mItemContextMenu->addAction(groupSeqItems);
     this->mItemContextMenu->addAction(groupParaItems);
     //this->mItemContextMenu->addAction(groupCondItems);
     this->mItemContextMenu->addAction(ungroupItems);
     this->mItemContextMenu->addAction(convSeqToPara);
     this->mItemContextMenu->addAction(convParaToSeq);
+    this->mItemContextMenu->addSeparator();
 
-    this->mItemContextMenu->addSeparator();
-    this->mItemContextMenu->addMenu(paraSubMenu);
-    this->mItemContextMenu->addAction(clearSelAct);
-
-    this->mItemContextMenu->addSeparator();
-    this->mItemContextMenu->addAction(unfoldComp);
-    this->mItemContextMenu->addAction(collapseComp);
-    this->mItemContextMenu->addSeparator();
     this->mItemContextMenu->addAction(copyComp);
     this->mItemContextMenu->addAction(cutComp);
     this->mItemContextMenu->addAction(pasteComp);
@@ -1248,13 +1246,20 @@ void NMModelViewWidget::initItemContextMenu()
     this->mItemContextMenu->addAction(loadComp);
     this->mItemContextMenu->addAction(delComp);
     this->mItemContextMenu->addSeparator();
+
+    this->mItemContextMenu->addMenu(paraSubMenu);
+    this->mItemContextMenu->addAction(clearSelAct);
+    this->mItemContextMenu->addSeparator();
+
     this->mItemContextMenu->addAction(scaleCompFonts);
     this->mItemContextMenu->addAction(scaleLabels);
     this->mItemContextMenu->addAction(fontAct);
     this->mItemContextMenu->addAction(clrAct);
     this->mItemContextMenu->addSeparator();
-    this->mItemContextMenu->addAction(resetComp);
-    this->mItemContextMenu->addAction(runComp);
+
+    this->mItemContextMenu->addAction(unfoldComp);
+    this->mItemContextMenu->addAction(collapseComp);
+
 
     connect(runComp, SIGNAL(triggered()), this, SLOT(executeModel()));
     connect(resetComp, SIGNAL(triggered()), this, SLOT(resetModel()));

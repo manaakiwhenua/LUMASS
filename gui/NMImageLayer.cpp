@@ -416,11 +416,12 @@ public:
 NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
         vtkRenderer* renderer, QObject* parent)
     : NMLayer(renWin, renderer, parent),
-      mHistogramView(0), mbLayerLoaded(false),
-      mbRefreshImageData(false)
+      mHistogramView(nullptr), mbLayerLoaded(false),
+      mbRefreshImageData(false),
+      mSourceBuffer(nullptr), mReader(nullptr), mPipeconn(nullptr)
 {
     this->mLayerType = NMLayer::NM_IMAGE_LAYER;
-    this->mReader = 0; //new NMImageReader(this);
+    this->mReader = nullptr; //new NMImageReader(this);
     this->mPipeconn = new NMItk2VtkConnector(this);
 
     //this->mSelPipe = new NMItk2VtkConnector(this);
@@ -2882,11 +2883,11 @@ NMImageLayer::updateSourceBuffer(void)
     NMDataComponent* dc = qobject_cast<NMDataComponent*>(this->sender());
     bool bOpenRAMTable = false;
     bool bOpenSQLTable = false;
-    if (dc != 0 && dc->getOutput(0) != 0 && dc->getOutput(0)->getDataObject() != 0)
+    if (dc != nullptr && dc->getOutput(0) != nullptr && dc->getOutput(0)->getDataObject() != nullptr)
     {
         QSize tabSize;
         QPoint tabPos;
-        if (this->mTableView)
+        if (this->mTableView != nullptr)
         {
             tabSize = this->mTableView->size();
             tabPos = this->mTableView->pos();
@@ -2896,34 +2897,37 @@ NMImageLayer::updateSourceBuffer(void)
             this->mTableView->clearSelection();
             this->mTableView->close();
             delete this->mTableView;
-            mTableView = 0;
+            mTableView = nullptr;
 
             delete mSelectionModel;
-            mSelectionModel = 0;
+            mSelectionModel = nullptr;
 
 
             delete this->mTableModel;
-            mTableModel = 0;
+            mTableModel = nullptr;
 
         }
 
-        if (this->mSqlTableView)
+        if (this->mSqlTableView != nullptr)
         {
             tabSize = mSqlTableView->size();
             tabPos = mSqlTableView->pos();
 
             bOpenSQLTable = this->mSqlTableView->isVisible();
 
-            mSqlTableView->clearSelection();
-            mSqlTableView->close();
-            delete mSqlTableView;
-            mSqlTableView = 0;
+            // delete centrally stored info about layer tables, connections, and views
+            NMGlobalHelper::getMainWindow()->checkRemoveLayerInfo(this);
+
+            //mSqlTableView->clearSelection();
+            //mSqlTableView->close();
+            //delete mSqlTableView;
+            mSqlTableView = nullptr;
 
             NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
             sqlModel->database().close();
             sqlModel->clear();
             delete sqlModel;
-            mTableModel = 0;
+            mTableModel = nullptr;
 
             {
                 QSqlDatabase db = QSqlDatabase::database(mQSqlConnectionName, true);
@@ -2936,12 +2940,12 @@ NMImageLayer::updateSourceBuffer(void)
             mQSqlConnectionName.clear();
 
             delete mSelectionModel;
-            mSelectionModel = 0;
+            mSelectionModel = nullptr;
 
             //::sqlite3_close(mSqlViewConn);
             //spatialite_cleanup_ex(mSpatialiteCache);
-            mSpatialiteCache = 0;
-            mSqlViewConn = 0;
+            mSpatialiteCache = nullptr;
+            mSqlViewConn = nullptr;
         }
 
         this->mOtbRAT = dc->getOutput(0)->getOTBTab();

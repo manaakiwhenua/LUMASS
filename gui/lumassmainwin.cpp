@@ -7859,15 +7859,19 @@ LUMASSMainWin::addLayerToCompList()
 
     if (layer->getLayerType() == NMLayer::NM_IMAGE_LAYER)
     {
+        otb::SQLiteTable::Pointer sqlTab;
         NMImageLayer* il = qobject_cast<NMImageLayer*>(layer);
-        if (il != nullptr && !il->getFileName().isEmpty())
+        if (il != nullptr)
+        {
+            sqlTab = static_cast<otb::SQLiteTable*>(il->getRasterAttributeTable(1).GetPointer());
+        }
+
+        if (sqlTab.IsNotNull())
         {
             NMSqlTableModel* sqlMod = qobject_cast<NMSqlTableModel*>(
                                          const_cast<QAbstractItemModel*>(il->getTable()));
             if (sqlMod != nullptr)
             {
-                otb::SQLiteTable::Pointer sqlTab = static_cast<otb::SQLiteTable*>(il->getRasterAttributeTable(1).GetPointer());
-
                 QSharedPointer<NMSqlTableView> tv(il->getSqlTableView());
                 QString viewTitle = tv->windowTitle();
                 QStringList views = mTableDbNames.values();

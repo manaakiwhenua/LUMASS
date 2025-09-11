@@ -2476,16 +2476,19 @@ NMSqlTableView::updateSelection(bool swap)
 
 void NMSqlTableView::clearSelection()
 {
-    mSortFilter->clearSelection();
-    mProxySelModel->clearSelection();
-    mSelectionModel->setSelection(QItemSelection());
-    mSelectionModel->clearSelection();
+    if (mSortFilter != nullptr) mSortFilter->clearSelection();
+    if (mProxySelModel != nullptr) mProxySelModel->clearSelection();
+    if (mSelectionModel != nullptr)
+    {
+        mSelectionModel->setSelection(QItemSelection());
+        mSelectionModel->clearSelection();
+    }
     updateSelectionAdmin(0);
-    mTableView->reset();
+    if (mTableView != nullptr) mTableView->reset();
     mCurrentQuery.clear();
     mCurrentSwapQuery.clear();
     mPickedRows.clear();
-    mChkSelectedRecsOnly->setChecked(false);
+    if (mChkSelectedRecsOnly != nullptr) mChkSelectedRecsOnly->setChecked(false);
 }
 
 const QItemSelection

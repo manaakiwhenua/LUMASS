@@ -66,12 +66,13 @@
 
 NMLayer::NMLayer(vtkRenderWindow* renWin,
         vtkRenderer* renderer, QObject* parent)
-    : QObject(parent), mSelectionModel(0), mTableModel(0), mTableView(0),
-      mSqlTableView(0), mDataSet(0), mActor(0), mMapper(0),
-      mSqlViewConn(0), mSpatialiteCache(0),
+    : QObject(parent), mSelectionModel(nullptr), mTableModel(nullptr), mTableView(nullptr),
+      mSqlTableView(nullptr), mDataSet(nullptr), mActor(nullptr), mMapper(nullptr),
+      mSqlViewConn(nullptr), mSpatialiteCache(nullptr),
+      mLogger(nullptr),
       mIsVisible(false), mIsSelectable(true),
       mIsSelected(false), mHasChanged(false),
-      mLayerType(NM_UNKNOWN_LAYER), mClrFunc(0), mLookupTable(0), mLegendInfo(0),
+      mLayerType(NM_UNKNOWN_LAYER), mClrFunc(nullptr), mLookupTable(nullptr), mLegendInfo(nullptr),
       mLegendClassType(NM_CLASS_JENKS), mColourRamp(NM_RAMP_BLUE2RED_DIV),
       mLegendType(NM_LEGEND_SINGLESYMBOL),
       mIsIn3DMode(false),

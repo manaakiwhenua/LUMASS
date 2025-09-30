@@ -55,8 +55,8 @@ cd $CPP_DIR
 wget https://github.com/InsightSoftwareConsortium/ITK/archive/v4.13.3.tar.gz
 tar zxf v4.13.3.tar.gz
 cd $ITK_SRC
-wget https://raw.githubusercontent.com/orfeotoolbox/OTB/develop/SuperBuild/patches/ITK/itk-3-remove-gcc-version-debian-medteam-all.diff
-patch -ut -p1 < itk-3-remove-gcc-version-debian-medteam-all.diff
+wget https://raw.githubusercontent.com/orfeotoolbox/OTB/develop/SuperBuild/patches/ITK/itk-3-remove-gcc-version-debian-medteam-all.diffOLD
+patch -ut -p1 < itk-3-remove-gcc-version-debian-medteam-all.diffOLD
 mkdir -p $ITK_BIN
 cd $ITK_BIN
 cmake -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX="$ITK_BIN/install" -DITK_BUILD_DEFAULT_MODULES=ON $ITK_SRC

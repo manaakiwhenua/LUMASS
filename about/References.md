@@ -18,7 +18,7 @@ Elliot S, Evans T, Cichota R, Djanibekov U, Herzig A, Jackson B, Lagrava Sandova
 
 Herzig A, Djanibekov U, Wakelin S, Monge J 2020. **Interoperable Modelling - spatial economic optimisation**. Prepared for National Institute of Water and Atmospheric Research (NIWA), Manaaki Whenua - Landcare Research Contract Report LC3807, Palmerston North, New Zealand. [Report](https://datastore.landcareresearch.co.nz/dataset/de3767f9-b79d-42f2-92cf-6cb89e07adac/resource/9fb1836c-da0a-4b30-9e17-15f5bd33d778/download/olw_interoperable-modelling-spatial-economic-optimisation.pdf)
 
-Herzig A, Manderson A, Jolly B, Barnes M, Baish L 2020. **Opportunitues and constraints on intensive land-use expansion in the Horizons Region – Land-Use Mapping.** Manaaki Whenua – Landcare Research Contract Report LC3838, Palmerston North, New Zealand.
+Herzig A, Manderson A, Jolly B, Barnes M, Baish L 2020. **Opportunitues and constraints on intensive land-use expansion in the Horizons Region – Land-Use Mapping.** Manaaki Whenua – Landcare Research Contract Report LC3838, Palmerston North, New Zealand. [Report](https://archivescentral.org.nz/horizons-regional-council/record/opportunities-and-constraints-intensive-land-use-expansion)
 
 Herzig A, Zoerner J, Dymond J, Smith H, Phillips C 2020. **An Interoperable Low-Code Modelling Framework for Integrated Spatial Modelling**, EGU General Assembly 2020, Online, 4–8 May 2020, EGU2020-20868, [https://doi.org/10.5194/egusphere-egu2020-20868](https://doi.org/10.5194/egusphere-egu2020-20868), 2020
 
@@ -36,6 +36,6 @@ Herzig A, Dymond J, Ausseil A-G 2016. **Exploring limits and trade-offs of irrig
 
 Herzig A, Ausseil A-GE, Dymond JR 2013. **Sensitivity of land-use pattern optimisation to variation in input data and constraints**. In Piantadosi J, Anderssen RS, Boland J (eds.) MODSIM2013, 20th International Congress on Modelling and Simulation. Modelling and Simulation Society of Australia and New Zealand, December 2013, pp. 1840-1846. [http://www.mssanz.org.au/modsim2013/H12/herzig.pdf](http://www.mssanz.org.au/modsim2013/H12/herzig.pdf)
 
-Herzig A, Ausseil A-GE, Dymond JR 2013. **Spatial optimisation of ecosystem services. In Dymond JR (ed.) Ecosystem services in New Zealand - conditions and trends**, pp. 511-523, Manaaki Whenua Press, Lincoln, New Zealand. [https://goo.gl/koaEhR](https://goo.gl/koaEhR)
+Herzig A, Ausseil A-GE, Dymond JR 2013. **Spatial optimisation of ecosystem services. In Dymond JR (ed.) Ecosystem services in New Zealand - conditions and trends**, pp. 511-523, Manaaki Whenua Press, Lincoln, New Zealand. [https://www.landcareresearch.co.nz/assets/Publications/Ecosystem-services-in-New-Zealand/3_3_Herzig.pdf](https://www.landcareresearch.co.nz/assets/Publications/Ecosystem-services-in-New-Zealand/3_3_Herzig.pdf)
 
 Herzig A, Rutledge D 2013. **Integrated Land Systems Modelling and Optimisation**. In Piantadosi J, Anderssen RS, Boland J (eds.) MODSIM2013, 20th International Congress on Modelling and Simulation. Modelling and Simulation Society of Australia and New Zealand, December 2013, pp. 880-886. [http://www.mssanz.org.au/modsim2013/C8/herzig.pdf](http://www.mssanz.org.au/modsim2013/C8/herzig.pdf)

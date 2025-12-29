@@ -9,7 +9,7 @@ INCLUDE_DIRECTORIES(
     ${NETCDFIO_BINARY_DIR}
     ${shared_SOURCE_DIR}
     ${OTBSupplCore_SOURCE_DIR}
-    ${OTBSupplCore_BINARY_DIR}
+    ${mfw_core_BINARY_DIR}
     #${rimageio_SOURCE_DIR}
     #${RASDAMAN_SOURCE_DIR}/applications/rasgeo
     ${ITK_INCLUDE_DIRS}
@@ -51,45 +51,45 @@ file(GLOB GDALRATIO_HEADER
         ${GDALRATImageIO_BINARY_DIR}/*.h
 )
 
-add_definitions(-DNMOTBGDALRATImageIO_EXPORTS -DNM_PROC_LOG)
+#add_definitions(-DNMOTBGDALRATImageIO_EXPORTS -DNM_PROC_LOG)
 
-include(GenerateExportHeader)
+#include(GenerateExportHeader)
 # define build target: shared library
-ADD_LIBRARY(NMOTBGDALRATImageIO SHARED ${GDALRATIO})
-set_property(TARGET NMOTBGDALRATImageIO PROPERTY LINKER_LANGUAGE CXX)
-generate_export_header(NMOTBGDALRATImageIO)
+#ADD_LIBRARY(NMOTBGDALRATImageIO SHARED ${GDALRATIO})
+#set_property(TARGET NMOTBGDALRATImageIO PROPERTY LINKER_LANGUAGE CXX)
+#generate_export_header(NMOTBGDALRATImageIO)
 
-if(WIN32)
-    TARGET_LINK_LIBRARIES(NMOTBGDALRATImageIO
-        ${GDAL_LIBRARY}
-        #SQLite
-        #lwgeom_i geos_c freexl_i libxml2 proj_i iconv zlib
-        #spatialite4
-        OTBCommon OTBIOGDAL
-        #netcdf netcdf-cxx4
-        )
-else()
-    TARGET_LINK_LIBRARIES(NMOTBGDALRATImageIO
-        OTBCommon OTBImageBase OTBIOGDAL #OTBCurlAdapters # OTBImageIO
-        Boost::filesystem
-        NMOTBSupplCore
-        curl
-        ${NETCDF_LIBRARY}
-        ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
-        )
-endif()
+#if(WIN32)
+#    TARGET_LINK_LIBRARIES(NMOTBGDALRATImageIO
+#        ${GDAL_LIBRARY}
+#        #SQLite
+#        #lwgeom_i geos_c freexl_i libxml2 proj_i iconv zlib
+#        #spatialite4
+#        Boost::filesystem
+#        OTBCommon OTBImageBase OTBIOGDAL
+#        #netcdf netcdf-cxx4
+#        )
+#else()
+#    TARGET_LINK_LIBRARIES(NMOTBGDALRATImageIO
+#        OTBCommon OTBImageBase OTBIOGDAL #OTBCurlAdapters # OTBImageIO
+#        Boost::filesystem
+#        curl
+#        ${NETCDF_LIBRARY}
+#        ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
+#        )
+#endif()
 
 # define where to install what
-install(FILES ${GDALRATIO_HEADER} DESTINATION include)
-if(WIN32)
-        install(
-                TARGETS NMOTBGDALRATImageIO
-                LIBRARY DESTINATION lib
-                RUNTIME DESTINATION lib
-        )
-else()
-        install(TARGETS NMOTBGDALRATImageIO LIBRARY DESTINATION lib)
-endif()
+#install(FILES ${GDALRATIO_HEADER} DESTINATION include)
+#if(WIN32)
+#        install(
+#                TARGETS NMOTBGDALRATImageIO
+#                LIBRARY DESTINATION lib
+#                RUNTIME DESTINATION bin
+#        )
+#else()
+#        install(TARGETS NMOTBGDALRATImageIO LIBRARY DESTINATION lib)
+#endif()
 
 
 

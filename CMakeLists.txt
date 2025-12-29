@@ -70,9 +70,9 @@ IF(NOT WIN32)
         SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -g -fPIC -fno-aggressive-loop-optimizations")
         SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -fPIC")
 ELSE(NOT WIN32)
-    SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT ")
+    SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT")
     SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ob2 /Oy /Oi /Ot ")
-    SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ")
+    SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
     SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /O2 /Ob2 /Oy /Oi /Ot ")
 ENDIF(NOT WIN32)
 
@@ -116,7 +116,6 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 # THE DEFAULT BUILD TYPE
 # credit to http://vtk.org/gitweb?p=VTK.git;a=blob;f=CMakeLists.txt;h=a57fd66ef333fc26bf74fe658c88c3c634f54c3a;hb=HEAD#l12
 #==================================================================
-
 if(NOT CMAKE_BUILD_TYPE)
         if (NOT WIN32)
                 message(STATUS "Setting build type to 'Debug' as none was specified.")
@@ -179,11 +178,37 @@ SET(LUMASS_OPENGA_VERSION "1.0.5")
 #====================================================================
 # QT 5
 #====================================================================
+#FIND_PACKAGE(LUMASSQt5)
 
-FIND_PACKAGE(LUMASSQt5)
-IF(NOT QT5_PREFIX_PATH)
-        message(FATAL_ERROR "Need to specify Qt5 install DIR!")
+SET(_QT5_REQUIRED_COMPONENTS Core Widgets Gui Concurrent Sql Xml Qml) 
+
+        # WebSockets)
+        # not using Network WebSockets OpenSSL ATM
+FIND_PACKAGE(Qt5 5.15 COMPONENTS ${_QT5_REQUIRED_COMPONENTS})
+IF(NOT Qt5_DIR)
+        message(FATAL_ERROR "Couldn't find Qt5 - please specify location of Qt5Config.cmake")
+        set(Qt5_DIR "" CACHE STRING "Path to Qt5Config.cmake" FORCE)
+else ()
+    include(${Qt5_DIR}/Qt5ConfigVersion.cmake)
+    set(QT5_VERSION_STRING ${PACKAGE_VERSION})
+    message(STATUS "Found Qt ${QT5_VERSION_STRING}")
+    
+    SET(_QT5_REQUIRED_PRIVATE_COMPONENTS Core Gui Widgets Sql)
+    foreach(_QT5_COMP ${_QT5_REQUIRED_COMPONENTS})
+        list(APPEND QT5_INCLUDE_DIRS ${Qt5${_QT5_COMP}_INCLUDE_DIRS})
+        list(APPEND QT5_LIBRARIES ${Qt5${_QT5_COMP}_LIBRARIES})
+        
+        list(FIND _QT5_REQUIRED_PRIVATE_COMPONENTS ${_QT5_COMP} _QT5_PCOMP_INDEX)
+        if (_QT5_PCOMP_INDEX GREATER_EQUAL 0)
+            list(APPEND QT5_INCLUDE_DIRS ${Qt5${_QT5_COMP}_PRIVATE_INCLUDE_DIRS})
+        endif()
+    endforeach()
+    list(REMOVE_DUPLICATES QT5_INCLUDE_DIRS)
+
+    message(STATUS "QT5_INCLUDE_DIRS: ${QT5_INCLUDE_DIRS}")
+    message(STATUS "QT5_LIBRARIES: ${QT5_LIBRARIES}")
 ENDIF()
+
 #if (${QT5_VERSION_STRING} VERSION_LESS "5.7")
 #    message(FATAL_ERROR "LUMASS >= 0.9.60 requires Qt >= 5.7")
 #endif ()
@@ -242,7 +267,22 @@ IF(NOT OTB_DIR)
     endif(NOT OTB_FOUND)
 ELSE()
     include(${OTB_DIR}/OTBConfig.cmake)
+    #SET(OTB_LINK_DIR "${OTB_DIR}/../../../bin ${OTB_DIR}/../../")
 ENDIF()
+
+if (ITK_DIR)
+  if (WIN32)
+    include(${ITK_DIR}/ITKConfig.cmake)
+    if (EXISTS ${ITK_DIR}/ITKConfig.cmake)
+        SET(ITK_LINK_DIRS 
+            ${ITK_DIR}/lib/${CMAKE_BUILD_TYPE} 
+            ${ITK_DIR}/bin/${CMAKE_BUILD_TYPE}         
+        )
+    else()
+        message(FATAL_ERROR "Please set ITK_DIR to root path containing ITKConfig.cmake")
+    endif()
+  endif()
+endif()
 
 SET(LUMASS_ITK_VERSION "${ITK_VERSION_MAJOR}.${ITK_VERSION_MINOR}.${ITK_VERSION_PATCH}")
 SET(LUMASS_OTB_VERSION "${OTB_VERSION_MAJOR}.${OTB_VERSION_MINOR}.${OTB_VERSION_PATCH}")
@@ -255,14 +295,16 @@ endif ()
 
 message(STATUS "ITK_VERSION: ${LUMASS_ITK_VERSION}")
 #message(STATUS "ITK_LIBRARY_DIRS: ${ITK_LIBRARY_DIRS}")
-#message(STATUS "ITK_INCLUDE_DIRS: ${ITK_INCLUDE_DIRS}")
-#message(STATUS "ITK_LIBRARIES: ${ITK_LIBRARIES}")
-#message(STATUS "ITK_LINK_DIR: ${ITK_LINK_DIR}")
+message(STATUS "ITK_INCLUDE_DIRS: ${ITK_INCLUDE_DIRS}")
+message(STATUS "ITK_LIBRARIES: ${ITK_LIBRARIES}")
+message(STATUS "ITK_INSTALL_PREFIX: ${ITK_INSTALL_PREFIX}")
+message(STATUS "ITK_LINK_DIRS: ${ITK_LINK_DIRS}")
 message(STATUS "OTB_VERSION: ${LUMASS_OTB_VERSION}")
-#message(STATUS "OTB_LIBRARY_DIRS: ${OTB_LIBRARY_DIRS}")
-#message(STATUS "OTB_INCLUDE_DIRS: ${OTB_INCLUDE_DIRS}")
-#message(STATUS "OTB_LIBRARIES: ${OTB_LIBRARIES}")
-#message(STATUS "OTB_LINK_DIR: ${OTB_LINK_DIR}")
+message(STATUS "OTB_LIBRARY_DIRS: ${OTB_LIBRARY_DIRS}")
+message(STATUS "LUMASS_OTB_LIB_VERSION: ${LUMASS_OTB_LIB_VERSION}")
+message(STATUS "OTB_INCLUDE_DIRS: ${OTB_INCLUDE_DIRS}")
+message(STATUS "OTB_LIBRARIES: ${OTB_LIBRARIES}")
+message(STATUS "OTB_LINK_DIR: ${OTB_LINK_DIR}")
 
 #====================================================================
 # CURL
@@ -352,6 +394,7 @@ ENDIF()
 
 message(STATUS "lp_solve include dir: ${LPSOLVE_INCLUDE_DIR}")
 message(STATUS "lp_solve library: ${LPSOLVE_LIBRARY}")
+message(STATUS "lp_solve lib dir: ${LPSOLVE_LIB_DIR}")
 
 #====================================================================
 # FIND SQLite3 / Spatialite
@@ -383,33 +426,31 @@ message(STATUS "Spatialite library: ${SPATIALITE_LIB}")
 # FIND netCDF CXX
 #====================================================================
 
-if (WIN32)
-        #if (NOT NETCDF_BIN_DIR)
-                #	set(NETCDF_BIN_DIR "c:/opt/netcdf-c-4.7.3" CACHE PATH "Please set the netcdf binary dir!")
-                #endif()
-                #
-                #include(${NETCDF_BIN_DIR}/netCDFConfig.cmake)
-                #
-                #message(STATUS "netCDF-c version: ${NetCDFVersion}")
-
-        if (NOT NETCDF_INCLUDE_DIR OR NOT NETCDF_LIB_DIR)
-                set(NETCDF_INCLUDE_DIR "C:/src/netcdf-c-4.7.3/include" CACHE PATH "Please check the netCDF include DIR!")
-                set(NETCDF_LIB_DIR "C:/opt/netcdf-c-4.7.3/liblib/Release" CACHE PATH "Please check the netCDF lib DIR!")
-                set(NETCDF_LIBRARY "C:/opt/netcdf-c-4.7.3/liblib/Release/netcdf.lib" CACHE PATH "Please check the path to the netCDF library!")
-        endif()
-
-
-
-        if (NOT NCXX4_INCLUDE_DIR OR NOT NCXX4_LIBRARY)
-                set(NCXX4_INCLUDE_DIR "C:/src/netcdf-cxx4-4.3.1/cxx4" CACHE PATH "Please check the netCDF include DIR!")
-                set(NCXX4_LIB_DIR "C:/opt/netcdf-cxx4-4.3.1/cxx4/Release" CACHE PATH "Please check the netCDF lib DIR!")
-                SET(NCXX4_LIBRARY "C:/opt/netcdf-cxx4-4.3.1/cxx4/Release/netcdf-cxx4.lib" CACHE PATH "Please check the path to the ncxx library!")
-        endif()
-
-                SET(LUMASS_NETCDF_VERSION "4.7.3")
-                SET(LUMASS_NCXX4_VERSION "4.3.1")
-
-else()
+#if (WIN32)
+#        #if (NOT NETCDF_BIN_DIR)
+#                #	set(NETCDF_BIN_DIR "c:/opt/netcdf-c-4.7.3" CACHE PATH "Please set the netcdf binary dir!")
+#                #endif()
+#                #
+#                #include(${NETCDF_BIN_DIR}/netCDFConfig.cmake)
+#                #
+#                #message(STATUS "netCDF-c version: ${NetCDFVersion}")
+#
+#        if (NOT NETCDF_INCLUDE_DIR OR NOT NETCDF_LIB_DIR)
+#                set(NETCDF_INCLUDE_DIR "C:/Install/netCDF/include" CACHE PATH "Please check the netCDF include DIR!")
+#                set(NETCDF_LIB_DIR "C:/Install/netCDF/bin" CACHE PATH "Please check the netCDF lib DIR!")
+#                set(NETCDF_LIBRARY "C:/Install/netCDF/bin/netcdf_par.dll" CACHE PATH "Please check the path to the netCDF library!")
+#        endif()
+#
+#
+#
+#        if (NOT NCXX4_INCLUDE_DIR OR NOT NCXX4_LIBRARY)
+#                set(NCXX4_INCLUDE_DIR "C:/Install/netcdf-cxx-4.3.1/include" CACHE PATH "Please check the netCDF include DIR!")
+#                set(NCXX4_LIB_DIR "C:/Install/netcdf-cxx-4.3.1/lib" CACHE PATH "Please check the netCDF lib DIR!")
+#                SET(NCXX4_LIBRARY "C:/Install/netcdf-cxx-4.3.1/lib/netcdf-cxx4.lib" CACHE PATH "Please check the path to the ncxx library!")
+#        endif()
+#                SET(LUMASS_NETCDF_VERSION "4.9.3")
+#                SET(LUMASS_NCXX4_VERSION "4.3.1")
+#else()
 
     find_package(LUMASSNetCDF)
 
@@ -431,7 +472,7 @@ else()
 
     find_package(HDF5 COMPONENTS C HL REQUIRED)
 
-endif()
+#endif()
 
 message(STATUS "NetCDF-C version: ${LUMASS_NETCDF_VERSION}")
 message(STATUS "NETCDF_INCLUDE_DIR=${NETCDF_INCLUDE_DIR}")
@@ -537,8 +578,15 @@ if (NOT YAML_CPP_CMAKE_DIR)
 else()
         include(${YAML_CPP_CMAKE_DIR}/yaml-cpp-config-version.cmake)
         SET(LUMASS_yaml_version "${PACKAGE_VERSION}")
-        set(YAML_CPP_LIBRARIES "yaml-cpp")
-        message(STATUS "yaml-cpp version: ${LUMASS_yaml_version}")
+        SET(YAML_CPP_LIB_DIR "${YAML_CPP_CMAKE_DIR}/../../../lib")
+        if (_WIN32)
+            if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+                set(YAML_CPP_LIBRARIES "yaml-cppd")
+            endif()
+        else()
+             set(YAML_CPP_LIBRARIES "yaml-cpp")
+        endif()
+        #message(STATUS "yaml-cpp version: ${LUMASS_yaml_version}")
 endif()
 
 IF(NOT YAML_CPP_INCLUDE_DIR)
@@ -565,6 +613,7 @@ ENDIF()
 #include(/opt/yaml-debug/install/share/cmake/yaml-cpp/yaml-cpp-config.cmake)
 message(STATUS "YAML_CPP_VERSION=${LUMASS_yaml_version}")
 message(STATUS "YAML_CPP_INCLUDE_DIR=${YAML_CPP_INCLUDE_DIR}")
+message(STATUS "YAML_CPP_LIB_DIR=${YAML_CPP_LIB_DIR}")
 message(STATUS "YAML_CPP_LIBRARIES=${YAML_CPP_LIBRARIES}")
 
 #IF(NOT YAML_HEADERDIR)
@@ -658,20 +707,10 @@ SET(MFW_WRAPPER_NAMES
     NMDifferenceImageFilterWrapper
 )
 
-SET(OTB_LINK_LIBS
-    OTBCommon
-    OTBExtendedFilename
-    OTBImageBase
-    OTBImageIO
-    OTBIOGDAL
-    OTBCurlAdapters
-    #OTBOSSIMAdapters
-    #otbossimplugins
-    #OTBStreaming
-)
+SET(OTB_LINK_LIBS OTBCommon OTBExtendedFilename OTBImageBase OTBImageIO OTBIOGDAL OTBCurlAdapters OTBStreaming OTBStatistics)
 
 #====================================================================
-# ADD SUBDIRECTORIES
+# PROCESS SUBDIRECTORIES
 #====================================================================
 
 ADD_SUBDIRECTORY(shared ${lumass_BINARY_DIR}/shared)

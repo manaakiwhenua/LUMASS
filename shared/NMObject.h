@@ -20,8 +20,9 @@
 #define NMOBJECT_H
 
 #include "NMLogger.h"
+#include "nmshared_export.h"
 
-class NMObject
+class NMSHARED_EXPORT NMObject
 {
 public:
     explicit NMObject();

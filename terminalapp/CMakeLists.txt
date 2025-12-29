@@ -61,18 +61,21 @@ INCLUDE_DIRECTORIES(
 )
 
 LINK_DIRECTORIES(
-    ${QT5_LINK_DIRS}
+        #${QT5_LINK_DIRS}
     ${OTB_LIBRARY_DIRS}
     ${LIBRARY_OUTPUT_PATH}
-    #${muparser_BINARY_DIR}
+        #${muparser_BINARY_DIR}
     ${RASDAMAN_LIBRARIES_DIR}
     ${PostgreSQL_LIBRARY_DIRS}
     ${OSGEO4W_ROOT}/lib
-    #${SPATIALITE_LIB_DIR}
+        #${SPATIALITE_LIB_DIR}
     ${SPATIALITE_LIBLIB_DIR}
     ${NETCDF_LIB_DIR}
     ${NCXX4_LIB_DIR}
     ${bmi_BINARY_DIR}
+    ${shared_BINARY_DIR}
+    ${LIBRARY_OUTPUT_PATH}
+    ${YAML_CPP_LIB_DIR}
 )
 
 # Qt5 requirement
@@ -81,27 +84,28 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE -fPIC")
 SET(CMAKE_AUTOMOC YES)
 
 file(GLOB ENGINE_SRC
-    #${opt_SOURCE_DIR}/*.cpp
-    #${NMVtk_SOURCE_DIR}/NMvtkDelimitedTextWriter.cxx
     ${lumassengine_SOURCE_DIR}/*.cxx
-    #${bmi_SOURCE_DIR}/NMLumassEngine.cpp
-
-    # and ...
-    ${shared_SOURCE_DIR}/*.cpp
 )
 
-set(ENGINE_LINKLIBS Qt5Core Qt5Sql Qt5Xml
+set(ENGINE_LINKLIBS 
+        Qt5::Core Qt5::Sql Qt5::Xml
         ${MPI_CXX_LIBRARIES}
         LumassBMI
-        NMNetCDFIO
+            #NMNetCDFIO
         NMOTBSupplFilters
-        NMOTBSupplCore
+        NMOTBSupplCoreRAT 
+        NMOTBSupplCoreIO
+        NMOTBSupplCoreReader
+        NMOTBSupplCoreWriter
         NMModFrameCore
+        NMShared
         ${MFW_WRAPPER_NAMES}
         ${LUMASS_ENGINE_VTK_LIBRARIES} ${PostgreSQL_LIBRARIES}
         ${LPSOLVE_LIBRARY}
         ${YAML_CPP_LIBRARIES}
-        #spatialite
+        ${OTB_LIBRARIES}
+        ${ITK_LIBRARIES}
+            #spatialite
 )
 
 

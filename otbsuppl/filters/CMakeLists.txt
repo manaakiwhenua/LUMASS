@@ -13,6 +13,7 @@ INCLUDE_DIRECTORIES(
     ${OTB_INCLUDE_DIRS}
     ${OTBSupplCore_SOURCE_DIR}
     ${OTBSupplCore_BINARY_DIR}
+    ${mfw_core_BINARY_DIR}
     ${utils_SOURCE_DIR}
     ${OTB_DIR}/Utilities/ITK/Utilities/vxl/core/vnl
     ${lumass_SOURCE_DIR}/utils/ITK
@@ -40,8 +41,8 @@ LINK_DIRECTORIES(
 file(GLOB OTBSUPPL_FILTERS
     ${filters_SOURCE_DIR}/*.txx
     ${filters_SOURCE_DIR}/*.cxx
-    ${OTBSupplCore_SOURCE_DIR}/*.cxx
-    ${OTBSupplCore_SOURCE_DIR}/*.hxx
+    #${OTBSupplCore_SOURCE_DIR}/*.cxx
+    #${OTBSupplCore_SOURCE_DIR}/*.hxx
 )
 
 file(GLOB OTBSUPPL_HEADER
@@ -54,7 +55,7 @@ include(GenerateExportHeader)
 add_definitions(-DNM_PROC_LOG)
 
 if(WIN32)
-        add_definitions(-DOTBGDALRATIMAGEIO_STATIC_DEFINE)
+        add_definitions(-DNMOTBSUPPLFILTERS_STATIC_DEFINE)
         ADD_LIBRARY(NMOTBSupplFilters STATIC ${OTBSUPPL_FILTERS})
 else(WIN32)
         ADD_LIBRARY(NMOTBSupplFilters SHARED ${OTBSUPPL_FILTERS})
@@ -67,26 +68,37 @@ generate_export_header(NMOTBSupplFilters)
 
 if(WIN32)
     target_link_libraries(NMOTBSupplFilters
-        NMOTBGDALRATImageIO
-        Qt5Core Qt5Qml
+        NMOTBSupplCoreRAT 
+        NMOTBSupplCoreIO
+        NMOTBSupplCoreReader
+        NMOTBSupplCoreWriter
+        Qt5::Core Qt5::Qml
     )
 else()
     target_link_libraries(NMOTBSupplFilters
         ${MPI_CXX_LIBRARIES}
         ${NETCDF_LIBRARY}
-        NMOTBGDALRATImageIO
-        Qt5Core Qt5Qml
+        NMOTBSupplCoreRAT 
+        NMOTBSupplCoreIO
+        NMOTBSupplCoreReader
+        NMOTBSupplCoreWriter
+        Qt5::Core Qt5::Qml
     )
 endif()
 
-add_dependencies(NMOTBSupplFilters NMOTBGDALRATImageIO MuParser)
+add_dependencies(NMOTBSupplFilters 
+    NMOTBSupplCoreRAT 
+    NMOTBSupplCoreIO
+    NMOTBSupplCoreReader
+    NMOTBSupplCoreWriter
+    MuParser)
 
 install(FILES ${OTBSUPPL_HEADER} DESTINATION include)
 if(WIN32)
         install(TARGETS NMOTBSupplFilters
                 #LIBRARY DESTINATION lib
                 ARCHIVE DESTINATION lib
-                RUNTIME DESTINATION lib
+                RUNTIME DESTINATION bin
         )
 else()
         install(TARGETS NMOTBSupplFilters LIBRARY DESTINATION lib)

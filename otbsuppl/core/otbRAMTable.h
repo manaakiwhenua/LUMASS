@@ -35,12 +35,12 @@
 #include "itkDataObject.h"
 #include "itkObjectFactory.h"
 
-#include "nmotbsupplcore_export.h"
+#include "nmotbsupplcorerat_export.h"
 
 namespace otb
 {
 
-class NMOTBSUPPLCORE_EXPORT RAMTable : public AttributeTable
+class NMOTBSUPPLCORERAT_EXPORT RAMTable : public AttributeTable
 {
 public:
 	/** Standard class typedefs. */

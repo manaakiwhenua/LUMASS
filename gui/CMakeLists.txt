@@ -72,10 +72,13 @@ endif()
 
 INCLUDE_DIRECTORIES(
     ${QT5_INCLUDE_DIRS}
-    ${QT5CORE_PRIVATE_DIR}
-    ${QT5CORE_PRIVATE_DIR}/..
-    ${QT5SQL_INCLUDE_DIR}
-    #${QT5WIDGETS_INCLUDE_DIR}
+        #${QT5CORE_PRIVATE_DIR}
+        #${QT5CORE_PRIVATE_DIR}/..
+        #${QT5_PREFIX_PATH}
+        #${QT5_PREFIX_PATH}/src/corelib
+        #${QT5_PREFIX_PATH}/src/corelib/global
+        #${QT5SQL_INCLUDE_DIR}
+        #${QT5WIDGETS_INCLUDE_DIR}
     ${NMQT5SQL_PRIVATE_DIR}
     ${NMQT5SQL_PRIVATE_DIR}/..
     ${NMQT5WIDGETS_PRIVATE_DIR}
@@ -113,15 +116,15 @@ INCLUDE_DIRECTORIES(
     ${PostgreSQL_INCLUDE_DIRS}
     ${lumass_SOURCE_DIR}/utils/ITK
     ${lumass_SOURCE_DIR}
-    #${muParserX_SOURCE_DIR}
+        #${muParserX_SOURCE_DIR}
     ${muparser_SOURCE_DIR}
     ${GDALRATImageIO_BINARY_DIR}
-    #${SQLITE3_INCLUDE_DIR}
+        #${SQLITE3_INCLUDE_DIR}
     ${SQLite_SOURCE_DIR}
     ${NMQSQLite_SRC_DIR}
     ${NMQt_SOURCE_DIR}
     ${SPATIALITE_INCLUDE_DIR}
-#    ${TCADB_INCLUDE_DIR}
+        #${TCADB_INCLUDE_DIR}
     ${VisIt_SOURCE_DIR}
     ${VisIt_BINARY_DIR}
     ${NCXX4_INCLUDE_DIR}
@@ -140,34 +143,35 @@ INCLUDE_DIRECTORIES(
 #find_package(Qt5Sqlite REQUIRED)
 
 LINK_DIRECTORIES(
-        ${QT5_SQLDRIVERS_DIR}
-        ${QT5_PREFIX_PATH}/../plugins/sqldrivers
-        ${QT5_LINK_DIRS}
+            #${QT5_SQLDRIVERS_DIR}
+            #${QT5_PREFIX_PATH}/../plugins/sqldrivers
+            #${QT5_LINK_DIRS}
         ${OTB_LIBRARY_DIRS}
         ${LIBRARY_OUTPUT_PATH}
         ${NMQt_BINARY_DIR}
         ${mfw_BINARY_DIR}
-        #${mfw_BINRAY_DIR}/lib
-        #${gui_BINARY_DIR}/lib
+            #${mfw_BINRAY_DIR}/lib
+            #${gui_BINARY_DIR}/lib
         ${SQLite_BINARY_DIR}/lib
         ${muparser_BINARY_DIR}
-        #${muParserX_BINARY_DIR}
+            #${muParserX_BINARY_DIR}
         ${RASDAMAN_LIBRARIES_DIR}
         ${PostgreSQL_LIBRARY_DIRS}
         ${SPATIALITE_LIB_DIR}
         ${SPATIALITE_LIBLIB_DIR}
-        #${QT5SQL_PLUGINS_DIR}/plugins/sqldrivers
+            #${QT5SQL_PLUGINS_DIR}/plugins/sqldrivers
         ${OSGEO4W_ROOT}/lib
         ${OSGEO4W_ROOT}/bin
-        #${TCADB_LIB_DIR}
+            #${TCADB_LIB_DIR}
         ${VisIt_BINARY_DIR}
         ${NMVtk_BINARY_DIR}
         ${NETCDF_LIB_DIR}
         ${NCXX4_LIB_DIR}
         ${NETCDFIO_BINARY_DIR}
-        /opt/ipopt-bin/install/lib
-        /opt/mumps-bin/install/lib
-        /opt/asl-bin/install/lib
+        ${YAML_CPP_LIB_DIR}
+            #/opt/ipopt-bin/install/lib
+            #/opt/mumps-bin/install/lib
+            #/opt/asl-bin/install/lib
 )
 
 
@@ -184,15 +188,24 @@ file(GLOB QT_SRC
     ${gui_SOURCE_DIR}/*.cpp
     ${gui_SOURCE_DIR}/*.cxx
     ${gui_SOURCE_DIR}/*.txx
-    #${NMQSQLite_SRC_DIR}/*.cpp
+        #${NMQSQLite_SRC_DIR}/*.cpp
+
+    ${mfw_core_SOURCE_DIR}/NMMPIRunnable.cpp
+    ${mfw_core_SOURCE_DIR}/NMMPIRunnable.h
 
     # we also add some other stuff here
-    ${shared_SOURCE_DIR}/*.cpp
-    #${opt_SOURCE_DIR}/LpHelper.cpp
-    #${opt_SOURCE_DIR}/NMMosra.cpp
+        #${shared_SOURCE_DIR}/*.cpp
+        #${opt_SOURCE_DIR}/LpHelper.cpp
+        #${opt_SOURCE_DIR}/NMMosra.cpp
+        #${NMQt_SOURCE_DIR}/*.cpp
+        #${NMQt_SOURCE_DIR}/*.h
     ${NMVtk_SOURCE_DIR}/*.cxx
     ${utils_SOURCE_DIR}/ITK/*.cxx
 )
+if (WIN32)
+    # link trouble and why not using the original one ...
+    list(REMOVE_ITEM QT_SRC "${utils_SOURCE_DIR}/ITK/itkVTKImageExportBase.cxx")
+endif()
 
 # take the ChartsWidget out until we've switched to the new VTK Charts
 # framework
@@ -204,39 +217,55 @@ if(DVTKOGL2)
     list(REMOVE_ITEM QT_SRC ${NMVtk_SOURCE_DIR}/NMVtkOpenGLPolyDataMapper.cxx)
 endif(DVTKOGL2)
 
-set(PREFIX "lib")
-set(SUFFIX ".so")
+if (NOT WIN32)
+    set(PREFIX "lib")
+    set(SUFFIX ".so")
+else()
+    set(SUFFIX ".dll")
+endif()
 
 # have taken out ${QT_LIBRARIES} here
 set(LUMASS_LINKLIBS
-    Qt5::Widgets Qt5::Core Qt5::Gui Qt5::Concurrent Qt5::Xml Qt5::Sql
-    Qt5::Qml qsqlite
-    #Qt5::Network
-    Qt5::WebSockets
+        #Qt5::Widgets Qt5::Core Qt5::Gui Qt5::Concurrent Qt5::Xml Qt5::Sql
+        #Qt5::Qml qsqlite
+        ##Qt5::Network
+        #Qt5::WebSockets
+    ${QT5_LIBRARIES}
     QtPropertyBrowser
     NMQt
     ${NCXX4_LIBRARY}
     ${NETCDF_LIBRARY}
-    curl xml2
+        #curl xml2
     ${MPI_CXX_LIBRARIES}
     ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
-    #${LIBRARY_OUTPUT_PATH}/${PREFIX}NMOTBSupplFilters${SUFFIX}
-    #${LIBRARY_OUTPUT_PATH}/${PREFIX}NMOTBSupplCore${SUFFIX}
-    #${LIBRARY_OUTPUT_PATH}/${PREFIX}NMModFrameCore${SUFFIX}
+        #${LIBRARY_OUTPUT_PATH}/${PREFIX}NMOTBSupplFilters${SUFFIX}
+        #${LIBRARY_OUTPUT_PATH}/${PREFIX}NMOTBSupplCore${SUFFIX}
+        #${LIBRARY_OUTPUT_PATH}/${PREFIX}NMModFrameCore${SUFFIX}
+    NMShared
+    NMOTBSupplCoreRAT 
+    NMOTBSupplCoreIO
+    NMOTBSupplCoreReader
+    NMOTBSupplCoreWriter
     NMOTBSupplFilters
-    #NMOTBSupplCore
     MuParser
     NMModFrameCore
     NMMosra
     LumassBMI
-    #${MFW_WRAPPER_NAMES}
+        #${MFW_WRAPPER_NAMES}
     ${LUMASS_GUI_VTK_LIBRARIES}
     ${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
     ${OPENGL_glu_LIBRARY} ${OPENGL_gl_LIBRARY}
     SQLite
     VisItTesselator
+    ${ITK_LIBRARIES}
     ${YAML_CPP_LIBRARIES}
 )
+
+if (WIN32)
+    list(APPEND LUMASS_LINKLIBS libcurl_imp libxml2)
+else()
+    list(APPEND LUMASS_LINKLIBS curl xml2)
+endif()
 
 #if (${CMAKE_VERSION} VERSION_LESS_EQUAL "3.11.0")
 #    list(APPEND LUMASS_LINKLIBS ${OPENGL_gl_LIBRARY})
@@ -254,9 +283,8 @@ set(LUMASS_DEPLIBS
     MuParser
     LumassBMI
     NMOTBSupplFilters
-    NMOTBSupplCore
     NMModFrameCore
-    #${MFW_WRAPPER_NAMES}
+        #${MFW_WRAPPER_NAMES}
     QtPropertyBrowser
     SQLite
     VisItTesselator
@@ -267,17 +295,22 @@ IF(RASSUPPORT)
 ENDIF()
 
 
-# Define a special indicator for Qt Version >= 5.4 (for NMSqliteDriver copy ..)
-if (${QT5_VERSION_STRING} VERSION_LESS "5.4.0")
-        add_definitions(-DQTVERSION_LT_FIVE_FOUR)
-endif()
+## Define a special indicator for Qt Version >= 5.4 (for NMSqliteDriver copy ..)
+#if (${QT5_VERSION_STRING} VERSION_LESS "5.4.0")
+#        add_definitions(-DQTVERSION_LT_FIVE_FOUR)
+#endif()
 
-if (${QT5_VERSION_STRING} VERSION_GREATER "5.5.9")
+#if (${QT5_VERSION_STRING} VERSION_GREATER "5.5.9")
     add_definitions(-DQT_HIGHDPI_SUPPORT)
-endif()
+#endif()
 
 # indicate that we're building the LUMASS GUI VERSION
 add_definitions(-DNM_ENABLE_LOGGER)
+
+if (WIN32)
+    add_definitions(-DBOOST_CORE_USE_GENERIC_CMATH)
+    add_compile_options(/std:c++14)
+endif()
 
 #message(STATUS "LUMASS GUI's linked vtk libraries: ${LUMASS_GUI_VTK_LIBRARIES}")
 
@@ -329,7 +362,5 @@ if (UNIX AND NOT APPLE)
         /usr/bin/ogr2ogr
         /usr/bin/gdal_polygonize.py
     )
-
     install(PROGRAMS ${LUMASS_LINUX_UTILS} DESTINATION utils)
-
 endif()

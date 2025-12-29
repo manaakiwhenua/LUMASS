@@ -16,7 +16,6 @@ add_definitions(-DSQLITE_ENABLE_RTREE=1)
 if(WIN32)
     ADD_LIBRARY(SQLite STATIC sqlite3.c)
 else()
-    #ADD_LIBRARY(SQLiteExtFunc STATIC sqlite3extfunc.c)
     ADD_LIBRARY(SQLite SHARED sqlite3.c)
     target_link_libraries(SQLite pthread dl)
 endif()
@@ -26,13 +25,13 @@ endif()
 if(WIN32)
 #        install(TARGETS SQLiteExtFunc
 #                LIBRARY DESTINATION lib
-#                RUNTIME DESTINATION lib
+#                RUNTIME DESTINATION bin
 #                ARCHIVE DESTINATION lib
 #        )
 
 #        install(TARGETS SQLite
 #                LIBRARY DESTINATION lib
-#                RUNTIME DESTINATION lib
+#                RUNTIME DESTINATION bin
 #        )
 
 

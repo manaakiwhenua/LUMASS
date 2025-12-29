@@ -23,16 +23,14 @@
 #include "nmlog.h"
 #include "otbImageIOBase.h"
 //#include "otbAttributeTable.h"
-#include "nmnetcdfio_export.h"
+#include "nmotbsupplcoreio_export.h"
 
-#ifndef _WIN32
-#   include <mpi.h>
-#endif
+#include <mpi.h>
 
 namespace otb
 {
 
-class NMNETCDFIO_EXPORT NetCDFIO : public otb::ImageIOBase
+class NMOTBSUPPLCOREIO_EXPORT NetCDFIO : public otb::ImageIOBase
 {
 public:
 

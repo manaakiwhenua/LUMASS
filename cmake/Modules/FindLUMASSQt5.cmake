@@ -52,6 +52,8 @@ if(WIN32)
 			5.11.2/qtbase
 			5.11.2
 			5.15.2/qtbase
+            5.15.17
+            5.15.17/qtbase
     )
 else()
     set(QT5_CORE_LIB "libQt5Core.so")
@@ -181,8 +183,8 @@ else()
 	endforeach(QT5COMP)
 	list(REMOVE_DUPLICATES QT5_INCLUDE_DIRS)
 	
-	#message(STATUS "Qt5 libraries: ${QT5_LIB_LIST}")
-	#message(STATUS "Qt5 INCLUDE_DIRS: ${QT5_INCLUDE_DIRS}")
+	message(STATUS "Qt5 libraries: ${QT5_LIB_LIST}")
+	message(STATUS "Qt5 INCLUDE_DIRS: ${QT5_INCLUDE_DIRS}")
 	
         # find link directories
 	# just from experience
@@ -234,16 +236,27 @@ endif()
 # ==========================================================
 # find the private header dir for Qt5Core
 # ==========================================================
-foreach(QT5INCLDIR ${QT5_INCLUDE_DIRS})
-    #message(STATUS "TESTING ${QT5INCLDIR}/${QT5_VERSION_STRING}/QtCore" )
-    FIND_PATH(QT5CORE_PRIVATE_DIR private/qitemselectionmodel_p.h
+
+# test if provided DIR is legit 
+if (QT5CORE_PRIVATE_DIR)
+    FIND_PATH(_QT5CORE_PRIVATE_DIR private/qitemselectionmodel_p.h
         PATH_SUFFIXES
             ${QT5_VERSION_STRING}/QtCore
         PATHS
-            ${QT5INCLDIR}
+            ${QT5CORE_PRIVATE_DIR}
     )
-
-endforeach()
+    if (NOT _QT5CORE_PRIVATE_DIR)
+        foreach(QT5INCLDIR ${QT5_INCLUDE_DIRS})
+            #message(STATUS "TESTING ${QT5INCLDIR}/${QT5_VERSION_STRING}/QtCore" )
+            FIND_PATH(QT5CORE_PRIVATE_DIR private/qitemselectionmodel_p.h
+                PATH_SUFFIXES
+                    ${QT5_VERSION_STRING}/QtCore
+                PATHS
+                    ${QT5INCLDIR}
+            )
+        endforeach()
+    endif()
+endif()
 
 if(NOT QT5CORE_PRIVATE_DIR)
     message(STATUS "couldn't find QT5CORE_PRIVATE_DIR!")

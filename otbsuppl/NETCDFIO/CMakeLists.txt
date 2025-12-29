@@ -28,34 +28,46 @@ LINK_DIRECTORIES(NetCDFIO
     ${OSGEO4W_ROOT}/lib
 )
 
-add_definitions(-DNETCDFIO_EXPORTS -DNM_PROC_LOG)
-include(GenerateExportHeader)
-ADD_LIBRARY(NMNetCDFIO SHARED
-    ${NETCDFIO_SOURCE_DIR}/nmNetCDFIO.cxx
-)
+#add_definitions(-DNETCDFIO_EXPORTS -DNM_PROC_LOG)
+#include(GenerateExportHeader)
+#ADD_LIBRARY(NMNetCDFIO SHARED
+#    ${NETCDFIO_SOURCE_DIR}/nmNetCDFIO.cxx
+#)
 
-set_property(TARGET NMNetCDFIO PROPERTY LINKER_LANGUAGE CXX)
-set_property(TARGET NMNetCDFIO PROPERTY POSITION_INDEPENDENT_CODE 1)
-generate_export_header(NMNetCDFIO)
+#set_property(TARGET NMNetCDFIO PROPERTY LINKER_LANGUAGE CXX)
+#set_property(TARGET NMNetCDFIO PROPERTY POSITION_INDEPENDENT_CODE 1)
+#generate_export_header(NMNetCDFIO)
 
-TARGET_LINK_LIBRARIES(NMNetCDFIO
-    ${NCXX4_LIBRARY}
-    ${NETCDF_LIBRARY}
-    curl xml2
-    ${MPI_CXX_LIBRARIES}
-    ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
-    OTBImageIO
-    OTBCurlAdapters
-)
+#if(WIN32)
+#    TARGET_LINK_LIBRARIES(NMNetCDFIO
+#        ${NCXX4_LIBRARY}
+#        ${NETCDF_LIBRARY}
+#        libcurl_imp libxml2
+#        ${MPI_CXX_LIBRARIES}
+#        ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
+#        OTBImageIO
+#        OTBCurlAdapters
+#    )
+#else()
+#    TARGET_LINK_LIBRARIES(NMNetCDFIO
+#        ${NCXX4_LIBRARY}
+#        ${NETCDF_LIBRARY}
+#        curl xml2
+#        ${MPI_CXX_LIBRARIES}
+#        ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
+#        OTBImageIO
+#        OTBCurlAdapters
+#    )
+#endif()
 
-LIST(APPEND NETCDF_HEADER ${NETCDFIO_SOURCE_DIR}/nmNetCDFIO.h )
-install(FILES ${NETCDF_HEADER} DESTINATION include )
-
-if(WIN32)
-    install(TARGETS NMNetCDFIO
-        LIBRARY DESTINATION lib
-        RUNTIME DESTINATION lib
-    )
-else()
-    install(TARGETS NMNetCDFIO LIBRARY DESTINATION lib )
-endif()
+#LIST(APPEND NETCDF_HEADER ${NETCDFIO_SOURCE_DIR}/nmNetCDFIO.h )
+#install(FILES ${NETCDF_HEADER} DESTINATION include )
+#
+#if(WIN32)
+#    install(TARGETS NMNetCDFIO
+#        LIBRARY DESTINATION lib
+#        RUNTIME DESTINATION bin
+#    )
+#else()
+#    install(TARGETS NMNetCDFIO LIBRARY DESTINATION lib )
+#endif()

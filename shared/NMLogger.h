@@ -19,8 +19,9 @@
 #define NMLOGGER_H
 
 #include <QObject>
+#include "nmshared_export.h"
 
-class NMLogger : public QObject
+class NMSHARED_EXPORT NMLogger : public QObject
 {
     Q_OBJECT
 public:

@@ -33,7 +33,6 @@ INCLUDE_DIRECTORIES(
     ${NMVtk_SOURCE_DIR}
     ${NCXX4_INCLUDE_DIR}
     ${NETCDF_INCLUDE_DIR}
-    #"/opt/netcdf-c-4.8.1/install/include"
     ${pybind11_INCLUDE_DIRS}
     ${lumass_SOURCE_DIR}/bmi
     ${lumass_BINARY_DIR}/bmi
@@ -44,20 +43,23 @@ INCLUDE_DIRECTORIES(
 )
 
 LINK_DIRECTORIES(
-#    ${OTB_DIR}/lib
-#    ${OTB_DIR}/bin
-    ${QT5_LINK_DIRS}
+        #${OTB_DIR}/lib
+        #${OTB_DIR}/bin
+        #${QT5_LINK_DIRS}
     ${NETCDF_LIB_DIR}
     ${NCXX4_LIB_DIR}
-#    ${RASDAMAN_LIBRARIES_DIR}
-#    ${mfw_core_BINARY_DIR}
-#    ${LIBRARY_OUTPUT_PATH}
-#    ${LIBRARY_OUTPUT_PATH}/${CMAKE_BUILD_TYPE}
+        #${RASDAMAN_LIBRARIES_DIR}
+        #${mfw_core_BINARY_DIR}
+        #${LIBRARY_OUTPUT_PATH}
+        #${LIBRARY_OUTPUT_PATH}/${CMAKE_BUILD_TYPE}
     ${OSGEO4W_ROOT}/lib
     ${NMQt_SOURCE_DIR}
-#    ${SPATIALITE_LIB_DIR}
-#    ${SPATIALITE_LIBLIB_DIR}
-#    ${bmi_BINARY_DIR}
+        #${SPATIALITE_LIB_DIR}
+        #${SPATIALITE_LIBLIB_DIR}
+        #${bmi_BINARY_DIR}
+    ${YAML_CPP_LIB_DIR}
+    ${OTBSupplCore_BINARY_DIR}
+    ${LIBRARY_OUTPUT_PATH}
 )
 
 
@@ -77,9 +79,14 @@ endif()
 
 
 set(MFW_WRAPPER_LINK_LIBS
+    NMOTBSupplCoreRAT 
+    NMOTBSupplCoreIO
+    NMOTBSupplCoreReader
+    NMOTBSupplCoreWriter
     NMModFrameCore
     NMOTBSupplFilters
     Qt5::Core
+        #${QT5_LIBRARIES}
     ${LUMASS_WRAPPER_VTK_LIBRARIES}
     OTBTestKernel
 )
@@ -89,6 +96,10 @@ set(NMJSKERNEL_WRAPPER_LINKLIBS ${MFW_WRAPPER_LINK_LIBS} Qt5::Qml)
 set(NMBMI_WRAPPER_LINKLIBS ${MFW_WRAPPER_LINK_LIBS} ${YAML_CPP_LIBRARIES})
 
 set(MFW_WRAPPER_DEP_LIBS
+    NMOTBSupplCoreRAT 
+    NMOTBSupplCoreIO
+    NMOTBSupplCoreReader
+    NMOTBSupplCoreWriter
     NMOTBSupplFilters
     NMModFrameCore
 )
@@ -102,10 +113,15 @@ endif()
 IF(RASSUPPORT)
     add_definitions(-DBUILD_RASSUPPORT)
     LIST(APPEND MFW_WRAPPER_LINK_LIBS RasImageIO)
-    #LIST(APPEND MFW_DEP_LIBS RasImageIO)
+        #LIST(APPEND MFW_DEP_LIBS RasImageIO)
 ENDIF()
 
 add_definitions(-DNMModFrameWrapper_EXPORTS -DNM_PROC_LOG)
+
+if (MSVC)
+    add_compile_options(/bigobj)
+endif()
+
 
 set(CMAKE_AUTOMOC YES)
 
@@ -137,8 +153,8 @@ foreach( wrapper ${MFW_WRAPPER_NAMES} )
                 add_definitions(-DLUMASS_PYTHON)
                 list(APPEND LINKLIBS
                         ${Python3_LIBRARIES}
-                                                pybind11::embed
-                                                pybind11::pybind11
+                        pybind11::embed
+                        pybind11::pybind11
                         LumassPythonBMI
                      )
             endif()
@@ -153,7 +169,7 @@ foreach( wrapper ${MFW_WRAPPER_NAMES} )
 
         generate_export_header(${wrapper})
 
-        TARGET_LINK_LIBRARIES(${wrapper} ${LINKLIBS})
+        TARGET_LINK_LIBRARIES(${wrapper} PUBLIC ${LINKLIBS})
         ADD_DEPENDENCIES(${wrapper} ${MFW_WRAPPER_DEP_LIBS})
 
         if (${VTK_VERSION_STRING} VERSION_GREATER_EQUAL "8.90")
@@ -164,7 +180,7 @@ foreach( wrapper ${MFW_WRAPPER_NAMES} )
         if(WIN32)
                 install(TARGETS ${wrapper}
                         LIBRARY DESTINATION lib
-                        RUNTIME DESTINATION lib
+                        RUNTIME DESTINATION bin
                 )
         else()
                 install(TARGETS ${wrapper} LIBRARY DESTINATION lib)
@@ -175,7 +191,7 @@ endforeach()
 
 # add 'manual' entry for NMUniqueCombinationFilterWrapper release builds, as
 # it causes some grief ...
-if (NOT HAVEDEBUG AND NOT WIN32)
+#if (NOT HAVEDEBUG AND NOT WIN32)
     set(wrapper "NMUniqueCombinationFilterWrapper")
     file(GLOB MFW_WRAPPER_SOURCE_FILES "${mfw_wrapper_SOURCE_DIR}/${wrapper}*.c*")
     file(GLOB MFW_WRAPPER_HEADER_FILES "${mfw_wrapper_SOURCE_DIR}/${wrapper}*.h")
@@ -191,18 +207,18 @@ if (NOT HAVEDEBUG AND NOT WIN32)
 
     generate_export_header(${wrapper})
 
-    TARGET_LINK_LIBRARIES(${wrapper} ${LINKLIBS})
+    TARGET_LINK_LIBRARIES(${wrapper} PUBLIC ${LINKLIBS})
     ADD_DEPENDENCIES(${wrapper} ${MFW_WRAPPER_DEP_LIBS})
 
     if(WIN32)
             install(TARGETS ${wrapper}
                     LIBRARY DESTINATION lib
-                    RUNTIME DESTINATION lib
+                    RUNTIME DESTINATION bin
             )
     else()
             install(TARGETS ${wrapper} LIBRARY DESTINATION lib)
     endif()
-endif()
+#endif()
 
 
 #if(UNIX AND NOT APPLE)

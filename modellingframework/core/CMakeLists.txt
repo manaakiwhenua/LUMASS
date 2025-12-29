@@ -16,6 +16,7 @@ else()
 endif()
 
 INCLUDE_DIRECTORIES(
+    ${SQLite_SOURCE_DIR}
     ${SPATIALITE_INCLUDE_DIR}
     ${QT5_INCLUDE_DIRS}
 #    ${PostgreSQL_INCLUDE_DIRS}
@@ -59,10 +60,12 @@ INCLUDE_DIRECTORIES(
 LINK_DIRECTORIES(
     ${OTB_DIR}/lib
     ${OTB_DIR}/bin
+    ${OTB_LINK_DIR}
     ${ITK_LIBRARY_DIRS}
     ${ITK_LIBRARY_DIRS}/../
-    ${QT5_LINK_DIRS}
-#    ${RASDAMAN_LIBRARIES_DIR}
+    ${ITK_LINK_DIRS}
+        #${QT5_LINK_DIRS}
+        #${RASDAMAN_LIBRARIES_DIR}
     ${LIBRARY_OUTPUT_PATH}
     ${LIBRARY_OUTPUT_PATH}/${CMAKE_BUILD_TYPE}
     ${OSGEO4W_ROOT}/lib
@@ -71,30 +74,32 @@ LINK_DIRECTORIES(
     ${NETCDF_LIB_DIR}
     ${NCXX4_LIB_DIR}
     ${YAML_CPP_LIB_DIR}
+    ${OTBSupplCore_BINARY_DIR}
+    ${mfw_core_BINARY_DIR}
+    ${lumass_BINARY_DIR}/lib/Release
+    ${lumass_BINARY_DIR}/lib/Debug
+    ${shared_BINARY_DIR}
 )
 
 file(GLOB MFW_CORE_CPP
-   ${mfw_core_SOURCE_DIR}/*.cpp
-   ${mfw_core_SOURCE_DIR}/*.cxx
-   #${mfw_wrapper_SOURCE_DIR}/NMImageReader.cxx
-   #${mfw_wrapper_SOURCE_DIR}/NMTableReader.cpp
-   #${mfw_wrapper_SOURCE_DIR}/NMItkDataObjectWrapper.cpp
-   ${shared_SOURCE_DIR}/NMLogger.cpp
-   ${shared_SOURCE_DIR}/NMObject.cpp
+    ${mfw_core_SOURCE_DIR}/*.cpp
+    ${mfw_core_SOURCE_DIR}/*.cxx
+        #${shared_SOURCE_DIR}/NMLogger.cpp
+        #${shared_SOURCE_DIR}/NMObject.cpp
 )
 
 LIST(REMOVE_ITEM MFW_CORE_CPP ${mfw_core_SOURCE_DIR}/NMConditionalIterComponent.cpp)
+#LIST(REMOVE_ITEM MFW_CORE_CPP ${mfw_core_SOURCE_DIR}/NMMPIRunnable.cpp)
 
 file(GLOB MFW_CORE_H
-   ${mfw_core_SOURCE_DIR}/*.h
-   ${mfw_core_BINARY_DIR}/*.h
-   #${mfw_wrapper_SOURCE_DIR}/NMImageReader.h
-   #${mfw_wrapper_SOURCE_DIR}/NMTableReader.h
-   #${mfw_wrapper_SOURCE_DIR}/NMItkDataObjectWrapper.h
-
-   ${shared_SOURCE_DIR}/NMLogger.h
-   ${shared_SOURCE_DIR}/NMObject.h
+    ${mfw_core_SOURCE_DIR}/*.h
+    ${mfw_core_BINARY_DIR}/*.h
+        #${shared_SOURCE_DIR}/NMLogger.h
+        #${shared_SOURCE_DIR}/NMObject.h
 )
+
+LIST(REMOVE_ITEM MFW_CORE_H ${mfw_core_SOURCE_DIR}/NMConditionalIterComponent.h)
+#LIST(REMOVE_ITEM MFW_CORE_H ${mfw_core_SOURCE_DIR}/NMMPIRunnable.h)
 
 
 #if (NOT RASSUPPORT)
@@ -110,26 +115,97 @@ file(GLOB MFW_CORE_H
 
 SET(MFW_CORE_MOC_H ${MFW_CORE_H})
 LIST(REMOVE_ITEM MFW_CORE_MOC_H ${mfw_core_SOURCE_DIR}/NMMfwException.h)
-LIST(APPEND MFW_CORE_MOC_H ${shared_SOURCE_DIR}/NMLogger.h)
+    #LIST(APPEND MFW_CORE_MOC_H ${shared_SOURCE_DIR}/NMLogger.h)
 
-set(MFW_CORE_LINK_LIBS
-    Qt5::Xml
-    Qt5::Core
-    Qt5::Concurrent
-    ${MFW_CORE_VTK_LIBRARIES}
-    MuParser
-    NMNetCDFIO
-    NMOTBSupplCore
-    NMOTBGDALRATImageIO
-    NMOTBSupplFilters
-    NMMosra
-    ${YAML_CPP_LIBRARIES}
-)
+message(STATUS "NMModFrameCore: OTB_LINK_LIBS=${OTB_LINK_LIBS}")
+
+#set(MFW_CORE_UTIL_LIBS
+#        SQLite
+#        spatialite
+#        geos_c
+#        freexl_i
+#        libxml2
+#        zlib
+#        iconv
+#        librttopo
+#        proj
+#)
+
+if (WIN32)
+    set(MFW_CORE_UTIL_LIBS
+            SQLite
+            spatialite
+            geos_c
+            freexl_i
+            libxml2
+            zlib
+            iconv
+            librttopo
+            proj
+    )
+
+    set(MFW_CORE_LINK_LIBS
+            #Qt5::Xml
+            #Qt5::Core
+            #Qt5::Concurrent
+        ${QT5_LIBRARIES}
+        ${MFW_CORE_VTK_LIBRARIES}
+        MuParser
+        NMOTBSupplTemplates
+        NMOTBSupplCoreRAT 
+        NMOTBSupplCoreIO
+        NMOTBSupplCoreReader
+        NMOTBSupplCoreWriter
+        NMShared
+        NMOTBSupplFilters
+        NMMosra
+        NMItk
+        ${OTB_LINK_LIBS}
+        ${YAML_CPP_LIBRARIES}
+    )
+
+else()
+    set(MFW_CORE_UTIL_LIBS
+            SQLite
+            spatialite
+            geos_c
+            freexl
+            xml2
+            #zlib
+            #iconv
+            #librttopo
+            proj
+    )
+
+    set(MFW_CORE_LINK_LIBS
+            #Qt5::Xml
+            #Qt5::Core
+            #Qt5::Concurrent
+        ${QT5_LIBRARIES}
+        ${MFW_CORE_VTK_LIBRARIES}
+        MuParser
+            #NMNetCDFIO
+            #NMOTBGDALRATImageIO
+        NMOTBSupplTemplates
+        NMOTBSupplCoreRAT 
+        NMOTBSupplCoreIO
+        NMOTBSupplCoreReader
+        NMOTBSupplCoreWriter
+        NMShared
+        NMOTBSupplFilters
+        NMMosra
+        NMItk
+        ${YAML_CPP_LIBRARIES}
+        ${OTB_LIBRARIES}
+        ${ITK_LIBRARIES}
+    )
+endif()
+
 
 if(PYTHONSUPPORT)
     list(APPEND MFW_CORE_LINK_LIBS
             ${Python3_LIBRARIES}
-                        pybind11::pybind11
+            pybind11::pybind11
             pybind11::embed
         )
 
@@ -137,12 +213,18 @@ endif()
 
 set(MFW_CORE_DEP_LIBS
     MuParser
-    NMMosra
-    NMNetCDFIO
-    NMOTBGDALRATImageIO
-    NMOTBSupplCore
+        #NMMosra
+        #NMNetCDFIO
+        #NMOTBGDALRATImageIO
+    NMShared
+    NMOTBSupplTemplates
+    NMOTBSupplCoreRAT 
+    NMOTBSupplCoreIO
+    NMOTBSupplCoreReader
+    NMOTBSupplCoreWriter
     NMOTBSupplFilters
-    #RasImageIO
+    NMItk
+        #RasImageIO
 )
 
 SET(CMAKE_AUTOMOC YES)
@@ -159,18 +241,25 @@ endif()
 
 add_definitions(-DNMModFrameCore_EXPORTS -DNM_PROC_LOG)
 
+if (WIN32)
+    add_compile_options(/bigobj)
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+        list(APPEND MFW_CORE_UTIL_LIBS msvcrtd)
+    endif()
+endif()
+
 include(GenerateExportHeader)
-ADD_LIBRARY(NMModFrameCore SHARED ${MFW_CORE_CPP})
+ADD_LIBRARY(NMModFrameCore SHARED ${MFW_CORE_CPP}) 
 generate_export_header(NMModFrameCore)
 
-target_link_libraries(NMModFrameCore ${MFW_CORE_LINK_LIBS})
+target_link_libraries(NMModFrameCore ${MFW_CORE_LINK_LIBS} ${MFW_CORE_UTIL_LIBS})
 ADD_DEPENDENCIES(NMModFrameCore ${MFW_CORE_DEP_LIBS})
 
 install(FILES ${MFW_CORE_H} DESTINATION include)
 if(WIN32)
         install(TARGETS NMModFrameCore
                 LIBRARY DESTINATION lib
-                RUNTIME DESTINATION lib
+                RUNTIME DESTINATION bin
         )
 else()
         install(TARGETS NMModFrameCore LIBRARY DESTINATION lib)

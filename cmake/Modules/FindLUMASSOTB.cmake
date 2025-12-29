@@ -66,6 +66,8 @@ IF(NOT OTB_DIR)
       C:/opt/OTB-reldebinfo	  
       C:/build/OTB-bin
       C:/opt/OTB-bin
+      #C:/Install/OTB-9.1.1
+      C:/opt
   )
 
   #
@@ -89,6 +91,7 @@ IF(NOT OTB_DIR)
         OTB-7.1
         OTB-8.1
         OTB-9.0
+        OTB-9.1.1
         cmake/OTB-5.0
         cmake/OTB-4.4
         cmake/OTB-5.1
@@ -159,7 +162,6 @@ if(ITK_FOUND)
                 /usr/lib
                 /usr/lib/x86_64-linux-gnu
         )
-    endif()
 endif(ITK_FOUND)
 if ("${LUMASS_ITK_VERSION}" VERSION_LESS "4.11")
     message(FATAL_ERROR "LUMASS >= 0.9.60 requires ITK >= 4.11")
@@ -169,7 +171,14 @@ INCLUDE(${USE_OTB_FILE})
 
 # define OTB_LINK_DIR
 if (UNIX AND NOT APPLE)
-    find_path(OTB_LINK_DIR libOTBCommon-${OTB_VERSION_MAJOR}.${OTB_VERSION_MINOR}.so
+  SET(OTB_COMMON_LIB_NAME libOTBCommon-${OTB_VERSION_MAJOR}.${OTB_VERSION_MINOR}.so)
+else()
+  SET(OTB_COMMON_LIB_NAME libOTBCommon-${OTB_VERSION_MAJOR}.${OTB_VERSION_MINOR}.lib)
+endif()
+
+message(STATUS "OTB_COMMON_LIB_NAME ${OTB_COMMON_LIB_NAME}")
+
+find_path(OTB_LINK_DIR ${OTB_COMMON_LIB_NAME}
         PATHS
             /usr
             /usr/lib
@@ -179,12 +188,18 @@ if (UNIX AND NOT APPLE)
             /opt/OTB-7.0
             /opt/OTB-7.1
             /opt/OTB-7.2
+            ${OTB_DIR}
         PATH_SUFFIXES
             lib
             local/lib
             install/lib
-    )
-endif()
+            bin/${CMAKE_BUILD_TYPE}
+            lib/${CMAKE_BUILD_TYPE}
+            #lib/Release
+            #lib/Debug
+
+)
+
 
 #message(STATUS "ITK_VERSION: ${LUMASS_ITK_VERSION}")
 #message(STATUS "ITK_LIBRARY_DIRS: ${ITK_LIBRARY_DIRS}")

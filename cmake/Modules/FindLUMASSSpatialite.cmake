@@ -16,6 +16,7 @@ FIND_PATH(SPATIALITE_INCLUDE_DIR spatialite.h
         include
     PATHS
 		C:/opt/spatialite-bin
+        c:/OSGeo4W/bin
         /opt
         /opt/local
         /usr/local
@@ -26,7 +27,7 @@ FIND_PATH(SPATIALITE_INCLUDE_DIR spatialite.h
 )
 
 if(WIN32)
-        set(SPATIALITE_LIB spatialite4.dll)
+        set(SPATIALITE_LIB spatialite.dll)
 else()
         set(SPATIALITE_LIB libspatialite.so)
 endif()
@@ -38,7 +39,9 @@ FIND_PATH(FIND_SPATIALITE_LIB_DIR
         lib/x86_64-linux-gnu
         bin
     PATHS
-                C:/opt/spatialite-bin
+        C:/opt/spatialite-bin
+        C:/OSGeo4W/bin
+        C:/OSGeo4W/lib
         /opt
         /opt/local
         /usr
@@ -52,7 +55,7 @@ FIND_PATH(FIND_SPATIALITE_LIB_DIR
 # for windows, we also need the *.lib library for linking
 
 if(WIN32)
-    set(SPATIALITE_LIBLIB spatialite4.lib)
+    set(SPATIALITE_LIBLIB spatialite_i.lib)
 
     FIND_PATH(FIND_SPATIALITE_LIBLIB_DIR
             NAMES ${SPATIALITE_LIBLIB}
@@ -60,7 +63,8 @@ if(WIN32)
             lib
             bin
         PATHS
-                    C:/opt/spatialite-bin
+            C:/opt/spatialite-bin
+            c:/OSGeo4W/lib
             ${OSGEO4W_ROOT}
         DOC "Path to the spatialite library (e.g. C:/OSGEO4W/lib/spatialite.lib)"
     )

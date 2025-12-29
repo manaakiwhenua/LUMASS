@@ -17,14 +17,17 @@ SET(KIT_SRCS
   qttreepropertybrowser.h
   qtvariantproperty.cpp
   qtvariantproperty.h
+  qtpropertybrowserutils_p.h
   )
 
 SET(KIT_MOC_SRCS
   qtpropertybrowserutils_p.h
   )
 
-SET(KIT_UI_FORMS
-  )
+#SET(CMAKE_AUTOMOC YES)
+
+#SET(KIT_UI_FORMS
+#  )
 
 SET(KIT_resources
   qtpropertybrowser.qrc
@@ -36,10 +39,11 @@ INCLUDE_DIRECTORIES(
     ${QT5_INCLUDE_DIRS}
   )
 
-LINK_DIRECTORIES(${QT5_LINK_DIRS})
+#LINK_DIRECTORIES(${QT5_LINK_DIRS})
   
-QT5_WRAP_UI(KIT_UI_CPP ${KIT_UI_FORMS})
+#QT5_WRAP_UI(KIT_UI_CPP ${KIT_UI_FORMS})
 QT5_WRAP_CPP(KIT_MOC_CPP ${KIT_MOC_SRCS})
+
 QT5_ADD_RESOURCES(KIT_QRC_SRCS ${KIT_resources})
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
@@ -50,9 +54,11 @@ ADD_LIBRARY(${libname} STATIC
   ${KIT_MOC_CPP}
   ${KIT_QRC_SRCS}
 )
+
+#This command is no longer part of the core API
 #QT5_USE_MODULES(${libname} Core Gui Widgets)
   
-SET(${PROJECT_NAME}_LINK_LIBRARIES Qt5Xml Qt5Core Qt5Concurrent)
+SET(${PROJECT_NAME}_LINK_LIBRARIES Qt5::Xml Qt5::Core Qt5::Concurrent)
 TARGET_LINK_LIBRARIES(
   ${libname}
   ${${PROJECT_NAME}_LINK_LIBRARIES}

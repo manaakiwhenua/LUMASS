@@ -19,23 +19,25 @@ FIND_PATH(LPSOLVE_INCLUDE_DIR lp_lib.h
         include
         include/lpsolve
         include/lp_solve
-		lpsolve55
-		lp_solve55
-		lp_solve
-		lpsolve
+		    lpsolve55
+		    lp_solve55
+		    lp_solve
+		    lpsolve
+        lp_solve-5.5.2.14
     PATHS
         /opt
         /opt/local
         /usr/local
         /usr
         /usr/share
-		"c:/opt"
-		"c:/build"
+    		"c:/opt"
+    		"c:/build"
+        "C:/Install"
     DOC "path ot lp_solve's include directory"
 )
 
 if(WIN32)
-	set(LPLIBNAMES lpsolve55.lib liblpsolve55.lib)
+	set(LPLIBNAMES lpsolve.lib)
 else()
 	set(LPLIBNAMES liblpsolve55.so liblpsolve50.so liblpsolve40.so)
 endif()
@@ -43,26 +45,36 @@ endif()
 FIND_LIBRARY(LPSOLVE_LIBRARY 
     NAMES ${LPLIBNAMES}
     PATH_SUFFIXES
-        lib
-        lpsolve/lib
-        lp_solve/lib
-        bin
-        lib/lpsolve
-        lib/lp_solve
-		lpsolve55
-		lp_solve55
-		lp_solve
-		lpsolve
+      lib
+      lpsolve/lib
+      lp_solve/lib
+      bin
+      lib/lpsolve
+      lib/lp_solve
+      lp_solve-5.5.2.14
+		  lpsolve55
+		  lp_solve55
+		  lp_solve
+		  lpsolve
     PATHS
         /opt
         /opt/local
         /usr
         /usr/local
         /usr/share
-		"c:/opt"
-		"c:/build"
+		    "c:/opt"
+		    "c:/build"
+        "C:/Install"
+    
     DOC "path to the lp_solve library (e.g. /usr/lib/liblpsolve55.so)"
 )
+
+if (LPSOLVE_LIBRARY)
+  get_filename_component(LPSOLVE_LIB_DIR ${LPSOLVE_LIBRARY} DIRECTORY)
+  get_property(LPSOLVE_LIB_NAME SOURCE ${LPSOLVE_LIBRARY} PROPERTY NAME)
+  message(STATUS "LPSOLVE_LIBRARY: ${LPSOLVE_LIBRARY}")
+  message(STATUS "LPSOLVE_LIB_DIR: ${LPSOLVE_LIB_DIR}")
+endif()
 
 IF (LPSOLVE_LIBRARY AND LPSOLVE_INCLUDE_DIR)
   set(LPSOLVE_FOUND TRUE)

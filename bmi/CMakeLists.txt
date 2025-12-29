@@ -62,6 +62,7 @@ INCLUDE_DIRECTORIES(
     #${PostgreSQL_INCLUDE_DIRS}
     ${MPI_CXX_INCLUDE_DIRS}
     ${SQLite_SOURCE_DIR}
+    ${YAML_CPP_INCLUDE_DIR}
 
     # for TESTING ONLY
     #${NCXX4_INCLUDE_DIR}
@@ -72,7 +73,7 @@ INCLUDE_DIRECTORIES(
 )
 
 LINK_DIRECTORIES(
-    ${QT5_LINK_DIRS}
+        #${QT5_LINK_DIRS}
     ${OTB_LIBRARY_DIRS}
     ${LIBRARY_OUTPUT_PATH}
     ${opt_BINARY_DIR}
@@ -87,6 +88,8 @@ LINK_DIRECTORIES(
     ${NETCDF_LIB_DIR}
     ${Python3_LIBRARIES_DIR}
     ${HDF5_ROOT}
+    ${shared_BINARY_DIR}
+    ${YAML_CPP_LIB_DIR}
 )
 
 # Qt5 requirement
@@ -101,13 +104,12 @@ file(GLOB BMI_SRC
     ${bmi_SOURCE_DIR}/lumassbmi.cpp
     #${bmi_SOURCE_DIR}/NMLumassEngine.cpp
     ${NMVtk_SOURCE_DIR}/NMvtkDelimitedTextWriter.cxx
-
-    ${shared_SOURCE_DIR}/*.cpp
+    #${shared_SOURCE_DIR}/*.cpp
 )
 
 file(GLOB PYTHON_BMI_SRC
     ${bmi_SOURCE_DIR}/python*.cpp
-    ${shared_SOURCE_DIR}/*.cpp
+    #${shared_SOURCE_DIR}/*.cpp
 )
 
 SET(LumassBMI_TEST_FILES
@@ -115,16 +117,21 @@ SET(LumassBMI_TEST_FILES
 )
 
 SET(BMI_LINKLIBS
-    Qt5Core Qt5Sql Qt5Xml
+    #Qt5Core Qt5Sql Qt5Xml
     #${NCXX4_LIBRARY}
     #${NETCDF_LIBRARY}
-    curl xml2
     ${MPI_CXX_LIBRARIES}
-    NMNetCDFIO
-    #${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
+        #${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
+    
+    ${QT5_LIBRARIES}
+    NMOTBSupplCoreRAT
+    NMOTBSupplCoreIO
+    NMOTBSupplCoreReader
+    NMOTBSupplCoreWriter
+    NMOTBSupplTemplates
     NMMosra
-    #NMOTBSupplFilters
-    #NMOTBSupplCore
+        #NMOTBSupplFilters
+    NMShared
     NMModFrameCore
     #${MFW_WRAPPER_NAMES}
     ${LUMASS_BMI_VTK_LIBRARIES}
@@ -132,11 +139,19 @@ SET(BMI_LINKLIBS
     ${YAML_CPP_LIBRARIES}
 )
 
+if(WIN32)
+    list(APPEND BMI_LINK_LIBS libcurl_imp libxml2)
+else()
+    list(APPEND BMI_LINK_LIBS curl xml2)
+endif()
+
 SET(PYTHON_BMI_LINKLIBS
-    Qt5Core
+        #Qt5Core
         #NMModFrameCore
     ${Python3_LIBRARIES}
     #pybind11::module
+    
+    ${QT5_LIBRARIES}
     pybind11::pybind11
     pybind11::embed
     ${YAML_CPP_LIBRARIES}
@@ -216,7 +231,7 @@ endif()
 if (WIN32)
     install (TARGETS ${BMI_INSTALL_TARGETS}
              LIBRARY DESTINATION lib
-             RUNTIME DESTINATION lib
+             RUNTIME DESTINATION bin
      )
 else()
     install(TARGETS ${BMI_INSTALL_TARGETS} LIBRARY DESTINATION lib)

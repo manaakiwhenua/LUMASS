@@ -22,7 +22,7 @@
 #include "itkRegion.h"
 #include "itkIndex.h"
 #include "itkImageRegionSplitterBase.h"
-#include "nmotbsupplfilters_export.h"
+#include "nmitk_export.h"
 
 namespace itk
 {
@@ -49,7 +49,7 @@ namespace itk
  * \sa ImageRegionSplitterMultidimensional
  */
 
-class NMImageRegionSplitterMaxSize
+class NMITK_EXPORT NMImageRegionSplitterMaxSize
   : public ImageRegionSplitterBase
 {
 public:

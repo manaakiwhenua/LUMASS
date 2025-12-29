@@ -3270,6 +3270,11 @@ NMLayer::tableColumnsInserted(const QModelIndex& parent, int startsection,
 void
 NMLayer::selectCell(long long cellID, NMLayerSelectionType type)
 {
+    if (cellID < 0)
+    {
+        return;
+    }
+
     const QModelIndex idx = this->mTableModel->index(cellID, 0, QModelIndex());
     switch(type)
     {

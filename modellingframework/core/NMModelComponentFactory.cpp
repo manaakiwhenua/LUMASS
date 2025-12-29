@@ -24,7 +24,6 @@
 
 #include "NMModelComponentFactory.h"
 #include "NMSequentialIterComponent.h"
-//#include "NMConditionalIterComponent.h"
 #include "NMParallelIterComponent.h"
 #include "NMDataComponent.h"
 #include "NMDataRefComponent.h"
@@ -89,11 +88,6 @@ NMModelComponent* NMModelComponentFactory::createModelComponent(const QString& c
         return qobject_cast<NMModelComponent*>(
                     new NMParallelIterComponent(this));
     }
-    //else if (cn.compare("NMConditionalIterComponent") == 0)
-    //{
-    //	return qobject_cast<NMModelComponent*>(
-    //			new NMConditionalIterComponent(this));
-    //}
     else if (cn.compare("NMDataComponent") == 0)
 	{
 		return qobject_cast<NMModelComponent*>(
@@ -109,5 +103,5 @@ NMModelComponent* NMModelComponentFactory::createModelComponent(const QString& c
         return qobject_cast<NMModelComponent*>(
                  new NMParameterTable(this));
     }
-    return 0;
+    return nullptr;
 }

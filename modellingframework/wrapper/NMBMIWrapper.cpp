@@ -38,13 +38,13 @@
     #include <libloaderapi.h>
 
     #pragma push_macro("GetCurrentTime")
-        #undef GetCurrentTime
+    #undef GetCurrentTime
 
-        #ifdef LUMASS_PYTHON
+    #ifdef LUMASS_PYTHON
         #include "pythonbmi.h"
-        #endif
+    #endif
 
-        #include "NMBMIWrapper.h"
+    #include "NMBMIWrapper.h"
     #pragma pop_macro("GetCurrentTime")
 #else
     #define WINCALL

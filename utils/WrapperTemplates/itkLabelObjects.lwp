@@ -1,0 +1,15 @@
+Year                        = 2025
+WrapperClassName            = LabelImageObjects
+FileDate                    = 2025-02-04
+Author                      = DEPRECATED makeWrapperConfigFile, Alex Herzig
+FilterClassFileName         = DEPRECATED otbDifferenceImageFilter
+FilterTypeDef               = DEPRECATED otb::DifferenceImageFilter<InImgType,OutImgType>
+NumThreadSupport            = DEPRECATED 1
+NumTemplateArgs             = DEPRECATED 2
+ComponentIsSink             = DEPRECATED 1
+ComponentName               = DEPRECATED ImageCompre
+InputTypeFunc_1             = DEPRECATED 0:InImgType:SetValidInput
+InputTypeFunc_2             = DEPRECATED 1:InImgType:SetTestInput
+Property_1                  = DEPRECATED ToleranceRadius:1:int:int
+Property_2                  = DEPRECATED DifferenceThreshold:1:double:InImgPixelType
+Property_3                  = DEPRECATED PrintResults:0:bool:bool

@@ -1171,15 +1171,19 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 
     // some info we can use later for debug in the event of an exception
     NMModelComponent* comp = 0;
-    QString hostName;
-    int hostStep;
+    QString hostName = "";
+    if (this->getHostComponent() != nullptr)
+    {
+        hostName = this->getHostComponent()->objectName();
+    }
+    unsigned int hostStep = 1;
 
     bool bThrow = false;
     std::stringstream exStackInfo;
     std::stringstream exDescription;
     std::string exObjName;
     std::string exSource;
-    NMMfwException::ExceptionType exceptionType;
+    NMMfwException::ExceptionType exceptionType = NMMfwException::NMProcess_ExecutionError;
 
     // ==============================================================================
     // PROVENANCE
@@ -1213,7 +1217,6 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
         this->mProcess->setLogger(mLogger);
 
         // log provenance
-        unsigned int hostStep = 1;
         if (this->getHostComponent() != nullptr)
         {
             hostStep = this->getHostComponent()->getIterationStep();
@@ -1814,6 +1817,7 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
     }
     catch (std::exception& e)
     {
+        exceptionType = NMMfwException::NMProcess_ExecutionError;
         exStackInfo << (exObjName.empty() ? hostName.toStdString() : exObjName)
                     << " step #" << hostStep << ": "
                     << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString())

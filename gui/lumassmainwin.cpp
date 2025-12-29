@@ -155,9 +155,10 @@
 #include <QJSValue>
 #include <QJSValueIterator>
 
-#include "QtWebSockets/QWebSocketServer"
-#include "QtWebSockets/QWebSocket"
-#include <QSslKey>
+//#include "QtWebSockets/QWebSocketServer"
+//#include "QtWebSockets/QWebSocket"
+//#include <QSslError>
+//#include <QSslKey>
 //#include <QtNetwork/QSslCertificate>
 //#include <QtNetwork/QSslKey>
 //#include <QtNetwork/QtNetwork>
@@ -623,15 +624,15 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent, NMLumassEngine *engine)
 #endif
 
     // add websocket actions
-    QAction* actStartWebSockets = new QAction(QStringLiteral("Start Websocket Server"), ui->menuSettings);
-    QAction* actStopWebSockets   = new QAction(QStringLiteral("Stop WebSocket Server"), ui->menuSettings);
+    //QAction* actStartWebSockets = new QAction(QStringLiteral("Start Websocket Server"), ui->menuSettings);
+    //QAction* actStopWebSockets   = new QAction(QStringLiteral("Stop WebSocket Server"), ui->menuSettings);
 
     //ui->menuSettings->addSeparator();
     //ui->menuSettings->addAction(actStartWebSockets);
     //ui->menuSettings->addAction(actStopWebSockets);
 
-    connect(actStartWebSockets, SIGNAL(triggered()), this, SLOT(startWebSocketServer()));
-    connect(actStopWebSockets, SIGNAL(triggered()), this, SLOT(stopWebSocketServer()));
+    //connect(actStartWebSockets, SIGNAL(triggered()), this, SLOT(startWebSocketServer()));
+    //connect(actStopWebSockets, SIGNAL(triggered()), this, SLOT(stopWebSocketServer()));
 
     //ui->menu
 
@@ -1069,8 +1070,8 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent, NMLumassEngine *engine)
     // =================================================
     // init WebServer
     //initWebSocketServer();
-    mServer = nullptr;
-    mClientList.clear();
+    //mServer = nullptr;
+    //mClientList.clear();
 
 }
 
@@ -1099,11 +1100,11 @@ LUMASSMainWin::~LUMASSMainWin()
 #endif
 
     // close the websockets server, if running
-    if (mServer != nullptr)
-    {
-        mServer->close();
-        delete mServer;
-    }
+    //if (mServer != nullptr)
+    //{
+    //    mServer->close();
+    //    delete mServer;
+    //}
 
     // shutdown the engine ...
     // ... i.e. PythonInterpreter and MPI
@@ -1121,7 +1122,10 @@ void LUMASSMainWin::populateProcCompList()
     compWidget->addItem(QStringLiteral("DataBufferReference"));
     compWidget->addItem(QStringLiteral("ParameterTable"));
     compWidget->addItem(QStringLiteral("TextLabel"));
+
+    NMProcessFactory::instance().setLogger(this->mLogger);
     compWidget->addItems(NMProcessFactory::instance().getRegisteredComponents());
+    
     compWidget->sortItems();
 }
 
@@ -1257,7 +1261,7 @@ void LUMASSMainWin::makeZSliceMovie()
 
     w->SetInputConnection(colorize->GetOutputPort());
     w->SetFileName(filepath.c_str());
-    cout << "Writing file '" << filepath << "'" << endl;
+    //std::cout << "Writing file '" << filepath << "'" << std::endl;
     w->SetBitRate(1024 * 1024 * 30);
     w->SetBitRateTolerance(1024 * 1024 * 3);
     w->Start();
@@ -1274,13 +1278,13 @@ void LUMASSMainWin::makeZSliceMovie()
     }
 
     w->End();
-    cout << endl;
-    cout << "Done writing file " << filepath << "' ..." << endl;
+    //std::cout << std::endl;
+    //std::cout << "Done writing file " << filepath << "' ..." << std::endl;
     w->Delete();
     return;
 }
 
-
+/*
 void LUMASSMainWin::startWebSocketServer(void)
 {
     if (mServer == nullptr)
@@ -1303,6 +1307,7 @@ void LUMASSMainWin::stopWebSocketServer(void)
 
 void LUMASSMainWin::initWebSocketServer()
 {
+#ifdef __linux
     mServer = new QWebSocketServer(QStringLiteral("LUMASS Server"),
                                    //QWebSocketServer::NonSecureMode,
                                    QWebSocketServer::SecureMode,
@@ -1341,14 +1346,17 @@ void LUMASSMainWin::initWebSocketServer()
                       mServer->serverPort());
         }
     }
-
+#endif
 }
 
 void LUMASSMainWin::onSSlErrors(const QList<QSslError> &errors)
 {
     foreach(const QSslError& err, errors)
     {
-        NMLogError(<< err.errorString().toStdString());
+        QString qerrstr = err.errorString();
+        QByteArray baerrstr = qerrstr.toUtf8();
+        std::string errstr = baerrstr.constData();
+        NMLogError(<< errstr);
     }
 }
 
@@ -1369,7 +1377,6 @@ void LUMASSMainWin::onNewConnection()
             this, &LUMASSMainWin::socketDisconnected);
 
     mClientList << socket;
-
 }
 
 void LUMASSMainWin::socketDisconnected()
@@ -1384,9 +1391,10 @@ void LUMASSMainWin::socketDisconnected()
     }
 }
 
+
 void LUMASSMainWin::processTextMessage(QString message)
 {
-/*
+
     QWebSocket* client = qobject_cast<QWebSocket*>(sender());
     if (client != nullptr)
     {
@@ -1396,26 +1404,26 @@ void LUMASSMainWin::processTextMessage(QString message)
             this->test();
         }
     }
-*/
+
 }
+
+void LUMASSMainWin::processBinaryMessage(QByteArray message)
+{
+
+    QWebSocket* client = qobject_cast<QWebSocket*>(sender());
+    if (client != nullptr)
+    {
+        NMLogDebug(<< "client blob received!");
+    }
+
+}
+*/
 
 void
 LUMASSMainWin::forwardModelConfigChanged(void)
 {
     this->mTreeCompEditor->signalModelConfigChanged();
 }
-
-void LUMASSMainWin::processBinaryMessage(QByteArray message)
-{
-/*
-    QWebSocket* client = qobject_cast<QWebSocket*>(sender());
-    if (client != nullptr)
-    {
-        NMLogDebug(<< "client blob received!");
-    }
-*/
-}
-
 
 
 void LUMASSMainWin::mousePressEvent(QMouseEvent *event)
@@ -4202,17 +4210,17 @@ LUMASSMainWin::treeAdmin(QAbstractItemModel *&model,
     // get selected layer
     // =======================================================================
 
-    model = 0;
+    model = nullptr;
     type = -1;
     NMLayer* l = this->mLayerList->getSelectedLayer();
-    if (l != 0)
+    if (l != nullptr)
     {
         model = const_cast<QAbstractItemModel*>(l->getTable());
         obj = l;
         type = 0;
     }
 
-    if (model == 0)
+    if (model == nullptr)
     {
         QList<QListWidgetItem*> itms = this->mTableListWidget->selectedItems();
         if (itms.size() > 0)
@@ -4229,25 +4237,32 @@ LUMASSMainWin::treeAdmin(QAbstractItemModel *&model,
         }
     }
 
-    if (model == 0)
+    if (model == nullptr)
     {
         NMBoxInfo("Tree Analysis",
                   "Please select either a Map Layer or a Table Object!");
         parIdx = -1;
         childIdx = -1;
         type = -1;
-        obj = 0;
+        obj = nullptr;
+
         return;
     }
 
+    // for IMAGES ...
+    // need to fetch all records of the sqltable model before
+    // we can proceed
+    NMGlobalHelper::startBusy();
     QSqlTableModel* sqlModel = qobject_cast<QSqlTableModel*>(model);
-    if (sqlModel)
+    if (sqlModel != nullptr)
     {
         while(sqlModel->canFetchMore())
         {
             sqlModel->fetchMore();
         }
+
     }
+    NMGlobalHelper::endBusy();
 
 
     int ncols = model->columnCount();
@@ -4343,22 +4358,11 @@ LUMASSMainWin::treeAnalysis(const int& mode)
     NMLayer* l = 0;
     NMSqlTableView* view = 0;
     QItemSelection isel;
-//    if (type == 0)
-//    {
-        l = static_cast<NMLayer*>(obj);
-        if (l)
-        {
-            isel = l->getSelection();
-        }
-//    }
-//    else if (type == 1)
-//    {
-//        view = static_cast<NMSqlTableView*>(obj);
-//        if (view)
-//        {
-//            isel = view->getSelection();
-//        }
-//    }
+    l = static_cast<NMLayer*>(obj);
+    if (l != nullptr)
+    {
+        isel = l->getSelection();
+    }
 
     int startId = -9999;
     int startRow = -1;
@@ -4369,11 +4373,24 @@ LUMASSMainWin::treeAnalysis(const int& mode)
                   "position of the tree selection!");
         return;
     }
-    else if (isel.size() > 0)//(mode > 0)
+    else if (isel.size() > 0)
     {
         startRow = isel.at(0).topLeft().row();
-        QModelIndex sidx = model->index(startRow, idIdx);
-        startId = model->data(sidx).toInt();
+        QModelIndex sidx;
+
+        if (l->getLayerType() == NMLayer::NM_IMAGE_LAYER)
+        {
+            NMSqlTableView* sqlView = qobject_cast<NMSqlTableView*>(l->getSqlTableView());
+            NMSelSortSqlTableProxyModel* sqlProxyModel = sqlView->getSortFilter();
+            QModelIndex srcIdx = model->index(startRow, idIdx);
+            sidx = sqlProxyModel->mapFromSource(srcIdx);
+            startId = model->data(sidx, Qt::DisplayRole).toInt();
+        }
+        else
+        {
+            sidx = model->index(startRow, idIdx);
+            startId = model->data(sidx).toInt();
+        }
     }
 
 
@@ -4384,12 +4401,59 @@ LUMASSMainWin::treeAnalysis(const int& mode)
     NMGlobalHelper h;
     h.startBusy();
 
-    QList<int> btms = this->processTree(model, idIdx, dnIdx,
-                                        startId, stopId, mode);
+    QMap<int, int> ridHid = this->processTree(model, idIdx, dnIdx,
+                                 startId, stopId, mode);
+
+    QList<int> btms = ridHid.keys();
+
     if (startRow >= 0)
     {
         btms.append(startRow);
     }
+
+    // ================================================
+    // map unsorted rows to sorted rows, if applicable
+    // ================================================
+
+    if (l->getLayerType() == NMLayer::NM_IMAGE_LAYER)
+    {
+        NMSqlTableView* sqlView = qobject_cast<NMSqlTableView*>(l->getSqlTableView());
+        NMSelSortSqlTableProxyModel* sqlProxyModel = sqlView->getSortFilter();
+        std::pair<int, Qt::SortOrder> lastSort = sqlProxyModel->getLastColSort();
+
+        // only do expensive mapping if necessary!
+        if (lastSort.first != -1)
+        {
+            int hid = idIdx;
+            int did = dnIdx;
+            QList<int> hids = ridHid.values();
+
+            // selecting top -> down
+            if (mode == 1)
+            {
+                if (startRow >= 0)
+                {
+                    hids.append(startId);
+                }
+                QString idColName = model->headerData(hid, Qt::Horizontal).toString();
+                btms = sqlProxyModel->mapToProxyIds(idColName, hids);
+            }
+            // reverse if we're selecting bottom -> up (i.e. catchments)
+            else if (mode == 2)
+            {
+                hid = dnIdx;
+                did = idIdx;
+                QString dnIdColName = model->headerData(dnIdx, Qt::Horizontal).toString();
+                btms = sqlProxyModel->mapToProxyIds(dnIdColName, hids);
+
+                if (startRow >= 0)
+                {
+                    btms.append(startRow);
+                }
+            }
+        }
+    }
+
 
     // ===============================================
     // select items in the table / layer
@@ -4403,52 +4467,107 @@ LUMASSMainWin::treeAnalysis(const int& mode)
     QItemSelection newsel = h.selectRows(model, btms);
     l->setSelection(newsel);
 
-    NMDebugAI(<< "TREE ANALYSIS SELECTION" << std::endl);
-    NMDebugAI(<< "-----------------------" << std::endl);
-    foreach(QItemSelectionRange r, newsel)
-    {
-        NMDebugAI(<< r.top() << " -- " << r.bottom() << std::endl);
-    }
-    NMDebugAI(<< std::endl);
-
-    /// ToDo:
-    /// this shouldn't require the layer type dependend
-    /// treatment. however due to some issues with
-    /// the 'outside tableview' selection update
-    /// for image layers, we have it for now ..
-
-
-    //    if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
-    //    {
-    //        QItemSelection newsel = h.selectRows(model, btms);
-    //        if (l)
-    //        {
-    //            l->setSelection(newsel);
-    //        }
-    //        else if (view)
-    //        {
-    //            view->setSelection(newsel);
-    //        }
-    //    }
-    //    else
-    //    {
-    //        btms.removeOne(0);
-
-    //        if (btms.size() > 0)
-    //        {
-    //            vtkDataSet* ds = const_cast<vtkDataSet*>(l->getDataSet());
-    //            vtkImageData* id = vtkImageData::SafeDownCast(ds);
-
-    //            this->image2PolyData(id, btms);
-    //        }
-    //    }
-
     h.endBusy();
 
     NMDebugCtx(ctxLUMASSMainWin, << "done!");
 }
 
 QList<int>
+LUMASSMainWin::processSqlTree(QAbstractItemModel*& model, int& parIdx,
+                       int& childIdx, int startId, int stopId, int mode)
+{
+    stopId = 0;
+    QList<int> retList;
+
+    /// mode:
+    /// 0 - find loops
+    /// 1 - sel top down
+    /// 2 - sel bottom up
+
+    NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(model);
+    QString connname = QString("NMImageLayer_%1").arg(NMGlobalHelper::getRandomString(10));
+
+    {// START - db scope
+        NMQSQLiteDriver* drv = new NMQSQLiteDriver();
+        QSqlDatabase db = QSqlDatabase::addDatabase(drv, connname);
+        db.setConnectOptions(   "QSQLITE_OPEN_URI;"
+                                "QSQLITE_OPEN_READONLY");
+        db.setDatabaseName(sqlModel->getDatabaseName());
+        if (!db.open())
+        {
+            NMLogError(<< ctxNMImageLayer << "::" << __FUNCTION__ << "() - Access to '"
+                       << sqlModel->getDatabaseName().toStdString() << "' failed: "
+                       << db.lastError().text().toStdString());
+        }
+
+        // get required names
+        std::string rowIdCol = drv->escapeIdentifier(sqlModel->getNMPrimaryKey(), QSqlDriver::FieldName).toStdString();
+        std::string parCol = drv->escapeIdentifier(model->headerData(parIdx, Qt::Horizontal, Qt::DisplayRole).toString(),
+                                                   QSqlDriver::FieldName).toStdString();
+        std::string childCol = drv->escapeIdentifier(model->headerData(childIdx, Qt::Horizontal, Qt::DisplayRole).toString(),
+                                                     QSqlDriver::FieldName).toStdString();
+        std::string tab = drv->escapeIdentifier(sqlModel->tableName(), QSqlDriver::TableName).toStdString();
+
+        // prepare the SQL query
+        std::stringstream qStream;
+        qStream << "with cat(r_id, id, downid) as                               "
+                << std::endl << "("
+                << std::endl << "	select  " << tab << "." << rowIdCol << ","
+                << std::endl << "           " << tab << "." << parCol << ","
+                << std::endl << "		    " << tab << "." << childCol
+                << std::endl << "	from    " << tab << " where " << tab << "." << parCol << " == " << startId
+                << std::endl << "	union all"
+                << std::endl << "	select  " << tab << "." << rowIdCol << ","
+                << std::endl << "           " << tab << "." << parCol << ","
+                << std::endl << "		    " << tab << "." << childCol;
+
+        if (mode == 1) // downstream
+        {
+            qStream << std::endl << "	from " << tab << ", cat where " << tab << "." << parCol << " == cat.downid";
+        }
+        else if (mode == 2)
+        {
+            qStream << std::endl << "	from " << tab << ", cat where " << tab << "." << childCol << " == cat.id";
+        }
+        else
+        {
+            NMLogError(<< "Finding loops is not supported for Image Layers at this stage.");
+            db.close();
+            return retList;
+        }
+
+        qStream << std::endl << ") select r_id from cat";
+        NMLogDebug( << qStream.str());
+
+
+        QSqlQuery q(db);
+        if (!q.exec(qStream.str().c_str()))
+        {
+            NMLogError(<< "Tree analysis query failed: " << db.lastError().text().toStdString());
+            db.close();
+            return retList;
+        }
+
+        while(q.next())
+        {
+            retList.push_back(q.value(0).toInt());
+        }
+
+        q.finish();
+        db.close();
+
+    }// END - db scope
+
+//    QString whereClause = QString("rowidx in (%1)").arg(qStream.str().c_str());
+//    sqlModel->setFilter(whereClause);
+
+
+
+    return retList;
+
+}
+
+QMap<int, int>
 LUMASSMainWin::processTree(QAbstractItemModel*& model, int& parIdx,
                        int& childIdx, int startId, int stopId, int mode)
 {
@@ -4481,7 +4600,8 @@ LUMASSMainWin::processTree(QAbstractItemModel*& model, int& parIdx,
 
     // -------------------------------
     // let's get rolling ...
-    QSet<int> recordIdList;
+    //QSet<int> recordIdList;
+    QMap<int, int> recordIdList;
 
     QMultiMap<int,int>::const_iterator idIter;
     if (mode == 0)
@@ -4511,7 +4631,7 @@ LUMASSMainWin::processTree(QAbstractItemModel*& model, int& parIdx,
             resIt = rowMap.find(idHistory.last());
             if (resIt != rowMap.cend())
             {
-                recordIdList.insert(resIt.value());
+                recordIdList.insert(resIt.value(), idHistory.last());
             }
 
             // DEBUG
@@ -4535,7 +4655,7 @@ LUMASSMainWin::processTree(QAbstractItemModel*& model, int& parIdx,
                     QList<int> rows = rowMap.values(hid);
                     foreach (const int& r, rows)
                     {
-                        recordIdList.insert(r);
+                        recordIdList.insert(r, hid);
                     }
                 }
                 idIter = treeMap.cend();
@@ -4552,7 +4672,8 @@ LUMASSMainWin::processTree(QAbstractItemModel*& model, int& parIdx,
         }
     }
 
-    return recordIdList.values();
+    //return recordIdList.values();
+    return recordIdList;
 }
 
 QStringList
@@ -9360,7 +9481,7 @@ void LUMASSMainWin::createNewSessionDb()
     QFileInfo fifo(mSettings["Workspace"].toString());
     if (!fifo.isDir() || !fifo.isWritable() || !fifo.isReadable())
     {
-        NMLogError(<< "Failed creating new session database!")
+        NMLogError(<< "Failed creating new session database! Please configure a writable workspace directory!")
         return;
     }
 

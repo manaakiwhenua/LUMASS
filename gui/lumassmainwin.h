@@ -35,8 +35,9 @@
 #include <QListWidget>
 #include "qttreepropertybrowser.h"
 
-#include <QtWebSockets/QWebSocketServer>
-#include <QSslError>
+//#include <QtWebSockets/QWebSocketServer>
+//#include <QWebSocketServer>
+//#include <QSslError>
 
 //#include <QTcpServer>
 //#include <QTcpSocket>
@@ -123,8 +124,8 @@ public:
     vtkRenderWindow* getRenderWindow(void);
     const vtkRenderer* getBkgRenderer(void);
     const vtkRenderer* getScaleRenderer(void);
-    const QWebSocketServer* getSocketServer(void) {return mServer;}
-    const QList<QWebSocket*> getSocketClients(void) {return mClientList;}
+    //const QWebSocketServer* getSocketServer(void) {return mServer;}
+    //const QList<QWebSocket*> getSocketClients(void) {return mClientList;}
     void displayChart(vtkTable* srcTab);
     void updateCoordLabel(const QString& newCoords);
     const NMComponentEditor* getCompEditor(void);
@@ -368,10 +369,16 @@ public slots:
      *        1: select from top to bottom \sa treeSelTopDown()
      *        2: select from bottom to top \sa treeSelBottomUp()
      *
-     * \return a sorted list with record IDs (numbers) identified by tree analysis
+     * \return DEPRECATED: a sorted list with record IDs (numbers) identified by tree analysis
+     *         a map with record Ids and associated Parent Ids (e.g. HydroIDs)
      */
-    QList<int> processTree(QAbstractItemModel*& model, int& parIdx,
+    QMap<int, int> processTree(QAbstractItemModel*& model, int& parIdx,
                            int& childIdx, int startId, int stopId, int mode);
+
+    // faster SQL-based implementation
+    QList<int> processSqlTree(QAbstractItemModel*& model, int& parIdx,
+                           int& childIdx, int startId, int stopId, int mode);
+
 
     /*!
      * \brief checkTree - recursive working horse of tree analysis
@@ -395,8 +402,8 @@ public slots:
 
 
     /*! WebSocket Server start/stop */
-    void startWebSocketServer(void);
-    void stopWebSocketServer(void);
+    //void startWebSocketServer(void);
+    //void stopWebSocketServer(void);
 
 protected slots:
     void settingsFeeder(QtProperty* prop, const QStringList& strVal);
@@ -411,6 +418,7 @@ protected slots:
 
 
     // client & server
+    /*
     void onNewConnection();
     void onWebSocketServerClosed();
     void onSSlErrors(const QList<QSslError>& errors);
@@ -418,7 +426,7 @@ protected slots:
     void processBinaryMessage(QByteArray message);
     void socketDisconnected();
     //void onSslErrors(const QList<QSslError>& errors);
-
+    */
     void readProcOutput();
 
     void onTabifiedDockWidgetActivated(QDockWidget* dockWidget);
@@ -444,7 +452,7 @@ protected:
     void openTablesReadOnly(void);
     void openTablesReadWrite(void);
 
-    void initWebSocketServer();
+   // void initWebSocketServer();
 
     QString eventTypeToString(const QEvent::Type type);
 
@@ -621,19 +629,21 @@ private:
     bool mbInternalPaletteChange;
     bool mbOSDarkMode;
 
+    
     class OptProc : public QProcess
     {
     public:
         OptProc(QObject* parent=nullptr)
             : QProcess(parent) {}
-
-    protected:
-        virtual void setupChildProcess()
-        {
-            ::setgid(1002);
-            ::setuid(1002);
-            ::umask(777);
-        }
+    
+    // don't think we're using this anywhere at the moment!
+    //protected:
+    //    virtual void setupChildProcess()
+    //    {
+    //        ::setgid(1002);
+    //        ::setuid(1002);
+    //        ::umask(777);
+    //    }
     };
 
 
@@ -741,8 +751,8 @@ private:
     QObject* mLastSender;
     QEvent* mLastEvent;
 
-    QWebSocketServer* mServer;
-    QList<QWebSocket*> mClientList;
+    //QWebSocketServer* mServer;
+    //QList<QWebSocket*> mClientList;
 
 #ifdef BUILD_RASSUPPORT
     RasdamanConnector *mpRasconn;

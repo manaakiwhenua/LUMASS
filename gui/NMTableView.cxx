@@ -444,7 +444,7 @@ void NMTableView::normalise()
 	                                          tr(""), &bOk);
 	if (!bOk || fieldNames.isEmpty())
 	{
-		NMDebugAI(<< "No input fields for normalisation specified!" << endl);
+		NMDebugAI(<< "No input fields for normalisation specified!" << std::endl);
 		NMDebugCtx(__ctxtabview, << "done!");
 		return;
 	}
@@ -459,7 +459,7 @@ void NMTableView::normalise()
                                           slModes, 0, false, &bOk, {});
 	if (!bOk)
 	{
-		NMDebugAI(<< "No normalisation mode specified!" << endl);
+		NMDebugAI(<< "No normalisation mode specified!" << std::endl);
 		NMDebugCtx(__ctxtabview, << "done!");
 		return;
 	}
@@ -511,7 +511,7 @@ void NMTableView::normalise()
 //	//vtkSmartPointer<vtkTable> restab = this->queryTable(sqlStmt);
 //	//if (restab == 0)
 //	//{
-//	//	NMDebugAI( << "got an empty result table (i.e. NULL)" << endl);
+//	//	NMDebugAI( << "got an empty result table (i.e. NULL)" << std::endl);
 //	//	NMDebugCtx(__ctxtabview, << "done!");
 //	//	return;
 //	//}
@@ -661,12 +661,12 @@ void NMTableView::addColumn()
 		pos = nameRegExp.indexIn(name);
 		bok = pos >= 0 ? true : false;
 
-		//		NMDebugAI(<< "pos: " << pos << endl);
+		//		NMDebugAI(<< "pos: " << pos << std::endl);
 		//		if (pos != -1)
 		//		{
-		//			NMDebugAI(<< "that's what I've got ..." << endl);
+		//			NMDebugAI(<< "that's what I've got ..." << std::endl);
 		//			foreach(const QString& s, nameRegExp.capturedTexts())
-		//					NMDebugAI(<< s.toStdString() << endl);
+		//					NMDebugAI(<< s.toStdString() << std::endl);
 		//		}
 
 		if (	type == QVariant::Invalid
@@ -678,7 +678,7 @@ void NMTableView::addColumn()
 			msgBox.setText(tr("Name invalid!"));
 			msgBox.setIcon(QMessageBox::Critical);
 			msgBox.exec();
-			NMDebugAI(<< "type '" << type << "' or name '" << name.toStdString() << "' is invalid!" << endl);
+			NMDebugAI(<< "type '" << type << "' or name '" << name.toStdString() << "' is invalid!" << std::endl);
 		}
 
 		if (this->getColumnIndex(name) >= 0)
@@ -701,10 +701,10 @@ void NMTableView::addColumn()
 
 	int ncols = this->mSortFilter->columnCount();
 
-	NMDebugAI(<< "add column ? " << ret << endl);
-	NMDebugAI(<< "name: " << name.toStdString() << endl);
-	NMDebugAI(<< "type: " << type << endl);
-	NMDebugAI(<< "ncols in tab: " << ncols << endl);
+	NMDebugAI(<< "add column ? " << ret << std::endl);
+	NMDebugAI(<< "name: " << name.toStdString() << std::endl);
+	NMDebugAI(<< "type: " << type << std::endl);
+	NMDebugAI(<< "ncols in tab: " << ncols << std::endl);
 
 	if (this->mSortFilter->insertColumns(0, type, QModelIndex()))
 	{
@@ -765,7 +765,7 @@ void NMTableView::joinAttributes()
 	srcModel->setTable(tabReader->GetOutput());
 
 	int numJoinCols = srcModel->columnCount(QModelIndex());
-	NMDebugAI( << "Analyse CSV Table Structure ... " << endl);
+	NMDebugAI( << "Analyse CSV Table Structure ... " << std::endl);
 	QStringList srcJoinFields;
 	for (int i=0; i < numJoinCols; ++i)
 	{
@@ -1009,7 +1009,7 @@ void NMTableView::exportTable()
 			&selectedFilter);
 	if (fileName.isNull())
 	{
-		NMDebugAI( << "got an empty filename from the user!" << endl);
+		NMDebugAI( << "got an empty filename from the user!" << std::endl);
 		NMDebugCtx(__ctxtabview, << "done!");
 		return;
 	}
@@ -1020,7 +1020,7 @@ void NMTableView::exportTable()
 	if (suffix.compare(tr("txt"), Qt::CaseInsensitive) == 0 ||
 		suffix.compare(tr("csv"), Qt::CaseInsensitive) == 0)
 	{
-		NMDebugAI(<< "write delimited text to " << fileName.toStdString() << endl);
+		NMDebugAI(<< "write delimited text to " << fileName.toStdString() << std::endl);
 		this->writeDelimTxt(fileName, false);
 	}
 	//else if (suffix.compare(tr("sqlite"), Qt::CaseInsensitive) == 0 ||
@@ -1034,7 +1034,7 @@ void NMTableView::exportTable()
 	//		dbName = QString(tr("%1.%2")).arg(fnList.first()).arg(fnList.last());
 	//		tableName = fnList.at(1);
 	//		NMDebugAI(<< "insert table '" << tableName.toStdString() << "' "
-	//				  << "into database '" << dbName.toStdString() << "'" << endl);
+	//				  << "into database '" << dbName.toStdString() << "'" << std::endl);
 	//	}
 	//	else
 	//	{
@@ -1237,7 +1237,7 @@ bool NMTableView::writeDelimTxt(const QString& fileName,
 //	writer->SetInput(this->mVtkTableAdapter->GetVTKDataObject());
 //	writer->SetFieldDelimiter(",");
 //
-//	NMDebugAI( << "field delimiter: '" << writer->GetFieldDelimiter() << "'" << endl);
+//	NMDebugAI( << "field delimiter: '" << writer->GetFieldDelimiter() << "'" << std::endl);
 //	writer->SetFileName(fileName.toStdString().c_str());
 //	writer->Update();
 //

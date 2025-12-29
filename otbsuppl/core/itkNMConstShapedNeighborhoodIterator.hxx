@@ -37,6 +37,7 @@
 #ifndef itkNMConstShapedNeighborhoodIterator_hxx
 #define itkNMConstShapedNeighborhoodIterator_hxx
 #include "itkNMConstShapedNeighborhoodIterator.h"
+#include "itkVariableLengthVector.h"
 namespace itk
 {
 template< typename TImage, typename TBoundaryCondition >
@@ -190,7 +191,7 @@ NMConstShapedNeighborhoodIterator< TImage, TBoundaryCondition >
   NeighborIndexType idx = 0;
   for (nit = neighborhood.Begin(); nit != neighborhood.End(); ++nit, ++idx)
     {
-    if (*nit)
+    if (static_cast<typename itk::VariableLengthVector<PixelType>>(*nit).GetSize() > 0)
       {
       this->ActivateOffset(GetOffset(idx));
       }

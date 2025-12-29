@@ -420,7 +420,7 @@ void ModelComponentList::saveLayerChanges()
     this->setCurrentIndex(QModelIndex());
     if (l != 0)
     {
-        NMDebugAI(<< "going to save changes to the data set..." << endl);
+        NMDebugAI(<< "going to save changes to the data set..." << std::endl);
         l->writeDataSet();
     }
 }
@@ -644,7 +644,7 @@ void ModelComponentList::saveLegend()
 void ModelComponentList::updateLegend(const NMLayer* layer)
 {
     //NMDebugAI( << "going to update the legend for " << layer->objectName().toStdString()
-        //	<< endl);
+        //	<< std::endl);
 
     QModelIndex idx = this->mLayerModel->getItemLayerModelIndex(layer->objectName());
     if (this->isExpanded(idx))
@@ -662,7 +662,7 @@ void ModelComponentList::updateLegend(const NMLayer* layer)
 //ModelComponentList::zoomChanged(vtkObject* obj)
 //{
 //	this->topLevelWidget()->findChild<QVTKOpenGLWidget*>(tr("qvtkWidget"))->update();
-//	NMDebugAI(<< "zoom" << endl);
+//	NMDebugAI(<< "zoom" << std::endl);
 //}
 
 NMLayer*
@@ -772,7 +772,7 @@ void ModelComponentList::updateMapWin(const NMLayer* layer)
     // TODO: later we have to get the layer's bbox, transform into the window
     // coordinates and then just update this very region of the renderwidget window
 
-    //NMDebugAI( << "updating map window for " << layer->objectName().toStdString() << endl);
+    //NMDebugAI( << "updating map window for " << layer->objectName().toStdString() << std::endl);
 
     NMGlobalHelper::getRenderWindow()->Render();
 }
@@ -785,7 +785,7 @@ void ModelComponentList::addLayer(NMLayer* layer)
     // TODO: check this
     if (layer == 0 || layer->getRenderer() == 0)
     {
-        NMDebugAI(<< "invalid layer!" << endl);
+        NMDebugAI(<< "invalid layer!" << std::endl);
         NMDebugCtx(ctx, << "done!");
         return;
     }
@@ -869,7 +869,7 @@ void ModelComponentList::recalcMapBBox(void)
         const double* box = l->getBBox();
         this->unionMapBBox(box);
         NMDebugAI( << "processing " << l->objectName().toStdString() <<
-                        "'s box ..." << endl);
+                        "'s box ..." << std::endl);
     }
 
     NMDebugCtx(ctx, << "done!");
@@ -1566,7 +1566,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
         {
             this->mIndicatorIdx = QModelIndex();
 
-            NMDebugAI(<< "no valid drop pos!" << endl);
+            NMDebugAI(<< "no valid drop pos!" << std::endl);
             NMDebugCtx(ctx, << "done!");
             return;
         }
@@ -1577,7 +1577,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
         if (dl == 0)
             return;
         int destpos = dl->getLayerPos();
-        //NMDebugAI(<< "dest pos: " << destpos << endl);
+        //NMDebugAI(<< "dest pos: " << destpos << std::endl);
 
         QModelIndex srcidx = this->indexAt(this->dragStartPosition);
         const int srcstackpos = this->mLayerModel->toLayerStackIndex(srcidx.row());
@@ -1586,7 +1586,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
         if (sl == 0)
             return;
         int srcpos = sl->getLayerPos();
-        //NMDebugAI(<< "src pos: " << srcpos << endl);
+        //NMDebugAI(<< "src pos: " << srcpos << std::endl);
 
         this->changeLayerPos(srcpos, destpos);
 

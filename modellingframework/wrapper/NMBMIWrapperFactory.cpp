@@ -20,10 +20,12 @@
 #include "NMBMIWrapperFactory.h"
 #include "NMBMIWrapper.h"
 
-extern "C" NMBMIWRAPPER_EXPORT
-NMWrapperFactory* createWrapperFactory()
+extern "C"
 {
-    return new NMBMIWrapperFactory();
+    NMBMIWRAPPER_EXPORT NMWrapperFactory* WINCALL createWrapperFactory()
+    {
+        return new NMBMIWrapperFactory();
+    }
 }
 
 NMBMIWrapperFactory::NMBMIWrapperFactory(QObject *parent) : NMWrapperFactory(parent)

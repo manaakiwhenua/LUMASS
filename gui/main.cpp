@@ -35,32 +35,10 @@
 #endif
 #endif
 
-// this prevents the console window to show up
-// under windows
-//#ifdef _WIN32
-//	#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
-//#endif
-
-#ifdef LUMASS_DEBUG
-    // required for LUMASS debug output
-    #ifndef _WIN32
-        #include "nmlog.h"
-//        int nmlog::nmindent = 1;
-    #endif
-    #ifdef RMANDEBUG
-        int indentLevel;
-        bool debugOutput;
-    #endif
-#else
-    #ifdef RMANDEBUG
-        #ifndef _WIN32
-            #include "nmlog.h"
-//            int nmlog::nmindent = 1;
-        #endif
-        int indentLevel;
-        bool debugOutput;
-    #endif
+#ifdef _WIN32
+    #include <windows.h>
 #endif
+
 #include <csignal>
 #include "Python_wrapper.h"
 
@@ -106,7 +84,8 @@ int main(int argc, char *argv[])
     // unless --seq was specified (e.g. for sequential debugging)
     if (add_args == 4 && bseq == false)
     {
-        const int argc2 = argc + add_args + 1;
+        // create new mpiexec process command
+        const int argc2 = argc + add_args +1;
         char** argv2 = new char*[argc2];
         char arg1[] = "mpiexec";
         char arg2[] = "-np";
@@ -133,13 +112,68 @@ int main(int argc, char *argv[])
         argv2[argc2-1] = new char[1];
         argv2[argc2-1] = NULL;
 
+        // report new process command
         std::stringstream _r;
-        for (int b=0; b < argc2; ++b)
+#ifdef _WIN32
+        for (int b=0; b < argc2-1; ++b)
+#else 
+        for (int b = 0; b < argc2; ++b)
+#endif
         {
             _r << argv2[b] << " ";
         }
+
         NMDebugAINoMPI(<< "Launch command: " << _r.str() << std::endl);
-        _r.str("");
+
+        // (copy and) add to current environment (variables) ... 
+        // then launch new process
+#ifdef _WIN32 
+        // WIN32 approach adapted from Gemini
+
+        SetEnvironmentVariable("RDMAV_FORK_SAFE", "1");
+
+        STARTUPINFOA si;
+        PROCESS_INFORMATION pi;
+
+        ZeroMemory(&si, sizeof(si));
+        si.cb = sizeof(si);
+        // Ensure the new process shares the current console window
+        si.dwFlags |= STARTF_USESTDHANDLES;
+        si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+        si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+        si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+
+        ZeroMemory(&pi, sizeof(pi));
+
+        std::string _cmdstr = _r.str();
+        std::vector<char> cmdLine(_cmdstr.begin(), _cmdstr.end());
+        
+        // Create the mpiexec process
+        if (!CreateProcessA(
+            NULL,           // Application name (use command line instead for args)
+            cmdLine.data(), // Command line
+            NULL,           // Process handle not inheritable
+            NULL,           // Thread handle not inheritable
+            TRUE,           // Set handle inheritance to TRUE
+            0,              // No creation flags
+            NULL,           // Use parent's environment block
+            NULL,           // Use parent's starting directory
+            &si,            // Pointer to STARTUPINFO structure
+            &pi             // Pointer to PROCESS_INFORMATION structure
+        )) {
+            NMDebugAINoMPI(<< "CreateProcess failed (" << GetLastError() << ")");
+            std::cerr << "CreateProcess failed (" << GetLastError() << ").\n";
+            return 1;
+        }
+
+        // Close process and thread handles
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+
+        // Get rid of console window
+        FreeConsole();
+
+#else   // LINUX approach 
 
         // get current environment
         // and add 'RDMAV_FORK_SAFE=1'
@@ -151,33 +185,32 @@ int main(int argc, char *argv[])
             ecount++;
         }
 
-        char** newenv = new char*[ecount+2];
-        for (int e=0; e < ecount; ++e)
+        char** newenv = new char* [ecount + 2];
+        for (int e = 0; e < ecount; ++e)
         {
-            newenv[e] = new char[venv[e].size()+1];
+            newenv[e] = new char[venv[e].size() + 1];
             strcpy(newenv[e], venv[e].c_str());
         }
 
         std::string forstr = "RDMAV_FORK_SAFE=1";
-        newenv[ecount] = new char[forstr.size()+1];
+        newenv[ecount] = new char[forstr.size() + 1];
         strcpy(newenv[ecount], forstr.c_str());
 
-        newenv[ecount+1] = new char[1];
-        newenv[ecount+1] = NULL;
+        newenv[ecount + 1] = new char[1];
+        newenv[ecount + 1] = NULL;
 
-        for (int s=0; s < ecount+1; ++s)
+        for (int s = 0; s < ecount + 1; ++s)
         {
             _r << newenv[s] << " ";
         }
-        _r << newenv[ecount+1];
-        NMDebugAINoMPI( << "Launch ENV: " << _r.str() << std::endl);
+        NMDebugAINoMPI(<< "Launch ENV: " << _r.str() << std::endl);
 
         // launch new mpi-enabled lumass process
         execvpe("mpiexec", argv2, newenv);
 
         // in case something went wrong, we get the errno
         NMDebugAINoMPI(<< "execvpe errno=" << errno << std::endl);
-
+#endif
         return EXIT_SUCCESS;
     }
 
@@ -189,11 +222,6 @@ int main(int argc, char *argv[])
     std::signal(SIGFPE, signal_handler);
 
     auto format = QVTKOpenGLNativeWidget::defaultFormat();
-#ifdef _WIN32
-    // with VTK 8.2 on Windows, use compatibility profile;
-    // adopted from https://discourse.vtk.org/t/problem-in-vtk-8-2-with-defaultformat-and-qvtkopenglwidget-on-windows-10-intel/998/10
-    format.setProfile(QSurfaceFormat::CompatibilityProfile);
-#endif
     QSurfaceFormat::setDefaultFormat(format);
 
 #ifdef QT_HIGHDPI_SUPPORT

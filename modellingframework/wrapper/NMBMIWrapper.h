@@ -49,8 +49,7 @@ class PythonBMI;
 template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class NMBMIWrapper_Internal;
 
-class
-NMBMIWrapper : public NMProcess
+class NMBMIWRAPPER_EXPORT NMBMIWrapper : public NMProcess
 {
     Q_OBJECT
     Q_PROPERTY(QList<QStringList> KernelRadius READ getKernelRadius WRITE setKernelRadius)

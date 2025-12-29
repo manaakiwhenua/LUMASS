@@ -20,10 +20,12 @@
 #include "NMScriptableKernelFilter2WrapperFactory.h"
 #include "NMScriptableKernelFilter2Wrapper.h"
 
-extern "C" NMSCRIPTABLEKERNELFILTER2WRAPPER_EXPORT
-NMWrapperFactory* createWrapperFactory()
+extern "C"
 {
-    return new NMScriptableKernelFilter2WrapperFactory();
+    NMSCRIPTABLEKERNELFILTER2WRAPPER_EXPORT NMWrapperFactory* WINCALL  createWrapperFactory()
+    {
+        return new NMScriptableKernelFilter2WrapperFactory();
+    }
 }
 
 NMScriptableKernelFilter2WrapperFactory::NMScriptableKernelFilter2WrapperFactory(QObject *parent) : NMWrapperFactory(parent)

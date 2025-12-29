@@ -837,7 +837,7 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType, QList<
 
     if (selItems.count() < 1)
     {
-        NMDebugAI(<< "grouping not a single component does not make sense!" << endl);
+        NMDebugAI(<< "grouping not a single component does not make sense!" << std::endl);
         NMDebugCtx(ctx, << "done!");
         return;
     }
@@ -888,7 +888,7 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType, QList<
         else // non-model-component-items
         {
             //NMDebugAI(<< "oops! The model controller couldn't find the component for '"
-            //		<< itemTitle.toStdString() << "'!" << endl);
+            //		<< itemTitle.toStdString() << "'!" << std::endl);
             continue;
         }
 
@@ -896,9 +896,9 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType, QList<
         if (host != comp->getHostComponent())
         {
             NMDebugAI(<< "all components have to be on the same level, i.e. sharing the same host!"
-                    << endl);
+                    << std::endl);
             //NMDebugAI(<< "ignoring component '" << comp->objectName().toStdString()
-            //		<< "', which is not on the grouping level!" << endl);
+            //		<< "', which is not on the grouping level!" << std::endl);
             NMDebugCtx(ctx, << "done!");
             return;
         }
@@ -923,8 +923,8 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType, QList<
 
     // now we create a new ModelComponent, and add the selected components
     NMIterableComponent* aggrComp =
-            qobject_cast<NMIterableComponent*>(
-                    NMModelComponentFactory::instance().createModelComponent(compType));
+        qobject_cast<NMIterableComponent*>(this->mModelController->createModelComponent(compType));
+                    //NMModelComponentFactory::instance().createModelComponent(compType));
     if (aggrComp == nullptr)
     {
         NMLogError(<< "Couldn't create a model component of type '"
@@ -2123,10 +2123,10 @@ NMModelViewWidget::exportItems(const QList<QGraphicsItem *> &items,
     QString fnLmx = QString("%1/%2.lmx").arg(fi.absolutePath()).arg(fi.baseName());
     QString fnLmv = QString("%1/%2.lmv").arg(fi.absolutePath()).arg(fi.baseName());
 
-    NMDebugAI(<< "absolutePath: " << fi.absolutePath().toStdString() << endl);
-    NMDebugAI(<< "baseName:     " << fi.baseName().toStdString() << endl);
-    NMDebugAI(<< "model file:   " << fnLmx.toStdString() << endl);
-    NMDebugAI(<< "view file:    " << fnLmv.toStdString() << endl);
+    NMDebugAI(<< "absolutePath: " << fi.absolutePath().toStdString() << std::endl);
+    NMDebugAI(<< "baseName:     " << fi.baseName().toStdString() << std::endl);
+    NMDebugAI(<< "model file:   " << fnLmx.toStdString() << std::endl);
+    NMDebugAI(<< "view file:    " << fnLmv.toStdString() << std::endl);
 
     QFile fileLmv(fnLmv);
     if (!fileLmv.open(QIODevice::WriteOnly))
@@ -2208,7 +2208,7 @@ NMModelViewWidget::exportModel(const QList<QGraphicsItem*>& items,
         }
     }
 
-    NMDebugAI(<< "save comps '" << savecomps.join(" ").toStdString() << "'" << endl);
+    NMDebugAI(<< "save comps '" << savecomps.join(" ").toStdString() << "'" << std::endl);
 
     //   keep track of all written links
     QList<NMComponentLinkItem*> writtenLinks;
@@ -3370,8 +3370,8 @@ NMModelViewWidget::importModel(QDataStream& lmv,
     NMDebugCtx(ctx, << "...");
 
 
-    NMDebugAI(<< "reading model view file ..." << endl);
-    NMDebugAI(<< "---------------------------" << endl);
+    NMDebugAI(<< "reading model view file ..." << std::endl);
+    NMDebugAI(<< "---------------------------" << std::endl);
 
     // file identifier
     QString fileIdentifier = "";
@@ -3418,7 +3418,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
     {
         qint32 readType;
         lmv >> readType;
-        //NMDebugAI(<< "item type is: " << (int)readType << endl);
+        //NMDebugAI(<< "item type is: " << (int)readType << std::endl);
 
         NMProcessComponentItem* pi;
         NMAggregateComponentItem* ai;
@@ -3688,7 +3688,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
     {
         qint32 readType;
         lmv >> readType;
-        //NMDebugAI(<< "item type is: " << (int)readType << endl);
+        //NMDebugAI(<< "item type is: " << (int)readType << std::endl);
 
         NMProcessComponentItem* pi = 0;
         NMAggregateComponentItem* ai = 0;
@@ -4584,7 +4584,7 @@ void NMModelViewWidget::ungroupComponents(QList<QGraphicsItem*>& giGroup)
     NMIterableComponent* host = comp->getHostComponent();
     if (host == 0)
     {
-        NMDebugAI(<< "components haven't got a host!" << endl);
+        NMDebugAI(<< "components haven't got a host!" << std::endl);
         NMDebugCtx(ctx, << "done!");
         return;
     }
@@ -4593,7 +4593,7 @@ void NMModelViewWidget::ungroupComponents(QList<QGraphicsItem*>& giGroup)
     NMIterableComponent* hosthost = host->getHostComponent();
     if (hosthost == 0)
     {
-        NMDebugAI(<< "components haven't got a host!" << endl);
+        NMDebugAI(<< "components haven't got a host!" << std::endl);
         NMDebugCtx(ctx, << "done!");
         return;
     }
@@ -4821,7 +4821,7 @@ void NMModelViewWidget::deleteItem(bool bConfirm)
         if (item == 0 || this->mModelController->getComponent(name) == 0)
         {
             NMDebugAI(<< "can't find any reference to '" << name.toStdString()
-                      << "' anymore. Let's move on!" << endl);
+                      << "' anymore. Let's move on!" << std::endl);
             continue;
         }
 
@@ -5325,7 +5325,7 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
         tname = QString(tr("%1%2")).arg(procName).arg(cnt);
         ++cnt;
     }
-    NMDebugAI(<< "final name of component is '" << tname.toStdString() << "'" << endl);
+    NMDebugAI(<< "final name of component is '" << tname.toStdString() << "'" << std::endl);
     procItem->setTypeID(cnt-1);
 
     NMModelComponent* comp = 0;
@@ -5336,9 +5336,10 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
     if (procName.compare(QString::fromLatin1("DataBuffer")) == 0
         || procName.compare(QString::fromLatin1("DataBufferReference")) == 0)
     {
-        NMDebugAI(<< "it's gonna be a DataComponent ... " << endl);
+        NMDebugAI(<< "it's gonna be a DataComponent ... " << std::endl);
         //dataComp = new NMDataComponent();
-        dataComp = qobject_cast<NMDataComponent*>(NMModelComponentFactory::instance().createModelComponent(procName));
+        dataComp = qobject_cast<NMDataComponent*>(this->mModelController->createModelComponent(procName));
+            //NMModelComponentFactory::instance().createModelComponent(procName));
         dataComp->setObjectName(tname);
         comp = qobject_cast<NMModelComponent*>(dataComp);
         connect(dataComp, SIGNAL(ComponentDescriptionChanged(const QString &)),
@@ -5354,7 +5355,7 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 
     if (proc != 0)// && procName.compare("DataBuffer") != 0)
     {
-        NMDebugAI( << "it's gonna be a SequentialIterComponent ..." << endl);
+        NMDebugAI( << "it's gonna be a SequentialIterComponent ..." << std::endl);
         itComp = new NMSequentialIterComponent();
         itComp->setObjectName(tname);
         itComp->setProcess(proc);
@@ -5369,7 +5370,7 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
         NMDebugCtx(ctx, << "done!")
         return;
     }
-    NMDebugAI(<< "and its object name is '" << comp->objectName().toStdString() << "'" << endl);
+    NMDebugAI(<< "and its object name is '" << comp->objectName().toStdString() << "'" << std::endl);
 
     procItem->setTitle(tname);
     procItem->setDescription(tname);

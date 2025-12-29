@@ -157,7 +157,8 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 		}
 		else
 		{
-			comp = NMModelComponentFactory::instance().createModelComponent(compType);
+			comp = controller->createModelComponent(compType);
+				//NMModelComponentFactory::instance().createModelComponent(compType);
 
             // if we, for whatever reason, can't produce the requested component
             // we just skip this one
@@ -396,7 +397,10 @@ NMModelSerialiser::extractPropertyValue(QDomElement& propElem)
 
 	if (valueNode.nodeName() == "string")
 	{
-        value = QVariant::fromValue(removeSurplusCR(valueNode.toElement().text()));
+		QString elemStr = valueNode.toElement().text();
+		QString noCR = removeSurplusCR(elemStr);
+		QVariant vStr = QVariant(noCR);
+		value = vStr;
 	}
 	else if (valueNode.nodeName() == "stringlist")
 	{

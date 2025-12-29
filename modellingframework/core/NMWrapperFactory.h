@@ -4,6 +4,12 @@
 #include <QObject>
 #include "NMProcess.h"
 
+#if defined _WIN32
+    #define WINCALL __stdcall
+#else
+    #define WINCALL
+#endif
+
 #include "nmmodframecore_export.h"
 
 class NMMODFRAMECORE_EXPORT NMWrapperFactory : public QObject

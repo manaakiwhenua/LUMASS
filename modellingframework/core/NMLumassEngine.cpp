@@ -47,9 +47,7 @@
 #include "Python_wrapper.h"
 #endif
 
-#ifndef _WIN32
-#   include <mpi.h>
-#endif
+#include <mpi.h>
 
 #include "NMMosra.h"
 #include "MOSORunnable.h"
@@ -397,8 +395,12 @@ settings.setIniCodec("UTF-8");
 void
 NMLumassEngine::setSetting(const QString &key, const QVariant &value)
 {
-
-    NMLogDebug(<< "::setSetting(" << key.toStdString() << ", " << value.toString().toStdString() << ")");
+#ifdef LUMASS_DEBUG
+    QString qmsg = QString("::setSetting(%1, %2)").arg(key, value.toString());
+    QByteArray bamsg = qmsg.toUtf8();
+    std::string msg = bamsg.constData();
+    NMLogDebug(<< msg);
+#endif
     mController->updateSettings(key, value);
     mSettings[key] = value;
 }

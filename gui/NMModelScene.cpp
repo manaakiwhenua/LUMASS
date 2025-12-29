@@ -667,7 +667,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 }
                 this->updateComponentItemFlags(procItem);
 
-                NMDebugAI(<< "asking for creating '" << dropItem.toStdString() << "' ..." << endl);
+                NMDebugAI(<< "asking for creating '" << dropItem.toStdString() << "' ..." << std::endl);
                 emit processItemCreated(procItem, dropItem, event->scenePos());
             }
         }
@@ -1166,7 +1166,7 @@ NMComponentLinkItem* NMModelScene::getLinkItem(QPointF pos)
                 NMProcessComponentItem* src = const_cast<NMProcessComponentItem*>(link->sourceItem());
                 NMProcessComponentItem* tar = const_cast<NMProcessComponentItem*>(link->targetItem());
                 NMDebugAI(<< "link from " << src->getTitle().toStdString()
-                        << " to " << tar->getTitle().toStdString() << endl);
+                        << " to " << tar->getTitle().toStdString() << std::endl);
                 break;
             }
         }

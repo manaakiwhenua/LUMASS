@@ -32,9 +32,9 @@
 #include <sstream>
 #include <iostream>
 
-#ifndef _WIN32
+//#ifndef _WIN32
     #include <mpi.h>
-#endif
+//#endif
 
 //#ifndef _WIN32
 //namespace nmlog
@@ -46,12 +46,24 @@
 // ======================================================================
 // DEBUG MACROS
 // ======================================================================
+#ifdef _WIN32
+    #include <Windows.h>
+    #define db_out(msg) \
+    { \
+        std::string _msgStr = msg.str();\
+        OutputDebugStringA(_msgStr.c_str());\
+    }
+#else
+    #define db_out(msg) (std::cout << msg.str()); 
+#endif
+
+
 #ifdef LUMASS_DEBUG
 #define NMDebug(arg)  \
 		{ \
 			std::ostringstream str; \
 			str arg; \
-			std::cout << str.str(); \
+			db_out(str); \
 		}
 
 //#ifndef _WIN32
@@ -63,10 +75,10 @@
 //				str << "  "; \
 //			}\
 //			str arg; \
-//			std::cout << str.str(); \
+//			db_out(str); \
 //		}
 //#else
-#ifndef _WIN32
+//#ifndef _WIN32
 #define NMDebugAI(arg) \
 {\
     std::ostringstream str; \
@@ -89,23 +101,23 @@
    {\
         str << " " arg;    \
    } \
-   std::cout << str.str(); \
+   db_out(str); \
 }
 
 #define NMDebugAINoMPI(arg) \
 { \
     std::ostringstream str; \
     str << "  " arg; \
-    std::cout << str.str(); \
+    db_out(str); \
 }
-#else
-#define NMDebugAI(arg) \
-		{ \
-			std::ostringstream str; \
-			str << "  " arg; \
-			std::cout << str.str(); \
-		}
-#endif
+//#else
+//#define NMDebugAI(arg) \
+//		{ \
+//			std::ostringstream str; \
+//			str << "  " arg; \
+//			db_out(str); \
+//		}
+//#endif
 
 #define NMDebugInd(level, arg) \
 		{ \
@@ -115,7 +127,7 @@
 				str << "  "; \
 			}\
 			str arg; \
-			std::cout << str.str(); \
+			db_out(str); \
 		}
 
 #define NMDebugTimeInd(level, arg) \
@@ -126,14 +138,14 @@
 				str << "  "; \
 			}\
 			str << __TIME__ << " - " arg; \
-			std::cout << str.str(); \
+			db_out(str); \
 		}
 
 #define NMDebugTime(arg) \
 		{ \
 			std::ostringstream str; \
 			str << __TIME__ << " - " arg; \
-			std::cout << str.str(); \
+			db_out(str); \
 		}
 
 //#ifndef _WIN32
@@ -152,13 +164,13 @@
 //			}\
 //			str << context << "::" << \
 //			       __FUNCTION__ << ": " arg; \
-//			std::cout << str.str() << std::endl; \
+//			str << std::endl; db_out(str); \
 //			if (tmp == "done!") \
 //				nmlog::nmindent--; \
 //		}
 //#else
 
-#ifndef _WIN32
+//#ifndef _WIN32
 #define NMDebugCtx(context, arg)  \
         { \
             std::string tmp;\
@@ -191,7 +203,7 @@
                 str << context << "::" << \
                 __FUNCTION__ << ": " arg; \
             }\
-            std::cout << str.str() << std::endl; \
+            str << std::endl; db_out(str); \
         }
 //#endif
 
@@ -208,27 +220,27 @@
             }\
             str << context << "::" << \
                    __FUNCTION__ << ": " arg; \
-            std::cout << str.str() << std::endl; \
+            str << std::endl; db_out(str); \
         }
 
 
-#else
-#define NMDebugCtx(context, arg)  \
-		{ \
-			std::string tmp;\
-			std::ostringstream str; \
-			str arg;\
-			tmp = str.str();\
-			str.str(""); \
-			for (int q=1; q <= 2; q++) \
-			{\
-				str << "--"; \
-			}\
-            str << context << "::" << \
-			       __FUNCTION__ << ": " arg; \
-			std::cout << str.str() << std::endl; \
-		}
-#endif
+//#else
+//#define NMDebugCtx(context, arg)  \
+//		{ \
+//			std::string tmp;\
+//			std::ostringstream str; \
+//			str arg;\
+//			tmp = str.str();\
+//			str.str(""); \
+//			for (int q=1; q <= 2; q++) \
+//			{\
+//				str << "--"; \
+//			}\
+//            str << context << "::" << \
+//			       __FUNCTION__ << ": " arg; \
+//			str << std::endl; db_out(str); \
+//		}
+//#endif
 
 //#endif
 
@@ -237,7 +249,7 @@
 			std::ostringstream str; \
 			str << __TIME__ << ": " << context << "::" << \
 			       __FUNCTION__ << ": " arg; \
-			std::cout << str.str() << std::endl; \
+			str << std::endl; db_out(str); \
 		}
 
 
@@ -246,14 +258,14 @@
 
 #define lulog( rank, msg ) \
 {                                                           \
-    if (rank >= 0 && commRank == rank) std::cout << "r" << rank << ": " << msg << endl;   \
-    else if (rank < 0) std::cout << "r" << commRank << ": " << msg << endl;   \
+    if (rank >= 0 && commRank == rank) std::cout << "r" << rank << ": " << msg << std::endl;   \
+    else if (rank < 0) std::cout << "r" << commRank << ": " << msg << std::endl;   \
 }
 
 #define wulog( rank, msg ) \
 {\
-    if (rank >= 0 && worldRank == rank) std::cout << "r" << rank << ": " << msg << endl;   \
-    else if (rank < 0) std::cout << "r" << worldRank << ": " << msg << endl;   \
+    if (rank >= 0 && worldRank == rank) std::cout << "r" << rank << ": " << msg << std::endl;   \
+    else if (rank < 0) std::cout << "r" << worldRank << ": " << msg << std::endl;   \
 }
 
 
@@ -332,7 +344,7 @@
 		{ \
 			std::ostringstream str; \
 			str arg; \
-			std::cout << str.str() << std::endl; \
+			str << std::endl; db_out(str); \
 		}
 
 // =====================================================

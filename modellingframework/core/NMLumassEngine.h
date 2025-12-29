@@ -29,7 +29,7 @@
 #include <mpi.h>
 
 #include "NMLogger.h"
-//#include "lumassbmi_export.h"
+#include "nmmodframecore_export.h"
 
 
 /*
@@ -47,8 +47,7 @@
 class NMMosra;
 class NMModelController;
 
-//class LUMASSBMI_EXPORT NMLumassEngine : public QObject
-class NMLumassEngine : public QObject
+class NMMODFRAMECORE_EXPORT NMLumassEngine : public QObject
 {
     Q_OBJECT
 

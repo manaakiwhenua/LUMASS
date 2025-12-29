@@ -47,6 +47,7 @@ namespace py = pybind11;
 #include <QDomDocument>
 
 #include "NMModelController.h"
+#include "NMModelComponentFactory.h"
 #include "NMIterableComponent.h"
 #include "NMParallelIterComponent.h"
 #include "NMSequentialIterComponent.h"
@@ -905,6 +906,16 @@ NMModelController::executeMPIParentModel(const QString &compName,
     QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-ddThh-mm-ss");
     QString lumassPath = this->getSetting("LUMASSPath").toString();
     QString workspace = this->getSetting("Workspace").toString();
+    
+    // double check whether 'workspace' exists! 
+    QFileInfo wsfifo(workspace);
+    if (!wsfifo.isWritable())
+    {
+        NMLogError(<< "LUMASS cannot write to the workspace directory '" << workspace.toStdString() << "'! "
+            << "Please configure a writable workspace directory!");
+        return;
+    }
+
     QString modelFN = QString("%1/%2_%3.lmx").arg(workspace).arg(compName).arg(timestamp);
     QString newYamlFN = QString("%1/%2_%3.yaml").arg(workspace).arg(compName).arg(timestamp);
     QString logFN = QString("%1/%2_%3.log").arg(workspace).arg(compName).arg(timestamp);
@@ -1088,7 +1099,7 @@ NMModelController::executeMPIParentModel(const QString &compName,
     NMDebugAI(<< infoMsg.str());
 
     // create nprocs child processes running the model in parallel
-    int errCodes[nprocs];
+    int* errCodes = new int[nprocs];
     int err = MPI_Comm_spawn(cmd.toStdString().c_str(), argv, nprocs,
                              MPI_INFO_NULL, 0, MPI_COMM_SELF, &mInterComm, errCodes);
     if (err != MPI_SUCCESS)
@@ -1104,6 +1115,7 @@ NMModelController::executeMPIParentModel(const QString &compName,
             delete[] argv[k];
         }
         delete[] argv;
+        delete[] errCodes;
 
         NMLogError(<< "Model execution aborted!");
         return;
@@ -1115,6 +1127,7 @@ NMModelController::executeMPIParentModel(const QString &compName,
         delete[] argv[k];
     }
     delete[] argv;
+    delete[] errCodes;
 
     // ----------------------------------------------------------------------
     // check-in with child processes if we can continue ...
@@ -1122,7 +1135,7 @@ NMModelController::executeMPIParentModel(const QString &compName,
 
     NMLogInfo(<< "Checking in with the child processes ...");
 
-    int goAhead[nprocs];
+    int* goAhead = new int[nprocs];
     for (int p=0; p < nprocs; ++p)
     {
         goAhead[p] = 0;
@@ -1156,6 +1169,7 @@ NMModelController::executeMPIParentModel(const QString &compName,
     {
         sum += goAhead[s];
     }
+    delete[] goAhead;
 
     if (sum < nprocs)
     {
@@ -1270,7 +1284,6 @@ void NMModelController::slotMPIEventLoopFinished(NMMPIRunnable* obj)
     MPI_Win_free(&mMPIParentAbort);
     mMPIParentAbort = MPI_WIN_NULL;
 
-    mMPIAbort = 0;
     mbAbortionRequested = false;
     NMDebugAI(<< "ParentProcess freed RMA window" << std::endl);
     MPI_Comm_free(&mMergedComm);
@@ -1280,8 +1293,11 @@ void NMModelController::slotMPIEventLoopFinished(NMMPIRunnable* obj)
     //NMDebugAI(<< "ParentProcess freed inter comm" << std::endl);
 
     // free RMA resources
-    MPI_Free_mem(static_cast<void*>(mMPIAbort));
-    mMPIAbort = nullptr;
+    if (mMPIAbort != nullptr)
+    {
+        MPI_Free_mem(static_cast<void*>(mMPIAbort));
+        mMPIAbort = nullptr;
+    }
 
     delete[] mMPICompState;
     mMPICompState = nullptr;
@@ -1730,10 +1746,16 @@ NMModelController::addComponent(NMModelComponent* comp,
         tname = QString(tr("%1%2")).arg(cname).arg(cnt);
     }
 
-    comp->setParent(nullptr);
-    comp->moveToThread(this->thread());
+
+    // this shouldn't be necessary any more as 
+    // we're creating the objects now ourself
+    // to avoid sending events across gui and
+    // model thread
+    //comp->setParent(nullptr);
+    //comp->moveToThread(this->thread());
+    //comp->setParent(this);
+    
     comp->setObjectName(tname);
-    comp->setParent(this);
     comp->setLogger(this->mLogger);
     comp->setModelController(this);
 
@@ -1781,6 +1803,14 @@ QStringList
 NMModelController::getUserIDs()
 {
     return mUserIdMap.keys();
+}
+
+NMModelComponent* 
+NMModelController::createModelComponent(const QString& compClass)
+{
+    NMModelComponent* comp = NMModelComponentFactory::instance().createModelComponent(compClass);
+    comp->setParent(this);
+    return comp;
 }
 
 bool

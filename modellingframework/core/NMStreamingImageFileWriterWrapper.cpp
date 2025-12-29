@@ -60,6 +60,7 @@
 
 #include "otbImage.h"
 #include "otbVectorImage.h"
+#include "itkRGBPixel.h"
 #include "itkSmartPointer.h"
 #include "itkProcessObject.h"
 #include "otbAttributeTable.h"
@@ -75,9 +76,8 @@
     #include "otbRasdamanImageIO.h"
 #endif
 
-#ifndef _WIN32
-#   include <mpi.h>
-#endif
+#include <mpi.h>
+//#include "ImportOTBSupplCoreExternTemplates.h"
 
 
 /** Helper Classes */
@@ -494,6 +494,39 @@ public:
             }
         }
 };
+
+// explicit instantiation
+template class NMStreamingImageFileWriterWrapper_Internal<unsigned char , unsigned char, 1>;
+template class NMStreamingImageFileWriterWrapper_Internal<char, char, 1>;
+template class NMStreamingImageFileWriterWrapper_Internal<unsigned short, unsigned short, 1>;
+template class NMStreamingImageFileWriterWrapper_Internal<short, short, 1>;
+template class NMStreamingImageFileWriterWrapper_Internal<unsigned int, unsigned int, 1>;
+template class NMStreamingImageFileWriterWrapper_Internal<int, int, 1>;
+template class NMStreamingImageFileWriterWrapper_Internal<unsigned long, unsigned long, 1>;
+template class NMStreamingImageFileWriterWrapper_Internal<long, long, 1>;
+template class NMStreamingImageFileWriterWrapper_Internal<float, float, 1>;
+template class NMStreamingImageFileWriterWrapper_Internal<double, double, 1>;
+template class NMStreamingImageFileWriterWrapper_Internal<unsigned char, unsigned char, 2>;
+template class NMStreamingImageFileWriterWrapper_Internal<char, char, 2>;
+template class NMStreamingImageFileWriterWrapper_Internal<unsigned short, unsigned short, 2>;
+template class NMStreamingImageFileWriterWrapper_Internal<short, short, 2>;
+template class NMStreamingImageFileWriterWrapper_Internal<unsigned int, unsigned int, 2>;
+template class NMStreamingImageFileWriterWrapper_Internal<int, int, 2>;
+template class NMStreamingImageFileWriterWrapper_Internal<unsigned long, unsigned long, 2>;
+template class NMStreamingImageFileWriterWrapper_Internal<long, long, 2>;
+template class NMStreamingImageFileWriterWrapper_Internal<float, float, 2>;
+template class NMStreamingImageFileWriterWrapper_Internal<double, double, 2>;
+template class NMStreamingImageFileWriterWrapper_Internal<unsigned char, unsigned char, 3>;
+template class NMStreamingImageFileWriterWrapper_Internal<char, char, 3>;
+template class NMStreamingImageFileWriterWrapper_Internal<unsigned short, unsigned short, 3>;
+template class NMStreamingImageFileWriterWrapper_Internal<short, short, 3>;
+template class NMStreamingImageFileWriterWrapper_Internal<unsigned int, unsigned int, 3>;
+template class NMStreamingImageFileWriterWrapper_Internal<int, int, 3>;
+template class NMStreamingImageFileWriterWrapper_Internal<unsigned long, unsigned long, 3>;
+template class NMStreamingImageFileWriterWrapper_Internal<long, long, 3>;
+template class NMStreamingImageFileWriterWrapper_Internal<float, float, 3>;
+template class NMStreamingImageFileWriterWrapper_Internal<double, double, 3>;
+
 
 #ifdef BUILD_RASSUPPORT
     #define callSetFileName( PixelType, wrapName ) \
@@ -1145,7 +1178,7 @@ NMStreamingImageFileWriterWrapper
                     NMDebugAI(<< "broadcasting writeability to fellow ranks via comm #"
                               << comm_name << " ... " << endl);
 
-                    int errc = MPI_Bcast(&bWriteable, 1, MPI_CXX_BOOL, 0, comm);
+                    int errc = MPI_Bcast(&bWriteable, 1, MPI_C_BOOL, 0, comm);
                     MPI_Barrier(comm);
                     NMDebugAI(<< "Bcast: " << (errc == 0 ? "successful" : "failed") << endl);
                 }
@@ -1213,7 +1246,7 @@ NMStreamingImageFileWriterWrapper
                 NMDebugAI(<< "broadcasting writeability (" << bWriteable
                           << ") to fellow ranks ... " << endl);
 
-                int errc = MPI_Bcast(&bWriteable, 1, MPI_CXX_BOOL, 0, comm);
+                int errc = MPI_Bcast(&bWriteable, 1, MPI_C_BOOL, 0, comm);
                 MPI_Barrier(comm);
                 NMDebugAI(<< "Bcast: " << (errc == 0 ? "successful" : "failed") << endl);
             }

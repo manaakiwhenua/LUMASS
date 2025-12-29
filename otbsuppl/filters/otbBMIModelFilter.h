@@ -35,6 +35,7 @@
 #include "itkMultiThreader.h"
 #include "itkImageToImageFilter.h"
 #include "itkImageRegionIterator.h"
+#include "itkImageRegionIteratorWithIndex.h"
 #include "itkImageRegionConstIterator.h"
 #include "itkNMConstShapedNeighborhoodIterator.h"
 #include "itkNeighborhood.h"
@@ -81,7 +82,8 @@ public:
     typedef typename OutputImageType::SizeValueType OutputImageSizeValueType;
 
     typedef typename itk::ConstNeighborhoodIterator<InputImageType> InputNeighborhoodIterator;
-    typedef typename itk::ImageRegionIterator<OutputImageType> OutputRegionIterator;
+    typedef typename itk::ImageRegionIteratorWithIndex<OutputImageType> OutputRegionIterator;
+    typedef typename OutputRegionIterator::IndexType OutputIndexType;
 
     typedef itk::NeighborhoodAllocator<InputImagePixelType> InputNeighborhoodAllocType;
     typedef itk::Neighborhood<InputImagePixelType, InputImageType::ImageDimension, InputNeighborhoodAllocType> InputNeighborhoodType;

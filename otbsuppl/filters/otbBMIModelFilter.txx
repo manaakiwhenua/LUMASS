@@ -900,14 +900,27 @@ void
 BMIModelFilter<TInputImage, TOutputImage>
 ::RunKernelFunc(const OutputImageRegionType &outputRegionForThread, itk::ThreadIdType threadId)
 {
+    const uint64_t numPixel = outputRegionForThread.GetNumberOfPixels();
+    const int numInputs = this->GetNumberOfIndexedInputs();
+    const int numOutputs = m_NumOuputImages;
+
+    //OutputImagePixelType* out_nhbufCont[numOutputs];
+    //OutputNeighborhoodType out_nhCont[numOutputs];
+    OutputImagePixelType* outbuf = new OutputImagePixelType[numOutputs];
+
+    //InputImagePixelType* in_nhbufCont[numInputs];
+    InputImagePixelType** in_nhbufCont = new InputImagePixelType*[numInputs];
+    //InputNeighborhoodType in_nhCont[numInputs];
+    InputNeighborhoodType* in_nhCont = new InputNeighborhoodType[numInputs];
+    
+    //int64_t* outPixIndex = new int64_t[TInputImage::ImageDimension];
+    std::vector<int64_t> outPixIndex(TInputImage::ImageDimension, 0);
+
     //NMProcInfo(<< "::RuKernelFunc() ...");
     try
     {
         // ----------------------------------
         // setup image/kernel iterators
-        const uint64_t numPixel = outputRegionForThread.GetNumberOfPixels();
-        const int numInputs = this->GetNumberOfIndexedInputs();
-        const int numOutputs = m_NumOuputImages;
 
         const InputImageType* inImg = this->GetInput(0);
 
@@ -927,24 +940,16 @@ BMIModelFilter<TInputImage, TOutputImage>
         FaceListType faceList = bC(inImg, outputRegionForThread, m_KernelRadius);
         FaceListIteratorType fit;
 
-        //OutputImagePixelType* out_nhbufCont[numOutputs];
-        //OutputNeighborhoodType out_nhCont[numOutputs];
-        OutputImagePixelType outbuf[numOutputs];
-
-        InputImagePixelType* in_nhbufCont[numInputs];
-        InputNeighborhoodType in_nhCont[numInputs];
-
-        int64_t outPixIndex[TInputImage::ImageDimension];
         for (int in=0; in < numInputs; ++in)
         {
             inImgVec.push_back(const_cast<InputImageType*>(this->GetInput(in)));
-            inIterVec.push_back(InputNeighborhoodIterator());
+            //inIterVec.push_back(InputNeighborhoodIterator());
         }
         for (int out=0; out < numOutputs; ++out)
         {
             outImgVec.push_back(const_cast<OutputImageType*>(this->GetOutput(out)));
             //outIterVec.push_back(OutputNeighborhoodIterator());
-            outIterVec.push_back(OutputRegionIterator());
+            //outIterVec.push_back(OutputRegionIterator());
         }
 
         // center pixel index (1D)
@@ -953,17 +958,20 @@ BMIModelFilter<TInputImage, TOutputImage>
         // process boundary faces
         for (fit = faceList.begin(); fit != faceList.end() && !this->GetAbortGenerateData(); ++fit)
         {
+            inIterVec.clear();
             for (int in=0; in < numInputs; ++in)
             {
-                inIterVec[in] = InputNeighborhoodIterator(m_KernelRadius, inImgVec[in], *fit);
+                inIterVec.push_back(InputNeighborhoodIterator(m_KernelRadius, inImgVec[in], *fit));
                 inIterVec[in].OverrideBoundaryCondition(&in_nbc);
                 inIterVec[in].GoToBegin();
             }
+            outIterVec.clear();
             for (int out=0; out < numOutputs; ++out)
             {
                 //outIterVec[out] = OutputNeighborhoodIterator(m_KernelRadius, outImgVec[out], *fit);
                 //outIterVec[out].OverrideBoundaryCondition(&out_nbc);
-                outIterVec[out] = OutputRegionIterator(outImgVec[out], *fit);
+                //outIterVec[out] = OutputRegionIterator(outImgVec[out], *fit);
+                outIterVec.push_back(OutputRegionIterator(outImgVec[out], *fit));
                 outIterVec[out].GoToBegin();
             }
 
@@ -972,7 +980,7 @@ BMIModelFilter<TInputImage, TOutputImage>
                 for (int in=0; in < numInputs; ++in)
                 {
                     in_nhCont[in] = inIterVec[in].GetNeighborhood();
-                    in_nhbufCont[in] = &in_nhCont[in].GetBufferReference()[0];
+                    in_nhbufCont[in] = static_cast<InputImagePixelType*>(& in_nhCont[in].GetBufferReference()[0]);
                 }
                 //for (int out=0; out < numOutputs; ++out)
                 //{
@@ -992,15 +1000,16 @@ BMIModelFilter<TInputImage, TOutputImage>
 //              //      }
 //              //      NMDebugAINoMPI(<< std::endl << std::endl);
                 //}
+                OutputIndexType outIdx = outIterVec[0].GetIndex();
                 for (int d=0; d < TInputImage::ImageDimension; ++d)
                 {
-                    outPixIndex[d] = static_cast<int64_t>(outIterVec[0].GetIndex()[d]);
+                    outPixIndex[d] = static_cast<int64_t>(outIdx[d]);
                 }
 
                 // call kernel callback function
                 m_KernelFunc(TInputImage::ImageDimension, numInputs, numOutputs, m_NumNeighbourPixel,
                              m_AuxIntData.size(), m_AuxDoubleData.size(), m_AuxVarArLen,
-                             m_LPRSize, m_LPRSpacing, outPixIndex,
+                             m_LPRSize, m_LPRSpacing, outPixIndex.data(),
                              in_nhbufCont, outbuf, //out_nhbufCont,
                              m_AuxIntData.data(), m_AuxDoubleData.data(), m_vthAuxVarAr.at(threadId).data());
 
@@ -1030,14 +1039,29 @@ BMIModelFilter<TInputImage, TOutputImage>
     }
     catch (std::exception& se)
     {
+        delete[] outbuf;
+        delete[] in_nhbufCont;
+        delete[] in_nhCont;
+        //delete[] outPixIndex;
+
         NMProcErr(<< se.what());
         itkExceptionMacro(<< se.what());
     }
     catch(...)
     {
+        delete[] outbuf;
+        delete[] in_nhbufCont;
+        delete[] in_nhCont;
+        //delete[] outPixIndex;
+
         NMProcErr(<< "Unknown error in PyBMIModel!");
         itkExceptionMacro(<< "Unknown error in PyBMIModel!");
     }
+
+    delete[] outbuf;
+    delete[] in_nhbufCont;
+    delete[] in_nhCont;
+    //delete[] outPixIndex;
 }
 
 

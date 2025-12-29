@@ -20,10 +20,12 @@
 #include "NMCostDistanceBufferImageWrapperFactory.h"
 #include "NMCostDistanceBufferImageWrapper.h"
 
-extern "C" NMCOSTDISTANCEBUFFERIMAGEWRAPPER_EXPORT
-NMWrapperFactory* createWrapperFactory()
+extern "C"
 {
-    return new NMCostDistanceBufferImageWrapperFactory();
+    NMCOSTDISTANCEBUFFERIMAGEWRAPPER_EXPORT NMWrapperFactory* WINCALL createWrapperFactory()
+    {
+        return new NMCostDistanceBufferImageWrapperFactory();
+    }
 }
 
 NMCostDistanceBufferImageWrapperFactory::NMCostDistanceBufferImageWrapperFactory(QObject *parent) : NMWrapperFactory(parent)

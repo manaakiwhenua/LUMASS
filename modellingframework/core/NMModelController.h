@@ -44,9 +44,8 @@
 
 #include "Python_wrapper.h"
 
-#ifndef _WIN32
 #include <mpi.h>
-#endif
+
 
 #include "NMObject.h"
 #include "otbAttributeTable.h"
@@ -128,6 +127,7 @@ public:
     virtual void setLogger(NMLogger* logger);
 
     QSharedPointer<NMItkDataObjectWrapper> getOutputFromSource(const QString& inputSrc);
+    NMModelComponent* createModelComponent(const QString& compClass);
 	NMModelComponent* getComponent(const QString& name);
     QList<NMModelComponent*> getComponents(const QString& userId);
 	QString addComponent(NMModelComponent* comp,

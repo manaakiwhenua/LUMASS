@@ -484,10 +484,11 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
     queryObj.setForwardOnly(true);
     if (!queryObj.exec(queryStr))
     {
+        QString errStr = queryObj.lastError().text();
         queryObj.finish();
         queryObj.clear();
         srcDb.rollback();
-        NMLogError(<< ctx << "::" << __FUNCTION__ << "() : " << queryObj.lastError().text().toStdString() << std::endl);
+        NMLogError(<< ctx << "::" << __FUNCTION__ << "() : " << errStr.toStdString() << std::endl);
         return false;
     }
 
@@ -1367,7 +1368,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
 
 
     //QString tmpCreate = QString("Create temp table if not exists %1 ")
-    QString tmpCreate = QString("Create temp table if not exists %1 ")
+    QString tmpCreate = QString("Create table if not exists %1 ")
                         .arg(db.driver()->escapeIdentifier(mTempTableName, QSqlDriver::TableName));
     tmpCreate += QString("(%1 integer primary key, %2 integer").arg(mProxyPK)
                                                        .arg(mSourcePK);
@@ -1538,6 +1539,58 @@ NMSelSortSqlTableProxyModel::mapFromSource(const QModelIndex& srcIdx) const
     qProxy.clear();
     db.commit();
     return retIdx;
+}
+
+QList<int>
+NMSelSortSqlTableProxyModel::mapToProxyIds(const QString& wcc, const QList<int>& wcc_values) const
+{
+    QList<int> retIds;
+    if (    mSourceModel == nullptr
+         || mLastColSort.first == -1
+       )
+    {
+        return retIds;
+    }
+
+    std::stringstream src_ids_str;
+    for (int r=0; r < wcc_values.count(); ++r)
+    {
+        src_ids_str << wcc_values[r];
+        if (r < wcc_values.count()-1)
+        {
+            src_ids_str << ", ";
+        }
+    }
+
+    QSqlDriver* drv = mSourceModel->database().driver();
+    QString qstr = QString("Select %1 from %2 where %3 in (%4);")
+                   .arg(drv->escapeIdentifier(mSourcePK, QSqlDriver::FieldName))
+                   .arg(drv->escapeIdentifier(mTempTableName, QSqlDriver::TableName))
+                   .arg(drv->escapeIdentifier(wcc, QSqlDriver::FieldName))
+                   .arg(src_ids_str.str().c_str());
+
+    QSqlDatabase db = mSourceModel->database();
+    db.transaction();
+    QSqlQuery qProxyIds(db);
+    qProxyIds.setForwardOnly(true);
+    if (!qProxyIds.exec(qstr))
+    {
+        NMLogError(<< ctx << "::" << __FUNCTION__ << "() : " << qProxyIds.lastError().text().toStdString());
+        qProxyIds.finish();
+        qProxyIds.clear();
+        db.rollback();
+        return retIds;
+    }
+
+    while (qProxyIds.next())
+    {
+        retIds << qProxyIds.value(0).toInt();
+    }
+
+    qProxyIds.finish();
+    qProxyIds.clear();
+    db.commit();
+    return retIds;
 }
 
 QModelIndex

@@ -67,6 +67,9 @@ public:
     QModelIndex mapFromSource(const QModelIndex& srcIdx) const;
     QModelIndex mapToSource(const QModelIndex& proxyIdx) const;
 
+    // nm_proxy_ids from TempTable where wcc in (wcc_values);
+    QList<int> mapToProxyIds(const QString &wcc, const QList<int>& wcc_values) const;
+
     /*! inserts a column into the data base table
      *  note: the column parameter denotes the type of the column
      *  coded as QVariant::Type
@@ -95,6 +98,7 @@ public:
 
     bool joinTable(const QString& joinTableName, const QString& joinFieldName,
                    const QString& tarFieldName);
+    std::pair<int, Qt::SortOrder> getLastColSort(){return mLastColSort;}
 
     QString getRandomString(int len=15);
     QString getFilter(void){return mLastFilter;}

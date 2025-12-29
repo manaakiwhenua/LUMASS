@@ -54,7 +54,7 @@
 #include <QSqlDriver>
 #include <QApplication>
 
-#include "QtWebSockets/QWebSocket"
+//#include "QtWebSockets/QWebSocket"
 //#include <QtNetwork/QSslCertificate>
 //#include <QtNetwork/QSslKey>
 //#include <QtNetwork/QtNetwork>
@@ -897,7 +897,7 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
     double origin[3];
     double ulcorner[3];
     int dims[3] = {0,0,0};
-    double err[3];
+    double err[3] = { 0.0, 0.0, 0.0 };
 
     vtkImageData* img = vtkImageData::SafeDownCast(
                 const_cast<vtkDataSet*>(this->getDataSet()));
@@ -1972,13 +1972,13 @@ NMImageLayer::mapExtentChanged(void)
         wminz = mBBox[4];
         wmaxz = mBBox[5];
 
-//        if (mNumDimensions == 3)
-//        {
-//        }
-//        else
-//        {
-//            wminz = wmaxz = wdepth = 0;
-//        }
+        if (mNumDimensions == 3)
+        {
+        }
+        else
+        {
+            wminz = wmaxz = wdepth = 0;
+        }
 
         if (bbworld.Intersects(bblayer) == 0)
         {
@@ -2052,7 +2052,9 @@ NMImageLayer::mapExtentChanged(void)
         // overview properties and visible extent
         int cols = ovidx >= 0 ? mOverviewSize[ovidx][0] : fullcols;
         int rows = ovidx >= 0 ? mOverviewSize[ovidx][1] : fullrows;
-        int slices = ovidx >= 0 ? mOverviewSize[ovidx][2] : fullslices;
+        int slices =   ovidx >= 0 && mOverviewSize[ovidx].size() == 3 
+                     ? mOverviewSize[ovidx][2] 
+                     : fullslices;
 
         double uspacing[3];
         uspacing[0] = h_ext / cols;
@@ -2974,10 +2976,11 @@ NMImageLayer::updateSourceBuffer(void)
 
 
 
-        this->sendData(dc->getOutput(0));
+        //this->sendData(dc->getOutput(0));
     }
 }
 
+/*
 void
 NMImageLayer::sendData(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
 {
@@ -3083,6 +3086,7 @@ NMImageLayer::sendData(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
     delete[] dbl_rgba;
 
 }
+*/
 
 void
 NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)

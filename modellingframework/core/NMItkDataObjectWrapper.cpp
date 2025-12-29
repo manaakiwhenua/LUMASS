@@ -37,6 +37,11 @@
 #include "NMMacros.h"
 #include "nmtypeinfo.h"
 
+
+#ifdef _WIN32
+    #include "NMItkDataObjectWrapper_ImportTemplates.h"
+#endif
+
 template <class PixelType, unsigned int ImageDimension>
 class NMItkDataObjectWrapper_Internal
 {
@@ -47,15 +52,15 @@ public:
     typedef typename RGBImgType::PointType              RGBImgPointType;
     typedef typename RGBImgType::SpacingType            RGBImgSpacingType;
 
-    using RGBImgBufferFilterType    = typename otb::DataBufferFilter<RGBImgType>;//, RGBImgType>;
+    using RGBImgBufferFilterType = typename otb::DataBufferFilter<RGBImgType>;//, RGBImgType>;
     using RGBImgBufferFilterPointer = typename RGBImgBufferFilterType::Pointer;
 
-    typedef otb::Image<PixelType, ImageDimension> ImgType;
+    typedef typename otb::Image<PixelType, ImageDimension> ImgType;
     typedef typename ImgType::RegionType ImgRegType;
     typedef typename ImgType::PointType ImgPointType;
     typedef typename ImgType::SpacingType ImgSpacingType;
 
-    using ImgBufferFilterType    = typename otb::DataBufferFilter<ImgType>;//, ImgType>;
+    using ImgBufferFilterType = typename otb::DataBufferFilter<ImgType>;//, ImgType>;
     using ImgBufferFilterPointer = typename ImgBufferFilterType::Pointer;
 
     typedef otb::VectorImage<PixelType, ImageDimension> VecType;
@@ -63,16 +68,15 @@ public:
     typedef typename VecType::PointType VecPointType;
     typedef typename VecType::SpacingType VecSpacingType;
 
-    using VecImgBufferFilterType    = typename otb::DataBufferFilter<VecType>;//, VecType>;
+    using VecImgBufferFilterType = typename otb::DataBufferFilter<VecType>;//, VecType>;
     using VecImgBufferFilterPointer = typename VecImgBufferFilterType::Pointer;
-
 
     static void createInstance(itk::ProcessObject::Pointer& otbFilter,
                                unsigned int numBands, bool rgbMode)
     {
         if (numBands == 1)
         {
-            ImgBufferFilterPointer f = ImgBufferFilterType::New();
+            ImgBufferFilterPointer f = NMItkDataObjectWrapper_Internal::ImgBufferFilterType::New();
             otbFilter = f;
         }
         else if (numBands == 3 && rgbMode)
@@ -287,6 +291,46 @@ public:
     }
 };
 
+template class NMItkDataObjectWrapper_Internal<unsigned char, 1>;
+template class NMItkDataObjectWrapper_Internal<char, 1>;
+template class NMItkDataObjectWrapper_Internal<unsigned short, 1>;
+template class NMItkDataObjectWrapper_Internal<short, 1>;
+template class NMItkDataObjectWrapper_Internal<unsigned int, 1>;
+template class NMItkDataObjectWrapper_Internal<int, 1>;
+template class NMItkDataObjectWrapper_Internal<unsigned long, 1>;
+template class NMItkDataObjectWrapper_Internal<long, 1>;
+template class NMItkDataObjectWrapper_Internal<unsigned long long, 1>;
+template class NMItkDataObjectWrapper_Internal<long long, 1>;
+template class NMItkDataObjectWrapper_Internal<float, 1>;
+template class NMItkDataObjectWrapper_Internal<double, 1>;
+template class NMItkDataObjectWrapper_Internal<unsigned char, 2>;
+template class NMItkDataObjectWrapper_Internal<char, 2>;
+template class NMItkDataObjectWrapper_Internal<unsigned short, 2>;
+template class NMItkDataObjectWrapper_Internal<short, 2>;
+template class NMItkDataObjectWrapper_Internal<unsigned int, 2>;
+template class NMItkDataObjectWrapper_Internal<int, 2>;
+template class NMItkDataObjectWrapper_Internal<unsigned long, 2>;
+template class NMItkDataObjectWrapper_Internal<long, 2>;
+template class NMItkDataObjectWrapper_Internal<unsigned long long, 2>;
+template class NMItkDataObjectWrapper_Internal<long long, 2>;
+template class NMItkDataObjectWrapper_Internal<float, 2>;
+template class NMItkDataObjectWrapper_Internal<double, 2>;
+template class NMItkDataObjectWrapper_Internal<unsigned char, 3>;
+template class NMItkDataObjectWrapper_Internal<char, 3>;
+template class NMItkDataObjectWrapper_Internal<unsigned short, 3>;
+template class NMItkDataObjectWrapper_Internal<short, 3>;
+template class NMItkDataObjectWrapper_Internal<unsigned int, 3>;
+template class NMItkDataObjectWrapper_Internal<int, 3>;
+template class NMItkDataObjectWrapper_Internal<unsigned long, 3>;
+template class NMItkDataObjectWrapper_Internal<long, 3>;
+template class NMItkDataObjectWrapper_Internal<unsigned long long, 3>;
+template class NMItkDataObjectWrapper_Internal<long long, 3>;
+template class NMItkDataObjectWrapper_Internal<float, 3>;
+template class NMItkDataObjectWrapper_Internal<double, 3>;
+
+
+
+
 #define DWCreateBufferFilterInstance( comptype ) \
 { \
     switch(mNumDimensions) \
@@ -409,6 +453,7 @@ NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject* parent)//, itk::DataObje
     this->mIsRGBImage = false;
     this->mbIsStreaming = false;
     this->mItkProcess = nullptr;
+    this->mNMComponentType = NMComponentType::NM_UNKNOWN;
 }
 
 NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject* parent, QString str)
@@ -420,6 +465,7 @@ NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject* parent, QString str)
     this->mIsRGBImage = false;
     this->mbIsStreaming = false;
     this->mItkProcess = nullptr;
+    this->mNMComponentType = NMComponentType::NM_UNKNOWN;
 }
 
 NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject *parent, itk::DataObject* obj,
@@ -728,41 +774,3 @@ NMItkDataObjectWrapper::getComponentTypeFromString(const QString& compType)
 
     return type;
 }
-
-template class NMItkDataObjectWrapper_Internal<unsigned char, 1>;
-template class NMItkDataObjectWrapper_Internal<char, 1>;
-template class NMItkDataObjectWrapper_Internal<unsigned short, 1>;
-template class NMItkDataObjectWrapper_Internal<short, 1>;
-template class NMItkDataObjectWrapper_Internal<unsigned int, 1>;
-template class NMItkDataObjectWrapper_Internal<int, 1>;
-template class NMItkDataObjectWrapper_Internal<unsigned long, 1>;
-template class NMItkDataObjectWrapper_Internal<long, 1>;
-template class NMItkDataObjectWrapper_Internal<unsigned long long, 1>;
-template class NMItkDataObjectWrapper_Internal<long long, 1>;
-template class NMItkDataObjectWrapper_Internal<float, 1>;
-template class NMItkDataObjectWrapper_Internal<double, 1>;
-template class NMItkDataObjectWrapper_Internal<unsigned char, 2>;
-template class NMItkDataObjectWrapper_Internal<char, 2>;
-template class NMItkDataObjectWrapper_Internal<unsigned short, 2>;
-template class NMItkDataObjectWrapper_Internal<short, 2>;
-template class NMItkDataObjectWrapper_Internal<unsigned int, 2>;
-template class NMItkDataObjectWrapper_Internal<int, 2>;
-template class NMItkDataObjectWrapper_Internal<unsigned long, 2>;
-template class NMItkDataObjectWrapper_Internal<long, 2>;
-template class NMItkDataObjectWrapper_Internal<unsigned long long, 2>;
-template class NMItkDataObjectWrapper_Internal<long long, 2>;
-template class NMItkDataObjectWrapper_Internal<float, 2>;
-template class NMItkDataObjectWrapper_Internal<double, 2>;
-template class NMItkDataObjectWrapper_Internal<unsigned char, 3>;
-template class NMItkDataObjectWrapper_Internal<char, 3>;
-template class NMItkDataObjectWrapper_Internal<unsigned short, 3>;
-template class NMItkDataObjectWrapper_Internal<short, 3>;
-template class NMItkDataObjectWrapper_Internal<unsigned int, 3>;
-template class NMItkDataObjectWrapper_Internal<int, 3>;
-template class NMItkDataObjectWrapper_Internal<unsigned long, 3>;
-template class NMItkDataObjectWrapper_Internal<long, 3>;
-template class NMItkDataObjectWrapper_Internal<unsigned long long, 3>;
-template class NMItkDataObjectWrapper_Internal<long long, 3>;
-template class NMItkDataObjectWrapper_Internal<float, 3>;
-template class NMItkDataObjectWrapper_Internal<double, 3>;
-

@@ -31,6 +31,7 @@
 #include "itkProcessObject.h"
 #include "otbImageIOBase.h"
 #include "otbAttributeTable.h"
+
 #include "nmmodframecore_export.h"
 
 class NMMODFRAMECORE_EXPORT NMItkDataObjectWrapper: public QObject
@@ -70,7 +71,6 @@ public:
         {return this->mOTBTab;}
 
     itk::DataObject* getDataObject(void);
-        //{return this->mDataObject;}
 
     void getSignedImageSpacing(std::array<double, 3>& spacing);
 

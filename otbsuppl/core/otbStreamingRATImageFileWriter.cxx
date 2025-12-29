@@ -1,0 +1,139 @@
+/******************************************************************************
+* Created by Alexander Herzig
+* Copyright 2025 New Zealand Institute for Bioeconomy Science Ltd.
+*
+* This file is part of 'LUMASS', which is free software: you can redistribute
+* it and/or modify it under the terms of the GNU General Public License as
+* published by the Free Software Foundation, either version 3 of the License,
+* or (at your option) any later version.
+*
+* This programs distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program. If not, see <http://www.gnu.org/licenses/>.
+******************************************************************************/
+/*
+*  otbStreamingRATImageFileWriter.cxx
+*
+*  Created on: 03/10/2025
+*      Author: alex
+*/
+
+#include "otbStreamingRATImageFileWriter.h"
+#include "nmotbsupplcorewriter_export.h"
+
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<unsigned int, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<int, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<unsigned char, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<char, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<unsigned short, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<short, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<float, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<double, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<unsigned long, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<long, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<unsigned long long, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<long long, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<unsigned int, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<int, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<unsigned char, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<char, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<unsigned short, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<short, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<float, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<double, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<unsigned long, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<long, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<unsigned long long, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<long long, 1>>;
+
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<unsigned int, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<int, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<unsigned char, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<char, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<unsigned short, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<short, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<float, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<double, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<unsigned long, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<long, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<unsigned long long, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<long long, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<unsigned int, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<int, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<unsigned char, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<char, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<unsigned short, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<short, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<float, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<double, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<unsigned long, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<long, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<unsigned long long, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<long long, 2>>;
+
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<unsigned int, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<int, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<unsigned char, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<char, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<unsigned short, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<short, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<float, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<double, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<unsigned long, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<long, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<unsigned long long, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<long long, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<unsigned int, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<int, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<unsigned char, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<char, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<unsigned short, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<short, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<float, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<double, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<unsigned long, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<long, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<unsigned long long, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::VectorImage<long long, 3>>;
+
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<unsigned int>, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<int>, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<unsigned char>, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<char>, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<unsigned short>, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<short>, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<float>, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<double>, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<unsigned long>, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<long>, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<unsigned long long>, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<long long>, 1>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<unsigned int>, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<int>, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<unsigned char>, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<char>, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<unsigned short>, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<short>, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<float>, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<double>, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<unsigned long>, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<long>, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<unsigned long long>, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<long long>, 2>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<unsigned int>, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<int>, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<unsigned char>, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<char>, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<unsigned short>, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<short>, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<float>, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<double>, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<unsigned long>, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<long>, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<unsigned long long>, 3>>;
+template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<long long>, 3>>;
+

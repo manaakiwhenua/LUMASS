@@ -39,7 +39,7 @@
 //#include "otbGDALRATImageFileReader.h"
 #include "NMItkDataObjectWrapper.h"
 #include "otbAttributeTable.h"
-#include "otbImage.h"
+//#include "otbImage.h"
 #include "itkSmartPointer.h"
 
 #ifdef BUILD_RASSUPPORT
@@ -49,6 +49,8 @@
 #endif
 
 #include "nmmodframecore_export.h"
+//#include "ImportNMImageReaderExternTemplates.h"
+//#include "ImportOTBSupplCoreExternTemplates.h"
 
 /**
  *  \brief Type independent image reader class.

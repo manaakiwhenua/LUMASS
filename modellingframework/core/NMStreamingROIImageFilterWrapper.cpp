@@ -33,6 +33,10 @@
 /*$<ForwardInputUserIDs_Include>$*/
 
 #include "nmStreamingROIImageFilter.h"
+#ifdef _WIN32
+    #include "NMItkDataObjectWrapper_ImportTemplates.h"
+#endif
+
 
 /*! Internal templated helper class linking to the core otb/itk filter
  *  by static methods.
@@ -223,6 +227,39 @@ public:
         NMDebugCtx("NMStreamingROIImageFilterWrapper_Internal", << "done!");
     }
 };
+
+// explicit instantiation
+template class NMStreamingROIImageFilterWrapper_Internal<unsigned char, 1>;
+template class NMStreamingROIImageFilterWrapper_Internal<char, 1>;
+template class NMStreamingROIImageFilterWrapper_Internal<unsigned short, 1>;
+template class NMStreamingROIImageFilterWrapper_Internal<short, 1>;
+template class NMStreamingROIImageFilterWrapper_Internal<unsigned int, 1>;
+template class NMStreamingROIImageFilterWrapper_Internal<int, 1>;
+template class NMStreamingROIImageFilterWrapper_Internal<unsigned long, 1>;
+template class NMStreamingROIImageFilterWrapper_Internal<long, 1>;
+template class NMStreamingROIImageFilterWrapper_Internal<float, 1>;
+template class NMStreamingROIImageFilterWrapper_Internal<double, 1>;
+template class NMStreamingROIImageFilterWrapper_Internal<unsigned char, 2>;
+template class NMStreamingROIImageFilterWrapper_Internal<char, 2>;
+template class NMStreamingROIImageFilterWrapper_Internal<unsigned short, 2>;
+template class NMStreamingROIImageFilterWrapper_Internal<short, 2>;
+template class NMStreamingROIImageFilterWrapper_Internal<unsigned int, 2>;
+template class NMStreamingROIImageFilterWrapper_Internal<int, 2>;
+template class NMStreamingROIImageFilterWrapper_Internal<unsigned long, 2>;
+template class NMStreamingROIImageFilterWrapper_Internal<long, 2>;
+template class NMStreamingROIImageFilterWrapper_Internal<float, 2>;
+template class NMStreamingROIImageFilterWrapper_Internal<double, 2>;
+template class NMStreamingROIImageFilterWrapper_Internal<unsigned char, 3>;
+template class NMStreamingROIImageFilterWrapper_Internal<char, 3>;
+template class NMStreamingROIImageFilterWrapper_Internal<unsigned short, 3>;
+template class NMStreamingROIImageFilterWrapper_Internal<short, 3>;
+template class NMStreamingROIImageFilterWrapper_Internal<unsigned int, 3>;
+template class NMStreamingROIImageFilterWrapper_Internal<int, 3>;
+template class NMStreamingROIImageFilterWrapper_Internal<unsigned long, 3>;
+template class NMStreamingROIImageFilterWrapper_Internal<long, 3>;
+template class NMStreamingROIImageFilterWrapper_Internal<float, 3>;
+template class NMStreamingROIImageFilterWrapper_Internal<double, 3>;
+
 
 /*$<HelperClassInstantiation>$*/
 

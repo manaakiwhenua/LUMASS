@@ -38,7 +38,8 @@
 #ifndef itkNMConstShapedNeighborhoodIterator_h
 #define itkNMConstShapedNeighborhoodIterator_h
 
-#include "itkConstShapedNeighborhoodIterator.h"
+#include "itkNeighborhoodIterator.h"
+#include "nmitk_export.h"
 
 namespace itk
 {
@@ -52,7 +53,7 @@ namespace itk
 
 template< typename TImage,  typename TBoundaryCondition =
             ZeroFluxNeumannBoundaryCondition< TImage > >
-class NMConstShapedNeighborhoodIterator:
+class NMITK_EXPORT NMConstShapedNeighborhoodIterator:
   public NeighborhoodIterator< TImage, TBoundaryCondition >
 {
 public:
@@ -281,7 +282,7 @@ protected:
 
   /** Standard itk print method */
   virtual void PrintSelf(std::ostream &, Indent) const;
-
+  
   /** Add/Remove a neighborhood offset (from the center of the neighborhood)
    *  to/from the active list.  Active list offsets are the only locations
    *  updated and accessible through the iterator.  */
@@ -377,8 +378,89 @@ protected:
 };
 } // namespace itk
 
-#ifndef ITK_MANUAL_INSTANTIATION
+#ifdef NMItk_EXPORTS
 #include "itkNMConstShapedNeighborhoodIterator.hxx"
 #endif
+#include "otbImage.h"
+#include "otbVectorImage.h"
+
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::Image<unsigned long long, 1  >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<unsigned long long, 1        >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::Image<long long, 1           >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<long long, 1                 >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::Image<unsigned long, 1       >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<unsigned long, 1       >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::Image<long, 1                >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<long, 1                >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::Image<unsigned int, 1        >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<unsigned int, 1        >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::Image<int, 1                 >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<int, 1                 >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::Image<unsigned char, 1       >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<unsigned char, 1       >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::Image<char, 1                >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<char, 1                >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::Image<unsigned short, 1      >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<unsigned short, 1      >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::Image<short, 1               >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<short, 1               >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::Image<float, 1               >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<float, 1               >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::Image<double, 1              >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<double, 1              >>>;
+
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<unsigned long long, 1  >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<unsigned long long, 1        >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<long long, 1           >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<long long, 1                 >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<unsigned long, 1       >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<unsigned long, 1       >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<long, 1                >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<long, 1                >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<unsigned int, 1  >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<unsigned int, 1  >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<int, 1           >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<int, 1           >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<unsigned char, 1 >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<unsigned char, 1 >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<char, 1          >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<char, 1          >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<unsigned short, 1>, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<unsigned short, 1>>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<short, 1         >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<short, 1         >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<float, 1         >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<float, 1         >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<double, 1        >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<double, 1        >>>;
+
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<unsigned long long, 2  >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<unsigned long long, 2        >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<long long, 2           >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<long long, 2                 >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<unsigned long, 2       >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<unsigned long, 2       >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<long, 2                >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<long, 2                >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<unsigned int, 2        >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<unsigned int, 2        >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<int, 2                 >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<int, 2                 >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<unsigned char, 2       >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<unsigned char, 2       >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<char, 2                >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<char, 2                >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<unsigned short, 2      >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<unsigned short, 2      >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<short, 2               >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<short, 2               >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<float, 2               >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<float, 2               >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<double, 2              >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<double, 2              >>>;
+
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::VectorImage<unsigned long long, 2  >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<unsigned long long, 2        >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::VectorImage<long long, 2           >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<long long, 2                 >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::VectorImage<unsigned long, 2       >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<unsigned long, 2       >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::VectorImage<long, 2                >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<long, 2                >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::VectorImage<unsigned int, 2  >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<unsigned int, 2  >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::VectorImage<int, 2           >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<int, 2           >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::VectorImage<unsigned char, 2 >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<unsigned char, 2 >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::VectorImage<char, 2          >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<char, 2          >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::VectorImage<unsigned short, 2>, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<unsigned short, 2>>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::VectorImage<short, 2         >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<short, 2         >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::VectorImage<float, 2         >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<float, 2         >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::VectorImage<double, 2        >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<double, 2        >>>;
+
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<unsigned long long, 3  >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<unsigned long long, 3        >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<long long, 3           >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<long long, 3                 >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<unsigned long, 3       >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<unsigned long, 3       >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<long, 3                >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<long, 3                >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<unsigned int, 3        >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<unsigned int, 3        >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<int, 3                 >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<int, 3                 >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<unsigned char, 3       >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<unsigned char, 3       >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<char, 3                >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<char, 3                >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<unsigned short, 3      >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<unsigned short, 3      >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<short, 3               >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<short, 3               >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<float, 3               >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<float, 3               >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::Image<double, 3              >, itk::ZeroFluxNeumannBoundaryCondition<otb::Image<double, 3              >>>;
+
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::VectorImage<unsigned long long, 3  >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<unsigned long long, 3        >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::VectorImage<long long, 3           >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<long long, 3                 >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::VectorImage<unsigned long, 3       >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<unsigned long, 3       >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator<otb::VectorImage<long, 3                >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<long, 3                >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<unsigned int, 3  >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<unsigned int, 3  >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<int, 3           >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<int, 3           >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<unsigned char, 3 >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<unsigned char, 3 >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<char, 3          >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<char, 3          >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<unsigned short, 3>, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<unsigned short, 3>>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<short, 3         >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<short, 3         >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<float, 3         >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<float, 3         >>>;
+extern template class NMITK_EXPORT itk::NMConstShapedNeighborhoodIterator < otb::VectorImage<double, 3        >, itk::ZeroFluxNeumannBoundaryCondition<otb::VectorImage<double, 3        >>>;
+
 
 #endif

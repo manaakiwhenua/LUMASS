@@ -34,6 +34,7 @@
 #include "nmNetCDFIO.h"
 #include "otbAttributeTable.h"
 #include "otbVectorImage.h"
+#include "itkImageHelper.h"
 #include "itkImageBase.h"
 #include "NMMfwException.h"
 #include "NMIterableComponent.h"
@@ -48,8 +49,11 @@
 #include "itkNearestNeighborInterpolateImageFunction.h"
 #include "itkScaleTransform.h"
 #include "itkPoint.h"
-
 #include "otbNMImageReader.h"
+
+#ifdef _WIN32
+    #include "NMItkDataObjectWrapper_ImportTemplates.h"
+#endif
 
 #ifdef BUILD_RASSUPPORT
   #include "otbRasdamanImageIO.h"
@@ -145,19 +149,16 @@
             if (numBands == 1)
             {
                 ReaderType *r = dynamic_cast<ReaderType*>(procObj);
-                //return r->getRasterAttributeTable(band);
                 return r->GetAttributeTable(band);
             }
             else if (rgbMode && numBands == 3)
             {
                 RGBReaderType *r = dynamic_cast<RGBReaderType*>(procObj);
-                //return r->getRasterAttributeTable(band);
                 return r->GetAttributeTable(band);
             }
             else
             {
                 VecReaderType *r = dynamic_cast<VecReaderType*>(procObj);
-                //return r->getRasterAttributeTable(band);
                 return r->GetAttributeTable(band);
             }
         }
@@ -181,75 +182,6 @@
                 r->SetRequestedRegion(ior);
             }
         }
-
-        //        static void setOverviewIdx(itk::ProcessObject::Pointer& procObj,
-        //                                     unsigned int numBands, int ovvidx, int* userLPR,
-        //                                   bool rgbMode)
-        //        {
-        //            if (numBands == 1)
-        //            {
-        //                ReaderType *r = dynamic_cast<ReaderType*>(procObj.GetPointer());
-        //                r->SetOverviewIdx(ovvidx);
-        //                if (userLPR != 0)
-        //                {
-        //                    ReaderRegionType lpr;
-        //                    for (int d=0; d < ImageDimension; ++d)
-        //                    {
-        //                        lpr.SetIndex(d, userLPR[d*2]);
-        //                        lpr.SetSize(d, userLPR[d*2+1]);
-        //                    }
-        //                    r->UseUserLargestPossibleRegionOn();
-        //                    r->SetUserLargestPossibleRegion(lpr);
-        //                }
-        //                else
-        //                {
-        //                    r->UseUserLargestPossibleRegionOff();
-        //                }
-        //                r->UpdateOutputInformation();
-        //            }
-        //            else if (rgbMode && numBands == 3)
-        //            {
-        //                RGBReaderType *r = dynamic_cast<RGBReaderType*>(procObj.GetPointer());
-        //                r->SetOverviewIdx(ovvidx);
-        //                if (userLPR != 0)
-        //                {
-        //                    RGBReaderRegionType lpr;
-        //                    for (int d=0; d < ImageDimension; ++d)
-        //                    {
-        //                        lpr.SetIndex(d, userLPR[d*2]);
-        //                        lpr.SetSize(d, userLPR[d*2+1]);
-        //                    }
-        //                    r->UseUserLargestPossibleRegionOn();
-        //                    r->SetUserLargestPossibleRegion(lpr);
-        //                }
-        //                else
-        //                {
-        //                    r->UseUserLargestPossibleRegionOff();
-        //                }
-        //                r->UpdateOutputInformation();
-        //            }
-        //            else
-        //            {
-        //                VecReaderType *r = dynamic_cast<VecReaderType*>(procObj.GetPointer());
-        //                r->SetOverviewIdx(ovvidx);
-        //                if (userLPR != 0)
-        //                {
-        //                    VecReaderRegionType lpr;
-        //                    for (int d=0; d < ImageDimension; ++d)
-        //                    {
-        //                        lpr.SetIndex(d, userLPR[d*2]);
-        //                        lpr.SetSize(d, userLPR[d*2+1]);
-        //                    }
-        //                    r->UseUserLargestPossibleRegionOn();
-        //                    r->SetUserLargestPossibleRegion(lpr);
-        //                }
-        //                else
-        //                {
-        //                    r->UseUserLargestPossibleRegionOff();
-        //                }
-        //                r->UpdateOutputInformation();
-        //            }
-        //        }
 
         static itk::DataObject *getOutput(itk::ProcessObject::Pointer &readerProcObj,
                 unsigned int numBands, unsigned int idx, bool rgbMode)
@@ -825,6 +757,7 @@ public:
     }
 };
 
+// FileReader class instantiation used in NMImageReader
 template class FileReader<unsigned char, 1>;
 template class FileReader<char, 1>;
 template class FileReader<unsigned short, 1>;

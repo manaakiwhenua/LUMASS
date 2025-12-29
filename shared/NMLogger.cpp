@@ -17,7 +17,7 @@
 ******************************************************************************/
 #include "NMLogger.h"
 
-#include <mpi.h>
+//#include <mpi.h>
 
 NMLogger::NMLogger(QObject *parent)
     : QObject(parent), mbHtml(false), mMPIRank(0), mMPIInitialised(0),

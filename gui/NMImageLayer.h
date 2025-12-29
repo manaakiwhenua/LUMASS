@@ -169,7 +169,7 @@ protected:
     void updateScalarBuffer(void);
     void updateSelectionColor(void);
 
-    void sendData(QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+    //void sendData(QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
     void updateVisibleRegion();
 

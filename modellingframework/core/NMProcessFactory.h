@@ -26,6 +26,7 @@
 #define NMPROCESSFACTORY_H_
 
 #include <qobject.h>
+#include "NMLogger.h"
 
 //#include "NMProcess.h"
 
@@ -48,6 +49,8 @@ public:
 
     QStringList getRegisteredComponents(void);
 
+    void setLogger(NMLogger* logger) { mLogger = logger; }
+
 private:
     NMProcessFactory(QObject* parent=0);
     virtual ~NMProcessFactory();
@@ -60,6 +63,8 @@ private:
     QString mLumassPath;
     QStringList mSinks;
     QStringList mProcRegister;
+
+    NMLogger* mLogger;
 
     NM_CREATE_FACTORY_FUNC mCreateWrapperFactory;
 

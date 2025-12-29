@@ -26,6 +26,7 @@
 #include <QLibrary>
 #include <QDir>
 #include <QFileInfo>
+#include <QFileDialog>
 
 #include "NMProcessFactory.h"
 #include "NMProcess.h"
@@ -53,51 +54,6 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mAliasClassMap[QStringLiteral("ExtractImageRegion")] = QStringLiteral("NMStreamingROIImageFilterWrapper");
 
     mSinks << QString::fromLatin1("ImageWriter");
-
-    //  dirty hack; needs to be replaced with proper
-    //  process registration (i.e. classname plus
-    //  individual process factory)
-    // mProcRegister << QString::fromLatin1("BMIModel")             ;
-
-    // mProcRegister << QString::fromLatin1("MapAlgebra")           ;
-    // mProcRegister << QString::fromLatin1("NeighbourCounter")     ;
-    // mProcRegister << QString::fromLatin1("RandomImage")          ;
-    // mProcRegister << QString::fromLatin1("CostDistanceBuffer")   ;
-    // mProcRegister << QString::fromLatin1("FocalDistanceWeight")  ;
-    // mProcRegister << QString::fromLatin1("SummarizeZones")       ;
-    // mProcRegister << QString::fromLatin1("CastImage")            ;
-    // mProcRegister << QString::fromLatin1("ResampleImage")        ;
-    // mProcRegister << QString::fromLatin1("UniqueCombination")    ;
-    // mProcRegister << QString::fromLatin1("CombineTwo")    ;
-    // mProcRegister << QString::fromLatin1("ExternalExec");
-    // mProcRegister << QString::fromLatin1("SQLProcessor");
-    // mProcRegister << QString::fromLatin1("SQLRouter");
-    // mProcRegister << QString::fromLatin1("MapKernelScript");
-    // mProcRegister << QString::fromLatin1("MapKernelScript2");
-
-    // mProcRegister << QString::fromLatin1("ExtractBand");
-    // mProcRegister << QString::fromLatin1("ImageSorter");
-    // mProcRegister << QString::fromLatin1("SpatialOptimisation");
-    // mProcRegister << QString::fromLatin1("ImageBufferWriter");
-    // mProcRegister << QString::fromLatin1("RAMFlowAcc");
-    // mProcRegister << QString::fromLatin1("TerrainAttributes");
-    // mProcRegister << QString::fromLatin1("Image2DtoCubeSlice");
-    // mProcRegister << QString::fromLatin1("CubeSliceToImage2D");
-    // mProcRegister << QString::fromLatin1("Image2Table");
-    // mProcRegister << QString::fromLatin1("Table2NetCDF");
-/*$<RegisterComponentName>$*/
-
-
-    // mSinks << QString::fromLatin1("CostDistanceBuffer");
-    // mSinks << QString::fromLatin1("ExternalExec");
-    // mSinks << QString::fromLatin1("SQLProcessor");
-    // mSinks << QString::fromLatin1("UniqueCombination");
-    // mSinks << QString::fromLatin1("ImageSorter");
-    // mSinks << QString::fromLatin1("SpatialOptimisation");
-    // mSinks << QString::fromLatin1("ImageBufferWriter");
-    // mSinks << QString::fromLatin1("SQLRouter");
-/*$<RegisterComponentAsSink>$*/
-
 }
 
 NMProcessFactory::~NMProcessFactory()
@@ -139,6 +95,7 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
 
     return proc;
 
+// DEPRECATED CODE - just keeping it for reference of alias <-> classname mapping
 //    if (alias.compare("ImageReader") == 0)
 //    {
 //        return "NMImageReader";
@@ -285,26 +242,45 @@ NMProcessFactory::initializeProcessLibrary()
 
 #ifdef __linux__
     path += "/../lib";
+
+    QString modframecorelib = QStringLiteral("libNMModFrameCore.so");
+    QString wrapperLibEnding = QStringLiteral("Wrapper.so");
+
+#elif defined(_WIN32)
+    QDir _dir(path);
+    QString chgDirStr;
+    // ... were we launched from a msvc build dir ? 
+    if (   _dir.dirName().compare(QStringLiteral("Debug")) == 0
+        || _dir.dirName().compare(QStringLiteral("Release")) == 0
+       )
+    {
+        chgDirStr = QString("../../lib/%1").arg(_dir.dirName());
+    }
+    else
+    {
+        chgDirStr = QStringLiteral("../utils/bin");
+    }
+    _dir.cd(chgDirStr);
+    path = _dir.absolutePath();
+
+    QString modframecorelib = QStringLiteral("NMModFrameCore.dll");
+    QString wrapperLibEnding = QStringLiteral("Wrapper.dll");
 #endif
 
     QDir libDir(path);
 
-#ifdef _WIN32
-    // could well be that we're run from a windows build directory
-    // for debugging purposes (and LUMASS_DEBUG is not defined)
-    // and we can't find the libraries in the folder where
-    // lumass.exe is, so we try a directory like
-    // c:/pathtobuilddir/lib/<BuildType>
-    // - maybe we're lucky there ...
-    QStringList allentries = libDir.entryList();
-    if (!allentries.contains("NMModFrameCore.dll"))
+    // double check, whether we're in the right directory ... 
+    QStringList _libList = libDir.entryList();
+    if (!_libList.contains(modframecorelib))
     {
-        QString dirName = libDir.dirName();
-        QString chgDirStr = QString("../../lib/%1").arg(dirName);
-        libDir.cd(chgDirStr);
-        path = libDir.absolutePath();
+        QString _pcDir = QFileDialog::getExistingDirectory(nullptr, QStringLiteral("Process component directory"), path);
+        if (!_pcDir.isEmpty())
+        {
+            QDir _dir(_pcDir);
+            path = _dir.absolutePath();
+            libDir.setPath(path);
+        }
     }
-#endif
 
     NM_CREATE_FACTORY_FUNC factoryFunc = 0;
 
@@ -312,9 +288,24 @@ NMProcessFactory::initializeProcessLibrary()
     foreach(const QFileInfo& libInfo, libInfoList)
     {
         QString libname = QString("%1/%2").arg(path).arg(libInfo.fileName());
-        if (QLibrary::isLibrary(libname))
+        if (     libname.endsWith(wrapperLibEnding) 
+             &&  QLibrary::isLibrary(libname)
+        )
         {
             QLibrary wrapperLib(libname);
+            if (!wrapperLib.load())
+            {
+                // DEBUG: Log the absolute path being loaded
+#ifdef _WIN32
+                DWORD lastWinError = GetLastError();
+#else
+                std::string lastWinError = "We're on Linux!";
+#endif
+                NMLogError(<< "Failed loading '" << libname.toStdString() << "'!" 
+                           << std::endl << wrapperLib.errorString().toStdString() << std::endl
+                           << "WIN ERROR: " << lastWinError);
+            }
+
             factoryFunc = (NM_CREATE_FACTORY_FUNC)wrapperLib.resolve("createWrapperFactory");
 
             if (factoryFunc != nullptr)
@@ -354,6 +345,19 @@ NMProcessFactory::initializeProcessLibrary()
                     mSinks << alias;
                 }
             }
+            else
+            {
+#ifdef _WIN32
+                DWORD lastWinError = GetLastError();
+#else
+                std::string lastWinError = "We're on Linux!";
+#endif
+
+                NMLogError(<< "Failed accessing `::createWrapperFactory()` method in library '" << libname.toStdString() << "'!\n"
+                           << wrapperLib.errorString().toStdString() << std::endl
+                           << "WIN ERROR: " << lastWinError);
+
+            }
         }
     }
 
@@ -386,7 +390,6 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     {
         proc = new NMStreamingROIImageFilterWrapper(this);
     }
-
     else
     {
         QMap<QString, NMWrapperFactory*>::const_iterator facIt =

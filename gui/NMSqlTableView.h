@@ -101,6 +101,7 @@ public:
             {return 0;}
 
     QSqlTableModel* getModel(void) {return mModel;}
+    void connectSelModels(bool bconnect);
 
     void setLogger(NMLogger* logger){mLogger = logger;}
 
@@ -195,7 +196,7 @@ protected:
 	// DEBUG ONLY
 	void printSelRanges(const QItemSelection& selection,
 			const QString& msg);
-	void connectSelModels(bool bconnect);
+    // 	void connectSelModels(bool bconnect);
 	void prepareProgressDlg(NMTableCalculator* obj,
 			const QString& msg, int maxrange=0);
 	void cleanupProgressDlg(NMTableCalculator* obj, int maxrange=0);

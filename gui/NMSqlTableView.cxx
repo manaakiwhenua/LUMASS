@@ -356,8 +356,8 @@ void NMSqlTableView::initView()
     // ----------------- SOME STATUS BAR INFORMATION ------------------------------
     this->mlNumRecs = mSortFilter->getNumTableRecords();
     this->updateSelectionAdmin(mlNumRecs);
-    this->connect(mModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
-                  this, SLOT(procRowsInserted(QModelIndex, int, int)));
+//    this->connect(mModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
+//                  this, SLOT(procRowsInserted(QModelIndex, int, int)));
 
 
     // ---------------- NMSqlTableView - Layout ------------------------------
@@ -802,6 +802,8 @@ NMSqlTableView::connectSelModels(bool bconnect)
                                                          const QItemSelection &)),
                 this, SLOT(updateProxySelection(const QItemSelection &,
                                                 const QItemSelection &)));
+        connect(mModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
+                      this, SLOT(procRowsInserted(QModelIndex, int, int)));
     }
     else
     {
@@ -809,6 +811,8 @@ NMSqlTableView::connectSelModels(bool bconnect)
                                                          const QItemSelection &)),
                 this, SLOT(updateProxySelection(const QItemSelection &,
                                                 const QItemSelection &)));
+        disconnect(mModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
+                      this, SLOT(procRowsInserted(QModelIndex, int, int)));
     }
 }
 
@@ -821,7 +825,7 @@ NMSqlTableView::update(void)
 void
 NMSqlTableView::setSelectionModel(NMFastTrackSelectionModel* selectionModel)
 {
-    if (selectionModel && mSelectionModel != 0)
+    if (selectionModel && mSelectionModel != nullptr)
     {
         this->connectSelModels(false);
         delete mSelectionModel;
@@ -897,7 +901,7 @@ void NMSqlTableView::normalise()
                                               tr(""), &bOk);
     if (!bOk || fieldNames.isEmpty())
     {
-        NMDebugAI(<< "No input fields for normalisation specified!" << endl);
+        NMDebugAI(<< "No input fields for normalisation specified!" << std::endl);
         NMDebugCtx(ctx, << "done!");
         return;
     }
@@ -913,7 +917,7 @@ void NMSqlTableView::normalise()
                                           slModes, 0, false, &bOk, {});
     if (!bOk)
     {
-        NMDebugAI(<< "No normalisation mode specified!" << endl);
+        NMDebugAI(<< "No normalisation mode specified!" << std::endl);
         NMDebugCtx(ctx, << "done!");
         return;
     }
@@ -1020,7 +1024,7 @@ NMSqlTableView::processUserQuery(const QString &queryName, const QString &sql)
         userQuery.finish();
         dbTarget.rollback();
         NMGlobalHelper::detachMultipleDbs(dbTarget, externalDbs);
-        NMBoxErr("User Query", userQuery.lastError().text().toStdString() << std::endl);
+        NMBoxErr("User Query", userQuery.lastError().text().toStdString());
         NMDebugCtx(ctx, << "done!");
         return;
     }
@@ -1189,7 +1193,7 @@ NMSqlTableView::updateSelectionAdmin(const QItemSelection& sel,
     NMDebugCtx(ctx, << "...");
     if (this->mProxySelModel == 0)
     {
-        NMDebugAI(<< "Haven't got any selectiom model set up!" << endl);
+        NMDebugAI(<< "Haven't got any selectiom model set up!" << std::endl);
         this->updateSelectionAdmin(0);
         NMDebugCtx(ctx, << "done!");
         return;
@@ -1234,12 +1238,12 @@ void NMSqlTableView::addColumn()
         pos = nameRegExp.indexIn(name);
         bok = pos >= 0 ? true : false;
 
-        //		NMDebugAI(<< "pos: " << pos << endl);
+        //		NMDebugAI(<< "pos: " << pos << std::endl);
         //		if (pos != -1)
         //		{
-        //			NMDebugAI(<< "that's what I've got ..." << endl);
+        //			NMDebugAI(<< "that's what I've got ..." << std::endl);
         //			foreach(const QString& s, nameRegExp.capturedTexts())
-        //					NMDebugAI(<< s.toStdString() << endl);
+        //					NMDebugAI(<< s.toStdString() << std::endl);
         //		}
 
         if (	type == QVariant::Invalid
@@ -1251,7 +1255,7 @@ void NMSqlTableView::addColumn()
             msgBox.setText(tr("Name invalid!"));
             msgBox.setIcon(QMessageBox::Critical);
             msgBox.exec();
-            NMDebugAI(<< "type '" << type << "' or name '" << name.toStdString() << "' is invalid!" << endl);
+            NMDebugAI(<< "type '" << type << "' or name '" << name.toStdString() << "' is invalid!" << std::endl);
         }
 
         if (this->getColumnIndex(name) >= 0)
@@ -1275,10 +1279,10 @@ void NMSqlTableView::addColumn()
     //int ncols = this->mSortFilter->columnCount();
     int ncols = this->mModel->columnCount();
 
-    NMDebugAI(<< "add column ? " << ret << endl);
-    NMDebugAI(<< "name: " << name.toStdString() << endl);
-    NMDebugAI(<< "type: " << type << endl);
-    NMDebugAI(<< "ncols in tab: " << ncols << endl);
+    NMDebugAI(<< "add column ? " << ret << std::endl);
+    NMDebugAI(<< "name: " << name.toStdString() << std::endl);
+    NMDebugAI(<< "type: " << type << std::endl);
+    NMDebugAI(<< "ncols in tab: " << ncols << std::endl);
 
     if (mSortFilter->insertColumn(name, type))
     {
@@ -1446,7 +1450,7 @@ void NMSqlTableView::joinAttributes()
 
 
     int numJoinCols = srcModel->columnCount(QModelIndex());
-    NMDebugAI( << "Analyse CSV Table Structure ... " << endl);
+    NMDebugAI( << "Analyse CSV Table Structure ... " << std::endl);
     QStringList srcJoinFields;
     for (int i=0; i < numJoinCols; ++i)
     {
@@ -1722,7 +1726,7 @@ void NMSqlTableView::exportTable()
             &selectedFilter);
     if (fileName.isNull())
     {
-        NMDebugAI( << "got an empty filename from the user!" << endl);
+        NMDebugAI( << "got an empty filename from the user!" << std::endl);
         NMDebugCtx(ctx, << "done!");
         return;
     }
@@ -1733,7 +1737,7 @@ void NMSqlTableView::exportTable()
     if (suffix.compare(tr("txt"), Qt::CaseInsensitive) == 0 ||
         suffix.compare(tr("csv"), Qt::CaseInsensitive) == 0)
     {
-        NMDebugAI(<< "write delimited text to " << fileName.toStdString() << endl);
+        NMDebugAI(<< "write delimited text to " << fileName.toStdString() << std::endl);
         this->writeDelimTxt(fileName, false);
     }
     //else if (suffix.compare(tr("sqlite"), Qt::CaseInsensitive) == 0 ||
@@ -1747,7 +1751,7 @@ void NMSqlTableView::exportTable()
     //		dbName = QString(tr("%1.%2")).arg(fnList.first()).arg(fnList.last());
     //		tableName = fnList.at(1);
     //		NMDebugAI(<< "insert table '" << tableName.toStdString() << "' "
-    //				  << "into database '" << dbName.toStdString() << "'" << endl);
+    //				  << "into database '" << dbName.toStdString() << "'" << std::endl);
     //	}
     //	else
     //	{

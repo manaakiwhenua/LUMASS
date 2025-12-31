@@ -178,12 +178,10 @@ SET(LUMASS_OPENGA_VERSION "1.0.5")
 #====================================================================
 # QT 5
 #====================================================================
-#FIND_PACKAGE(LUMASSQt5)
 
+# not using Network, WebSockets, OpenSSL at the moment
 SET(_QT5_REQUIRED_COMPONENTS Core Widgets Gui Concurrent Sql Xml Qml) 
 
-        # WebSockets)
-        # not using Network WebSockets OpenSSL ATM
 FIND_PACKAGE(Qt5 5.15 COMPONENTS ${_QT5_REQUIRED_COMPONENTS})
 IF(NOT Qt5_DIR)
         message(FATAL_ERROR "Couldn't find Qt5 - please specify location of Qt5Config.cmake")
@@ -735,7 +733,9 @@ IF (UNIX AND NOT APPLE)
     set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
     set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
     set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS TRUE)
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libboost-filesystem1.74.0, libboost-serialization1.74.0, curl, lp-solve, libspatialite7, python3-gdal, gdal-bin, gdal-data, libmpich12, mpich, libhdf5-mpich-103-1, libhdf5-mpich-cpp-103-1, libhdf5-mpich-hl-100, libhdf5-mpich-hl-cpp-100, libyaml-cpp0.7, libtinyxml2-9, ffmpeg, libavcodec-extra58, libavdevice58, libgeotiff5, libglvnd0, libxcursor1, python3, python-is-python3, python3-pip, tzdata, libqt5concurrent5, libqt5core5a, libqt5dbus5, libqt5gui5, libqt5network5, libqt5qml5, libqt5sql5, libqt5widgets5, libqt5websockets5, libqt5xml5, qml-module-qtquick-privatewidgets")
+
+    # not using libqt5websockets5, libqt5network5, at the moment
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libboost-filesystem1.74.0, libboost-serialization1.74.0, curl, lp-solve, libspatialite7, python3-gdal, gdal-bin, gdal-data, libmpich12, mpich, libhdf5-mpich-103-1, libhdf5-mpich-cpp-103-1, libhdf5-mpich-hl-100, libhdf5-mpich-hl-cpp-100, libyaml-cpp0.7, libtinyxml2-9, ffmpeg, libavcodec-extra58, libavdevice58, libgeotiff5, libglvnd0, libxcursor1, python3, python-is-python3, python3-pip, tzdata, libqt5concurrent5, libqt5core5a, libqt5dbus5, libqt5gui5, libqt5qml5, libqt5sql5, libqt5widgets5, libqt5xml5, qml-module-qtquick-privatewidgets")
 
     set(CPACK_RESOURCE_FILE_LICENSE "${lumass_SOURCE_DIR}/LICENCE")
     set(CPACK_RESOURCE_FILE_README "${lumass_SOURCE_DIR}/README.md")

@@ -2805,12 +2805,12 @@ void LUMASSMainWin::aboutLUMASS(void)
     textstr << "LUMASS - Spatial Modelling and Optimisation" << std::endl
         << vinfo.toStdString() << std::endl
         << "Developed by Alexander Herzig" << std::endl
-        << "Copyright 2010-" << year.toStdString() << " Landcare Research New Zealand Ltd" << std::endl
+        << "Copyright 2025-" << year.toStdString() << " New Zealand Institute for Bioeconomy Science Ltd" << std::endl
         << "www.landcareresearch.co.nz" << std::endl << std::endl
         << "LUMASS is free software and licenced under the GPL v3." << std::endl
         << "Contact: herziga@landcareresearch.co.nz" << std::endl
         << "Code: https://github.com/manaakiwhenua/LUMASS" << std::endl
-        << "User group: https://groups.google.com/forum/#!forum/lumass-users" << std::endl
+        << "Discussions: https://github.com/manaakiwhenua/LUMASS/discussions" << std::endl
         << std::endl
         << "LUMASS builds on the following open source libraries " << std::endl
         << "Qt " << _lumass_qt_version << " - http://www.qt.io/" << std::endl

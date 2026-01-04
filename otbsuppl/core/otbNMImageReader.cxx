@@ -99,7 +99,6 @@ template class NMOTBSUPPLCOREREADER_EXPORT otb::VectorImage<long, 2>;
 template class NMOTBSUPPLCOREREADER_EXPORT otb::VectorImage<unsigned long long, 2>;
 template class NMOTBSUPPLCOREREADER_EXPORT otb::VectorImage<long long, 2>;
 
-
 template class NMOTBSUPPLCOREREADER_EXPORT otb::Image<unsigned int, 3>;
 template class NMOTBSUPPLCOREREADER_EXPORT otb::Image<int, 3>;
 template class NMOTBSUPPLCOREREADER_EXPORT otb::Image<unsigned char, 3>;

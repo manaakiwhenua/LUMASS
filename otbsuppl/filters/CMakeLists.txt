@@ -59,8 +59,6 @@ LINK_DIRECTORIES(
 file(GLOB OTBSUPPL_FILTERS
     ${filters_SOURCE_DIR}/*.txx
     ${filters_SOURCE_DIR}/*.cxx
-    #${OTBSupplCore_SOURCE_DIR}/*.cxx
-    #${OTBSupplCore_SOURCE_DIR}/*.hxx
 )
 
 file(GLOB OTBSUPPL_HEADER
@@ -84,6 +82,12 @@ set_target_properties(NMOTBSupplFilters PROPERTIES
 
 generate_export_header(NMOTBSupplFilters)
 
+set(OTBSUPPLFILTER_DEP_LIBS
+    NMOTBSupplCoreRAT
+    NMOTBSupplCoreIO
+    MuParser
+)
+
 if(WIN32)
     target_link_libraries(NMOTBSupplFilters
         NMOTBSupplCoreRAT 
@@ -92,24 +96,20 @@ if(WIN32)
         NMOTBSupplCoreWriter
         Qt5::Core Qt5::Qml
     )
+
+    list(APPEND OTBSUPPLFILTER_DEP_LIBS NMOTBSupplCoreReader NMOTBSupplCoreWriter)
 else()
     target_link_libraries(NMOTBSupplFilters
         ${MPI_CXX_LIBRARIES}
         ${NETCDF_LIBRARY}
         NMOTBSupplCoreRAT 
         NMOTBSupplCoreIO
-        NMOTBSupplCoreReader
-        NMOTBSupplCoreWriter
         Qt5::Core Qt5::Qml
     )
 endif()
 
-add_dependencies(NMOTBSupplFilters 
-    NMOTBSupplCoreRAT 
-    NMOTBSupplCoreIO
-    NMOTBSupplCoreReader
-    NMOTBSupplCoreWriter
-    MuParser)
+
+add_dependencies(NMOTBSupplFilters ${OTBSUPPLFILTER_DEP_LIBS})
 
 install(FILES ${OTBSUPPL_HEADER} DESTINATION include)
 if(WIN32)

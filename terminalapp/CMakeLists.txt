@@ -79,14 +79,11 @@ INCLUDE_DIRECTORIES(
 )
 
 LINK_DIRECTORIES(
-        #${QT5_LINK_DIRS}
     ${OTB_LIBRARY_DIRS}
     ${LIBRARY_OUTPUT_PATH}
-        #${muparser_BINARY_DIR}
     ${RASDAMAN_LIBRARIES_DIR}
     ${PostgreSQL_LIBRARY_DIRS}
     ${OSGEO4W_ROOT}/lib
-        #${SPATIALITE_LIB_DIR}
     ${SPATIALITE_LIBLIB_DIR}
     ${NETCDF_LIB_DIR}
     ${NCXX4_LIB_DIR}
@@ -109,12 +106,9 @@ set(ENGINE_LINKLIBS
         Qt5::Core Qt5::Sql Qt5::Xml
         ${MPI_CXX_LIBRARIES}
         LumassBMI
-            #NMNetCDFIO
         NMOTBSupplFilters
         NMOTBSupplCoreRAT 
         NMOTBSupplCoreIO
-        NMOTBSupplCoreReader
-        NMOTBSupplCoreWriter
         NMModFrameCore
         NMShared
         ${MFW_WRAPPER_NAMES}
@@ -123,7 +117,6 @@ set(ENGINE_LINKLIBS
         ${YAML_CPP_LIBRARIES}
         ${OTB_LIBRARIES}
         ${ITK_LIBRARIES}
-            #spatialite
 )
 
 
@@ -135,10 +128,9 @@ if(PYTHONSUPPORT)
 endif()
 
 
-# need to add the import library on windows
-#if(WIN32)
-#	LIST(APPEND ENGINE_LINKLIBS spatialite_i)
-#endif()
+if(WIN32)
+	LIST(APPEND ENGINE_LINKLIBS NMOTBSupplCoreReader NMOTBSupplCoreWriter)
+endif()
 
 set(ENGINE_DEPLIBS
     LumassBMI

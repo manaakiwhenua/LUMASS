@@ -66,7 +66,13 @@
     #include "RasdamanConnector.hh"
 #endif
 
-#include "nmotbsupplcorereader_export.h"
+#ifdef _WIN32
+  #include "nmotbsupplcorereader_export.h"
+#else 
+  #include "nmotbsupplcoreio_export.h"
+  #define NMOTBSUPPLCOREREADER_EXPORT NMOTBSUPPLCOREIO_EXPORT
+  #define NMOTBSupplCoreReader_EXPORTS NMOTBSupplCoreIO_EXPORTS
+#endif
 
 namespace otb
 {
@@ -255,9 +261,10 @@ private:
 } //namespace otb
 
 #ifdef NMOTBSupplCoreReader_EXPORTS
-#include "otbNMImageReader.txx"
+  #include "otbNMImageReader.txx"
 #endif
 
+#ifdef _WIN32
 #include "itkRGBPixel.h"
 #include "otbImage.h"
 #include "otbVectorImage.h"
@@ -566,7 +573,7 @@ extern template class NMOTBSUPPLCOREREADER_EXPORT otb::NMImageReader<otb::Vector
 extern template class NMOTBSUPPLCOREREADER_EXPORT otb::NMImageReader<otb::VectorImage<long, 3>>;
 extern template class NMOTBSUPPLCOREREADER_EXPORT otb::NMImageReader<otb::VectorImage<unsigned long long, 3>>;
 extern template class NMOTBSUPPLCOREREADER_EXPORT otb::NMImageReader<otb::VectorImage<long long, 3>>;
-
+#endif // _WIN32
 
 
 #endif // __otbNMImageReader_h

@@ -64,7 +64,13 @@
 #include "itkImageToImageFilter.h"
 #include "otbStreamingManager.h"
 
-#include "nmotbsupplcorewriter_export.h"
+#ifdef _WIN32
+  #include "nmotbsupplcorewriter_export.h"
+#else 
+  #include "nmotbsupplcoreio_export.h"
+  #define NMOTBSUPPLCOREWRITER_EXPORT NMOTBSUPPLCOREIO_EXPORT
+  #define NMOTBSupplCoreWriter_EXPORTS NMOTBSupplCoreIO_EXPORTS
+#endif
 
 namespace otb
 {
@@ -434,9 +440,10 @@ private:
 } // end namespace otb
 
 #ifdef NMOTBSupplCoreWriter_EXPORTS
-#include "otbStreamingRATImageFileWriter.txx"
+  #include "otbStreamingRATImageFileWriter.txx"
 #endif
 
+#ifdef _WIN32
 #include "itkRGBPixel.h"
 #include "otbImage.h"
 #include "otbVectorImage.h"
@@ -552,7 +559,7 @@ extern template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWrit
 extern template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<long>, 3>>;
 extern template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<unsigned long long>, 3>>;
 extern template class NMOTBSUPPLCOREWRITER_EXPORT otb::StreamingRATImageFileWriter<otb::Image<itk::RGBPixel<long long>, 3>>;
-
+#endif // _WIN32
 
 
 #endif

@@ -207,108 +207,6 @@ install(FILES ${OTBSupplCoreIO_HEADER} DESTINATION include)
 
 
 #############################################################################################
-############ NMOTBSupplCoreReader ###########################################################
-#############################################################################################
-
-
-# list of OTBSupplCore project source files
-file(GLOB OTBSupplCoreReader_CXX
-        ${OTBSupplCore_SOURCE_DIR}/otbNMImageReader.cxx
-)
-
-# list of OTBSupplCore project header files
-file(GLOB OTBSupplCoreReader_HEADER
-    ${OTBSupplCore_SOURCE_DIR}/otbNMImageReader.h
-)
-
-# define build target: shared library
-ADD_LIBRARY(NMOTBSupplCoreReader SHARED ${OTBSupplCoreReader_CXX})
-target_compile_definitions(NMOTBSupplCoreReader PRIVATE NMOTBSupplCoreReader_EXPORTS)
-set_property(TARGET NMOTBSupplCoreReader PROPERTY LINKER_LANGUAGE CXX)
-
-generate_export_header(NMOTBSupplCoreReader)
-ADD_DEPENDENCIES(NMOTBSupplCoreReader NMOTBSupplCoreRAT NMOTBSupplCoreIO)
-
-if(WIN32)
-   target_link_libraries(NMOTBSupplCoreReader 
-        ${LINKLIBS_WIN32}
-        NMOTBSupplCoreRAT
-        NMOTBSupplCoreIO
-   )
-
-   install(
-           TARGETS NMOTBSupplCoreReader
-           LIBRARY DESTINATION lib
-           RUNTIME DESTINATION bin
-   )
-else()
-   target_link_libraries(NMOTBSupplCoreReader 
-        ${LINKLIBS_LINUX}
-        NMOTBSupplCoreRAT
-        NMOTBSupplCoreIO
-   )
-
-   install(TARGETS NMOTBSupplCoreReader LIBRARY DESTINATION lib)
-endif()
-
-file(COPY ${OTBSupplCoreReader_HEADER}
-       DESTINATION ${OTBSupplCore_BINARY_DIR}
-)
-
-install(FILES ${OTBSupplCoreReader_HEADER} DESTINATION include)
-
-#############################################################################################
-############ NMOTBSupplCoreWriter ###########################################################
-#############################################################################################
-
-
-# list of OTBSupplCoreWriter project source files
-file(GLOB OTBSupplCoreWriter_CXX
-        ${OTBSupplCore_SOURCE_DIR}/otbStreamingRATImageFileWriter.cxx
-)
-
-# list of OTBSupplCoreWriter project header files
-file(GLOB OTBSupplCoreWriter_HEADER
-    ${OTBSupplCore_SOURCE_DIR}/otbStreamingRATImageFileWriter.h
-)
-
-# define build target: shared library
-ADD_LIBRARY(NMOTBSupplCoreWriter SHARED ${OTBSupplCoreWriter_CXX})
-target_compile_definitions(NMOTBSupplCoreWriter PRIVATE NMOTBSupplCoreWriter_EXPORTS)
-set_property(TARGET NMOTBSupplCoreWriter PROPERTY LINKER_LANGUAGE CXX)
-
-generate_export_header(NMOTBSupplCoreWriter)
-ADD_DEPENDENCIES(NMOTBSupplCoreWriter NMOTBSupplCoreRAT NMOTBSupplCoreIO)
-
-if(WIN32)
-   target_link_libraries(NMOTBSupplCoreWriter 
-        ${LINKLIBS_WIN32}
-        NMOTBSupplCoreRAT
-        NMOTBSupplCoreIO
-   )
-
-   install(
-           TARGETS NMOTBSupplCoreWriter
-           LIBRARY DESTINATION lib
-           RUNTIME DESTINATION bin
-   )
-else()
-   target_link_libraries(NMOTBSupplCoreWriter 
-        ${LINKLIBS_LINUX}
-        NMOTBSupplCoreRAT
-        NMOTBSupplCoreIO
-   )
-
-   install(TARGETS NMOTBSupplCoreWriter LIBRARY DESTINATION lib)
-endif()
-
-file(COPY ${OTBSupplCoreWriter_HEADER}
-       DESTINATION ${OTBSupplCore_BINARY_DIR}
-)
-
-install(FILES ${OTBSupplCoreWriter_HEADER} DESTINATION include)
-
-#############################################################################################
 ############ NMItk ##########################################################################
 #############################################################################################
 
@@ -354,45 +252,142 @@ file(COPY ${NMItk_HEADER}
 
 install(FILES ${NMItk_HEADER} DESTINATION include)
 
-#############################################################################################
-############ NMOTBSupplTemplates ############################################################
-#############################################################################################
-
-# list of OTBSupplTemplates project source files
-file(GLOB OTBSupplTemplates_CXX
-        ${OTBSupplCore_SOURCE_DIR}/nmExplicitTemplateInstantiation.cxx
-)
-
-# list of OTBSupplCore project header files
-file(GLOB OTBSupplTemplates_HEADER
-    ${OTBSupplCore_SOURCE_DIR}/nmExplicitTemplateInstantiation.h
-)
-
-# define build target: shared library
-ADD_LIBRARY(NMOTBSupplTemplates SHARED ${OTBSupplTemplates_CXX})
-target_compile_definitions(NMOTBSupplTemplates PRIVATE NMOTBSupplTemplates_EXPORTS)
-set_property(TARGET NMOTBSupplTemplates PROPERTY LINKER_LANGUAGE CXX)
-
-generate_export_header(NMOTBSupplTemplates)
-#ADD_DEPENDENCIES(NMOTBSupplTemplates)
-
-#message(STATUS "OTBSupplCore: OTB_LINK_LIBS=${OTB_LINK_LIBS}")
+#############################
+#   WINDOWS ONLY           ##
+#############################
 
 if (WIN32)
-   target_link_libraries(NMOTBSupplTemplates NMOTBSupplCoreReader ${LINKLIBS_WIN32})
-   install(
-           TARGETS NMOTBSupplTemplates
-           LIBRARY DESTINATION lib
-           RUNTIME DESTINATION bin
-   )
-else()
-    target_link_libraries(NMOTBSupplTemplates ${LINKLIBS_LINUX})
-    install(TARGETS NMOTBSupplTemplates LIBRARY DESTINATION lib)
-endif()
 
-file(COPY ${OTBSupplTemplates_HEADER}
-       DESTINATION ${OTBSupplCore_BINARY_DIR}
-)
+    #############################################################################################
+    ############ NMOTBSupplCoreReader ###########################################################
+    #############################################################################################
 
-install(FILES ${OTBSupplCoreRAT_HEADER} DESTINATION include)
+    # list of OTBSupplCore project source files
+    file(GLOB OTBSupplCoreReader_CXX
+            ${OTBSupplCore_SOURCE_DIR}/otbNMImageReader.cxx
+    )
 
+        # list of OTBSupplCore project header files
+        file(GLOB OTBSupplCoreReader_HEADER
+            ${OTBSupplCore_SOURCE_DIR}/otbNMImageReader.h
+        )
+
+        # define build target: shared library
+        ADD_LIBRARY(NMOTBSupplCoreReader SHARED ${OTBSupplCoreReader_CXX})
+        target_compile_definitions(NMOTBSupplCoreReader PRIVATE NMOTBSupplCoreReader_EXPORTS)
+        set_property(TARGET NMOTBSupplCoreReader PROPERTY LINKER_LANGUAGE CXX)
+
+        generate_export_header(NMOTBSupplCoreReader)
+        ADD_DEPENDENCIES(NMOTBSupplCoreReader NMOTBSupplCoreRAT NMOTBSupplCoreIO)
+
+        target_link_libraries(NMOTBSupplCoreReader
+             ${LINKLIBS_WIN32}
+             NMOTBSupplCoreRAT
+             NMOTBSupplCoreIO
+        )
+
+        install(
+                TARGETS NMOTBSupplCoreReader
+                LIBRARY DESTINATION lib
+                RUNTIME DESTINATION bin
+        )
+
+        file(COPY ${OTBSupplCoreReader_HEADER}
+               DESTINATION ${OTBSupplCore_BINARY_DIR}
+        )
+
+        install(FILES ${OTBSupplCoreReader_HEADER} DESTINATION include)
+
+        #############################################################################################
+        ############ NMOTBSupplCoreWriter ###########################################################
+        #############################################################################################
+
+
+        # list of OTBSupplCoreWriter project source files
+        file(GLOB OTBSupplCoreWriter_CXX
+                ${OTBSupplCore_SOURCE_DIR}/otbStreamingRATImageFileWriter.cxx
+        )
+
+        # list of OTBSupplCoreWriter project header files
+        file(GLOB OTBSupplCoreWriter_HEADER
+            ${OTBSupplCore_SOURCE_DIR}/otbStreamingRATImageFileWriter.h
+        )
+
+        # define build target: shared library
+        ADD_LIBRARY(NMOTBSupplCoreWriter SHARED ${OTBSupplCoreWriter_CXX})
+        target_compile_definitions(NMOTBSupplCoreWriter PRIVATE NMOTBSupplCoreWriter_EXPORTS)
+        set_property(TARGET NMOTBSupplCoreWriter PROPERTY LINKER_LANGUAGE CXX)
+
+        generate_export_header(NMOTBSupplCoreWriter)
+        ADD_DEPENDENCIES(NMOTBSupplCoreWriter NMOTBSupplCoreRAT NMOTBSupplCoreIO)
+
+        if(WIN32)
+           target_link_libraries(NMOTBSupplCoreWriter
+                ${LINKLIBS_WIN32}
+                NMOTBSupplCoreRAT
+                NMOTBSupplCoreIO
+           )
+
+           install(
+                   TARGETS NMOTBSupplCoreWriter
+                   LIBRARY DESTINATION lib
+                   RUNTIME DESTINATION bin
+           )
+        else()
+           target_link_libraries(NMOTBSupplCoreWriter
+                ${LINKLIBS_LINUX}
+                NMOTBSupplCoreRAT
+                NMOTBSupplCoreIO
+           )
+
+           install(TARGETS NMOTBSupplCoreWriter LIBRARY DESTINATION lib)
+        endif()
+
+        file(COPY ${OTBSupplCoreWriter_HEADER}
+               DESTINATION ${OTBSupplCore_BINARY_DIR}
+        )
+
+        install(FILES ${OTBSupplCoreWriter_HEADER} DESTINATION include)
+
+
+        #############################################################################################
+        ############ NMOTBSupplTemplates ############################################################
+        #############################################################################################
+
+        # only required for WINDOWS
+        if (WIN32)
+
+            # list of OTBSupplTemplates project source files
+            file(GLOB OTBSupplTemplates_CXX
+                    ${OTBSupplCore_SOURCE_DIR}/nmExplicitTemplateInstantiation.cxx
+            )
+
+            # list of OTBSupplCore project header files
+            file(GLOB OTBSupplTemplates_HEADER
+                ${OTBSupplCore_SOURCE_DIR}/nmExplicitTemplateInstantiation.h
+            )
+
+            # define build target: shared library
+            ADD_LIBRARY(NMOTBSupplTemplates SHARED ${OTBSupplTemplates_CXX})
+            target_compile_definitions(NMOTBSupplTemplates PRIVATE NMOTBSupplTemplates_EXPORTS)
+            set_property(TARGET NMOTBSupplTemplates PROPERTY LINKER_LANGUAGE CXX)
+
+            generate_export_header(NMOTBSupplTemplates)
+
+            target_link_libraries(NMOTBSupplTemplates NMOTBSupplCoreReader ${LINKLIBS_WIN32})
+            install(
+                    TARGETS NMOTBSupplTemplates
+                    LIBRARY DESTINATION lib
+                    RUNTIME DESTINATION bin
+            )
+
+            file(COPY ${OTBSupplTemplates_HEADER}
+                   DESTINATION ${OTBSupplCore_BINARY_DIR}
+            )
+
+            install(FILES ${OTBSupplTemplates_HEADER} DESTINATION include)
+        endif()
+
+        ###############################################################################################
+
+endif() # WIN32

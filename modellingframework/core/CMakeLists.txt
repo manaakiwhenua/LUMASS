@@ -37,15 +37,10 @@ INCLUDE_DIRECTORIES(
     ${SQLite_SOURCE_DIR}
     ${SPATIALITE_INCLUDE_DIR}
     ${QT5_INCLUDE_DIRS}
-#    ${PostgreSQL_INCLUDE_DIRS}
-#    ${RASDAMAN_SOURCE_DIR}/applications/rasgeo
-#    ${RASDAMAN_INCLUDE_DIR}
-#    ${RASDAMAN_INCLUDE_DIR}/raslib
     ${mfw_core_BINARY_DIR}
     ${mfw_core_SOURCE_DIR}
     ${mfw_wrapper_SOURCE_DIR}
     ${mfw_wrapper_BINARY_DIR}
-#    ${muParserX_SOURCE_DIR}
     ${shared_SOURCE_DIR}
     ${GDALRATImageIO_SOURCE_DIR}
     ${GDALRATImageIO_BINARY_DIR}
@@ -53,8 +48,6 @@ INCLUDE_DIRECTORIES(
     ${NETCDFIO_BINARY_DIR}
     ${NETCDF_INCLUDE_DIR}
     ${NCXX4_INCLUDE_DIR}
-    #"/opt/netcdf-c-4.8.1/install/include"
-#    ${rimageio_SOURCE_DIR}
     ${filters_SOURCE_DIR}
     ${filters_BINARY_DIR}
     ${gui_SOURCE_DIR}
@@ -82,8 +75,6 @@ LINK_DIRECTORIES(
     ${ITK_LIBRARY_DIRS}
     ${ITK_LIBRARY_DIRS}/../
     ${ITK_LINK_DIRS}
-        #${QT5_LINK_DIRS}
-        #${RASDAMAN_LIBRARIES_DIR}
     ${LIBRARY_OUTPUT_PATH}
     ${LIBRARY_OUTPUT_PATH}/${CMAKE_BUILD_TYPE}
     ${OSGEO4W_ROOT}/lib
@@ -102,23 +93,16 @@ LINK_DIRECTORIES(
 file(GLOB MFW_CORE_CPP
     ${mfw_core_SOURCE_DIR}/*.cpp
     ${mfw_core_SOURCE_DIR}/*.cxx
-        #${shared_SOURCE_DIR}/NMLogger.cpp
-        #${shared_SOURCE_DIR}/NMObject.cpp
 )
 
 LIST(REMOVE_ITEM MFW_CORE_CPP ${mfw_core_SOURCE_DIR}/NMConditionalIterComponent.cpp)
-#LIST(REMOVE_ITEM MFW_CORE_CPP ${mfw_core_SOURCE_DIR}/NMMPIRunnable.cpp)
 
 file(GLOB MFW_CORE_H
     ${mfw_core_SOURCE_DIR}/*.h
     ${mfw_core_BINARY_DIR}/*.h
-        #${shared_SOURCE_DIR}/NMLogger.h
-        #${shared_SOURCE_DIR}/NMObject.h
 )
 
 LIST(REMOVE_ITEM MFW_CORE_H ${mfw_core_SOURCE_DIR}/NMConditionalIterComponent.h)
-#LIST(REMOVE_ITEM MFW_CORE_H ${mfw_core_SOURCE_DIR}/NMMPIRunnable.h)
-
 
 #if (NOT RASSUPPORT)
 #  list(REMOVE_ITEM MFW_H
@@ -133,21 +117,8 @@ LIST(REMOVE_ITEM MFW_CORE_H ${mfw_core_SOURCE_DIR}/NMConditionalIterComponent.h)
 
 SET(MFW_CORE_MOC_H ${MFW_CORE_H})
 LIST(REMOVE_ITEM MFW_CORE_MOC_H ${mfw_core_SOURCE_DIR}/NMMfwException.h)
-    #LIST(APPEND MFW_CORE_MOC_H ${shared_SOURCE_DIR}/NMLogger.h)
 
 message(STATUS "NMModFrameCore: OTB_LINK_LIBS=${OTB_LINK_LIBS}")
-
-#set(MFW_CORE_UTIL_LIBS
-#        SQLite
-#        spatialite
-#        geos_c
-#        freexl_i
-#        libxml2
-#        zlib
-#        iconv
-#        librttopo
-#        proj
-#)
 
 if (WIN32)
     set(MFW_CORE_UTIL_LIBS
@@ -163,9 +134,6 @@ if (WIN32)
     )
 
     set(MFW_CORE_LINK_LIBS
-            #Qt5::Xml
-            #Qt5::Core
-            #Qt5::Concurrent
         ${QT5_LIBRARIES}
         ${MFW_CORE_VTK_LIBRARIES}
         MuParser
@@ -189,26 +157,15 @@ else()
             geos_c
             freexl
             xml2
-            #zlib
-            #iconv
-            #librttopo
             proj
     )
 
     set(MFW_CORE_LINK_LIBS
-            #Qt5::Xml
-            #Qt5::Core
-            #Qt5::Concurrent
         ${QT5_LIBRARIES}
         ${MFW_CORE_VTK_LIBRARIES}
         MuParser
-            #NMNetCDFIO
-            #NMOTBGDALRATImageIO
-        NMOTBSupplTemplates
         NMOTBSupplCoreRAT 
         NMOTBSupplCoreIO
-        NMOTBSupplCoreReader
-        NMOTBSupplCoreWriter
         NMShared
         NMOTBSupplFilters
         NMMosra
@@ -231,19 +188,17 @@ endif()
 
 set(MFW_CORE_DEP_LIBS
     MuParser
-        #NMMosra
-        #NMNetCDFIO
-        #NMOTBGDALRATImageIO
     NMShared
-    NMOTBSupplTemplates
     NMOTBSupplCoreRAT 
     NMOTBSupplCoreIO
-    NMOTBSupplCoreReader
-    NMOTBSupplCoreWriter
     NMOTBSupplFilters
     NMItk
         #RasImageIO
 )
+
+if (WIN32)
+    list(APPEND MFW_CORE_DEP_LIBS NMOTBSupplTemplates NMOTBSupplCoreReader NMOTBSupplCoreWriter)
+endif()
 
 SET(CMAKE_AUTOMOC YES)
 

@@ -30,7 +30,6 @@ INCLUDE_DIRECTORIES(
     ${mfw_core_SOURCE_DIR}
     ${mfw_wrapper_SOURCE_DIR}
     ${mfw_wrapper_BINARY_DIR}
-    #${muParserX_SOURCE_DIR}
     ${shared_SOURCE_DIR}
     ${shared_BINARY_DIR}
     ${GDALRATImageIO_SOURCE_DIR}
@@ -61,20 +60,11 @@ INCLUDE_DIRECTORIES(
 )
 
 LINK_DIRECTORIES(
-        #${OTB_DIR}/lib
-        #${OTB_DIR}/bin
-        #${QT5_LINK_DIRS}
     ${NETCDF_LIB_DIR}
     ${NCXX4_LIB_DIR}
         #${RASDAMAN_LIBRARIES_DIR}
-        #${mfw_core_BINARY_DIR}
-        #${LIBRARY_OUTPUT_PATH}
-        #${LIBRARY_OUTPUT_PATH}/${CMAKE_BUILD_TYPE}
     ${OSGEO4W_ROOT}/lib
     ${NMQt_SOURCE_DIR}
-        #${SPATIALITE_LIB_DIR}
-        #${SPATIALITE_LIBLIB_DIR}
-        #${bmi_BINARY_DIR}
     ${YAML_CPP_LIB_DIR}
     ${OTBSupplCore_BINARY_DIR}
     ${LIBRARY_OUTPUT_PATH}
@@ -99,28 +89,28 @@ endif()
 set(MFW_WRAPPER_LINK_LIBS
     NMOTBSupplCoreRAT 
     NMOTBSupplCoreIO
-    NMOTBSupplCoreReader
-    NMOTBSupplCoreWriter
     NMModFrameCore
     NMOTBSupplFilters
     Qt5::Core
-        #${QT5_LIBRARIES}
     ${LUMASS_WRAPPER_VTK_LIBRARIES}
     OTBTestKernel
 )
 
-set(NMMOSRA_WRAPPER_LINKLIBS ${MFW_WRAPPER_LINK_LIBS} Qt5::Sql NMQt NMMosra ${LPSOLVE_LIBRARY})
-set(NMJSKERNEL_WRAPPER_LINKLIBS ${MFW_WRAPPER_LINK_LIBS} Qt5::Qml)
-set(NMBMI_WRAPPER_LINKLIBS ${MFW_WRAPPER_LINK_LIBS} ${YAML_CPP_LIBRARIES})
-
 set(MFW_WRAPPER_DEP_LIBS
     NMOTBSupplCoreRAT 
     NMOTBSupplCoreIO
-    NMOTBSupplCoreReader
-    NMOTBSupplCoreWriter
     NMOTBSupplFilters
     NMModFrameCore
 )
+
+if (WIN32)
+    list(APPEND MFW_WRAPPER_LINK_LIBS NMOTBSupplCoreReader NMOTBSupplCoreWriter)
+    list(APPEND MFW_WRAPPER_DEP_LIBS NMOTBSupplCoreReader NMOTBSupplCoreWriter)
+endif()
+
+set(NMMOSRA_WRAPPER_LINKLIBS ${MFW_WRAPPER_LINK_LIBS} Qt5::Sql NMQt NMMosra ${LPSOLVE_LIBRARY})
+set(NMJSKERNEL_WRAPPER_LINKLIBS ${MFW_WRAPPER_LINK_LIBS} Qt5::Qml)
+set(NMBMI_WRAPPER_LINKLIBS ${MFW_WRAPPER_LINK_LIBS} ${YAML_CPP_LIBRARIES})
 
 
 if (NOT RASSUPPORT)
@@ -156,12 +146,6 @@ foreach( wrapper ${MFW_WRAPPER_NAMES} )
 
         set(LINKLIBS ${MFW_WRAPPER_LINK_LIBS})
         if (${wrapper} STREQUAL "NMMosraFilterWrapper")
-            #list(APPEND MFW_WRAPPER_SOURCE_FILES ${opt_SOURCE_DIR}/NMMosra.cpp)
-            #list(APPEND MFW_WRAPPER_SOURCE_FILES ${opt_SOURCE_DIR}/LpHelper.cpp)
-            #list(APPEND MFW_WRAPPER_HEADER_FILES ${opt_SOURCE_DIR}/NMMosra.h)
-            #list(APPEND MFW_WRAPPER_HEADER_FILES ${opt_SOURCE_DIR}/LpHelper.h)
-            #list(APPEND MFW_WRAPPER_SOURCE_FILES ${NMVtk_SOURCE_DIR}/NMvtkDelimitedTextWriter.cxx)
-            #list(APPEND MFW_WRAPPER_HEADER_FILES ${NMVtk_SOURCE_DIR}/NMvtkDelimitedTextWriter.h)
             set(LINKLIBS ${NMMOSRA_WRAPPER_LINKLIBS})
         elseif (${wrapper} STREQUAL "NMJSKernelFilterWrapper")
             set(LINKLIBS ${NMJSKERNEL_WRAPPER_LINKLIBS})

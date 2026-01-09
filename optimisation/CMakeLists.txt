@@ -40,7 +40,6 @@ INCLUDE_DIRECTORIES(
 
 LINK_DIRECTORIES(
     ${LIBRARY_OUTPUT_PATH}
-        #${QT5_LINK_DIRS}
     ${opt_BINARY_DIR}
     ${NCXX4_LIB_DIR}
     ${NETCDF_LIB_DIR}
@@ -88,11 +87,9 @@ if (win32)
         KERNEL32
         VCRUNTIME140
         api-ms-win-crt-heap-l1-1-0
-        #api-ms-win-crt-math-l1-1-0
         api-ms-win-crt-string-l1-1-0
         api-ms-win-crt-stdio-l1-1-0
         api-ms-win-crt-convert-l1-1-0
-        #api-ms-win-crt-filesystem-l1-1-0
         api-ms-win-crt-runtime-l1-1-0
         api-ms-win-crt-utility-l1-1-0
         api-ms-win-crt-time-l1-1-0
@@ -110,8 +107,6 @@ else()
         SQLite
         NMOTBSupplCoreRAT 
         NMOTBSupplCoreIO
-        NMOTBSupplCoreReader
-        NMOTBSupplCoreWriter
     )
 endif()
 
@@ -124,13 +119,12 @@ ADD_LIBRARY(NMMosra SHARED ${OPT_CPP})
 generate_export_header(NMMosra)
 TARGET_LINK_LIBRARIES(NMMosra ${MOSRA_LINK_LIBS})
     
+set(MOSRA_DEP_LIBS NMShared NMQt NMOTBSupplCoreRAT NMOTBSupplCoreIO)
+if (WIN32)
+    list(APPEND MOSRA_DEP_LIBS NMOTBSupplTemplates NMOTBSupplCoreReader NMOTBSupplCoreWriter)
+endif()
 
-ADD_DEPENDENCIES(NMMosra NMShared NMQt         
-        NMOTBSupplCoreRAT 
-        NMOTBSupplCoreIO
-        NMOTBSupplCoreReader
-        NMOTBSupplCoreWriter
-)
+ADD_DEPENDENCIES(NMMosra ${MOSRA_DEP_LIBS})
 
 if (WIN32)
     install(

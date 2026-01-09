@@ -19,14 +19,6 @@
 PROJECT(bmi)
 
 if (${VTK_VERSION_STRING} VERSION_LESS "8.90")
-    #find_package(VTK COMPONENTS
-    #    CommonCore
-    #    CommonDataModel
-    #    IOCore
-    #    IOSQL
-    #    IOLegacy
-    #    IOXML
-    #)
     SET(LUMASS_BMI_VTK_LIBRARIES
         vtkCommonCore
         vtkCommonDataModel
@@ -76,8 +68,6 @@ INCLUDE_DIRECTORIES(
     ${bmi_SOURCE_DIR}/test
     ${Python3_INCLUDE_DIRS}
     ${pybind11_INCLUDE_DIRS}
-    #${lumassengine_SOURCE_DIR}
-    #${PostgreSQL_INCLUDE_DIRS}
     ${MPI_CXX_INCLUDE_DIRS}
     ${SQLite_SOURCE_DIR}
     ${YAML_CPP_INCLUDE_DIR}
@@ -91,16 +81,12 @@ INCLUDE_DIRECTORIES(
 )
 
 LINK_DIRECTORIES(
-        #${QT5_LINK_DIRS}
     ${OTB_LIBRARY_DIRS}
     ${LIBRARY_OUTPUT_PATH}
     ${opt_BINARY_DIR}
     ${bmi_BINARY_DIR}
-    #${muparser_BINARY_DIR}
     ${RASDAMAN_LIBRARIES_DIR}
-    #${PostgreSQL_LIBRARY_DIRS}
     ${OSGEO4W_ROOT}/lib
-    #${SPATIALITE_LIB_DIR}
     ${SPATIALITE_LIBLIB_DIR}
     ${NCXX4_LIB_DIR}
     ${NETCDF_LIB_DIR}
@@ -118,16 +104,12 @@ file(GLOB BMI_HEADER
 )
 
 file(GLOB BMI_SRC
-    #${opt_SOURCE_DIR}/*.cpp
     ${bmi_SOURCE_DIR}/lumassbmi.cpp
-    #${bmi_SOURCE_DIR}/NMLumassEngine.cpp
     ${NMVtk_SOURCE_DIR}/NMvtkDelimitedTextWriter.cxx
-    #${shared_SOURCE_DIR}/*.cpp
 )
 
 file(GLOB PYTHON_BMI_SRC
     ${bmi_SOURCE_DIR}/python*.cpp
-    #${shared_SOURCE_DIR}/*.cpp
 )
 
 SET(LumassBMI_TEST_FILES
@@ -135,40 +117,30 @@ SET(LumassBMI_TEST_FILES
 )
 
 SET(BMI_LINKLIBS
-    #Qt5Core Qt5Sql Qt5Xml
-    #${NCXX4_LIBRARY}
-    #${NETCDF_LIBRARY}
     ${MPI_CXX_LIBRARIES}
-        #${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
-    
     ${QT5_LIBRARIES}
     NMOTBSupplCoreRAT
     NMOTBSupplCoreIO
-    NMOTBSupplCoreReader
-    NMOTBSupplCoreWriter
-    NMOTBSupplTemplates
     NMMosra
-        #NMOTBSupplFilters
     NMShared
     NMModFrameCore
-    #${MFW_WRAPPER_NAMES}
     ${LUMASS_BMI_VTK_LIBRARIES}
     ${LPSOLVE_LIBRARY}
     ${YAML_CPP_LIBRARIES}
 )
 
 if(WIN32)
-    list(APPEND BMI_LINK_LIBS libcurl_imp libxml2)
+    list(APPEND BMI_LINK_LIBS 
+    NMOTBSupplCoreReader
+    NMOTBSupplCoreWriter
+    NMOTBSupplTemplates
+    libcurl_imp libxml2)
 else()
     list(APPEND BMI_LINK_LIBS curl xml2)
 endif()
 
 SET(PYTHON_BMI_LINKLIBS
-        #Qt5Core
-        #NMModFrameCore
     ${Python3_LIBRARIES}
-    #pybind11::module
-    
     ${QT5_LIBRARIES}
     pybind11::pybind11
     pybind11::embed
@@ -183,7 +155,6 @@ SET(PYTHON_BMI_DEPLIBS
 SET(BMI_DEPLIBS
     NMMosra
     NMModFrameCore
-    #${MFW_WRAPPER_NAMES}
 )
 
 set(CMAKE_AUTOMOC YES)
@@ -199,14 +170,10 @@ ADD_DEPENDENCIES(LumassBMI ${BMI_DEPLIBS})
 
 if (PYTHONSUPPORT)
     ADD_DEFINITIONS(-DLUMASS_PYTHON)
-    #SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fvisibility=hidden")
-    #SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fvisibility=hidden")
-    #pybind11_add_module(LumassPyBMI pythonbmi.cpp)
     ADD_LIBRARY(LumassPythonBMI SHARED ${PYTHON_BMI_SRC})
     generate_export_header(LumassPythonBMI)
     TARGET_LINK_LIBRARIES(LumassPythonBMI ${PYTHON_BMI_LINKLIBS} ${MPI_CXX_LIBRARIES}
-)
-    #ADD_DEPENDENCIES(LumassPythonBMI ${PYTHON_BMI_DEPLIBS})
+    )
 endif()
 
 if (${VTK_VERSION_STRING} VERSION_GREATER_EQUAL "8.90")
@@ -242,7 +209,7 @@ endif()
 # INSTALL LIBRARY
 SET(BMI_INSTALL_TARGETS LumassBMI)
 if (PYTHONSUPPORT)
-    list(APPEND BMI_INSTALL_TARGETS LumassPythonBMI)# LumassPyBMI)
+    list(APPEND BMI_INSTALL_TARGETS LumassPythonBMI)
 endif()
 
 #install(FILES ${BMI_HEADER} DESTINATION include)

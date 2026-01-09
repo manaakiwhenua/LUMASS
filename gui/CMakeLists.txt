@@ -90,13 +90,6 @@ endif()
 
 INCLUDE_DIRECTORIES(
     ${QT5_INCLUDE_DIRS}
-        #${QT5CORE_PRIVATE_DIR}
-        #${QT5CORE_PRIVATE_DIR}/..
-        #${QT5_PREFIX_PATH}
-        #${QT5_PREFIX_PATH}/src/corelib
-        #${QT5_PREFIX_PATH}/src/corelib/global
-        #${QT5SQL_INCLUDE_DIR}
-        #${QT5WIDGETS_INCLUDE_DIR}
     ${NMQT5SQL_PRIVATE_DIR}
     ${NMQT5SQL_PRIVATE_DIR}/..
     ${NMQT5WIDGETS_PRIVATE_DIR}
@@ -134,15 +127,12 @@ INCLUDE_DIRECTORIES(
     ${PostgreSQL_INCLUDE_DIRS}
     ${lumass_SOURCE_DIR}/utils/ITK
     ${lumass_SOURCE_DIR}
-        #${muParserX_SOURCE_DIR}
     ${muparser_SOURCE_DIR}
     ${GDALRATImageIO_BINARY_DIR}
-        #${SQLITE3_INCLUDE_DIR}
     ${SQLite_SOURCE_DIR}
     ${NMQSQLite_SRC_DIR}
     ${NMQt_SOURCE_DIR}
     ${SPATIALITE_INCLUDE_DIR}
-        #${TCADB_INCLUDE_DIR}
     ${VisIt_SOURCE_DIR}
     ${VisIt_BINARY_DIR}
     ${NCXX4_INCLUDE_DIR}
@@ -157,39 +147,25 @@ INCLUDE_DIRECTORIES(
     ${MPI_CXX_INCLUDE_DIRS}
 )
 
-#find_package(Qt5Sql REQUIRED)
-#find_package(Qt5Sqlite REQUIRED)
-
 LINK_DIRECTORIES(
-            #${QT5_SQLDRIVERS_DIR}
-            #${QT5_PREFIX_PATH}/../plugins/sqldrivers
-            #${QT5_LINK_DIRS}
         ${OTB_LIBRARY_DIRS}
         ${LIBRARY_OUTPUT_PATH}
         ${NMQt_BINARY_DIR}
         ${mfw_BINARY_DIR}
-            #${mfw_BINRAY_DIR}/lib
-            #${gui_BINARY_DIR}/lib
         ${SQLite_BINARY_DIR}/lib
         ${muparser_BINARY_DIR}
-            #${muParserX_BINARY_DIR}
         ${RASDAMAN_LIBRARIES_DIR}
         ${PostgreSQL_LIBRARY_DIRS}
         ${SPATIALITE_LIB_DIR}
         ${SPATIALITE_LIBLIB_DIR}
-            #${QT5SQL_PLUGINS_DIR}/plugins/sqldrivers
         ${OSGEO4W_ROOT}/lib
         ${OSGEO4W_ROOT}/bin
-            #${TCADB_LIB_DIR}
         ${VisIt_BINARY_DIR}
         ${NMVtk_BINARY_DIR}
         ${NETCDF_LIB_DIR}
         ${NCXX4_LIB_DIR}
         ${NETCDFIO_BINARY_DIR}
         ${YAML_CPP_LIB_DIR}
-            #/opt/ipopt-bin/install/lib
-            #/opt/mumps-bin/install/lib
-            #/opt/asl-bin/install/lib
 )
 
 
@@ -206,17 +182,8 @@ file(GLOB QT_SRC
     ${gui_SOURCE_DIR}/*.cpp
     ${gui_SOURCE_DIR}/*.cxx
     ${gui_SOURCE_DIR}/*.txx
-        #${NMQSQLite_SRC_DIR}/*.cpp
-
     ${mfw_core_SOURCE_DIR}/NMMPIRunnable.cpp
     ${mfw_core_SOURCE_DIR}/NMMPIRunnable.h
-
-    # we also add some other stuff here
-        #${shared_SOURCE_DIR}/*.cpp
-        #${opt_SOURCE_DIR}/LpHelper.cpp
-        #${opt_SOURCE_DIR}/NMMosra.cpp
-        #${NMQt_SOURCE_DIR}/*.cpp
-        #${NMQt_SOURCE_DIR}/*.h
     ${NMVtk_SOURCE_DIR}/*.cxx
     ${utils_SOURCE_DIR}/ITK/*.cxx
 )
@@ -242,34 +209,22 @@ else()
     set(SUFFIX ".dll")
 endif()
 
-# have taken out ${QT_LIBRARIES} here
 set(LUMASS_LINKLIBS
-        #Qt5::Widgets Qt5::Core Qt5::Gui Qt5::Concurrent Qt5::Xml Qt5::Sql
-        #Qt5::Qml qsqlite
-        ##Qt5::Network
-        #Qt5::WebSockets
     ${QT5_LIBRARIES}
-    QtPropertyBrowser
-    NMQt
     ${NCXX4_LIBRARY}
     ${NETCDF_LIBRARY}
-        #curl xml2
     ${MPI_CXX_LIBRARIES}
     ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
-        #${LIBRARY_OUTPUT_PATH}/${PREFIX}NMOTBSupplFilters${SUFFIX}
-        #${LIBRARY_OUTPUT_PATH}/${PREFIX}NMOTBSupplCore${SUFFIX}
-        #${LIBRARY_OUTPUT_PATH}/${PREFIX}NMModFrameCore${SUFFIX}
+    QtPropertyBrowser
+    NMQt
     NMShared
     NMOTBSupplCoreRAT 
     NMOTBSupplCoreIO
-    NMOTBSupplCoreReader
-    NMOTBSupplCoreWriter
     NMOTBSupplFilters
     MuParser
     NMModFrameCore
     NMMosra
     LumassBMI
-        #${MFW_WRAPPER_NAMES}
     ${LUMASS_GUI_VTK_LIBRARIES}
     ${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
     ${OPENGL_glu_LIBRARY} ${OPENGL_gl_LIBRARY}
@@ -280,17 +235,10 @@ set(LUMASS_LINKLIBS
 )
 
 if (WIN32)
-    list(APPEND LUMASS_LINKLIBS libcurl_imp libxml2)
+    list(APPEND LUMASS_LINKLIBS NMOTBSupplCoreReader NMOTBSupplCoreWriter libcurl_imp libxml2)
 else()
     list(APPEND LUMASS_LINKLIBS curl xml2)
 endif()
-
-#if (${CMAKE_VERSION} VERSION_LESS_EQUAL "3.11.0")
-#    list(APPEND LUMASS_LINKLIBS ${OPENGL_gl_LIBRARY})
-#else()
-#    list(APPEND LUMASS_LINKLIBS ${OPENGL_opengl_LIBRARY})
-#endif()
-
 
 if(PYTHONSUPPORT)
     add_definitions(-DLUMASS_PYTHON)
@@ -302,7 +250,6 @@ set(LUMASS_DEPLIBS
     LumassBMI
     NMOTBSupplFilters
     NMModFrameCore
-        #${MFW_WRAPPER_NAMES}
     QtPropertyBrowser
     SQLite
     VisItTesselator
@@ -313,14 +260,7 @@ IF(RASSUPPORT)
 ENDIF()
 
 
-## Define a special indicator for Qt Version >= 5.4 (for NMSqliteDriver copy ..)
-#if (${QT5_VERSION_STRING} VERSION_LESS "5.4.0")
-#        add_definitions(-DQTVERSION_LT_FIVE_FOUR)
-#endif()
-
-#if (${QT5_VERSION_STRING} VERSION_GREATER "5.5.9")
-    add_definitions(-DQT_HIGHDPI_SUPPORT)
-#endif()
+add_definitions(-DQT_HIGHDPI_SUPPORT)
 
 # indicate that we're building the LUMASS GUI VERSION
 add_definitions(-DNM_ENABLE_LOGGER)
@@ -343,12 +283,6 @@ if (${VTK_VERSION_STRING} VERSION_GREATER_EQUAL "8.90")
     vtk_module_autoinit(TARGETS lumass MODULES ${LUMASS_GUI_VTK_LIBRARIES})
 endif()
 
-# post-build query of lumass dependencies
-#add_custom_command(TARGET lumass POST_BUILD
-#                   COMMAND ${CMAKE_SOURCE_DIR}/fetch_ludeps ${lumass_BINARY_DIR}/lib
-#                   WORKING_DIRECTORY ${lumass_BINARY_DIR}/bin
-#                   VERBATIM
-#)
 
 #====================================================================
 # INSTALL

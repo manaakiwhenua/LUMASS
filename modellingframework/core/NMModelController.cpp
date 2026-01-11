@@ -1827,7 +1827,6 @@ NMModelComponent*
 NMModelController::createModelComponent(const QString& compClass)
 {
     NMModelComponent* comp = NMModelComponentFactory::instance().createModelComponent(compClass);
-    comp->setParent(this);
     return comp;
 }
 

@@ -99,27 +99,27 @@ NMModelComponent* NMModelComponentFactory::createModelComponent(const QString& c
     if (cn.compare("NMSequentialIterComponent") == 0)
 	{
 		return qobject_cast<NMModelComponent*>(
-				new NMSequentialIterComponent(this));
+                new NMSequentialIterComponent(nullptr));
 	}
     else if (cn.compare("NMParallelIterComponent") == 0)
     {
         return qobject_cast<NMModelComponent*>(
-                    new NMParallelIterComponent(this));
+                    new NMParallelIterComponent(nullptr));
     }
     else if (cn.compare("NMDataComponent") == 0)
 	{
 		return qobject_cast<NMModelComponent*>(
-				new NMDataComponent(this));
+                new NMDataComponent(nullptr));
 	}
     else if (cn.compare("NMDataRefComponent") == 0)
     {
         return qobject_cast<NMModelComponent*>(
-                    new NMDataRefComponent(this));
+                    new NMDataRefComponent(nullptr));
     }
     else if (cn.compare("NMParameterTable") == 0)
     {
         return qobject_cast<NMModelComponent*>(
-                 new NMParameterTable(this));
+                 new NMParameterTable(nullptr));
     }
     return nullptr;
 }

@@ -290,6 +290,7 @@ NMLumassEngine::NMLumassEngine(int argc, char** argv, AppMode appMode)
 
 NMLumassEngine::~NMLumassEngine()
 {
+    shutdown();
 }
 
 void

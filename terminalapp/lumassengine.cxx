@@ -263,9 +263,6 @@ int main(int argc, char** argv)
         break;
     }
 
-    // shutdown the engine (python and mpi libs)
-    engine->shutdown();
-
     NMDebugCtxNoMPI(ctx, << "done!");
     return EXIT_SUCCESS;
 }

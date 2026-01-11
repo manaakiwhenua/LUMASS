@@ -1124,10 +1124,6 @@ LUMASSMainWin::~LUMASSMainWin()
     //    delete mServer;
     //}
 
-    // shutdown the engine ...
-    // ... i.e. PythonInterpreter and MPI
-    mEngine->shutdown();
-
     delete ui;
     NMDebugCtxNoMPI(ctxLUMASSMainWin, << "done!");
 }
@@ -9959,7 +9955,6 @@ void LUMASSMainWin::writeSettings(void)
 
 void LUMASSMainWin::closeEvent(QCloseEvent* event)
 {
-    mEngine->shutdown();
     writeSettings();
     QMainWindow::closeEvent(event);
 }

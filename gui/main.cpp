@@ -253,5 +253,6 @@ int main(int argc, char *argv[])
 
     int ret;
     ret = lumass.exec();
+    //engine.shutdown();
     return ret;
 }

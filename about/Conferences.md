@@ -4,6 +4,13 @@ title: "Conferences"
 ---
 <link rel="shortcut icon" type="image/x-icon" href="../LUMASS_icon_64.ico">
 
+
+![FOSS4G_2025.png]({{ "/assets/images/FOSS4G_2025.png" | relative_url }})
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/KlQWSFEenys?si=f-TZ45ndYtTXYUY_" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+
+<br><br>
 ![GIScience2025_map.png]({{ "/assets/images/GIScience2025_map.png" | relative_url }})
 
 ![GIScience2025_text.png]({{ "/assets/images/GIScience2025_text.png" | relative_url }})

@@ -1669,7 +1669,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
 			m_BytePerPixel = sizeof(tmp);
 			if (m_BytePerPixel == 8)
 			{
-				itkWarningMacro(<< "Cast a long (64 bits) image into an int (32 bits) one.")
+				NMProcWarn(<< "Cast a long (64 bits) image into an int (32 bits) one.")
 			}
 			m_GDALComponentType = GDT_Int32;
 		}
@@ -1679,7 +1679,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
 			m_BytePerPixel = sizeof(tmp);
 			if (m_BytePerPixel == 8)
 			{
-				itkWarningMacro(<< "Cast an unsigned long (64 bits) image into an unsigned int (32 bits) one.")
+				NMProcWarn(<< "Cast an unsigned long (64 bits) image into an unsigned int (32 bits) one.")
 			}
 			m_GDALComponentType = GDT_UInt32;
 		}
@@ -1689,7 +1689,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
 			m_BytePerPixel = sizeof(long long);
 			if (m_BytePerPixel == 8)
 			{
-                itkWarningMacro(<< "Cast a long long (64 bits) image into an int (32 bits) one.")
+                NMProcWarn(<< "Cast a long long (64 bits) image into an int (32 bits) one.")
 			}
 			m_GDALComponentType = GDT_Int32;
 		}
@@ -1698,7 +1698,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
 			m_BytePerPixel = sizeof(unsigned long long);
 			if (m_BytePerPixel == 8)
 			{
-                itkWarningMacro(<< "Cast an unsigned long long (64 bits) image into an unsigned int (32 bits) one.")
+                NMProcWarn(<< "Cast an unsigned long long (64 bits) image into an unsigned int (32 bits) one.")
 			}
 			m_GDALComponentType = GDT_UInt32;
 		}
@@ -3109,7 +3109,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
     // values (too lazy for doing the required housekeeping
     // beforehand) ...
 #ifdef GDAL_NEWRATAPI
-    GDALDefaultRasterAttributeTable* gdaltab = new GDALDefaultRasterAttributeTable();
+    GDALRasterAttributeTable* gdaltab = new GDALDefaultRasterAttributeTable();
 #else
     GDALRasterAttributeTable* gdaltab = new GDALRasterAttributeTable();
 #endif
@@ -3291,7 +3291,6 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
     // when we're only updating the RAT, the data sets gets closed as soon as
     // the data set run's out of scope
     //m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
-
     delete gdaltab;
 }
 

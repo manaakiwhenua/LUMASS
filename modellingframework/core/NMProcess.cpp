@@ -920,7 +920,7 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
                 break;
             default: // log case
                 {
-                    QString logmsg = QString("%1: %2").arg(userID).arg(le.getLogMsg().c_str());
+                    QString logmsg = QString("%1 (%2): %3").arg(userID).arg(objName).arg(le.getLogMsg().c_str());
                     mLogger->processLogMsg(le.getLogTime().c_str(),
                                            (NMLogger::LogEventType)le.getLogType(),
                                            logmsg);

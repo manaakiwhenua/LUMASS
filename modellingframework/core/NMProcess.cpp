@@ -826,7 +826,15 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
     {
         emit signalExecutionStopped(objName);
         emit signalProgress(0);
-        QString logmsg = QString("%1: %2").arg(userID).arg("Process aborted!");
+        QString logmsg;
+        if (userID.compare(objName, Qt::CaseSensitive) == 0)
+        {
+            logmsg = QString("%1: %2").arg(userID).arg("Process aborted!");
+        }
+        else
+        {
+            logmsg =QString("%1 (%2): %3").arg(userID).arg(objName).arg("Process aborted!");
+        }
         mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
                                NMLogger::NM_LOG_INFO,
                                logmsg);
@@ -920,7 +928,15 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
                 break;
             default: // log case
                 {
-                    QString logmsg = QString("%1 (%2): %3").arg(userID).arg(objName).arg(le.getLogMsg().c_str());
+                    QString logmsg;
+                    if (userID.compare(objName, Qt::CaseSensitive) == 0)
+                    {
+                        logmsg = QString("%1: %2").arg(userID).arg(le.getLogMsg().c_str());
+                    }
+                    else
+                    {
+                        logmsg = QString("%1 (%2): %3").arg(userID).arg(objName).arg(le.getLogMsg().c_str());
+                    }
                     mLogger->processLogMsg(le.getLogTime().c_str(),
                                            (NMLogger::LogEventType)le.getLogType(),
                                            logmsg);

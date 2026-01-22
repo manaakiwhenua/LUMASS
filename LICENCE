@@ -52,8 +52,12 @@ source: http://sourceforge.net/projects/openiconlibrary/
 licence: https://www.gnu.org/licenses/lgpl.html
 
 
+--- lumass/gui/resources/bmi-model.png (modified)
 --- lumass/gui/resources/data-read.png
 --- lumass/gui/resources/data-save.png
+--- lumass/gui/resources/dialog-close.png
+--- lumass/gui/resources/document-new.png
+--- lumass/gui/resources/document-open-folder.png
 --- lumass/gui/resources/image_RAT_layer.png (modified)
 --- lumass/gui/resources/image_RAT_layer_invisible.png (modified)
 --- lumass/gui/resources/image-read.png (modified)
@@ -62,9 +66,11 @@ licence: https://www.gnu.org/licenses/lgpl.html
 --- lumass/gui/resources/model-pause.png (modified)
 --- lumass/gui/resources/model-reset.png (modified)
 --- lumass/gui/resources/model-stop.png (modified)
+--- lumass/gui/resources/system-run-3.png
 --- lumass/gui/resources/table_object.png
 --- lumass/gui/resources/table-read.png (modified)
 --- lumass/gui/resources/table-write.png (modified)
+--- lumass/gui/resources/view-refresh-4.png
 source: http://sourceforge.net/projects/openiconlibrary/
 license: http://creativecommons.org/licenses/by-sa/3.0/
 
@@ -75,13 +81,13 @@ license: http://creativecommons.org/licenses/GPL/2.0/
 
 
 --- lumass/gui/resources/zoom-in-3.png
---- lumass/gui/resources/zoom-in-3.png
+--- lumass/gui/resources/zoom-out-3.png
 --- lumass/gui/resources/zoom-fit-best-2.png
 source: GNOME Icon Theme <http://art.gnome.org>
 license: http://creativecommons.org/licenses/GPL/2.0/
 
 
---- lumass/gui/resources/SQLite_Logo_4.png
+--- lumass/gui/resources/SQLite_Logo_nm_64.png (modified)
 adapted from source: https://commons.wikimedia.org/wiki/File:SQLite_Logo_4.png
 license: public domain
 
@@ -96,3 +102,7 @@ licence: http://creativecommons.org/licenses/LGPL/2.1/
 source: oxygen-icons5: https://cgit.kde.org/oxygen-icons5.git
 licence: https://www.gnu.org/licenses/lgpl-3.0.en.html
 
+
+--- lumass/gui/resources/python-logo-only.png
+source: https://www.python.org/community/logos/
+licence: https://www.python.org/psf/trademarks

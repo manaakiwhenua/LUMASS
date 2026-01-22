@@ -211,9 +211,12 @@ install(FILES ${OTBSupplCoreIO_HEADER} DESTINATION include)
 #############################################################################################
 
 file(GLOB NMItk_CXX
-    ${OTBSupplCore_SOURCE_DIR}/itkNMConstShapedNeighborhoodIterator.cxx
     ${OTBSupplCore_SOURCE_DIR}/itkNMImageRegionSplitterMaxSize.cxx
 )
+
+if (WIN32)
+    LIST(APPEND NMItk_CXX ${OTBSupplCore_SOURCE_DIR}/itkNMConstShapedNeighborhoodIterator.cxx)
+endif()
 
 file(GLOB NMItk_HEADER
     ${OTBSupplCore_SOURCE_DIR}/itkNMConstShapedNeighborhoodIterator.h

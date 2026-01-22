@@ -31,8 +31,15 @@ public:
 public slots:
     void insertHtml(const QString& text);
     void clearLog(void);
+    void setDarkMode(bool bDarkMode);
 protected slots:
     virtual void contextMenuEvent(QContextMenuEvent* event);
+
+protected:
+    QColor mLightBlue; // = QColor::fromRgb(173,216,230);
+    QColor mBlue     ; // = QColor::fromRgb(0,0,255);
+    QColor mLightRed ; // = QColor::fromRgb();
+    QColor mRed      ; // = QColor::fromRgb(255,0,0);
 };
 
 #endif // NMLOGWIDGET_H

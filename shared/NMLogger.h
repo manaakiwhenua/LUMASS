@@ -104,8 +104,12 @@ public slots:
 
     void setMPIRank(int rank){mMPIRank = rank;}
     void setMPIInitialised(int init) {mMPIInitialised = init;}
+    void setDarkMode(bool bDarkMode);
 
 protected:
+
+    QString mBlueColourName;
+    QString mRedColourName;
 
     bool mbHtml;
     LogEventType mLogLevel;

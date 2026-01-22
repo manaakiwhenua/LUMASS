@@ -2125,7 +2125,6 @@ void LUMASSMainWin::setDarkMode(bool bdark)
         palette.setColor(QPalette::Disabled, QPalette::HighlightedText, QColor(127, 127, 127));
 
         qApp->setPalette(palette);
-
     }
     else
     {
@@ -2140,7 +2139,9 @@ void LUMASSMainWin::setDarkMode(bool bdark)
         tb->setPalette(palette);
     }
 
+    this->ui->logEdit->setDarkMode(bdark);
     this->mTreeCompEditor->getHoverEdit()->setDarkMode(bdark);
+    this->mLogger->setDarkMode(bdark);
 }
 
 void
@@ -4721,6 +4722,20 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
+
+    QString in = "(SQLProcessor62)";
+
+    QRegularExpression regexp("\\(([a-zA-Z0-9]+)\\)");
+    QRegularExpressionMatchIterator mit = regexp.globalMatch(in);
+
+    QString capture = "nothing!";
+    if (mit.hasNext())
+    {
+        capture = mit.next().captured(1);
+    }
+
+    NMLogWarn(<< "captured inside of " << in.toStdString() << ": " << capture.toStdString());
+
 }
 
 void

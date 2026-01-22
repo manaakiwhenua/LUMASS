@@ -21,6 +21,8 @@
 #include <QContextMenuEvent>
 #include <QDate>
 #include <QTime>
+#include <QRegularExpression>
+#include <QRegularExpressionMatchIterator>
 
 #include "NMModelController.h"
 #include "NMGlobalHelper.h"
@@ -39,13 +41,78 @@ NMLogWidget::NMLogWidget(QWidget *parent) : QTextBrowser(parent)
     //this->clearLog();
     this->zoomOut(2);
 
+    mLightBlue = QColor::fromRgb(42,121,216);
+    mBlue      = QColor::fromRgb(0,0,255);
+    mLightRed  = QColor::fromRgb(248,70,75);
+    mRed       = QColor::fromRgb(255,0,0);
 }
 
+void
+NMLogWidget::setDarkMode(bool bDarkMode)
+{
+    QBrush blueBrush;
+    QBrush redBrush;
+    if (bDarkMode)
+    {
+        blueBrush = QBrush(QColor(mLightBlue));
+        redBrush = QBrush(QColor(mLightRed));
+    }
+    else
+    {
+        blueBrush = QBrush(QColor(mBlue));
+        redBrush = QBrush(QColor(mRed));
+    }
+
+    if (!this->document()->isEmpty())
+    {
+        QTextCharFormat blue_text, red_text;
+        blue_text.setForeground(blueBrush);
+        red_text.setForeground(redBrush);
+
+        this->moveCursor(QTextCursor::Start);
+        QTextCursor cursor = this->textCursor();
+
+        while (!cursor.atEnd())
+        {
+            const int sp = cursor.position();
+            cursor.movePosition(QTextCursor::EndOfWord, QTextCursor::KeepAnchor);
+            const int ep = cursor.position();
+            QString selText = cursor.selectedText();
+
+            if (    selText.compare(QStringLiteral("WARNING"), Qt::CaseSensitive) == 0
+                 || NMGlobalHelper::getModelController()->contains(selText)
+               )
+            {
+                cursor.mergeCharFormat(blue_text);
+            }
+            else if (selText.compare(QStringLiteral("ERROR"), Qt::CaseSensitive) == 0)
+            {
+                cursor.mergeCharFormat(red_text);
+            }
+
+            if (selText.compare(QStringLiteral("(") == 0))
+            {
+                cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor);
+            }
+            else
+            {
+                cursor.movePosition(QTextCursor::NextWord, QTextCursor::MoveAnchor);
+            }
+        }
+    }
+}
 
 void
 NMLogWidget::insertHtml(const QString& text)
 {
     QString worktext = text;
+    QRegularExpression regexp("\\(([a-zA-Z0-9]+)\\)");
+
+    QString colour = "#0000FF";
+    if (NMGlobalHelper::getMainWindow()->isInDarkMode())
+    {
+        colour = "#2A79D8";
+    }
 
     //insertPlainText(QString("%1\n").arg(worktext));
     QStringList captured;
@@ -55,17 +122,24 @@ NMLogWidget::insertHtml(const QString& text)
         QStringList ttkk = tok.split(' ', Qt::SkipEmptyParts);
         foreach(const QString& tt, ttkk)
         {
-            if (!captured.contains(tt))
+            QString bracedToken = tt;
+            QRegularExpressionMatchIterator mit = regexp.globalMatch(tt);
+            if (mit.hasNext())
+            {
+                bracedToken = mit.next().captured(1);
+            }
+
+            if (!captured.contains(bracedToken))
             {
                 if (    NMGlobalHelper::getModelController()
-                    &&  NMGlobalHelper::getModelController()->contains(tt)
+                    &&  NMGlobalHelper::getModelController()->contains(bracedToken)
                    )
                 {
-                    QString anchortext = QString("<a href=\"#%1\">%1</a>")
-                            .arg(tt);
-                    QRegExp re(QString("\\b(%1)\\b").arg(tt));
+                    QString anchortext = QString("<a style=\"color: %2\"  href=\"#%1\">%1</a>")
+                            .arg(bracedToken).arg(colour);
+                    QRegExp re(QString("\\b(%1)\\b").arg(bracedToken));
                     worktext = worktext.replace(re, anchortext);
-                    captured << tt;
+                    captured << bracedToken;
                     //insertPlainText(QString("%1 ==> %2 \n").arg(tt).arg(anchortext));
                 }
             }

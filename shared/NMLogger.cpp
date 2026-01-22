@@ -39,6 +39,7 @@
 
 NMLogger::NMLogger(QObject *parent)
     : QObject(parent), mbHtml(false), mMPIRank(0), mMPIInitialised(0),
+      mBlueColourName("blue"), mRedColourName("red"),
 #ifdef LUMASS_DEBUG
     mLogLevel(NM_LOG_DEBUG)
 #else
@@ -136,6 +137,21 @@ NMLogger::logProvN(const NMProvConcept &concept,
 }
 
 void
+NMLogger::setDarkMode(bool bDarkMode)
+{
+    if (bDarkMode)
+    {
+        mBlueColourName = "#2A79D8";
+        mRedColourName = "#F8464B";
+    }
+    else
+    {
+        mBlueColourName = "#0000FF";
+        mRedColourName = "#FF0000";
+    }
+}
+
+void
 NMLogger::processLogMsg(const QString &time, LogEventType type, const QString &msg,
                         bool bForceNewLine)
 {
@@ -173,10 +189,10 @@ NMLogger::processLogMsg(const QString &time, LogEventType type, const QString &m
                 }
                 break;
             case NM_LOG_WARN:
-                logmsg = QString("%1 <b><font color=\"blue\">WARNING</font></b>: %2").arg(time).arg(logmsg);
+                logmsg = QString("%1 <b><font color=\"%3\">WARNING</font></b>: %2").arg(time).arg(logmsg).arg(mBlueColourName);
                 break;
             case NM_LOG_ERROR:
-                logmsg = QString("%1 <b><font color=\"red\">ERROR</font></b>: %2").arg(time).arg(logmsg);
+                logmsg = QString("%1 <b><font color=\"%3\">ERROR</font></b>: %2").arg(time).arg(logmsg).arg(mRedColourName);
                 break;
             case NM_LOG_DEBUG:
                 if (!bForceNewLine)

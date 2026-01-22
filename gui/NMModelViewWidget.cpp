@@ -4054,21 +4054,7 @@ NMModelViewWidget::zoomToComponent(const QString &name)
     {
         QRectF bnd = item->sceneBoundingRect();
         QPointF centre = bnd.center();
-        if (bnd.width() < 600)
-        {
-            //bnd.setLeft(bnd.center().x()-(200 - bnd.width()));
-            bnd.setWidth(600);
-        }
-        if (bnd.height() < 600)
-        {
-            //bnd.setTop(bnd.top()-(200 - bnd.height()));
-            bnd.setHeight(600);
-        }
-        bnd.setTopLeft(QPointF(centre.x()-(bnd.width()/2.0),
-                               centre.y()-(bnd.height()/2.0)));
-
-        this->mModelView->fitInView(bnd, Qt::KeepAspectRatio);
-        //this->mModelView->centerOn(centre);
+        this->mModelView->centerOn(centre);
         this->updateTreeEditor(name);
     }
 }

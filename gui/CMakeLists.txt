@@ -314,5 +314,9 @@ if (UNIX AND NOT APPLE)
         /usr/bin/ogr2ogr
         /usr/bin/gdal_polygonize.py
     )
+
     install(PROGRAMS ${LUMASS_LINUX_UTILS} DESTINATION utils)
+    install(DIRECTORY "/usr/share/proj" DESTINATION utils/share)
+    install(DIRECTORY "/usr/share/gdal" DESTINATION utils/share)
+
 endif()

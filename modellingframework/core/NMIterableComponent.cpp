@@ -2049,8 +2049,6 @@ NMIterableComponent::findExecutableComponents(
         execComps.removeOne(this->objectName());
     }
 
-    NMModelController* ctrl = this->getModelController();
-
     // now we subsequently remove all components, which are mentioned as input
     // of one of the given level's other components;
     // we also look for any data components we can find, in case
@@ -2062,19 +2060,28 @@ NMIterableComponent::findExecutableComponents(
             levelComps.constBegin();  
     for (; inputIt != levelComps.constEnd(); ++inputIt)
     {
-        QString input = inputIt.key();
+        const QString input = inputIt.key();
 
-        // we only execute 'sink' processes, DataBuffers, and
-        // aggregate components, so if you're not one of them,
-        // we take you off the list
-        if (    !input.startsWith(QString::fromLatin1("DataBuffer"))
-            &&  !input.startsWith(QString::fromLatin1("AggrComp"))
+        // We only execute 'sink' processes, DataBuffers, and
+        // aggregate components that are not 'this' component;
+        // any other components are taken off the list.
+        if (    !input.startsWith(QStringLiteral("DataBuffer"))
+            &&  !input.startsWith(QStringLiteral("AggrComp"))
             &&  !NMProcessFactory::instance().isSink(input)
            )
         {
             execComps.removeOne(input);
             NMDebugAI(<< "removed non-executable '" << inputIt.key().toStdString() << "' from executables"
                       << std::endl);
+            continue;
+        }
+
+        // skip all 'ImageWriters' as they're always at the end of a pipeline;
+        // also skip the calling ('this') component itself, which we've removed
+        // from the execComps list earlier
+        if (    input.startsWith(QStringLiteral("ImageWriter"))
+             || input.compare(this->objectName(), Qt::CaseSensitive) == 0)
+        {
             continue;
         }
 
@@ -2095,32 +2102,42 @@ NMIterableComponent::findExecutableComponents(
             const QList<QStringList>& _icInputsList = testIt.value()->getInputs();
             NMIterableComponent* _ic = qobject_cast<NMIterableComponent*>(testIt.value());
 
+            // internal step as it may need to be adjusted depending on the number of inputs and step value
+            int _step = step;
+
             QStringList _icInputs;
-            if (_icInputsList.size()-1 >= step)
+            if (_icInputsList.size() > 0)
             {
-                // apply "NM_USE_UP" index policy
-                int _step = step;
-                if (_step > _icInputsList.size()-1)
+
+                // if we've got a process component, we map HostIndex _step to the process' policy index (== NMProcess::NM_USE_UP)
+                // -- should be a no-op as this as index policies are not actually used - just making sure ...
+                if (_ic->getProcess() != nullptr)
                 {
+                    _step = _ic->getProcess()->mapHostIndexToPolicyIndex(_step, _icInputsList.size());
+                }
+                // if it's not a process component, we apply NM_USE_UP manually ...
+                else if (_step > _icInputsList.size()-1)
+                {
+                    // apply "NM_USE_UP" index policy
                     _step = _icInputsList.size()-1;
                 }
 
-                if (_ic != nullptr)
-                {
-                    if (_ic->getProcess() != nullptr)
-                    {
-                        _step = _ic->getProcess()->mapHostIndexToPolicyIndex(_step, _icInputsList.size());
-                    }
-                }
-
+                // getting the test component's (_ic) inputs at iteration step '_step'
                 _icInputs = _icInputsList.at(_step);
-                if (_icInputs.contains(input))
-                {
-                    execComps.removeOne(input);
-                    NMDebugAI(<< "removed non-executable '" << input.toStdString() << "' from executables"
-                              << std::endl);
-                    break;
-                }
+            }
+            // test the next component's inputs, if this one doesn't have any
+            else
+            {
+                continue;
+            }
+
+            // if input is an input to the test component (_ic), we remove it from the list of executables
+            if (_icInputs.contains(input))
+            {
+                execComps.removeOne(input);
+                NMDebugAI(<< "removed non-executable '" << input.toStdString() << "' from executables"
+                          << std::endl);
+                break;
             }
         }
     }

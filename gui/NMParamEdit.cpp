@@ -512,11 +512,23 @@ NMParamEdit::setupValueCompleter(const QString &compName, const QString &propNam
     {
         mValueIdxMap.clear();
 
+        QStringList modelKeys = NMGlobalHelper::getModelSettingsList();
         QStringList keys = NMGlobalHelper::getUserSettingsList();
-        if (keys.contains(propName))
+
+        bool bGotTheProp = false;
+        QStringList values;
+        if (modelKeys.contains(propName))
         {
-            QStringList values;
+            values << NMGlobalHelper::getModelController()->getSetting(propName).toString();
+            bGotTheProp = true;
+        }
+        else if (keys.contains(propName))
+        {
             values << NMGlobalHelper::getUserSetting(propName);
+        }
+
+        if (bGotTheProp)
+        {
             mValueIdxMap.insert(values.at(0), 1);
             mCompleter->setModel(new QStringListModel(values, mCompleter));
             bFailed = false;
@@ -627,18 +639,21 @@ NMParamEdit::setupPropCompleter(const QString &comp, int propPos, bool dataOnly)
         }
         else if (comp.compare(QString("LUMASS"), Qt::CaseInsensitive) == 0)
         {
-            QStringList keys = NMGlobalHelper::getUserSettingsList();
-            foreach (const QString& key, keys)
-            {
-                propList.append(key);
-                mPropToolTipMap.insert(key, "LUMASS Setting");
-            }
-
             QStringList modelKeys = NMGlobalHelper::getModelSettingsList();
             foreach(const QString& mk, modelKeys)
             {
                 propList.append(mk);
                 mPropToolTipMap.insert(mk, "Model Setting");
+            }
+
+            QStringList keys = NMGlobalHelper::getUserSettingsList();
+            foreach (const QString& key, keys)
+            {
+                if (!propList.contains(key))
+                {
+                    propList.append(key);
+                    mPropToolTipMap.insert(key, "LUMASS Setting");
+                }
             }
         }
         else

@@ -2907,12 +2907,12 @@ NMModelViewWidget::configureModel(const YAML::Node& modelConfig)
                      // update global setting
                      //mController->updateSettings(propName, val);
                      emit signalUpdateSettings(propName, val);
-
-                     NMLogInfo(<< "LUMASS: " << propName.toStdString()
-                               << "=" << val.toString().toStdString());
                  }
 
-                 //std::cout << val.toString().toStdString().c_str() << std::endl;
+                 std::stringstream lmsg;
+                 lmsg << compName.toStdString() << "::" << propName.toStdString() << " = "
+                      << val.toString().toStdString().c_str() << std::endl;
+                 NMLogDebug(<< lmsg.str());
 
                  ++pit;
              }

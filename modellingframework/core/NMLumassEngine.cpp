@@ -991,7 +991,10 @@ NMLumassEngine::configureModel(const YAML::Node& modelConfig)
                      mController->updateSettings(propName, val);
                  }
 
-                 //std::cout << val.toString().toStdString().c_str() << std::endl;
+                 std::stringstream lmsg;
+                 lmsg << compName.toStdString() << "::" << propName.toStdString() << " = "
+                      << val.toString().toStdString().c_str() << std::endl;
+                 NMLogDebug(<< lmsg.str());
 
                  ++pit;
              }

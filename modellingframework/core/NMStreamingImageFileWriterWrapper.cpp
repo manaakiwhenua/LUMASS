@@ -935,6 +935,14 @@ void NMStreamingImageFileWriterWrapper
     emit nmChanged();
 }
 
+void NMStreamingImageFileWriterWrapper
+::setWriteProcsExp(QString procsExp)
+{
+    mWriteProcsExp = procsExp;
+
+    emit nmChanged();
+}
+
 void
 NMStreamingImageFileWriterWrapper
 ::setInternalFileNames(QStringList fileNames)
@@ -1147,9 +1155,22 @@ NMStreamingImageFileWriterWrapper
         bJustStreaming = true;
     }
 
+    // enable 'dynamic' allocation of write procs
+    QVariant writeProcsExp_v = this->getParameter("WriteProcsExp");
+    if (writeProcsExp_v.isValid())
+    {
+        QString writeProcs_str = mController->processStringParameter(this, writeProcsExp_v.toString());
+        bool bOK = false;
+        int wp = writeProcs_str.toInt(&bOK);
+        if (bOK)
+        {
+            this->setWriteProcs(wp);
+        }
+    }
+
     MPI_Comm comm = mController->getNextUpstrMPIComm(this->parent()->objectName());
-    int rank=mController->getRank(this->parent()->objectName());
-    int procs=mController->getNumProcs(this->parent()->objectName());
+    int rank = mController->getRank(this->parent()->objectName());
+    int procs = mController->getNumProcs(this->parent()->objectName());
 
     int cn_len;
     char comm_name[MPI_MAX_OBJECT_NAME];

@@ -69,6 +69,7 @@ class NMMODFRAMECORE_EXPORT NMStreamingImageFileWriterWrapper: public NMProcess
     Q_PROPERTY(bool RGBMode READ getRGBMode WRITE setRGBMode)
     //Q_PROPERTY(bool ParallelIO READ getParallelIO WRITE setParallelIO)
     Q_PROPERTY(int WriteProcs READ getWriteProcs WRITE setWriteProcs)
+    Q_PROPERTY(QString WriteProcsExp READ getWriteProcsExp WRITE setWriteProcsExp)
 
 public:
     NMPropertyGetSet( FileNames, QStringList )
@@ -83,10 +84,14 @@ public:
     NMPropertyGetSet( StreamingMethodType, QString )
     NMPropertyGetSet( StreamingMethodEnum, QStringList)
     NMPropertyGetSet( StreamingSize, int )
+
     //NMPropertyGetSet( NumProcs, int )
 
     void setWriteProcs(int procs);
     int getWriteProcs(void){return mWriteProcs;}
+
+    void setWriteProcsExp(QString procsExp);
+    QString getWriteProcsExp(void){return mWriteProcsExp;}
 
 #ifdef BUILD_RASSUPPORT
     void setRasConnector(NMRasdamanConnectorWrapper* rw);
@@ -132,6 +137,7 @@ protected:
 
     int mStreamingSize;
     int mWriteProcs;
+    QString mWriteProcsExp;
     QString mStreamingMethodType;
     QStringList mStreamingMethodEnum;
 

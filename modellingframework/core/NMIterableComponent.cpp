@@ -1448,25 +1448,34 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
                 {
                     if (icomp->objectName().startsWith(QStringLiteral("ImageWriter")))
                     {
+                        int writeProcs = 1;
+                        bool bOK = false;
                         QVariant writeProcsVar = icomp->getProcess()->property("WriteProcs");
-                        if (writeProcsVar.isValid())
+                        QVariant writeProcsExpVar = icomp->getProcess()->property("WriteProcsExp");
+
+                        if (writeProcsExpVar.isValid())
                         {
-                            bool bOK;
-                            int writeProcs = writeProcsVar.toInt(&bOK);
-                            if (bOK)
+                            QString writeProcsExp_val = mController->processStringParameter(icomp, writeProcsExpVar.toString());
+                            writeProcs = writeProcsExp_val.toInt(&bOK);
+                        }
+                        else if (writeProcsVar.isValid())
+                        {
+                            writeProcs = writeProcsVar.toInt(&bOK);
+                        }
+
+                        if (bOK)
+                        {
+                            if (writeProcs > 1)
                             {
-                                if (writeProcs > 1)
-                                {
-                                    parallelTasks.push_back(pipe);
-                                    parallelExe.push_back(pipe.last());
-                                    parallelWriters.push_back(pipe.last());
-                                    parallelWriterProcs.push_back(writeProcs);
-                                }
-                                else
-                                {
-                                    sequentialTasks.push_back(pipe);
-                                    sequentialExe.push_back(pipe.last());
-                                }
+                                parallelTasks.push_back(pipe);
+                                parallelExe.push_back(pipe.last());
+                                parallelWriters.push_back(pipe.last());
+                                parallelWriterProcs.push_back(writeProcs);
+                            }
+                            else
+                            {
+                                sequentialTasks.push_back(pipe);
+                                sequentialExe.push_back(pipe.last());
                             }
                         }
                     }
@@ -1501,8 +1510,8 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
             // list / vector of REMAINING exe / writer / write proc demand
             QStringList _parallelExe = parallelExe;
             QStringList _sequentialExe = sequentialExe;
-            QStringList _parallelWriters = parallelWriters;
-            std::vector<int> _parallelWriterProcs(parallelWriterProcs.begin(), parallelWriterProcs.end());
+            //QStringList _parallelWriters = parallelWriters;
+            //std::vector<int> _parallelWriterProcs(parallelWriterProcs.begin(), parallelWriterProcs.end());
 
             const int num_paraTasks = parallelExe.size();
             const int num_seqTasks = sequentialExe.size();
@@ -1641,6 +1650,24 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
                         // if current rank is part of the crew running this task, it needs to call MPI_Comm_split for registration
                         if (commRank == procRank)
                         {
+                            // double check for ImageWriter's rank demand and skip allocation,
+                            // already satisfied
+                            if (parallelWriters.contains(pexe))
+                            {
+                                const int pexe_id = parallelWriters.indexOf(pexe);
+                                if (pexe_id >= 0)
+                                {
+                                    const int writeProcs = parallelWriterProcs.at(pexe_id);
+                                    if (pp >= writeProcs)
+                                    {
+                                        NMDebugAI(<< "*** " << pexe.toStdString() << "'s rank allocation satisifed! "
+                                                  << "Skipping allocation of rank no " << (pp+1) << "!" << std::endl);
+                                        idleProcs.push_front(procRank);
+                                        continue;
+                                    }
+                                }
+                            }
+
                             taskAdmin.first.insert(procRank);
                             std::string paraCommName = taskAdmin.second + "-" + std::to_string(splitID);
                             NMDebugAI(<< "*** MPI_Comm_split(comm, "<< splitID << ", " << commRank
@@ -1653,7 +1680,6 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
                     }
                     mapSplitRanksTasks.insert(splitID, taskAdmin);
                 }
-
 
                 // assign all remaining procs and 'idle' task
                 while(idleProcs.size() > 0)

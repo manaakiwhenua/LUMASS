@@ -779,12 +779,23 @@ NMModelController::identifyParallelComponents(const QString& compName,
                 qobject_cast<NMStreamingImageFileWriterWrapper*>(ic->getProcess());
             QStringList filenames = writer->getFileNames();
 
+            int writeProcCount = 1;
+            QString wpexp = writer->getWriteProcsExp();
+            if (!wpexp.isEmpty())
+            {
+                writeProcCount = 2;
+            }
+            else
+            {
+                writeProcCount = writer->getWriteProcs();
+            }
+
             bool bParallel = false;
             foreach(const QString& fn, filenames)
             {
                 const QString _fn = this->processStringParameter(ic, fn);
                 if (    _fn.contains(QStringLiteral(".nc"))
-                     && writer->getWriteProcs() > 1
+                     && writeProcCount > 1
                    )
                 {
                     bParallel = true;

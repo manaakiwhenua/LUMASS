@@ -97,11 +97,7 @@ RATBandMathImageFilter<TImage>
     m_ConcatChar = "__";
     m_UseTableColumnCache = false;
 
-    for (int t=0; t < this->GetNumberOfThreads(); ++t)
-    {
-        std::vector<TablePointer> vT;
-        m_VRAT.push_back(vT);
-    }
+    NMProcDebug(<< this->GetObjectName() << "::Ctr(): num threads: " << this->GetNumberOfThreads() << std::endl);
 }
 
 /** Destructor */
@@ -525,6 +521,20 @@ void RATBandMathImageFilter<TImage>
 {
     if (m_Expression != expression)
         m_Expression = expression;
+
+    // need to initiate this sometime after instantiation
+    // and before inputs are set and processed ....
+    // this is one of the first parameters set in
+    // the associated wrapper, so ...
+
+    NMProcDebug(<< this->GetObjectName() << "::SetExpression(): num threads: " << this->GetNumberOfThreads() << std::endl);
+
+    for (int t=0; t < this->GetNumberOfThreads(); ++t)
+    {
+        std::vector<TablePointer> vT;
+        m_VRAT.push_back(vT);
+    }
+
     this->Modified();
 }
 
@@ -551,6 +561,7 @@ void RATBandMathImageFilter<TImage>
     typename std::vector< std::vector<PixelType> >::iterator   itVImage;
     //this->SetNumberOfThreads(1);
     unsigned int nbThreads = this->GetNumberOfThreads();
+    NMProcDebug(<< this->GetObjectName() << "::BeforeThreadedGenerateData(): num threads: " << nbThreads << std::endl);
     //unsigned int nbInputImages = this->GetNumberOfInputs();
 
     unsigned int nbAccessIndex = 4; //to give access to image and physical index

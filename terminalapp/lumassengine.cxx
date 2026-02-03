@@ -107,6 +107,7 @@ void showHelp()
                            << _lumass_version_major << "."
                            << _lumass_version_minor << "."
                            << _lumass_version_revision
+                           << _lumass_version_suffix
                            << std::endl << std::endl;
     std::cout << "Usage: lumassengine --moso <settings file (*.los)> | "
                                   << "--model <LUMASS model file (*.lmx | *.yaml)> "

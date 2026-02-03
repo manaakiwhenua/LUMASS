@@ -135,12 +135,34 @@ NMProcess::linkInPipeline(unsigned int step,
         mOtbProcess->SetObjectName(this->parent()->objectName().toStdString());
 
         bool bConv;
-        unsigned int maxThreadCount = mController->getSetting(QStringLiteral("MaxThreadCount")).toUInt(&bConv);
-        unsigned int numThreads = static_cast<unsigned int>(QThread::idealThreadCount());
-        if (bConv)
+        unsigned int maxThreadCount = 1;
+        QVariant maxThreadCountVar = mController->getSetting(QStringLiteral("MaxThreadCount"));
+        if (maxThreadCountVar.isValid())
         {
-            numThreads = std::min(numThreads, maxThreadCount);
+            unsigned int maxThCnt = 1;
+            const QString thVarTypeName = maxThreadCountVar.typeName();
+            if (thVarTypeName.compare(QStringLiteral("QString")) == 0)
+            {
+                QString maxThCntStr = mController->processStringParameter(this, maxThreadCountVar.toString());
+                maxThCnt = maxThCntStr.toUInt(&bConv);
+            }
+            else if (thVarTypeName.compare(QStringLiteral("UInt")) == 0)
+            {
+                maxThCnt = maxThreadCountVar.toUInt(&bConv);
+            }
+
+            if (bConv)
+            {
+                maxThreadCount = maxThCnt;
+            }
         }
+
+        NMLogDebug(<< this->objectName().toStdString() << ": MaxThreadCount: " << maxThreadCount);
+
+        unsigned int numThreads = static_cast<unsigned int>(QThread::idealThreadCount());
+        numThreads = std::min(numThreads, maxThreadCount);
+
+        NMLogDebug(<< mOtbProcess->GetObjectName() << ": thead count: " << numThreads);
 
         this->mOtbProcess->SetNumberOfThreads(numThreads);
     }

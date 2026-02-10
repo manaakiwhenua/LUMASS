@@ -7949,12 +7949,12 @@ void LUMASSMainWin::loadImageLayer(const QString& fileName)
 {
     NMDebugCtx(ctxLUMASSMainWin, << "...");
 
-    NMDebugAI( << "opening " << fileName.toStdString() << " ..." << std::endl);
+    NMDebugAI( << "opening image " << fileName.toStdString() << " ..." << std::endl);
 
     QString theFN;
     if (fileName.contains(".nc"))
     {
-        theFN = fileName.left(fileName.indexOf(":"));
+        theFN = fileName.left(fileName.lastIndexOf(":"));
     }
     else
     {

@@ -157,12 +157,10 @@ NMProcess::linkInPipeline(unsigned int step,
             }
         }
 
-        NMLogDebug(<< this->objectName().toStdString() << ": MaxThreadCount: " << maxThreadCount);
-
         unsigned int numThreads = static_cast<unsigned int>(QThread::idealThreadCount());
         numThreads = std::min(numThreads, maxThreadCount);
 
-        NMLogDebug(<< mOtbProcess->GetObjectName() << ": thead count: " << numThreads);
+        NMLogDebug(<< this->objectName().toStdString() << ": MaxThreadCount: " << numThreads);
 
         this->mOtbProcess->SetNumberOfThreads(numThreads);
     }

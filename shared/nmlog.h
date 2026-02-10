@@ -69,7 +69,21 @@
     #define db_out(msg) \
     { \
         std::string _msgStr = msg.str();\
-        OutputDebugStringA(_msgStr.c_str());\
+        int ___size=1;\
+        int ___init=0; \
+        MPI_Initialized(&___init); \
+        if (___init) \
+        {\
+            MPI_Comm_size(MPI_COMM_WORLD, &___size); \
+        }\
+        if (___size > 1) \
+        {\
+            std::cout << msg.str();\
+        }\
+        else \
+        {\
+            OutputDebugStringA(_msgStr.c_str()); \
+        }\
     }
 #else
     #define db_out(msg) (std::cout << msg.str()); 

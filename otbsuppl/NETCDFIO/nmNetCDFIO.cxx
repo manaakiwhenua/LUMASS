@@ -37,6 +37,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <cctype>
 #include <limits>
 #include <algorithm>
@@ -992,14 +993,24 @@ bool NetCDFIO::InitParallelIO(MPI_Comm &comm, MPI_Info &info, bool write)
 
     try
     {
-
         NcFile::FileMode fileMode = NcFile::read;
         if (write)
         {
-            fileMode = NcFile::write;
-            NMDebugAI(<< "NetCDFIO: proc #" << mrank <<
-                      " is trying to init parallel WRITE for '"
-                      << this->GetFileName() << "'" << std::endl);
+            std::ifstream file(this->GetFileName());
+            if (file.good())
+            {
+                fileMode = NcFile::write;
+                NMDebugAI(<< "NetCDFIO: proc #" << mrank
+                    << " is trying to init parallel WRITE for updating '"
+                    << this->GetFileName() << "'" << std::endl);
+            }
+            else
+            {
+                fileMode = NcFile::replace;
+                NMDebugAI(<< "NetCDFIO: proc #" << mrank <<
+                    " is trying to init parallel WRITE for replacing '"
+                    << this->GetFileName() << "'" << std::endl);
+            }
         }
         else
         {

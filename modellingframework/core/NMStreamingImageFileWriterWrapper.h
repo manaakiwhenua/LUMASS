@@ -25,7 +25,14 @@
 #ifndef NMSTREAMINGIMAGEFILEWRITERWRAPPER_H_
 #define NMSTREAMINGIMAGEFILEWRITERWRAPPER_H_
 
-#include "nmlog.h"
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+
 #define ctxNMStreamWriter "NMStreamingImageFileWriterWrapper"
 
 #include <string>

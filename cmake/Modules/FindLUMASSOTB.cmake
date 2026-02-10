@@ -180,6 +180,7 @@ if(ITK_FOUND)
                 /usr/lib
                 /usr/lib/x86_64-linux-gnu
         )
+    endif(UNIX AND NOT APPLE)
 endif(ITK_FOUND)
 if ("${LUMASS_ITK_VERSION}" VERSION_LESS "4.11")
     message(FATAL_ERROR "LUMASS >= 0.9.60 requires ITK >= 4.11")

@@ -1160,9 +1160,10 @@ NMStreamingImageFileWriterWrapper
     if (writeProcsExp_v.isValid())
     {
         QString writeProcs_str = mController->processStringParameter(this, writeProcsExp_v.toString());
+        NMDebugAI(<< this->parent()->objectName().toStdString() << "::WriteProcsExp='" << writeProcs_str.toStdString() << "'" << std::endl);
         bool bOK = false;
         int wp = writeProcs_str.toInt(&bOK);
-        if (bOK)
+        if (bOK && wp >= 1)
         {
             this->setWriteProcs(wp);
         }
@@ -1207,15 +1208,15 @@ NMStreamingImageFileWriterWrapper
                 if (rank == 0)
                 {
                    NMDebugAI(<< this->parent()->objectName().toStdString()
-                             << " tests whether " << param.toString().toStdString()
-                             << " is writable." << endl);
+    << " tests whether " << param.toString().toStdString()
+    << " is writable." << endl);
                    bWriteable = this->isOutputFileNameWriteable(param.toString());
                 }
 
                 if (bParallel && comm != MPI_COMM_NULL)
                 {
                     NMDebugAI(<< "broadcasting writeability to fellow ranks via comm #"
-                              << comm_name << " ... " << endl);
+    << comm_name << " ... " << endl);
 
                     int errc = MPI_Bcast(&bWriteable, 1, MPI_C_BOOL, 0, comm);
                     MPI_Barrier(comm);
@@ -1223,7 +1224,7 @@ NMStreamingImageFileWriterWrapper
                 }
 
                 NMDebugAI(<< "lr" << rank << ": " << param.toString().toStdString()
-                          << "'s writable? " << (bWriteable ? "yes" : "no") << endl);
+    << "'s writable? " << (bWriteable ? "yes" : "no") << endl);
 
                 if (!bWriteable)
                 {
@@ -1465,7 +1466,7 @@ NMStreamingImageFileWriterWrapper
     if (comm == MPI_COMM_NULL)
     {
         NMDebugAI(<< ctxNMStreamWriter << ": No valid MPI_Comm communicator registered for this component!"
-                  << " So will do good old squential processing instead!" << std::endl);
+    << " So will do good old squential processing instead!" << std::endl);
         this->mParallelIO = false;
         return;
     }
@@ -1550,7 +1551,7 @@ NMStreamingImageFileWriterWrapper
             startTime = QDateTime::currentDateTime();
             QString startString = startTime.toString("dd.MM.yyyy hh:mm:ss.zzz");
             NMDebugAI(<< this->parent()->objectName().toStdString()
-                      << ": started at: " << startString.toStdString() << std::endl);
+    << ": started at: " << startString.toStdString() << std::endl);
 
             if (mParallelIO)
             {

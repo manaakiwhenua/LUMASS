@@ -92,7 +92,7 @@ GDALRATImageIO::GDALRATImageIO()
   // By default set component type to unsigned char
   m_ComponentType = UCHAR;
   m_UseCompression = true;
-  m_CompressionLevel = 7; // default was 4: Range 0-9; 0 = no file compression, 9 = maximum file compression
+  m_CompressionLevel = 4; // default was 4: Range 0-9; 0 = no file compression, 9 = maximum file compression
 
   // Set default spacing to one
   m_Spacing[0] = 1.0;

@@ -432,6 +432,27 @@ public:
             }
         }
 
+    static void setCompressionLevel(itk::ProcessObject::Pointer& otbFilter,
+        unsigned int numBands, int compressionLevel, bool rgbMode)
+    {
+        if (numBands == 1)
+        {
+            FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+            filter->SetCompressionLevel(compressionLevel);
+        }
+        else if (numBands == 3 && rgbMode)
+        {
+            RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
+            filter->SetCompressionLevel(compressionLevel);
+        }
+        else
+        {
+            VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
+            filter->SetCompressionLevel(compressionLevel);
+        }
+    }
+
+
     static void setStreamingMethod(itk::ProcessObject::Pointer& otbFilter,
                                   unsigned int numBands, const QString& StreamingMethod, bool rgbMode)
         {
@@ -695,6 +716,25 @@ template class NMStreamingImageFileWriterWrapper_Internal<double, double, 3>;
     }\
 }
 
+#define callSetCompressionLevel( imgType, wrapName ) \
+{ \
+    if (this->mOutputNumDimensions == 1) \
+    { \
+        wrapName< imgType, imgType, 1 >::setCompressionLevel( \
+                this->mOtbProcess, this->mOutputNumBands, compressionLevel, mRGBMode); \
+    } \
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        wrapName< imgType, imgType, 2 >::setCompressionLevel( \
+                this->mOtbProcess, this->mOutputNumBands, compressionLevel, mRGBMode); \
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        wrapName< imgType, imgType, 3 >::setCompressionLevel( \
+                this->mOtbProcess, this->mOutputNumBands, compressionLevel, mRGBMode); \
+    }\
+}
+
 #define callSetStreamingMethod( imgType, wrapName ) \
 { \
     if (this->mOutputNumDimensions == 1) \
@@ -813,8 +853,9 @@ NMStreamingImageFileWriterWrapper
     this->mRGBMode = false;
     this->mParallelIO = false;
 
-    this->mStreamingSize = 512;
+    this->mStreamingSize = 1024;
     this->mWriteProcs = 1;
+    this->mCompressionLevel = 4;
 
     this->mPyramidResamplingType = QString(tr("NEAREST"));
     mPyramidResamplingEnum.clear();
@@ -846,6 +887,7 @@ NMStreamingImageFileWriterWrapper
     mUserProperties.insert(QStringLiteral("PyramidResamplingType"), QStringLiteral("PyramidResampling"));
     //mUserProperties.insert(QStringLiteral("ParallelIO"), QStringLiteral("ParallelIO"));
     mUserProperties.insert(QStringLiteral("WriteProcs"), QStringLiteral("WriteProcs"));
+    mUserProperties.insert(QStringLiteral("CompressionLevel"), QStringLiteral("CompressionLevel"));
 
 #ifdef BUILD_RASSUPPORT
     this->mRasConnector = 0;
@@ -876,6 +918,7 @@ NMStreamingImageFileWriterWrapper
 
     this->mStreamingSize = 512;
     this->mWriteProcs = 1;
+    this->mCompressionLevel = 4;
 
     this->mPyramidResamplingType = QString(tr("NEAREST"));
     mPyramidResamplingEnum.clear();
@@ -907,6 +950,7 @@ NMStreamingImageFileWriterWrapper
     mUserProperties.insert(QStringLiteral("PyramidResamplingType"), QStringLiteral("PyramidResampling"));
     //mUserProperties.insert(QStringLiteral("ParallelIO"), QStringLiteral("ParallelIO"));
     mUserProperties.insert(QStringLiteral("WriteProcs"), QStringLiteral("WriteProcs"));
+    mUserProperties.insert(QStringLiteral("CompressionLevel"), QStringLiteral("CompressionLevel"));
 
 
 #ifdef BUILD_RASSUPPORT
@@ -1069,6 +1113,22 @@ NMStreamingImageFileWriterWrapper
     }
 }
 
+void
+NMStreamingImageFileWriterWrapper
+::setInternalCompressionLevel(int compressionLevel)
+{
+    if (!this->mbIsInitialised)
+        return;
+
+    switch (this->mOutputComponentType)
+    {
+        MacroPerType(callSetCompressionLevel, NMStreamingImageFileWriterWrapper_Internal)
+    default:
+        break;
+    }
+}
+
+
 bool
 NMStreamingImageFileWriterWrapper
 ::isOutputFileNameWriteable(const QString &fn)
@@ -1166,6 +1226,17 @@ NMStreamingImageFileWriterWrapper
         if (bOK && wp >= 1)
         {
             this->setWriteProcs(wp);
+        }
+    }
+
+    QVariant compressionLevel_v = this->getParameter("CompressionLevel");
+    if (compressionLevel_v.isValid())
+    {
+        bool comprOK = false;
+        int cLevel = compressionLevel_v.toInt(&comprOK);
+        if (comprOK)
+        {
+            this->setInternalCompressionLevel(cLevel);
         }
     }
 

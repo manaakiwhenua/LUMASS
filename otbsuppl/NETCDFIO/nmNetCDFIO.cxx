@@ -202,7 +202,7 @@ NetCDFIO::NetCDFIO(void)
     // reasonable default pixel type
     m_ComponentType = FLOAT;
     m_ncType = netCDF::NcType::nc_FLOAT;
-    m_CompressionLevel = 5;
+    m_CompressionLevel = 4;
 
     // we don't have any info about the image so far ...
     m_bCanRead = false;
@@ -1736,10 +1736,7 @@ void NetCDFIO::WriteImageInformation()
                         MPI_Barrier(m_MPIComm);
                     }
 
-                    if (!m_bParallelIO)
-                    {
-                        dimVar.setCompression(true, true, m_CompressionLevel);
-                    }
+                    dimVar.setCompression(true, true, m_CompressionLevel);
 
                     std::vector<double> dimVals(dsize, 0.0);
                     for (unsigned int dimIdx=0; dimIdx < dsize; ++dimIdx)
@@ -1764,6 +1761,8 @@ void NetCDFIO::WriteImageInformation()
 
             // now add the actual variable we want to write
             valVar = grp.addVar(this->m_NcVarName, vtype, dims);
+            valVar.setCompression(true, true, m_CompressionLevel);
+            
             if (m_bParallelIO)
             {
                 MPI_Barrier(m_MPIComm);
@@ -1771,8 +1770,6 @@ void NetCDFIO::WriteImageInformation()
 
             if (!m_bParallelIO)
             {
-                valVar.setCompression(true, true, m_CompressionLevel);
-
                 bool bSetFill = false;
                 if (m_VarAttInfoMap.find(this->m_NcVarName) != m_VarAttInfoMap.cend())
                 {

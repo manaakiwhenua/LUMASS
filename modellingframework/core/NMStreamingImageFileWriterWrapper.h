@@ -77,9 +77,10 @@ class NMMODFRAMECORE_EXPORT NMStreamingImageFileWriterWrapper: public NMProcess
     //Q_PROPERTY(bool ParallelIO READ getParallelIO WRITE setParallelIO)
     Q_PROPERTY(int WriteProcs READ getWriteProcs WRITE setWriteProcs)
     Q_PROPERTY(QString WriteProcsExp READ getWriteProcsExp WRITE setWriteProcsExp)
+    Q_PROPERTY(int CompressionLevel READ getCompressionLevel WRITE setCompressionLevel)
 
 public:
-    NMPropertyGetSet( FileNames, QStringList )
+    NMPropertyGetSet(FileNames, QStringList)
     NMPropertyGetSet( InputTables, QStringList )
     NMPropertyGetSet( UpdateMode, bool )
     NMPropertyGetSet( WriteTable, bool )
@@ -91,6 +92,7 @@ public:
     NMPropertyGetSet( StreamingMethodType, QString )
     NMPropertyGetSet( StreamingMethodEnum, QStringList)
     NMPropertyGetSet( StreamingSize, int )
+    NMPropertyGetSet( CompressionLevel, int)
 
     //NMPropertyGetSet( NumProcs, int )
 
@@ -144,6 +146,7 @@ protected:
 
     int mStreamingSize;
     int mWriteProcs;
+    int mCompressionLevel;
     QString mWriteProcsExp;
     QString mStreamingMethodType;
     QStringList mStreamingMethodEnum;
@@ -190,6 +193,7 @@ protected:
     void setInternalForcedLargestPossibleRegion(itk::ImageIORegion& ior);
     void setInternalUpdateRegion(itk::ImageIORegion& ior);
     void setInternalParallelIO(void);
+    void setInternalCompressionLevel(int level);
 };
 
 #endif /* NMSTREAMINGIMAGEFILEWRITERWRAPPER_H_ */

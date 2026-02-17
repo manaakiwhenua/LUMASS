@@ -778,6 +778,7 @@ StreamingRATImageFileWriter<TInputImage>
                 NetCDFIO::Pointer nioPtr = NetCDFIO::New();
                 if (nioPtr.IsNotNull())
                 {
+                    nioPtr->SetCompressionLevel(this->m_CompressionLevel);
                     nioPtr->SetFileName(m_FileNames[io].c_str());
                     if (this->m_ParallelIO)
                     {
@@ -831,6 +832,7 @@ StreamingRATImageFileWriter<TInputImage>
                     itkExceptionMacro(<< "Failed to create instance of GDALRATImageIO");
                 }
 
+                gioPtr->SetCompressionLevel(this->m_CompressionLevel);
                 gioPtr->SetFileName(this->m_FileNames[io]);
 
                 if (!gioPtr->CanWriteFile(this->m_FileNames[io].c_str()))

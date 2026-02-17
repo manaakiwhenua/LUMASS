@@ -273,6 +273,8 @@ public:
   itkSetMacro(UseCompression, bool)
   itkGetConstReferenceMacro(UseCompression, bool)
   itkBooleanMacro(UseCompression)
+  itkSetMacro(CompressionLevel, int)
+  itkGetMacro(CompressionLevel, int)
 
   /** By default the MetaDataDictionary is taken from the input image and
    *  passed to the ImageIO. In some cases, however, a user may prefer to
@@ -400,7 +402,7 @@ private:
   std::string m_ResamplingType;
   std::string m_StreamingMethod;  // TILED | STRIPPED
   int m_StreamingSize;          // MB streaming pieces
-
+  int m_CompressionLevel;        // 0 (none) - 9 (max)
   std::vector<otb::ImageIOBase::Pointer> m_ImageIOs;
 
   bool m_UserSpecifiedImageIO; //track whether the ImageIO is user specified

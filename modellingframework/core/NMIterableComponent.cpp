@@ -1423,6 +1423,9 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 
             // identify components/pipelines that may utilise
             // more than one process
+            // NOTE: whether or not this pipeline is going to be executed or not depending
+            // on its NumIterations(Expression) property is accounted for in the
+            // ::createExecSequence() method
             foreach(const QStringList& pipe, execList)
             {
                 NMModelComponent* comp = controller->getComponent(pipe.last());
@@ -1430,53 +1433,46 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 
                 mapExePipe.insert(pipe.last(), pipe);
 
-                /// ToDo: need to look at this at one point!
-                /// HAVE IMPLEMENTED THIS INTO ::createExecSequence();
-                // we disregard disabled components
-                //NMSequentialIterComponent* sicomp = qobject_cast<NMSequentialIterComponent*>(icomp);
-                //if (    sicomp->evalNumIterationsExpression(step) == 0
-                //    ||  (    sicomp->evalNumIterationsExpression(step) == sicomp->getNumIterations()
-                //          && sicomp->getIterationStep() > sicomp->getNumIterations()
-                //        )
-                //   )
-                //{
-                //    continue;
-                //}
-
-
                 if (icomp != nullptr && icomp->getProcess() != nullptr)
                 {
                     if (icomp->objectName().startsWith(QStringLiteral("ImageWriter")))
                     {
                         int writeProcs = 1;
+                        int _writeProcs = 1;
                         bool bOK = false;
                         QVariant writeProcsVar = icomp->getProcess()->property("WriteProcs");
-                        QVariant writeProcsExpVar = icomp->getProcess()->property("WriteProcsExp");
+                        if (writeProcsVar.isValid())
+                        {
+                            _writeProcs = writeProcsVar.toInt(&bOK);
+                            if (bOK)
+                            {
+                                writeProcs = _writeProcs;
+                            }
+                        }
 
+                        bOK = false;
+                        QVariant writeProcsExpVar = icomp->getProcess()->property("WriteProcsExp");
                         if (writeProcsExpVar.isValid())
                         {
                             QString writeProcsExp_val = mController->processStringParameter(icomp, writeProcsExpVar.toString());
-                            writeProcs = writeProcsExp_val.toInt(&bOK);
-                        }
-                        else if (writeProcsVar.isValid())
-                        {
-                            writeProcs = writeProcsVar.toInt(&bOK);
+                            _writeProcs = writeProcsExp_val.toInt(&bOK);
+                            if (bOK)
+                            {
+                                writeProcs = _writeProcs;
+                            }
                         }
 
-                        if (bOK)
+                        if (writeProcs > 1)
                         {
-                            if (writeProcs > 1)
-                            {
-                                parallelTasks.push_back(pipe);
-                                parallelExe.push_back(pipe.last());
-                                parallelWriters.push_back(pipe.last());
-                                parallelWriterProcs.push_back(writeProcs);
-                            }
-                            else
-                            {
-                                sequentialTasks.push_back(pipe);
-                                sequentialExe.push_back(pipe.last());
-                            }
+                            parallelTasks.push_back(pipe);
+                            parallelExe.push_back(pipe.last());
+                            parallelWriters.push_back(pipe.last());
+                            parallelWriterProcs.push_back(writeProcs);
+                        }
+                        else
+                        {
+                            sequentialTasks.push_back(pipe);
+                            sequentialExe.push_back(pipe.last());
                         }
                     }
                     else

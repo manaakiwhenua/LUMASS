@@ -779,15 +779,17 @@ NMModelController::identifyParallelComponents(const QString& compName,
                 qobject_cast<NMStreamingImageFileWriterWrapper*>(ic->getProcess());
             QStringList filenames = writer->getFileNames();
 
-            int writeProcCount = 1;
+            int writeProcCount = writer->getWriteProcs();
             QString wpexp = writer->getWriteProcsExp();
             if (!wpexp.isEmpty())
             {
-                writeProcCount = 2;
-            }
-            else
-            {
-                writeProcCount = writer->getWriteProcs();
+                QString res = this->processStringParameter(ic, wpexp);
+                bool bConv = false;
+                int wp = res.toInt(&bConv);
+                if (bConv && wp > 0)
+                {
+                    writeProcCount = wp;
+                }
             }
 
             bool bParallel = false;
@@ -3571,7 +3573,8 @@ NMModelController::startProv(const QString &fn, const QString& compName)
     mProvFile.setFileName(fn);
     if (!mProvFile.open(QIODevice::ReadWrite | QIODevice::Text))
     {
-        NMLogError(<< "Model Controller: Failed creating provenance record: "
+        NMLogError(<< "Model Controller: Failed creating provenance record '"
+                   << fn.toStdString() << "': "
                    << mProvFile.errorString().toStdString());
         return;
     }

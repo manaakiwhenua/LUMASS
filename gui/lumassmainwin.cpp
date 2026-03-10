@@ -6590,7 +6590,11 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
     NMDebugAI(<< "allocating field arrays for vector layer ..." << std::endl);
     for (int f=0; f < nfields; ++f)
     {
+#ifdef GDAL_312
+        const OGRFieldDefn* fdef = pFeat->GetFieldDefnRef(f);
+#else
         OGRFieldDefn* fdef = pFeat->GetFieldDefnRef(f);
+#endif
         //		NMDebugAI( << fdef->GetNameRef() << ": " << fdef->GetFieldTypeName(fdef->GetType()) << std::endl);
         if (::strcmp(fdef->GetNameRef(), "nm_id") == 0  ||
             ::strcmp(fdef->GetNameRef(), "nm_hole") == 0 ||

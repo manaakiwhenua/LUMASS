@@ -133,9 +133,6 @@ endif()
 
 set(CMAKE_AUTOMOC YES)
 
-string(TOLOWER ${CMAKE_BUILD_TYPE} BLDTYPE)
-string(COMPARE EQUAL ${BLDTYPE} "debug" HAVEDEBUG)
-
 #if (HAVEDEBUG AND NOT WIN32)
 #    LIST(APPEND MFW_WRAPPER_NAMES "NMUniqueCombinationFilterWrapper")
 #endif()

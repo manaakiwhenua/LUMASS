@@ -155,6 +155,7 @@ string(TOLOWER "${CMAKE_BUILD_TYPE}" testvar_in)
 set(testvar_target "debug")
 if (testvar_in STREQUAL testvar_target)
         ADD_DEFINITIONS(-DLUMASS_DEBUG)
+        SET(HAVEDEBUG 1)
 endif (testvar_in STREQUAL testvar_target)
 
 

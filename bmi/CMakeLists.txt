@@ -127,6 +127,7 @@ SET(BMI_LINKLIBS
     ${LUMASS_BMI_VTK_LIBRARIES}
     ${LPSOLVE_LIBRARY}
     ${YAML_CPP_LIBRARIES}
+    ${CURL_LIBRARIES}
 )
 
 if(WIN32)
@@ -134,9 +135,9 @@ if(WIN32)
     NMOTBSupplCoreReader
     NMOTBSupplCoreWriter
     NMOTBSupplTemplates
-    libcurl_imp libxml2)
+    libxml2)
 else()
-    list(APPEND BMI_LINK_LIBS curl xml2)
+    list(APPEND BMI_LINK_LIBS xml2)
 endif()
 
 SET(PYTHON_BMI_LINKLIBS

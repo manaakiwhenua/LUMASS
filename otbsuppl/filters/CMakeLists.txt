@@ -54,6 +54,7 @@ LINK_DIRECTORIES(
     ${SPATIALITE_LIB_DIR}
     ${SPATIALITE_LIBLIB_DIR}
     ${NETCDF_LIB_DIR}
+    ${NCXX4_LIB_DIR}
 )
 
 file(GLOB OTBSUPPL_FILTERS
@@ -102,6 +103,7 @@ else()
     target_link_libraries(NMOTBSupplFilters
         ${MPI_CXX_LIBRARIES}
         ${NETCDF_LIBRARY}
+        ${NCXX4_LIBRARY}
         NMOTBSupplCoreRAT 
         NMOTBSupplCoreIO
         Qt5::Core Qt5::Qml

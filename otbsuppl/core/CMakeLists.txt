@@ -68,41 +68,54 @@ endif()
 
 include(GenerateExportHeader)
 
+set(OTBSUPPL_LINKLIBS
+    ${NETCDF_LIBRARY}
+    ${NCXX4_LIBRARY}
+    ${OTB_LINK_LIBS}
+    ${MPI_CXX_LIBRARIES}
+    ${CURL_LIBRARIES}
+    Boost::filesystem
+    SQLite
+    spatialite
+    geos_c
+
+)
+
+
+
 if (WIN32)
-   set(LINKLIBS_WIN32
+   list(APPEND OTBSUPPL_LINKLIBS
        ${GDAL_LIBRARY}
-       ${NETCDF_LIBRARY}
-       ${NCXX4_LIBRARY}
-       Boost::filesystem
-       SQLite
-       spatialite
-       libcurl_imp
-       geos_c
-       freexl_i
-       libxml2
-       zlib 
-       iconv
-       librttopo
-       proj
-       ${OTB_LINK_LIBS}
-       ${MPI_CXX_LIBRARIES}
+       freexl_i libxml2 zlib iconv librttopo proj
+#       ${NETCDF_LIBRARY}
+#       ${NCXX4_LIBRARY}
+#       Boost::filesystem
+#       SQLite
+#       spatialite
+#       geos_c
+#       ${OTB_LINK_LIBS}
+#       ${MPI_CXX_LIBRARIES}
+#       ${CURL_LIBRARIES}
    )
 else()
-   set(LINKLIBS_WIN32
-       ${NCXX4_LIBRARY}
-       ${NETCDF_LIBRARY}
-       Boost::filesystem
-       curl xml2
-       SQLite
-       spatialite
-       geos_c
-       OTBCommon
-       OTBImageBase
-       OTBIOGDAL
-       OTBImgageIO
-       OTBCurlAdapters
-       ${MPI_CXX_LIBRARIES}
-       ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_hl_LIBRARY_RELEASE}
+   list(APPEND OTBSUPPL_LINKLIBS
+       xml2
+       ${HDF5_hdf5_LIBRARY_RELEASE}
+       ${HDF5_hdf5_hl_LIBRARY_RELEASE}
+#       ${NETCDF_LIBRARY}
+#       ${NCXX4_LIBRARY}
+#       Boost::filesystem
+#       ${CURL_LIBRARIES}
+#       SQLite
+#       spatialite
+#       geos_c
+       #OTBCommon
+       #OTBImageBase
+       #OTBIOGDAL
+       #OTBImgageIO
+       #OTBCurlAdapters
+       #${OTB_LINK_LIBS}
+       #${MPI_CXX_LIBRARIES}
    )
 endif()
 
@@ -135,16 +148,16 @@ generate_export_header(NMOTBSupplCoreRAT)
 ADD_DEPENDENCIES(NMOTBSupplCoreRAT SQLite)
 
 #message(STATUS "OTBSupplCore: OTB_LINK_LIBS=${OTB_LINK_LIBS}")
-
+target_link_libraries(NMOTBSupplCoreRAT ${OTBSUPPL_LINKLIBS})
 if (WIN32)
-   target_link_libraries(NMOTBSupplCoreRAT ${LINKLIBS_WIN32})
+   #target_link_libraries(NMOTBSupplCoreRAT ${LINKLIBS_WIN32})
    install(
            TARGETS NMOTBSupplCoreRAT
            LIBRARY DESTINATION lib
            RUNTIME DESTINATION bin
    )
 else()
-    target_link_libraries(NMOTBSupplCoreRAT ${LINKLIBS_LINUX})
+    #target_link_libraries(NMOTBSupplCoreRAT ${LINKLIBS_LINUX})
     install(TARGETS NMOTBSupplCoreRAT LIBRARY DESTINATION lib)
 endif()
 
@@ -177,12 +190,12 @@ set_property(TARGET NMOTBSupplCoreIO PROPERTY LINKER_LANGUAGE CXX)
 
 generate_export_header(NMOTBSupplCoreIO)
 ADD_DEPENDENCIES(NMOTBSupplCoreIO NMOTBSupplCoreRAT)
-
+target_link_libraries(NMOTBSupplCoreIO ${OTBSUPPL_LINKLIBS} NMOTBSupplCoreRAT)
 if(WIN32)
-   target_link_libraries(NMOTBSupplCoreIO 
-        ${LINKLIBS_WIN32} 
-        NMOTBSupplCoreRAT
-   )
+#   target_link_libraries(NMOTBSupplCoreIO
+#        ${LINKLIBS_WIN32}
+#        NMOTBSupplCoreRAT
+#   )
 
    install(
            TARGETS NMOTBSupplCoreIO
@@ -190,10 +203,10 @@ if(WIN32)
            RUNTIME DESTINATION bin
    )
 else()
-   target_link_libraries(NMOTBSupplCoreIO 
-        ${LINKLIBS_LINUX}
-        NMOTBSupplCoreRAT
-   )
+#   target_link_libraries(NMOTBSupplCoreIO
+#        ${LINKLIBS_LINUX}
+#        NMOTBSupplCoreRAT
+#   )
 
    install(TARGETS NMOTBSupplCoreIO LIBRARY DESTINATION lib)
 endif()
@@ -284,7 +297,7 @@ if (WIN32)
         ADD_DEPENDENCIES(NMOTBSupplCoreReader NMOTBSupplCoreRAT NMOTBSupplCoreIO)
 
         target_link_libraries(NMOTBSupplCoreReader
-             ${LINKLIBS_WIN32}
+             ${OTBSUPPL_LINKLIBS}
              NMOTBSupplCoreRAT
              NMOTBSupplCoreIO
         )
@@ -324,27 +337,27 @@ if (WIN32)
         generate_export_header(NMOTBSupplCoreWriter)
         ADD_DEPENDENCIES(NMOTBSupplCoreWriter NMOTBSupplCoreRAT NMOTBSupplCoreIO)
 
-        if(WIN32)
-           target_link_libraries(NMOTBSupplCoreWriter
-                ${LINKLIBS_WIN32}
-                NMOTBSupplCoreRAT
-                NMOTBSupplCoreIO
-           )
+        #if(WIN32)
+        target_link_libraries(NMOTBSupplCoreWriter
+            ${OTBSUPPL_LINKLIBS}
+            NMOTBSupplCoreRAT
+            NMOTBSupplCoreIO
+        )
 
-           install(
-                   TARGETS NMOTBSupplCoreWriter
-                   LIBRARY DESTINATION lib
-                   RUNTIME DESTINATION bin
-           )
-        else()
-           target_link_libraries(NMOTBSupplCoreWriter
-                ${LINKLIBS_LINUX}
-                NMOTBSupplCoreRAT
-                NMOTBSupplCoreIO
-           )
+        install(
+               TARGETS NMOTBSupplCoreWriter
+               LIBRARY DESTINATION lib
+               RUNTIME DESTINATION bin
+        )
+        #else()
+        #   target_link_libraries(NMOTBSupplCoreWriter
+        #        ${LINKLIBS_LINUX}
+        #        NMOTBSupplCoreRAT
+        #        NMOTBSupplCoreIO
+        #   )
 
-           install(TARGETS NMOTBSupplCoreWriter LIBRARY DESTINATION lib)
-        endif()
+        #   install(TARGETS NMOTBSupplCoreWriter LIBRARY DESTINATION lib)
+        #endif()
 
         file(COPY ${OTBSupplCoreWriter_HEADER}
                DESTINATION ${OTBSupplCore_BINARY_DIR}
@@ -358,7 +371,7 @@ if (WIN32)
         #############################################################################################
 
         # only required for WINDOWS
-        if (WIN32)
+        #if (WIN32)
 
             # list of OTBSupplTemplates project source files
             file(GLOB OTBSupplTemplates_CXX
@@ -377,7 +390,7 @@ if (WIN32)
 
             generate_export_header(NMOTBSupplTemplates)
 
-            target_link_libraries(NMOTBSupplTemplates NMOTBSupplCoreReader ${LINKLIBS_WIN32})
+            target_link_libraries(NMOTBSupplTemplates NMOTBSupplCoreReader ${OTBSUPPL_LINKLIBS})
             install(
                     TARGETS NMOTBSupplTemplates
                     LIBRARY DESTINATION lib
@@ -389,7 +402,7 @@ if (WIN32)
             )
 
             install(FILES ${OTBSupplTemplates_HEADER} DESTINATION include)
-        endif()
+        #endif()
 
         ###############################################################################################
 

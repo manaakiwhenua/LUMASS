@@ -232,12 +232,13 @@ set(LUMASS_LINKLIBS
     VisItTesselator
     ${ITK_LIBRARIES}
     ${YAML_CPP_LIBRARIES}
+    ${CURL_LIBRARIES}
 )
 
 if (WIN32)
-    list(APPEND LUMASS_LINKLIBS NMOTBSupplCoreReader NMOTBSupplCoreWriter libcurl_imp libxml2)
+    list(APPEND LUMASS_LINKLIBS NMOTBSupplCoreReader NMOTBSupplCoreWriter gdal_i libxml2)
 else()
-    list(APPEND LUMASS_LINKLIBS curl xml2)
+    list(APPEND LUMASS_LINKLIBS xml2)
 endif()
 
 if(PYTHONSUPPORT)

@@ -1724,6 +1724,7 @@ void NetCDFIO::WriteImageInformation()
                 NcVar dimVar = grp.getVar(dname.str());
                 if (dimVar.isNull())
                 {
+                    //bool bShuffleDimVar = false;
                     NcType::ncType dimType = NcType::nc_DOUBLE;
                     if (dimit != m_DimInfoMap.end())
                     {
@@ -1731,12 +1732,18 @@ void NetCDFIO::WriteImageInformation()
                     }
 
                     dimVar = grp.addVar(dname.str(), dimType, aDim);
+                    //if (    vtype != netCDF::NcType::nc_FLOAT
+                    //     && vtype != netCDF::NcType::nc_DOUBLE
+                    //   )
+                    //{
+                    //    bShuffleDimVar = false;
+                    //}
+                    //dimVar.setCompression(bShuffleDimVar, true, m_CompressionLevel);
+
                     if (m_bParallelIO)
                     {
                         MPI_Barrier(m_MPIComm);
                     }
-
-                    dimVar.setCompression(true, true, m_CompressionLevel);
 
                     std::vector<double> dimVals(dsize, 0.0);
                     for (unsigned int dimIdx=0; dimIdx < dsize; ++dimIdx)
@@ -1761,7 +1768,14 @@ void NetCDFIO::WriteImageInformation()
 
             // now add the actual variable we want to write
             valVar = grp.addVar(this->m_NcVarName, vtype, dims);
-            valVar.setCompression(true, true, m_CompressionLevel);
+            bool bShuffleValVar = false;
+            if (    vtype != netCDF::NcType::nc_FLOAT
+                 && vtype != netCDF::NcType::nc_DOUBLE
+               )
+            {
+                bShuffleValVar = true;
+            }
+            valVar.setCompression(bShuffleValVar, true, m_CompressionLevel);
             
             if (m_bParallelIO)
             {

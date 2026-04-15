@@ -144,6 +144,10 @@ public:
     bool prepareRowGet(const QStringList& colnames);
     bool getRowValues(QVariantList& values, const int& row);
 
+    bool getTableData(std::vector<std::vector<QVariant> >& restab,
+                      const std::vector<QVariant::Type>& coltypes,
+                      const QString& query);
+
     void setTableName(const QString& name) {mTableName = name;}
 
 protected:

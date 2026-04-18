@@ -440,6 +440,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         ctImgNameStr << temppath << "ctimg" << numIter << "_"  << this->getRandomString(10) << ".nc:/uv";
         ctWriter->SetFileName(ctImgNameStr.str());
         ctWriter->SetResamplingType("NONE");
+        ctWriter->SetCompressionLevel(2);
         ctWriter->SetInput(ctFilter->GetOutput());
         ctWriter->SetReleaseDataFlag(true);
 
@@ -712,6 +713,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         normWriter->SetReleaseDataFlag(true);
         normWriter->SetFileName(normImgNameStr.str());
         normWriter->SetResamplingType(bNetCDF ? "NONE" : "NEAREST");
+        normWriter->SetCompressionLevel(4);
         normWriter->SetInput(normFilter->GetOutput());
         normWriter->SetInputRAT(uvTable);
         NMDebugAI( << "  normalise the image ..." << std::endl);

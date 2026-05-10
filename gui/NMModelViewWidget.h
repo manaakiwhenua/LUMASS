@@ -138,9 +138,9 @@ public slots:
     //void compProcChanged();
     void executeModel(void);
     void resetModel(void);
-    void zoomIn() {zoom(1);}
-    void zoomOut() {zoom(-1);}
-    void zoom(int delta);
+    void zoomIn() {zoom(1, 1.0);}
+    void zoomOut() {zoom(-1, 1.0);}
+    void zoom(int delta, float modFactor);
     void zoomToContent(void);
     void zoomToComponent(const QString& name);
     void zoomToComponent(const QUrl& url);

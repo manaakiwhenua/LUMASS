@@ -170,7 +170,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 //	connect(mModelScene, SIGNAL(procAggregateCompDblClicked(const QString &)),
 //			this, SLOT(callEditComponentDialog(const QString &)));
 
-    connect(mModelScene, SIGNAL(zoom(int)), this, SLOT(zoom(int)));
+    connect(mModelScene, SIGNAL(zoom(int)), this, SLOT(zoom(int, int)));
     connect(mModelScene, SIGNAL(itemLeftClicked(const QString &)), this,
             SLOT(updateTreeEditor(const QString &)));
     connect(mModelScene, SIGNAL(signalModelFileDropped(const QString &, const QPointF &)),
@@ -5683,13 +5683,13 @@ NMModelViewWidget::resetModel(void)
     edit->getHoverEdit()->updateExpressionPreview();
 }
 
-void NMModelViewWidget::zoom(int delta)
+void NMModelViewWidget::zoom(int delta, float modFactor)
 {
     qreal scaleby = 1;
     if (delta > 0)
-        scaleby = mScaleFactor;
+        scaleby = mScaleFactor * modFactor;
     else
-        scaleby = 1/mScaleFactor;
+        scaleby = 1/(mScaleFactor * modFactor);
     mModelView->scale(scaleby, scaleby);
 }
 
@@ -5702,7 +5702,14 @@ NMModelViewWidget::eventFilter(QObject* obj, QEvent* e)
 
         const QPointF pS0 = mModelView->mapToScene(we->position().toPoint());
 
-        zoom(we->angleDelta().y());
+        double keyMod = 1.0;
+        if (we->modifiers() & Qt::ControlModifier)
+        {
+            // ctrl
+            keyMod = 0.9395349;
+        }
+
+        zoom(we->angleDelta().y(), keyMod);
 
         const QPoint pS1 = mModelView->mapFromScene(pS0);
         const QPoint pd = pS1 - we->position().toPoint();

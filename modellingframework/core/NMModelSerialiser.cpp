@@ -130,6 +130,7 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 //	NMDebugAI(<< "root element: '" << modelElem.attribute("name").toStdString() << "'" << endl);
 
     NMModelController* controller = this->getModelController();
+    NMProcessFactory::instance().setLogger(this->getLogger());
 	NMProcessFactory::instance().setLumassPath(controller->getSetting("LUMASSPath").toString());
 //#ifdef LUMASS_DEBUG
 //#ifndef _WIN32

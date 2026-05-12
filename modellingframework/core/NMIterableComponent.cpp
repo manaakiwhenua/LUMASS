@@ -2123,6 +2123,7 @@ NMIterableComponent::findExecutableComponents(
         {
             const QList<QStringList>& _icInputsList = testIt.value()->getInputs();
             NMIterableComponent* _ic = qobject_cast<NMIterableComponent*>(testIt.value());
+            NMDataComponent* _dc = qobject_cast<NMDataComponent*>(testIt.value());
 
             // internal step as it may need to be adjusted depending on the number of inputs and step value
             int _step = step;
@@ -2130,10 +2131,11 @@ NMIterableComponent::findExecutableComponents(
             QStringList _icInputs;
             if (_icInputsList.size() > 0)
             {
-
                 // if we've got a process component, we map HostIndex _step to the process' policy index (== NMProcess::NM_USE_UP)
                 // -- should be a no-op as this as index policies are not actually used - just making sure ...
-                if (_ic->getProcess() != nullptr)
+                if (    _ic != nullptr
+                     && _ic->getProcess() != nullptr
+                   )
                 {
                     _step = _ic->getProcess()->mapHostIndexToPolicyIndex(_step, _icInputsList.size());
                 }

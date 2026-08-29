@@ -43,6 +43,7 @@ public:
 
 signals:
     void maxTreeLevel(int);
+    void itemDeleted(QTreeWidgetItem*, int);
 
 protected:
     /*! Level on which \a item sits on in the parent-child tree;

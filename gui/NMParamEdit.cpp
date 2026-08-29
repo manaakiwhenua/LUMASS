@@ -147,15 +147,14 @@ NMModelComponent*
 NMParamEdit::getModelComponent(const QString& compName)
 {
     NMModelComponent* pcomp = NMGlobalHelper::getModelController()->getComponent(compName);
-    if (pcomp == 0 && mEditComp)
+    if (    pcomp == nullptr
+         && mEditComp != nullptr
+       )
     {
         NMIterableComponent* pic = qobject_cast<NMIterableComponent*>(mEditComp);
-        if (pic == 0)
+        if (pic == nullptr)
         {
-            if (mEditComp->getHostComponent())
-            {
-                pic = qobject_cast<NMIterableComponent*>(mEditComp->getHostComponent());
-            }
+            pic = qobject_cast<NMIterableComponent*>(mEditComp->getHostComponent());
         }
 
         if (pic)

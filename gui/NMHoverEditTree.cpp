@@ -72,6 +72,7 @@ NMHoverEditTree::deleteItem()
 
     delete mLastPressedItem;
     mLastPressedItem = 0;
+    emit itemDeleted(nullptr, 0);
     updateTree();
 }
 

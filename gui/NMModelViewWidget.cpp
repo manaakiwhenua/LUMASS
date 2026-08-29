@@ -1722,7 +1722,7 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
         }
         else
         {
-            title = QString("%1 (%2)").arg(comp->getUserID()).arg(comp->objectName());
+            title = QString("%1 (%2)").arg(comp->processUserID()).arg(comp->objectName());
         }
         dataBuffer = pi->getIsDataBufferItem();
     }
@@ -1739,7 +1739,7 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
         }
         else
         {
-            title = QString("%1 (%2)").arg(comp->getUserID()).arg(comp->objectName());
+            title = QString("%1 (%2)").arg(comp->processUserID()).arg(comp->objectName());
         }
     }
     else if (li != 0)
@@ -3499,6 +3499,8 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 
                         procComp = itComp->getProcess();
                         this->connectProcessItem(procComp, pi);
+                        pi->updateNumIterations(itComp->getNumIterations());
+                        pi->updateIterProgress(itComp->getIterationStep());
                     }
                     // data buffer item
                     else
@@ -5303,6 +5305,12 @@ NMModelViewWidget::connectProcessItem(NMProcess* proc,
     connect(comp, SIGNAL(signalExecutionStarted()),
             this, SLOT(focusExecComp()));
 
+    // connect host component signals to NMProcess' slots
+    connect(comp, &NMIterableComponent::NumIterationsChanged, procItem,
+            &NMProcessComponentItem::updateNumIterations);
+    connect(comp, &NMIterableComponent::signalProgress, procItem,
+            &NMProcessComponentItem::updateIterProgress);
+
 
     //NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(comp);
     //if (sic != nullptr)
@@ -5485,29 +5493,26 @@ NMModelViewWidget::updateTreeEditor(const QString compName)
         return;
 
     NMModelComponent* comp = this->mModelController->getComponent(compName);
-    if (comp == 0)
+    if (comp == nullptr)
     {
         if (mTreeCompEditor)
         {
-            mTreeCompEditor->setObject(0);
+            mTreeCompEditor->setObject(nullptr);
         }
         return;
     }
 
-    if (mTreeCompEditor == 0)
+    if (mTreeCompEditor == nullptr)
     {
         LUMASSMainWin* otbwin = NMGlobalHelper::getMainWindow();//this->getMainWindow();
-        if (otbwin == 0)
+        if (otbwin == nullptr)
         {
-            NMLogError(<< ctx << ": Couldn't get hold of main application window!")
+            NMLogError(<< ctx << ": Couldn't get hold of the main application window!")
             return;
         }
 
         mTreeCompEditor = const_cast<NMComponentEditor*>(otbwin->getCompEditor());
-        //connect(this->mModelController, SIGNAL(componentRemoved(const QString &)),
-        //        this, SLOT(updateTreeEditor(const QString &)));
         connect(mModelController, &NMModelController::componentRemoved, this, &NMModelViewWidget::updateTreeEditor);
-        //connect(mTreeCompEditor, SIGNAL(signalPropertyChanged()), this, SLOT(slotComponentChanged()));
         connect(mTreeCompEditor, &NMComponentEditor::signalPropertyChanged, this, &NMModelViewWidget::slotComponentChanged);
 #ifdef BUILD_RASSUPPORT
         mTreeCompEditor->setRasdamanConnectorWrapper(this->mRasConn);

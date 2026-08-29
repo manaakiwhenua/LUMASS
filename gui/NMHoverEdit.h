@@ -51,6 +51,7 @@ public:
 
     QString getComponentName(void) {return mCompName;}
     QString getPropertyName(void) {return mPropName;}
+    bool isStickyPropertySet(void){return mbStickyProperty;}
 
     void setLogger(NMLogger* logger) {mLogger = logger;}
 
@@ -61,12 +62,15 @@ public slots:
     void forwardModelConfigChanged();
     void updateExpressionPreview();
     void setDarkMode(bool bdark);
+    void updateModelItem(QTreeWidgetItem* item, int col);
+    void setStickyProperty(bool sticky) {mbStickyProperty = sticky;}
+
 
 protected slots:
     void applyChanges();
     void updateEditor();
     void setTreeLevel(int level){mPropLevel = level;}
-    void updateModelItem(QTreeWidgetItem* item, int col);
+
     void assistEditing();
     void showExpressionPreview(bool preview);
     bool eventFilter(QObject *obj, QEvent *event);
@@ -85,7 +89,11 @@ protected:
 private:
     QString mCompName;
     QString mPropName;
+    QString mLastPropName;
+    QString mLastCompName;
     int mPropLevel;
+
+    bool mbStickyProperty;
 
     QList<int> mSplitterSizes;
     QSplitter* mMainSplitter;

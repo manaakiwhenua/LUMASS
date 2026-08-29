@@ -37,6 +37,7 @@
 #include <QVBoxLayout>
 #include <limits>
 
+#include "NMModelController.h"
 #include "NMProcess.h"
 #include "NMModelComponent.h"
 #include "NMDataComponent.h"
@@ -146,20 +147,20 @@ NMComponentEditor::setObject(QObject* obj)
     }
 
     // reset the editor upon receiving a NULL object
-    if (obj == 0)
+    if (obj == nullptr)
     {
-        if (this->comp != 0)
+        if (this->comp != nullptr)
         {
             this->disconnect(comp);
         }
-        if (this->proc != 0)
+        if (this->proc != nullptr)
         {
             this->disconnect(proc);
         }
 
-        this->mObj = 0;
-        this->comp = 0;
-        this->proc = 0;
+        this->mObj = nullptr;
+        this->comp = nullptr;
+        this->proc = nullptr;
         this->clear();
         debugCounter = 1;
         mHoverEdit->setProperty("", "");
@@ -170,9 +171,9 @@ NMComponentEditor::setObject(QObject* obj)
     NMIterableComponent* i = qobject_cast<NMIterableComponent*>(obj);
     NMProcess* p = i != 0 ? i->getProcess() : 0;
 
-    if (mObj == 0)
+    if (mObj == nullptr)
     {
-        if (c != 0)
+        if (c != nullptr)
         {
             mCompName = c->objectName();
             mUserID = c->getUserID();
@@ -183,27 +184,27 @@ NMComponentEditor::setObject(QObject* obj)
         else
             return;
 
-        if (p != 0)
+        if (p != nullptr)
         {
             proc = p;
             connect(proc, SIGNAL(nmChanged()), this, SLOT(update()));
         }
         debugCounter = 1;
     }
-    else if (mObj != 0 && obj->objectName().compare(mObj->objectName()) != 0)
+    else if (mObj != nullptr && obj->objectName().compare(mObj->objectName()) != 0)
     {
-        if (this->comp != 0)
+        if (this->comp != nullptr)
         {
             this->disconnect(comp);
-            comp = 0;
+            comp = nullptr;
         }
-        if (this->proc != 0)
+        if (this->proc != nullptr)
         {
             this->disconnect(proc);
-            proc = 0;
+            proc = nullptr;
         }
 
-        if (c != 0)
+        if (c != nullptr)
         {
             mCompName = c->objectName();
             mUserID = c->getUserID();
@@ -212,7 +213,7 @@ NMComponentEditor::setObject(QObject* obj)
             comp = c;
             connect(comp, SIGNAL(nmChanged()), this, SLOT(update()));
         }
-        if (p != 0)
+        if (p != nullptr)
         {
             proc = p;
             connect(proc, SIGNAL(nmChanged()), this, SLOT(update()));
@@ -291,12 +292,12 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
         // do we have a process component?
         NMIterableComponent* procComp =
                 qobject_cast<NMIterableComponent*>(comp);
-        if (procComp != 0)
+        if (procComp != nullptr)
             proc = procComp->getProcess();
         else
-            proc = 0;
+            proc = nullptr;
 
-        if (procComp != 0 && proc == 0)
+        if (procComp != nullptr && proc == nullptr)
         {
             // now we add the subcomponents list for reference
             QStringList strCompChain;
@@ -359,6 +360,34 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
 
     //NMDebugAI(<< "<<<< #" << debugCounter << " - END: " << mObj->objectName().toStdString() << " <<<<<<<<<<<<<<<<<<" << std::endl);
     debugCounter++;
+
+    // if hover edit is open and 'Sticky Property' is set, the new component has the same property as is being
+    // edited at the moment, show that veyr property of the just clicked component,
+    // otherwise pretentd nothing has happened ...
+    if (    mHoverEdit->isVisible()
+         && mHoverEdit->isStickyPropertySet()
+       )
+    {
+        NMModelController* ctrl = NMGlobalHelper::getModelController();
+        NMModelComponent* mc = ctrl->getComponent(mCompName);
+        QStringList props = ctrl->getPropertyList(mc);
+        QString propName = mHoverEdit->getPropertyName();
+        if (props.contains(propName))
+        {
+            mHoverEdit->setProperty(mCompName, propName);
+        }
+        else
+        {
+            NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(mc);
+            if (    ic != nullptr
+                 && ic->getProcess() != nullptr
+                 && ctrl->getPropertyList(ic->getProcess()).contains(propName)
+               )
+            {
+                mHoverEdit->setProperty(mCompName, propName);
+            }
+        }
+    }
 }
 
 void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
@@ -706,6 +735,7 @@ void NMComponentEditor::applySettings(QtProperty* prop,
     }
 
     emit signalPropertyChanged();
+    mHoverEdit->updateExpressionPreview();
     mUpdating = false;
     NMDebugCtx(ctx, << "done!");
 }

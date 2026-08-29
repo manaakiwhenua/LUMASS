@@ -51,7 +51,7 @@
 
 NMHoverEdit::NMHoverEdit(QWidget *parent)
     : QDialog(parent), mComp(0), mProc(0), mPropLevel(0),
-      mFindReplaceDlg(0)
+      mFindReplaceDlg(0), mbStickyProperty(false)
 {
     this->setModal(false);
 
@@ -123,6 +123,13 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     btnPreview->setCheckable(true);
     btnPreview->setChecked(false);
     hboxR->addWidget(btnPreview);
+
+    QCheckBox* chkStickyProperty = new QCheckBox(widgetR);
+    chkStickyProperty->setText("Sticky Property");
+    chkStickyProperty->setVisible(true);
+    chkStickyProperty->setCheckable(true);
+    chkStickyProperty->setChecked(false);
+    hboxR->addWidget(chkStickyProperty);
     hboxR->addStretch();
     mPosLabel = new QLabel(widgetR);
     hboxR->addWidget(mPosLabel);
@@ -156,9 +163,13 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     connect(mTreeWidget, SIGNAL(itemClicked(QTreeWidgetItem*,int)),
             SLOT(updateModelItem(QTreeWidgetItem*,int)));
     connect(mTreeWidget, SIGNAL(maxTreeLevel(int)), SLOT(setTreeLevel(int)));
+
+    connect(mTreeWidget, &NMHoverEditTree::itemDeleted, this, &NMHoverEdit::updateModelItem);
+
     connect(mEdit, &QTextEdit::cursorPositionChanged, this, &NMHoverEdit::assistEditing);
     connect(mEdit, SIGNAL(textChanged()), this, SLOT(updateExpressionPreview()));
     connect(btnPreview, SIGNAL(toggled(bool)), this, SLOT(showExpressionPreview(bool)));
+    connect(chkStickyProperty, &QCheckBox::toggled, this, &NMHoverEdit::setStickyProperty);
     connect(btnapply, SIGNAL(clicked()), this, SLOT(applyChanges()));
     connect(btncancel, SIGNAL(clicked()), this, SLOT(close()));
 
@@ -487,7 +498,9 @@ NMHoverEdit::updateEditor()
     }
 
     QString title;
-    if (mComp->getUserID().isEmpty())
+    if (    mComp->getUserID().isEmpty()
+         || displayName.compare(QStringLiteral("UserID")) == 0
+       )
     {
         title = QString("Edit %2 of %1").arg(mCompName).arg(displayName);
     }
@@ -513,7 +526,7 @@ NMHoverEdit::updateEditor()
 void
 NMHoverEdit::updateModelItem(QTreeWidgetItem *item, int col)
 {
-    if (item == 0)
+    if (item == nullptr)
     {
         mEdit->clear();
         return;
@@ -732,4 +745,11 @@ NMHoverEdit::applyChanges()
     }
 
     updateEditor();
+
+    // update the parent tree edit non-hover widget
+    NMComponentEditor* compEdit = qobject_cast<NMComponentEditor*>(this->parent());
+    if (compEdit != nullptr)
+    {
+        compEdit->update();
+    }
 }

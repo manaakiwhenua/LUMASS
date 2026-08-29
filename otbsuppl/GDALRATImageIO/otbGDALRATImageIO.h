@@ -351,6 +351,7 @@ private:
   bool m_CreatedNotWritten;
   bool m_FlagWriteImageInformation;
   bool m_CanStreamWrite;
+  bool m_bCanWriteRAT;
 
   /** Whether the pixel type (otb side, not gdal side) is complex
    * this information has to be provided by the reader */

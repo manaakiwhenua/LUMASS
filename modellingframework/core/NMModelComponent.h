@@ -161,7 +161,7 @@ public:
     // returns empty list of strings as default
     virtual QStringList getOutputNames(void);
 
-    virtual void processUserID();
+    virtual QString processUserID();
 
 protected:
     NMModelComponent(QObject* parent=0);

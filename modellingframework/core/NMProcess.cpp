@@ -791,7 +791,7 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
         NMModelComponent* mcomp = qobject_cast<NMModelComponent*>(this->parent());
         if (mcomp)
         {
-            userID = mcomp->getUserID();
+            userID = mcomp->processUserID();
             if (userID.isEmpty())
             {
                 userID = mcomp->objectName();

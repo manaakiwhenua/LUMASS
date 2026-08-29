@@ -641,7 +641,7 @@ NMModelController::executeModel(const QString compName,
             notifyParentProcess(0, 73);
             return;
         }
-        QString userID = comp->getUserID();
+        QString userID = comp->processUserID();
         if (userID.isEmpty())
         {
             userID = comp->objectName();
@@ -1494,7 +1494,7 @@ NMModelController::executeSeqModel(const QString &compName, const QString& yamlF
     }
 
     QString msg;
-    QString userID = comp->getUserID();
+    QString userID = comp->processUserID();
     if (userID.isEmpty())
     {
         userID = comp->objectName();
@@ -2924,7 +2924,7 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                     NMModelComponent* mc = this->getComponent(m.at(0));
 
                     // if the component is specified by userId, we've got to dig a little deeper
-                    if (mc == 0)
+                    if (mc == nullptr)
                     {
                         if (host)
                         {

@@ -240,13 +240,13 @@ public:
                 }
                 else if (comp != nullptr)
                 {
-                    if (comp->getUserID().isEmpty())
+                    if (comp->processUserID().isEmpty())
                     {
                         userIDs.push_back(uid.str());
                     }
                     else
                     {
-                        userIDs.push_back(comp->getUserID().toStdString());
+                        userIDs.push_back(comp->processUserID().toStdString());
                     }
                 }
                 else

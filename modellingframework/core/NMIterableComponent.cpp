@@ -604,6 +604,8 @@ NMIterableComponent::findUpstreamComponentByUserId(const QString& userId)
     NMModelComponent* mc = nullptr;
 
     // ... are we the one ?
+    // prevent chasing our own tail by ignoring whether the UserID
+    // of this component is given as a LUMASS expression
     if (this->getUserID().compare(userId, Qt::CaseInsensitive) == 0)
     {
         return  this;
@@ -620,7 +622,7 @@ NMIterableComponent::findUpstreamComponentByUserId(const QString& userId)
             NMModelComponent* incomp = this->mController != nullptr ?
                                         this->mController->getComponent(input) :
                                         nullptr;
-            if (incomp != nullptr && incomp->getUserID().compare(userId, Qt::CaseInsensitive) == 0)
+            if (incomp != nullptr && incomp->processUserID().compare(userId, Qt::CaseInsensitive) == 0)
             {
                 return incomp;
             }
@@ -1003,7 +1005,7 @@ void NMIterableComponent::linkComponents(unsigned int step,
 {
     NMDebugCtx(this->objectName().toStdString(), << "...");
 
-    this->processUserID();
+    //this->processUserID();
     //mNumIterations = this->evalNumIterationsExpression(mIterationStep);
     mNumIterations = this->evalNumIterationsExpression(step);
     if (this->mProcess != 0)

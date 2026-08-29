@@ -230,7 +230,7 @@ NMParameterTable::setFileName(QString fn)
 void
 NMParameterTable::linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 {
-    this->processUserID();
+    //this->processUserID();
 
     // we're self sufficienct - no need to link anything else
 }

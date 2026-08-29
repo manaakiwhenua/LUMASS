@@ -647,12 +647,12 @@ NMRATBandMathImageFilterWrapper
 
             // we check, whether the input has a UserID defined, and if so, we set it as the
             // nth input variable name
-            if (!comp->getUserID().isEmpty())
+            if (!comp->processUserID().isEmpty())
             {
-                this->setInternalNthInputName(cnt, comp->getUserID());
+                this->setInternalNthInputName(cnt, comp->processUserID());
                 QString inputNameProvNAttr = QString("nm:InputUserID-%1=\"%2\"")
                                              .arg(cnt)
-                                             .arg(comp->getUserID());
+                                             .arg(comp->processUserID());
                 this->addRunTimeParaProvN(inputNameProvNAttr);
             }
             else

@@ -202,15 +202,15 @@ public:
                 QString curProvUID;
                 if (comp != 0)
                 {
-                    if (comp->getUserID().isEmpty())
+                    if (comp->processUserID().isEmpty())
                     {
                         userIDs.push_back(uid.str());
                         curProvUID = uid.str().c_str();
                     }
                     else
                     {
-                        userIDs.push_back(comp->getUserID().toStdString());
-                        curProvUID = comp->getUserID().toStdString().c_str();
+                        userIDs.push_back(comp->processUserID().toStdString());
+                        curProvUID = comp->processUserID().toStdString().c_str();
                     }
                 }
                 else

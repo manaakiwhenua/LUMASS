@@ -37,6 +37,7 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
 		NMModelScene* scene)
     : QGraphicsItem(parent),
       mProgress(0.0), mbIsExecuting(false), mbIsDataBuffer(false),
+      mNumIterations(1), mIterProgress(1), mbIsActive(true),
       mTimeLevel(0), mTypeID(0),
       mModelParent(0),
       mDescription("")
@@ -378,6 +379,33 @@ NMProcessComponentItem::getModelParent(void)
 }
 
 void
+NMProcessComponentItem::updateIterProgress(float progress)
+{
+    if (progress >= 1)
+    {
+        mIterProgress = progress;
+    }
+    updateActivityStatus();
+}
+
+void
+NMProcessComponentItem::updateNumIterations(unsigned int numIter)
+{
+    if (numIter >= 1)
+    {
+        mNumIterations = numIter;
+    }
+    updateActivityStatus();
+}
+
+void NMProcessComponentItem::updateActivityStatus()
+{
+    mbIsActive = mIterProgress > mNumIterations ? false : true;
+    this->update();
+}
+
+
+void
 NMProcessComponentItem::paint(QPainter* painter,
 		const QStyleOptionGraphicsItem* option,
 		QWidget* widget)
@@ -389,6 +417,16 @@ NMProcessComponentItem::paint(QPainter* painter,
 
     painter->setRenderHint(QPainter::Antialiasing, true);
     painter->setFont(mFont);
+
+    QPen greyORblackPen;
+    if (mbIsActive)
+    {
+        greyORblackPen = QPen(QBrush(Qt::darkGray), 2, Qt::SolidLine);
+    }
+    else
+    {
+        greyORblackPen = QPen(QBrush(Qt::black), 2, Qt::SolidLine);
+    }
 
 	if(mbIsExecuting)
 	{
@@ -438,12 +476,20 @@ NMProcessComponentItem::paint(QPainter* painter,
 	else
 	{
 		// draw boundary
-		painter->setBrush(Qt::white);
+        if (mbIsActive)
+        {
+            painter->setBrush(Qt::white);
+        }
+
 		QPen pen;
 		if (this->isSelected())
+        {
 			pen = QPen(QBrush(Qt::red), 2, Qt::SolidLine);
+        }
 		else
-            pen = QPen(QBrush(Qt::darkGray), 2, Qt::SolidLine);
+        {
+            pen = greyORblackPen;
+        }
 		painter->setPen(pen);
         painter->drawRoundedRect(mIconBnd, 10, 10);
 
@@ -461,7 +507,7 @@ NMProcessComponentItem::paint(QPainter* painter,
     if (this->mTypeID > 0)
     {
         painter->setFont(mFont);
-        painter->setPen(QPen(QBrush(Qt::darkGray), 2, Qt::SolidLine));
+        painter->setPen(greyORblackPen);
         painter->drawText(mIDRect, Qt::AlignRight, QString("%1").arg(mTypeID));
         painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
     }

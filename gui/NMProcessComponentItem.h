@@ -137,10 +137,13 @@ public slots:
     void reportExecutionStarted(const QString proc);
     void reportExecutionStopped(const QString proc);
     void updateTimeLevel(short level);
+    void updateIterProgress(float);
+    void updateNumIterations(unsigned int);
 
 protected:
     void initRectsNSizes();
     void updateDescription();
+    void updateActivityStatus();
 
 private:
 
@@ -148,8 +151,11 @@ private:
 
 	bool mbIsDataBuffer;
     bool mbShowUniqueObjectID;
+    bool mbIsActive;
 
     int mTypeID;
+    unsigned int mNumIterations;
+    float mIterProgress;
 
 	float mProgress;
 	bool mbIsExecuting;

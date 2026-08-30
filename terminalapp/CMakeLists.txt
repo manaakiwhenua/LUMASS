@@ -102,8 +102,20 @@ file(GLOB ENGINE_SRC
     ${lumassengine_SOURCE_DIR}/*.cxx
 )
 
-set(ENGINE_LINKLIBS 
+if (WIN32)
+    set(NETCDF_PAR_LINK_FLAGS ${NETCDF_LIBRARY})
+else()
+    # fixed by Claude
+    # force netcdf_par to be a direct, un-prunable dependency of the
+    # executable so it wins ELF global symbol resolution over any plain
+    # (non-parallel) libnetcdf.so that gets pulled in elsewhere in the
+    # process (e.g. via python3-netcdf4) - see lumass_build_notes.md
+    set(NETCDF_PAR_LINK_FLAGS -Wl,--no-as-needed ${NETCDF_LIBRARY} -Wl,--as-needed)
+endif()
+
+set(ENGINE_LINKLIBS
         Qt5::Core Qt5::Sql Qt5::Xml
+        ${NETCDF_PAR_LINK_FLAGS}
         ${MPI_CXX_LIBRARIES}
         LumassBMI
         NMOTBSupplFilters

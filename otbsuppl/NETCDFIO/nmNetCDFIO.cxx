@@ -208,6 +208,9 @@ NetCDFIO::NetCDFIO(void)
     m_bCanRead = false;
     m_bCanWrite = false;
     m_bParallelIO = false;
+    m_bCollectiveIO = false;
+    // by default 128 MiB chunksize
+    m_ChunkSize = 1024 * 1024 * 128;
 
     m_bImageSpecParsed = false;
     m_bWasWriteCalled = false;
@@ -273,6 +276,22 @@ NetCDFIO::SetForcedLPR(const itk::ImageIORegion& forcedLPR)
     this->m_UseForcedLPR = true;
 }
 
+void
+NetCDFIO::SetUpdateRegion(const itk::ImageIORegion& updateRegion)
+{
+    this->m_UpdateRegion = updateRegion;
+}
+
+void
+NetCDFIO::SetChunkDimensions(const std::vector<size_t>& chunkDims)
+{
+    m_ChunkSizeDims.clear();
+    const size_t nDims = chunkDims.size();
+    for (int d=nDims-1; d >= 0; --d)
+    {
+        m_ChunkSizeDims.push_back(chunkDims[d]);
+    }
+}
 
 bool NetCDFIO::CanReadFile(const char* filename)
 {
@@ -1768,6 +1787,16 @@ void NetCDFIO::WriteImageInformation()
 
             // now add the actual variable we want to write
             valVar = grp.addVar(this->m_NcVarName, vtype, dims);
+
+            if (m_bChunkOptimisation && m_bParallelIO)
+            {
+                if (m_ChunkSizeDims.size() == dims.size())
+                {
+                    trimChunkSizes();
+                    valVar.setChunking(NcVar::nc_CHUNKED, m_ChunkSizeDims);
+                }
+            }
+
             bool bShuffleValVar = false;
             if (    vtype != netCDF::NcType::nc_FLOAT
                  && vtype != netCDF::NcType::nc_DOUBLE
@@ -1775,14 +1804,16 @@ void NetCDFIO::WriteImageInformation()
             {
                 bShuffleValVar = true;
             }
-            valVar.setCompression(bShuffleValVar, true, m_CompressionLevel);
-            
+
+            bool _compress = m_CompressionLevel > 0 ? true : false;
+            valVar.setCompression(bShuffleValVar, _compress, m_CompressionLevel);
+
             if (m_bParallelIO)
             {
+                valVar.DoCollectiveIO(m_bCollectiveIO);
                 MPI_Barrier(m_MPIComm);
             }
-
-            if (!m_bParallelIO)
+            else
             {
                 bool bSetFill = false;
                 if (m_VarAttInfoMap.find(this->m_NcVarName) != m_VarAttInfoMap.cend())
@@ -1880,6 +1911,88 @@ void NetCDFIO::WriteImageInformation()
         NMProcErr(<< e.what());
         NMDebugCtx("NetCDFIO", << "done!")
     }
+    NMDebugCtx("NetCDFIO", << "done!")
+}
+
+void
+NetCDFIO::trimChunkSizes()
+{
+    NMDebugCtx("NetCDFIO", << "...")
+
+    std::vector<size_t> rawChunks = m_ChunkSizeDims;
+    const size_t nDims = rawChunks.size();
+    size_t procStreamByteSize = m_StreamingSize * 1024 * 1024;
+    procStreamByteSize = std::min(m_ChunkSize, procStreamByteSize);
+    const size_t pixByteSize = this->GetPixelSize();
+    const size_t procStreamPixSize = procStreamByteSize / pixByteSize;
+
+    m_ChunkSizeDims = std::vector<size_t>(nDims, 1);
+    float restPixel = static_cast<float>(procStreamPixSize);
+    size_t chunkPixel = rawChunks.at(nDims-1);
+
+    for (int d=nDims-1, dUR=0; d >= 0; --d, ++dUR)
+    {
+        restPixel = procStreamPixSize / static_cast<float>(chunkPixel);
+        const size_t axisSize = rawChunks.at(d);
+
+        size_t testValue = d == nDims-1 ? 1 : axisSize;
+        // generate chunks divisible by 4 to optimise mem and disk alignment, 
+        // compression filter efficiency, CPU cache and vectorisation, and 
+        // avoid sub-optimal I/O overhead (source: Gemini AI Overview) 
+        if (restPixel >= testValue)
+        {
+            m_ChunkSizeDims[d] = std::max(static_cast<size_t>(1), d == nDims-1 ? axisSize : static_cast<size_t>(std::floor(axisSize/4.0)*4));
+        }
+        else if (restPixel > 0)
+        {
+            m_ChunkSizeDims[d] = std::max(static_cast<size_t>(1), static_cast<size_t>(std::floor(restPixel/4.0)*4.0));
+        }
+        else
+        {
+            m_ChunkSizeDims[d] = static_cast<size_t>(1);
+        }
+
+        // align chunk sizes with update region used by the writer to avoid
+        // overlapping write regions for different MPI ranks!
+        if (m_UpdateRegion.GetNumberOfPixels() > 0)
+        {
+            m_ChunkSizeDims[d] = std::min(m_UpdateRegion.GetSize().at(dUR), m_ChunkSizeDims[d]);
+        }
+
+        // recalc chunkPixel (building up the dimensions as we go)
+        // note: as m_ChunkSizeDims is filled with '1's; we can safely
+        // iterate over the content in any direction and multiply;
+        // the correct value of chunkPixel is determined by the
+        // values > 1!
+        chunkPixel = 1;
+        for (int c=0; c < m_ChunkSizeDims.size(); ++c)
+        {
+            chunkPixel = m_ChunkSizeDims[c] * chunkPixel;
+        }
+    }
+
+#ifdef LUMASS_DEBUG
+    std::stringstream sstr;
+    sstr << "Chunk optimisation report ... " << std::endl;
+    sstr << "cumu. chunk size (pixel): ";
+    size_t _tps_ = 1;
+    for (int r=nDims-1; r >=0; --r)
+    {
+        _tps_ *= m_ChunkSizeDims[r];
+        sstr << _tps_ << " ";
+    }
+    sstr << std::endl;
+    sstr << "max. chunk size (MiB):    " << procStreamByteSize << std::endl;
+    sstr << "max. chunk size (pixel):  " << procStreamPixSize << std::endl;
+    sstr << "chunk sizes (pixel):      ";
+    for (int s=nDims-1; s >=0; --s)
+    {
+        sstr << m_ChunkSizeDims[s] << " ";
+    }
+
+    NMDebugAI(<< sstr.str() << std::endl);
+#endif
+
     NMDebugCtx("NetCDFIO", << "done!")
 }
 

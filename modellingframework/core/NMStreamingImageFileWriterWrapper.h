@@ -78,6 +78,9 @@ class NMMODFRAMECORE_EXPORT NMStreamingImageFileWriterWrapper: public NMProcess
     Q_PROPERTY(int WriteProcs READ getWriteProcs WRITE setWriteProcs)
     Q_PROPERTY(QString WriteProcsExp READ getWriteProcsExp WRITE setWriteProcsExp)
     Q_PROPERTY(int CompressionLevel READ getCompressionLevel WRITE setCompressionLevel)
+    Q_PROPERTY(bool ChunkOptimisation READ getChunkOptimisation WRITE setChunkOptimisation )
+    Q_PROPERTY(bool CollectiveIO READ getCollectiveIO WRITE setCollectiveIO )
+    Q_PROPERTY(int ChunkSize READ getChunkSize WRITE setChunkSize)
 
 public:
     NMPropertyGetSet(FileNames, QStringList)
@@ -92,7 +95,10 @@ public:
     NMPropertyGetSet( StreamingMethodType, QString )
     NMPropertyGetSet( StreamingMethodEnum, QStringList)
     NMPropertyGetSet( StreamingSize, int )
+    NMPropertyGetSet( ChunkSize, int )
     NMPropertyGetSet( CompressionLevel, int)
+    NMPropertyGetSet( ChunkOptimisation, bool)
+    NMPropertyGetSet( CollectiveIO, bool)
 
     //NMPropertyGetSet( NumProcs, int )
 
@@ -145,6 +151,7 @@ protected:
     QStringList mPyramidResamplingEnum;
 
     int mStreamingSize;
+    int mChunkSize;
     int mWriteProcs;
     int mCompressionLevel;
     QString mWriteProcsExp;
@@ -159,6 +166,8 @@ protected:
     bool mUpdateMode;
     bool mRGBMode;
     bool mParallelIO;
+    bool mChunkOptimisation;
+    bool mCollectiveIO;
 
 
     bool mbUseForcedLPR;
@@ -184,6 +193,7 @@ protected:
 
     void internalParallelIO_Update();
 
+    void setInternalChunkOptimisation();
     void setInternalUpdateMode();
     void setInternalResamplingType();
     void setInternalInputTables(const QStringList tabelSpec,

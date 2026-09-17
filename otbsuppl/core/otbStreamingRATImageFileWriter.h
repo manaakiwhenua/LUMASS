@@ -263,6 +263,12 @@ public:
   itkSetMacro(StreamingSize, int)
   itkGetMacro(StreamingSize, int)
 
+  itkSetMacro(ChunkOptimisation, bool)
+  itkSetMacro(CollectiveIO, bool)
+  itkSetMacro(ChunkSize, size_t)
+
+  void SetChunkDimensions(const std::vector<size_t>& chunkDims)
+  {m_ChunkDimensions = chunkDims;}
 
   /** Specify the region to write. If left NULL, then the whole image
    * is written. */
@@ -347,6 +353,7 @@ public:
    *  writing
    */
   void SetUpdateRegion(const itk::ImageIORegion& updateRegion);
+  itk::ImageIORegion GetUpdateRegion(void);
 
   void BuildOverviews();
 
@@ -417,6 +424,11 @@ private:
 
   bool m_WriteGeomFile;              // Write a geom file to store the kwl
   bool m_ParallelIO;
+  bool m_ChunkOptimisation;
+  bool m_CollectiveIO;
+
+  size_t m_ChunkSize;
+  std::vector<size_t> m_ChunkDimensions;
 
   MPI_Comm m_MpiComm;
 

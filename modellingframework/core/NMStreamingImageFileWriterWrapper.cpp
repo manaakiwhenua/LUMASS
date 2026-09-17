@@ -85,7 +85,8 @@
 #include "otbStreamingRATImageFileWriter.h"
 //#include "itkNMImageRegionSplitterMaxSize.h"
 //#include "otbImageRegionTileMapSplitter.h"
-#include "itkImageRegionSplitter.h"
+//#include "itkImageRegionSplitter.h"
+#include "otbNumberOfDivisionsStrippedStreamingManager.h"
 #include "NMModelController.h"
 #include "NMMfwException.h"
 
@@ -118,8 +119,8 @@ public:
     typedef typename FilterType::Pointer 				FilterTypePointer;
     typedef typename VecFilterType::Pointer 			VecFilterTypePointer;
 
-    //using SplitterType = otb::ImageRegionTileMapSplitter<Dimension>;
-    using SplitterType = itk::ImageRegionSplitter<Dimension>;
+    //using SplitterType = itk::ImageRegionSplitter<Dimension>;
+    using SplitterType = otb::NumberOfDivisionsStrippedStreamingManager<ImgType>;
 
     static void createInstance(itk::ProcessObject::Pointer& otbFilter,
             unsigned int numBands, bool rgbMode)
@@ -161,26 +162,54 @@ public:
             }
         }
 
+    static void setChunkOptimisation(itk::ProcessObject::Pointer& otbFilter,
+                                     unsigned int numBands, bool chunkOptimisation, int chunkSize, bool rgbMode)
+        {
+            if (numBands == 1)
+            {
+                FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+                filter->SetChunkOptimisation(chunkOptimisation);
+                filter->SetChunkSize(chunkSize * 1024*1024); // convert MiB to byte;
+            }
+            else if (numBands == 3 && rgbMode)
+            {
+                RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
+                filter->SetChunkOptimisation(chunkOptimisation);
+                filter->SetChunkSize(chunkSize * 1024*1024); // convert MiB to byte;
+            }
+            else
+            {
+                VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
+                filter->SetChunkOptimisation(chunkOptimisation);
+                filter->SetChunkSize(chunkSize * 1024*1024); // convert MiB to byte;
+            }
+        }
+
+
     static void setParallelIO(itk::ProcessObject::Pointer& otbFilter,
-                              unsigned int numBands, bool parallelIO, bool rgbMode, MPI_Comm comm)
+                              unsigned int numBands, bool parallelIO, bool rgbMode, MPI_Comm comm,
+                              bool collectiveIO)
         {
             if (numBands == 1)
             {
                 FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
                 filter->SetParallelIO(parallelIO);
                 filter->SetMpiComm(comm);
+                filter->SetCollectiveIO(collectiveIO);
             }
             else if (numBands == 3 && rgbMode)
             {
                 RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
                 filter->SetParallelIO(parallelIO);
                 filter->SetMpiComm(comm);
+                filter->SetCollectiveIO(collectiveIO);
             }
             else
             {
                 VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
                 filter->SetParallelIO(parallelIO);
                 filter->SetMpiComm(comm);
+                filter->SetCollectiveIO(collectiveIO);
             }
         }
 
@@ -203,17 +232,17 @@ public:
                 }
                 filter->SetForcedLargestPossibleRegion(fior);
 
-                typename SplitterType::Pointer splitter = SplitterType::New();
-
                 itk::ImageIORegion pioRegion;
                 itk::ImageIORegion nullRegion;
-
                 typename ImgType::RegionType curSplitRegion;
-
-
                 std::vector<itk::ImageIORegion> paraRegions;
 
-                int numSplits = splitter->GetNumberOfSplits(lpr, nprocs);
+                typename SplitterType::Pointer splitter = SplitterType::New();
+                splitter->SetNumberOfDivisions(nprocs);
+                splitter->PrepareStreaming(img, lpr);
+                int numSplits = splitter->GetNumberOfSplits();
+
+                //int numSplits = splitter->GetNumberOfSplits(lpr, nprocs);
                 NMDebugAI(<< "Given " << nprocs << " processes, write splitter suggests "
                           << numSplits << " parallel write regions ..." << std::endl);
                 int subtract=1;
@@ -223,7 +252,10 @@ public:
                     {
                         NMDebugAI(<< "... adjusting write regions: ");
                     }
-                    numSplits = splitter->GetNumberOfSplits(lpr, (nprocs-subtract));
+                    splitter->SetNumberOfDivisions(static_cast<unsigned int>(std::max(2, nprocs-subtract)));
+                    splitter->PrepareStreaming(img, lpr);
+                    numSplits = splitter->GetNumberOfSplits();
+                    //numSplits = splitter->GetNumberOfSplits(lpr, (nprocs-subtract));
                     NMDebug(<< numSplits << " ... ");
                     ++subtract;
                 }
@@ -267,7 +299,7 @@ public:
                     curSplitRegion = lpr;
 
                     // populate ImageRegion with current image split
-                    curSplitRegion = splitter->GetSplit(sp, numSplits, lpr);
+                    curSplitRegion = splitter->GetSplit(sp);//, numSplits, lpr);
 
                     // copy ImageRegion to ImageIORegion
                     // (required by Writer::SetUpdateRegion)
@@ -276,7 +308,6 @@ public:
                         pioRegion.SetIndex(d, curSplitRegion.GetIndex()[d]);
                         pioRegion.SetSize(d, curSplitRegion.GetSize()[d]);
                     }
-
                     paraRegions.push_back(pioRegion);
 
                     if (rank == 0)
@@ -288,11 +319,20 @@ public:
                     }
                 }
 
+                // populate chunk dimensions by the first split
+                std::vector<size_t> chunkSizes(Dimension, 1);
+                for (int h=0; h < Dimension; ++h)
+                {
+                    chunkSizes[h] = paraRegions.at(0).GetSize()[h];
+                }
+
+
                 for (int round=0; round < paraRegions.size(); ++round)
                 {
                     if (round == rank)
                     {
                         filter->SetUpdateRegion(paraRegions[round]);
+                        filter->SetChunkDimensions(chunkSizes);
                         filter->Update();
                     }
                 }
@@ -660,22 +700,42 @@ template class NMStreamingImageFileWriterWrapper_Internal<double, double, 3>;
     }\
 }
 
+#define callSetChunkOptimisation( imgType, wrapName ) \
+{ \
+    if (this->mOutputNumDimensions == 1) \
+    { \
+        wrapName< imgType, imgType, 1 >::setChunkOptimisation( \
+                this->mOtbProcess, this->mOutputNumBands, mChunkOptimisation, mChunkSize, mRGBMode); \
+    } \
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        wrapName< imgType, imgType, 2 >::setChunkOptimisation( \
+                this->mOtbProcess, this->mOutputNumBands, mChunkOptimisation, mChunkSize, mRGBMode); \
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        wrapName< imgType, imgType, 3 >::setChunkOptimisation( \
+                this->mOtbProcess, this->mOutputNumBands, mChunkOptimisation, mChunkSize, mRGBMode); \
+    }\
+}
+
+
 #define callSetParallelIO( imgType, wrapName ) \
 { \
     if (this->mOutputNumDimensions == 1) \
     { \
         wrapName< imgType, imgType, 1 >::setParallelIO( \
-                this->mOtbProcess, this->mOutputNumBands, this->mParallelIO, mRGBMode, comm); \
+                this->mOtbProcess, this->mOutputNumBands, this->mParallelIO, mRGBMode, comm, mCollectiveIO); \
     } \
     else if (this->mOutputNumDimensions == 2) \
     { \
         wrapName< imgType, imgType, 2 >::setParallelIO( \
-                this->mOtbProcess, this->mOutputNumBands, this->mParallelIO, mRGBMode, comm); \
+                this->mOtbProcess, this->mOutputNumBands, this->mParallelIO, mRGBMode, comm, mCollectiveIO); \
     } \
     else if (this->mOutputNumDimensions == 3) \
     { \
         wrapName< imgType, imgType, 3 >::setParallelIO( \
-                this->mOtbProcess, this->mOutputNumBands, this->mParallelIO, mRGBMode, comm); \
+                this->mOtbProcess, this->mOutputNumBands, this->mParallelIO, mRGBMode, comm, mCollectiveIO); \
     }\
 }
 
@@ -852,8 +912,11 @@ NMStreamingImageFileWriterWrapper
     this->mUpdateMode = false;
     this->mRGBMode = false;
     this->mParallelIO = false;
+    this->mChunkOptimisation = false;
+    this->mCollectiveIO = false;
 
-    this->mStreamingSize = 1024;
+    this->mStreamingSize = 1024;      // in MiB
+    this->mChunkSize = 100;           // in MiB
     this->mWriteProcs = 1;
     this->mCompressionLevel = 4;
 
@@ -888,6 +951,9 @@ NMStreamingImageFileWriterWrapper
     //mUserProperties.insert(QStringLiteral("ParallelIO"), QStringLiteral("ParallelIO"));
     mUserProperties.insert(QStringLiteral("WriteProcs"), QStringLiteral("WriteProcs"));
     mUserProperties.insert(QStringLiteral("CompressionLevel"), QStringLiteral("CompressionLevel"));
+    mUserProperties.insert(QStringLiteral("ChunkOptimisation"), QStringLiteral("ChunkOptimisation"));
+    // mUserProperties.insert(QStringLiteral("ChunkSize"), QStringLiteral("ChunkSize"));
+    // mUserProperties.insert(QStringLiteral("CollectiveIO"), QStringLiteral("CollectiveIO"));
 
 #ifdef BUILD_RASSUPPORT
     this->mRasConnector = 0;
@@ -915,8 +981,11 @@ NMStreamingImageFileWriterWrapper
     this->mUpdateMode = false;
     this->mRGBMode = false;
     this->mParallelIO = false;
+    this->mChunkOptimisation = false;
+    this->mCollectiveIO = false;
 
-    this->mStreamingSize = 512;
+    this->mStreamingSize = 1024;       // in MiB
+    this->mChunkSize = 100;            // in MiB
     this->mWriteProcs = 1;
     this->mCompressionLevel = 4;
 
@@ -951,7 +1020,9 @@ NMStreamingImageFileWriterWrapper
     //mUserProperties.insert(QStringLiteral("ParallelIO"), QStringLiteral("ParallelIO"));
     mUserProperties.insert(QStringLiteral("WriteProcs"), QStringLiteral("WriteProcs"));
     mUserProperties.insert(QStringLiteral("CompressionLevel"), QStringLiteral("CompressionLevel"));
-
+    mUserProperties.insert(QStringLiteral("ChunkOptimisation"), QStringLiteral("NcChunkOptimisation"));
+    //mUserProperties.insert(QStringLiteral("ChunkSize"), QStringLiteral("ChunkSize"));
+    // mUserProperties.insert(QStringLiteral("CollectiveIO"), QStringLiteral("CollectiveIO"));
 
 #ifdef BUILD_RASSUPPORT
     this->mRasConnector = 0;
@@ -1123,6 +1194,21 @@ NMStreamingImageFileWriterWrapper
     switch (this->mOutputComponentType)
     {
         MacroPerType(callSetCompressionLevel, NMStreamingImageFileWriterWrapper_Internal)
+    default:
+        break;
+    }
+}
+
+void
+NMStreamingImageFileWriterWrapper
+::setInternalChunkOptimisation()
+{
+    if (!this->mbIsInitialised)
+        return;
+
+    switch (this->mOutputComponentType)
+    {
+        MacroPerType(callSetChunkOptimisation, NMStreamingImageFileWriterWrapper_Internal)
     default:
         break;
     }
@@ -1416,6 +1502,7 @@ NMStreamingImageFileWriterWrapper
     this->addRunTimeParaProvN(tabProvNAttr);
 
     this->setInternalUpdateMode();
+    this->setInternalChunkOptimisation();
 
     const int nDim = this->getOutputNumDimensions();
     if (mbUseForcedLPR)
@@ -1545,7 +1632,14 @@ NMStreamingImageFileWriterWrapper
     int cn_len;
     char cname[MPI_MAX_OBJECT_NAME];
     MPI_Comm_get_name(comm, cname, &cn_len);
-    NMDebugAI(<< ctxNMStreamWriter << ": secured access to MPI_comm '" << cname << "'! for parallel write!" << std::endl);
+    if (this->mParallelIO)
+    {
+        NMDebugAI(<< ctxNMStreamWriter << ": staged for parallel write using MPI_comm '" << cname << "'!" << std::endl);
+    }
+    else
+    {
+        NMDebugAI(<< ctxNMStreamWriter << ": staged for sequential write using MPI_comm '" << cname << "'!" << std::endl);
+    }
 
     switch(this->mOutputComponentType)
     {

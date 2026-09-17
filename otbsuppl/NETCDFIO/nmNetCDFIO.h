@@ -184,6 +184,17 @@ public:
 
 
     void SetForcedLPR(const itk::ImageIORegion& forcedLPR);
+    void SetUpdateRegion(const itk::ImageIORegion& updateRegion);
+
+    void SetStreamingSize(int streamingSize)
+    {m_StreamingSize = streamingSize;}
+    void SetChunkSize(size_t chunkSize)
+    {m_ChunkSize = chunkSize;}
+    void SetChunkDimensions(const std::vector<size_t>& chunkDims);
+    void SetDoCollectiveIO(bool bCollective)
+    {m_bCollectiveIO = bCollective;}
+    void SetChunkOptimisation(bool chunkOptimisation)
+    {m_bChunkOptimisation = chunkOptimisation;}
 
     //otb::AttributeTable::Pointer getRasterAttributeTable(int band);
     //void setRasterAttributeTable(otb::AttributeTable* rat, int band);
@@ -200,18 +211,15 @@ protected:
     virtual ~NetCDFIO();
 
     void updateOverviewInfo();
-
     void PrintSelf(std::ostream& os, itk::Indent indent) const;
-
     void ProcessVarDimDescriptors(void);
-
     bool parseImageSpec(const std::string imagespec);
     otb::ImageIOBase::IOComponentType getOTBComponentType(
             netCDF::NcType::ncType nctype);
-
     netCDF::NcType::ncType getNetCDFComponentType(otb::ImageIOBase::IOComponentType otbtype);
     netCDF::NcType::ncType getNetCDFComponentType(const std::string& typeStr);
     void setVariableAttributes(netCDF::NcVar& var);
+    void trimChunkSizes(void);
 
     struct DimInfo
     {
@@ -245,6 +253,9 @@ protected:
     bool m_bCanRead;
     bool m_bCanWrite;
     bool m_bParallelIO;
+    bool m_bChunkOptimisation;
+
+    itk::ImageIORegion m_UpdateRegion;
 
     // this var is for internal use and indicates the
     // second stage of the creation of a new image
@@ -296,6 +307,11 @@ protected:
     std::vector<unsigned int> m_LPRDimensions;
     std::vector<std::string>  m_DimensionNames;
     std::vector<double> m_LPRSpacing;
+
+    int m_StreamingSize;
+    size_t m_ChunkSize;
+    std::vector<size_t> m_ChunkSizeDims;
+    bool m_bCollectiveIO;
 
 
     bool m_bImageSpecParsed;

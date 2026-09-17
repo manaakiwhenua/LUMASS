@@ -105,13 +105,16 @@ StreamingRATImageFileWriter<TInputImage>
     // We don't set any parameter, so the memory size is retrieved from
     // the OTB configuration options
     // this->SetAutomaticTiledStreaming();
-    this->SetAutomaticStrippedStreaming(512);
+    this->SetAutomaticStrippedStreaming(1024);
 
     m_ResamplingType = "NEAREST";
     m_StreamingMethod = "STRIPPED";
-    m_StreamingSize = 512;
+    m_StreamingSize = 1024; // in MiB
     m_ParallelIO = false;
+    m_ChunkOptimisation = false;
+    m_CollectiveIO = false;
     m_MpiComm = MPI_COMM_NULL;
+    m_ChunkSize = 1024*1024*128; // MiB -> byte
 
     m_UseCompression = true;
     m_RATHaveBeenWritten = false;
@@ -579,6 +582,22 @@ StreamingRATImageFileWriter<TInputImage>
 }
 
 template<class TInputImage>
+itk::ImageIORegion
+StreamingRATImageFileWriter<TInputImage>
+::GetUpdateRegion()
+{
+    if (this->m_UseUpdateRegion)
+    {
+        return this->m_UpdateRegion;
+    }
+    else
+    {
+        return itk::ImageIORegion();
+    }
+}
+
+
+template<class TInputImage>
 void
 StreamingRATImageFileWriter<TInputImage>
 ::SetUpdateRegion(const itk::ImageIORegion& updateRegion)
@@ -589,7 +608,6 @@ StreamingRATImageFileWriter<TInputImage>
         this->m_UpdateRegion = updateRegion;
         this->m_UseUpdateRegion = true;
         this->Modified();
-
     }
     else
     {
@@ -1021,6 +1039,7 @@ StreamingRATImageFileWriter<TInputImage>
        )
     {
         this->SetNumberOfDivisionsStrippedStreaming(1);
+
     }
     else if (m_NumberOfInputs == 1 && inputPtr->GetBufferedRegion() == inputPtr->GetLargestPossibleRegion())
     {
@@ -1101,6 +1120,18 @@ StreamingRATImageFileWriter<TInputImage>
         if (nio != nullptr)
         {
             nio->SetPixelTypeInfo(typeid(InputImagePixelType));
+            nio->SetStreamingSize(this->m_StreamingSize);
+            nio->SetChunkOptimisation(this->m_ChunkOptimisation);
+            nio->SetChunkSize(m_ChunkSize);
+            if (m_ChunkDimensions.size() == TInputImage::ImageDimension)
+            {
+                nio->SetChunkDimensions(m_ChunkDimensions);
+            }
+            if (this->m_UpdateRegion.GetImageDimension() == TInputImage::ImageDimension)
+            {
+                nio->SetUpdateRegion(this->m_UpdateRegion);
+            }
+            nio->SetDoCollectiveIO(this->m_CollectiveIO);
             otb::ImageMetadata imd = outImg->GetImageMetadata();
             if (imd.ExtraKeys.find("VarAndDimDescriptors") != imd.ExtraKeys.end())
             {

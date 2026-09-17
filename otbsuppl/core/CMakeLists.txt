@@ -212,10 +212,6 @@ else()
 endif()
 
 
-file(COPY ${OTBSupplCoreIO_HEADER}
-       DESTINATION ${OTBSupplCore_BINARY_DIR}
-)
-
 install(FILES ${OTBSupplCoreIO_HEADER} DESTINATION include)
 
 

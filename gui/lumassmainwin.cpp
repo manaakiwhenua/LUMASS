@@ -4723,19 +4723,6 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 void LUMASSMainWin::test()
 {
 
-    QString in = "(SQLProcessor62)";
-
-    QRegularExpression regexp("\\(([a-zA-Z0-9]+)\\)");
-    QRegularExpressionMatchIterator mit = regexp.globalMatch(in);
-
-    QString capture = "nothing!";
-    if (mit.hasNext())
-    {
-        capture = mit.next().captured(1);
-    }
-
-    NMLogWarn(<< "captured inside of " << in.toStdString() << ": " << capture.toStdString());
-
 }
 
 void
